@@ -19,5 +19,7 @@ Post-v3.3 architectural deepening and seam purification across four key friction
 - **Decision 2 (Ticket 02 Contextual Selection Encapsulation)**: Lifted contextual file selection state machine into `DirectoryBrowserViewModel`, encapsulated `musicPlayerAppSession` as private, eliminated direct UI session penetration, and added 7 unit test cases in `DirectoryBrowserViewModelTest` (60/60 passed).
 - **Decision 3 (Ticket 03 Track Row Subtitle Canonical Formatter)**: Upgraded `AudioTrackRowDefaults.formatTrackSubtitle` as the canonical formatter with non-empty `"未知"` fallback guaranteeing 72dp height parity. Unified `AudioTrackItemRow`, `PlaylistTrackRow`, `SearchResultsViews`, and `PlaybackQueueBottomSheet`, eliminating `"未知艺术家"` text drift.
 - **Decision 4 (Ticket 04 Playlist Track Reconciliation Pipeline)**: Extracted `reconcilePlaylistTracks` in `PlaylistRepositoryImpl`, centralizing composite deduplication, orphan row cleanup, offline reachability merging, and cover thumbnail self-healing. Eliminated 75+ lines of duplicate code between `getTracksForPlaylistFlow` and `getTracksForPlaylist` (29/29 tests passed).
+- **Decision 5 (Code Review Remediations & Seam Polish)**: Removed transitional `formatSubtitle` scaffolding from `AudioTrackRow.kt`, unified CUE album card track subtitle in `CueAlbumCard.kt`, synchronized `MorphingPlayerDefaults` fade tokens with live container implementation, and hoisted search contextual selection/batch dispatch into `DirectoryBrowserViewModel` (all unit and packaging seam tests passing).
+
 
 

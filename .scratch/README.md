@@ -14,9 +14,7 @@
 
 ## 活跃任务 (Active)
 
-| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 规范路径 |
-| :--- | :--- | :---: | :---: | :--- |
-| `architecture-deepening-and-seam-purification` | v3.3 后续架构深化：清理形变无用数学接缝、内聚媒体库多选、统一音轨行兜底与消除歌单对账重复代码 | 4 | Ready for Agent | [`.scratch/architecture-deepening-and-seam-purification/spec.md`](architecture-deepening-and-seam-purification/spec.md) |
+当前暂无进行中的活跃特性任务。
 
 ---
 
@@ -26,6 +24,7 @@
 
 | 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 归档路径 |
 | :--- | :--- | :---: | :---: | :--- |
+| `architecture-deepening-and-seam-purification` | v3.3 后续架构深化：清理形变无用数学接缝、内聚媒体库多选、统一音轨行兜底与消除歌单对账重复代码 | 4 | Completed | [`archive/architecture-deepening-and-seam-purification/`](archive/architecture-deepening-and-seam-purification/) |
 | `m3-expressive-motion-system` | Material 3 Expressive 动效系统、单一真实实体胶囊全屏蜕变与层级穿梭 (ADR-0031) | 7 | Completed | [`archive/m3-expressive-motion-system/`](archive/m3-expressive-motion-system/) |
 | `m3-expressive-ui-redesign` | Material 3 Expressive 界面重构、全天候全域动态取色与流体交互 (ADR-0028) | 6 | Completed | [`archive/m3-expressive-ui-redesign/`](archive/m3-expressive-ui-redesign/) |
 | `floating-capsule-miniplayer` | 独立动态原色晶透悬浮胶囊播控栏与沉浸穿透滑动规范 (ADR-0007) | 5 | Completed | [`archive/floating-capsule-miniplayer/`](archive/floating-capsule-miniplayer/) |

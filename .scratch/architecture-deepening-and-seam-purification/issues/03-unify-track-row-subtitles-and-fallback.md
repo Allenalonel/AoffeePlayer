@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status: completed**
+**Status: resolved**
 
 ## Acceptance criteria
 
@@ -14,3 +14,12 @@
 - [x] 统一 `SearchResultsViews.kt` 的 `resolveSearchTrackSubtitle` 与 `PlaybackQueueBottomSheet.kt` 的 `resolveQueueTrackSubtitle`，消除向 `"未知艺术家"` 的散落漂移，与媒体库/歌单保持完全一致。
 - [x] 在 `AudioTrackRowTest` 中补充针对各类元数据缺失组合（无艺术家、无专辑、空字符串等）的副标题格式化单测，验证各视窗条目高度严格对齐 72dp 且不塌陷。
 - [x] 运行 `./gradlew testDebugUnitTest --tests "*AudioTrackRowTest*"` 且测试全部通过。
+
+## Answer
+
+已通过 `ticket-03` 工作树子代理完成实现并合入集成分支：
+
+1. 在 `AudioTrackRowDefaults` 中实现统一的 `formatTrackSubtitle`，缺失艺术家和专辑信息时统一安全兜底返回 `"未知"`，保障 72dp 行高平齐规范；
+2. 重构媒体库 `AudioTrackItemRow`、歌单 `PlaylistTrackRow`、搜索 `SearchResultsViews` 和队列 `PlaybackQueueBottomSheet`，消除各处对 `"未知艺术家"` 的文案漂移与重复拼接逻辑；
+3. 更新与新增针对副标题兜底及行高平齐的单元测试，全部通过。
+

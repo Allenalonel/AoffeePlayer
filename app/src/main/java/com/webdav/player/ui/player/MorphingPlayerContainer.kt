@@ -51,8 +51,8 @@ object MorphingPlayerDefaults {
     val FullPlayerQueueButtonSize: Dp = 48.dp
     val CapsuleHorizontalMargin: Dp = 14.dp
 
-    internal const val SecondaryControlsFadeStartProgress: Float = 0.35f
-    internal const val MiniControlsFadeEndProgress: Float = 0.25f
+    internal const val FullPlayerFadeStartProgress: Float = 0.15f
+    internal const val MiniPlayerFadeEndProgress: Float = 0.40f
 }
 
 /**
@@ -277,9 +277,11 @@ fun MorphingPlayerContainer(
                     }
                     .then(downwardSwipeModifier),
         ) {
-            // 1. Single Living FullPlayerView (Active as container expands past 0.15f)
-            if (expansionProgress > 0.15f) {
-                val fullAlpha = ((expansionProgress - 0.15f) / 0.85f).coerceIn(0f, 1f)
+            // 1. Single Living FullPlayerView (Active as container expands past FullPlayerFadeStartProgress)
+            if (expansionProgress > MorphingPlayerDefaults.FullPlayerFadeStartProgress) {
+                val fullAlpha =
+                    ((expansionProgress - MorphingPlayerDefaults.FullPlayerFadeStartProgress) /
+                        (1f - MorphingPlayerDefaults.FullPlayerFadeStartProgress)).coerceIn(0f, 1f)
                 val fullTranslationY = with(density) { 40.dp.toPx() * (1f - expansionProgress) }
                 Box(
                     modifier =
@@ -304,8 +306,14 @@ fun MorphingPlayerContainer(
             }
 
             // 2. MiniPlayer (Active when collapsed, smoothly fades out as container expands)
-            if (expansionProgress < 0.40f) {
-                val miniAlpha = if (expansionProgress == 0f) 1f else ((0.40f - expansionProgress) / 0.40f).coerceIn(0f, 1f)
+            if (expansionProgress < MorphingPlayerDefaults.MiniPlayerFadeEndProgress) {
+                val miniAlpha =
+                    if (expansionProgress == 0f) {
+                        1f
+                    } else {
+                        ((MorphingPlayerDefaults.MiniPlayerFadeEndProgress - expansionProgress) /
+                            MorphingPlayerDefaults.MiniPlayerFadeEndProgress).coerceIn(0f, 1f)
+                    }
                 val miniTranslationY = with(density) { (collapsedBottomPadding * expansionProgress).toPx() }
                 Box(
                     modifier =

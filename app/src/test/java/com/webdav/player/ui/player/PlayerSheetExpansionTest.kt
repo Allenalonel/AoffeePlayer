@@ -158,8 +158,8 @@ class PlayerSheetExpansionTest {
 
     @Test
     fun morphingDefaults_internalizedFadeThresholds_arePreserved() {
-        assertEquals(0.35f, MorphingPlayerDefaults.SecondaryControlsFadeStartProgress, 0.0001f)
-        assertEquals(0.25f, MorphingPlayerDefaults.MiniControlsFadeEndProgress, 0.0001f)
+        assertEquals(0.15f, MorphingPlayerDefaults.FullPlayerFadeStartProgress, 0.0001f)
+        assertEquals(0.40f, MorphingPlayerDefaults.MiniPlayerFadeEndProgress, 0.0001f)
     }
 
     @Test

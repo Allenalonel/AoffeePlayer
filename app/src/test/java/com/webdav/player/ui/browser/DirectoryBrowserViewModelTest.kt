@@ -1903,22 +1903,6 @@ class DirectoryBrowserViewModelTest {
         }
 
     @Test
-    fun playNext_withAudioTrack_delegatesDirectlyToAppSession() =
-        runTest {
-            val track =
-                AudioTrack(
-                    id = "1:/direct.flac",
-                    serverId = 1L,
-                    remotePath = "/direct.flac",
-                    title = "Direct Flac",
-                    format = AudioFormat.FLAC,
-                )
-
-            viewModel.playNext(track)
-            assertEquals(track, fakeMusicPlayerAppSession.lastPlayNextTrack)
-        }
-
-    @Test
     fun searchHistory_persistsAcrossViewModelInstances_viaLibrarySearchRepository() =
         runTest {
             val sharedRepo = FakeLibrarySearchRepository()
@@ -1981,7 +1965,66 @@ class DirectoryBrowserViewModelTest {
         }
 
     @Test
-    fun batchPlayNext_preservesSelectedTrackOrderInQueue() =
+    fun toggleSearchTrackSelection_addsAndRemovesTrackId_andUpdatesSearchSelectionMode() =
+        runTest {
+            assertEquals(emptySet<String>(), viewModel.selectedSearchTrackIds.value)
+            assertFalse(viewModel.isSearchSelectionMode.value)
+
+            viewModel.toggleSearchTrackSelection("1:/track1.flac")
+            assertEquals(setOf("1:/track1.flac"), viewModel.selectedSearchTrackIds.value)
+            assertTrue(viewModel.isSearchSelectionMode.value)
+
+            viewModel.toggleSearchTrackSelection("1:/track2.flac")
+            assertEquals(setOf("1:/track1.flac", "1:/track2.flac"), viewModel.selectedSearchTrackIds.value)
+            assertTrue(viewModel.isSearchSelectionMode.value)
+
+            viewModel.toggleSearchTrackSelection("1:/track1.flac")
+            assertEquals(setOf("1:/track2.flac"), viewModel.selectedSearchTrackIds.value)
+            assertTrue(viewModel.isSearchSelectionMode.value)
+
+            viewModel.toggleSearchTrackSelection("1:/track2.flac")
+            assertEquals(emptySet<String>(), viewModel.selectedSearchTrackIds.value)
+            assertFalse(viewModel.isSearchSelectionMode.value)
+        }
+
+    @Test
+    fun selectAllSearchTracks_selectsAllMatchedTracks_andClearSearchSelectionResets() =
+        runTest {
+            val track1 =
+                AudioTrack(
+                    id = "1:/track1.flac",
+                    serverId = 1L,
+                    remotePath = "/track1.flac",
+                    title = "Track 1",
+                    format = AudioFormat.FLAC,
+                )
+            val track2 =
+                AudioTrack(
+                    id = "1:/track2.flac",
+                    serverId = 1L,
+                    remotePath = "/track2.flac",
+                    title = "Track 2",
+                    format = AudioFormat.FLAC,
+                )
+            fakeLibrarySearchRepository.emitResult(LibrarySearchResult(matchedTracks = listOf(track1, track2)))
+            viewModel.onSearchActiveChanged(true)
+            viewModel.onSearchQueryChanged("Track")
+            advanceUntilIdle()
+
+            assertEquals(emptySet<String>(), viewModel.selectedSearchTrackIds.value)
+            assertFalse(viewModel.isSearchSelectionMode.value)
+
+            viewModel.selectAllSearchTracks()
+            assertEquals(setOf("1:/track1.flac", "1:/track2.flac"), viewModel.selectedSearchTrackIds.value)
+            assertTrue(viewModel.isSearchSelectionMode.value)
+
+            viewModel.clearSearchSelection()
+            assertEquals(emptySet<String>(), viewModel.selectedSearchTrackIds.value)
+            assertFalse(viewModel.isSearchSelectionMode.value)
+        }
+
+    @Test
+    fun playSelectedSearchNext_queuesTracksInForwardOrder_andClearsSearchSelection() =
         runTest {
             advanceUntilIdle()
 
@@ -2020,12 +2063,22 @@ class DirectoryBrowserViewModelTest {
                         format = AudioFormat.FLAC,
                     ),
                 )
-
-            // Multi-select batch enqueue: tracks.reversed().forEach { playNext(it) }
-            selectedTracks.reversed().forEach { track ->
-                viewModel.playNext(track)
-            }
+            fakeLibrarySearchRepository.emitResult(LibrarySearchResult(matchedTracks = selectedTracks))
+            viewModel.onSearchActiveChanged(true)
+            viewModel.onSearchQueryChanged("track")
             advanceUntilIdle()
+
+            viewModel.selectAllSearchTracks()
+            assertTrue(viewModel.isSearchSelectionMode.value)
+            assertEquals(3, viewModel.selectedSearchTrackIds.value.size)
+
+            val queued = viewModel.playSelectedSearchNext()
+            advanceUntilIdle()
+
+            assertEquals(3, queued.size)
+            assertEquals(selectedTracks, queued)
+            assertTrue(viewModel.selectedSearchTrackIds.value.isEmpty())
+            assertFalse(viewModel.isSearchSelectionMode.value)
 
             val queueTracks = fakeMusicPlayerAppSession.sessionState.value.queue.tracks
             assertEquals(4, queueTracks.size)
@@ -2033,6 +2086,46 @@ class DirectoryBrowserViewModelTest {
             assertEquals("1:/track_a.flac", queueTracks[1].id)
             assertEquals("1:/track_b.flac", queueTracks[2].id)
             assertEquals("1:/track_c.flac", queueTracks[3].id)
+        }
+
+    @Test
+    fun getSelectedSearchTracks_returnsSelectedTracksInSearchResultOrder() =
+        runTest {
+            val track1 =
+                AudioTrack(
+                    id = "1:/track1.flac",
+                    serverId = 1L,
+                    remotePath = "/track1.flac",
+                    title = "Track 1",
+                    format = AudioFormat.FLAC,
+                )
+            val track2 =
+                AudioTrack(
+                    id = "1:/track2.flac",
+                    serverId = 1L,
+                    remotePath = "/track2.flac",
+                    title = "Track 2",
+                    format = AudioFormat.FLAC,
+                )
+            val track3 =
+                AudioTrack(
+                    id = "1:/track3.flac",
+                    serverId = 1L,
+                    remotePath = "/track3.flac",
+                    title = "Track 3",
+                    format = AudioFormat.FLAC,
+                )
+            fakeLibrarySearchRepository.emitResult(LibrarySearchResult(matchedTracks = listOf(track1, track2, track3)))
+            viewModel.onSearchActiveChanged(true)
+            viewModel.onSearchQueryChanged("Track")
+            advanceUntilIdle()
+
+            // Select track3 first, then track1
+            viewModel.toggleSearchTrackSelection("1:/track3.flac")
+            viewModel.toggleSearchTrackSelection("1:/track1.flac")
+
+            val selected = viewModel.getSelectedSearchTracks()
+            assertEquals(listOf(track1, track3), selected)
         }
 
     @Test

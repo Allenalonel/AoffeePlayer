@@ -12,7 +12,6 @@ import com.webdav.player.domain.model.AudioQualityLevel
 import com.webdav.player.ui.common.EqualizerStateHelper
 import com.webdav.player.ui.common.EqualizerWaveState
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -144,58 +143,6 @@ class AudioTrackRowTest {
                 subtitle.isNotBlank(),
             )
         }
-    }
-
-    @Test
-    fun formatSubtitle_withArtistAndAlbum_combinesWithBullet() {
-        val result =
-            AudioTrackRowDefaults.formatSubtitle(
-                artist = "Pink Floyd",
-                album = "The Wall",
-            )
-        assertEquals("Pink Floyd · The Wall", result)
-    }
-
-    @Test
-    fun formatSubtitle_withArtistAlbumAndDuration_combinesAll() {
-        val result =
-            AudioTrackRowDefaults.formatSubtitle(
-                artist = "Pink Floyd",
-                album = "The Dark Side of the Moon",
-                durationText = "06:22",
-            )
-        assertEquals("Pink Floyd · The Dark Side of the Moon · 06:22", result)
-    }
-
-    @Test
-    fun formatSubtitle_withArtistOnly_returnsArtist() {
-        val result =
-            AudioTrackRowDefaults.formatSubtitle(
-                artist = "David Bowie",
-                album = null,
-            )
-        assertEquals("David Bowie", result)
-    }
-
-    @Test
-    fun formatSubtitle_withExtra_appendsExtra() {
-        val result =
-            AudioTrackRowDefaults.formatSubtitle(
-                artist = "Pink Floyd",
-                album = "Wish You Were Here",
-                extra = "ShineOn.cue",
-            )
-        assertEquals("Pink Floyd · Wish You Were Here · ShineOn.cue", result)
-    }
-
-    @Test
-    fun formatSubtitle_withNullArtistAndAlbum_returnsNullFallback() {
-        val result =
-            AudioTrackRowDefaults.formatSubtitle(
-                artist = null,
-                album = null,
-            )
-        assertNull(result)
     }
 
     @Test

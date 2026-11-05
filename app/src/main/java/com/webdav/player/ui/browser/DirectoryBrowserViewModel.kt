@@ -41,6 +41,12 @@ class DirectoryBrowserViewModel(
     private val _isSelectionMode = MutableStateFlow(false)
     val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
 
+    private val _selectedSearchTrackIds = MutableStateFlow<Set<String>>(emptySet())
+    val selectedSearchTrackIds: StateFlow<Set<String>> = _selectedSearchTrackIds.asStateFlow()
+
+    private val _isSearchSelectionMode = MutableStateFlow(false)
+    val isSearchSelectionMode: StateFlow<Boolean> = _isSearchSelectionMode.asStateFlow()
+
     private var currentLoadJob: Job? = null
     private var searchJob: Job? = null
 
@@ -172,6 +178,38 @@ class DirectoryBrowserViewModel(
         return tracks
     }
 
+    fun toggleSearchTrackSelection(trackId: String) {
+        val current = _selectedSearchTrackIds.value
+        val updated = if (trackId in current) current - trackId else current + trackId
+        _selectedSearchTrackIds.value = updated
+        _isSearchSelectionMode.value = updated.isNotEmpty()
+    }
+
+    fun selectAllSearchTracks() {
+        val allTrackIds = _uiState.value.searchResult.matchedTracks.map { it.id }.toSet()
+        _selectedSearchTrackIds.value = allTrackIds
+        _isSearchSelectionMode.value = allTrackIds.isNotEmpty()
+    }
+
+    fun clearSearchSelection() {
+        _selectedSearchTrackIds.value = emptySet()
+        _isSearchSelectionMode.value = false
+    }
+
+    fun getSelectedSearchTracks(): List<AudioTrack> {
+        val selectedIds = _selectedSearchTrackIds.value
+        return _uiState.value.searchResult.matchedTracks.filter { it.id in selectedIds }
+    }
+
+    fun playSelectedSearchNext(): List<AudioTrack> {
+        val tracks = getSelectedSearchTracks()
+        tracks.reversed().forEach { track ->
+            musicPlayerAppSession?.playNext(track)
+        }
+        clearSearchSelection()
+        return tracks
+    }
+
     fun onAudioTrackClicked(file: RemoteFile) {
         if (!file.isAudio) return
         val dir = _uiState.value.currentDirectory ?: return
@@ -195,15 +233,12 @@ class DirectoryBrowserViewModel(
         musicPlayerAppSession?.playNext(track)
     }
 
-    fun playNext(track: AudioTrack) {
-        musicPlayerAppSession?.playNext(track)
-    }
-
     fun onSearchQueryChanged(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
         searchJob?.cancel()
         val trimmed = query.trim()
         if (trimmed.isBlank()) {
+            clearSearchSelection()
             _uiState.update { it.copy(searchResult = LibrarySearchResult(), isSearching = false) }
             return
         }
@@ -220,6 +255,7 @@ class DirectoryBrowserViewModel(
 
     fun onSearchActiveChanged(active: Boolean) {
         if (!active) {
+            clearSearchSelection()
             searchJob?.cancel()
             _uiState.update {
                 it.copy(isSearchActive = false, searchQuery = "", searchResult = LibrarySearchResult(), isSearching = false)
@@ -230,6 +266,7 @@ class DirectoryBrowserViewModel(
     }
 
     fun onClearSearchQuery() {
+        clearSearchSelection()
         searchJob?.cancel()
         _uiState.update {
             it.copy(searchQuery = "", searchResult = LibrarySearchResult(), isSearching = false)
@@ -279,6 +316,7 @@ class DirectoryBrowserViewModel(
     }
 
     fun closeSearchBar() {
+        clearSearchSelection()
         _uiState.update { it.copy(isSearchActive = false, searchQuery = "", isSearching = false) }
     }
 

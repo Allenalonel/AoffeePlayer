@@ -111,8 +111,8 @@ fun DirectoryBrowserScreen(
     val selectedFilePaths by viewModel.selectedFilePaths.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
 
-    val (selectedSearchTrackIds, setSelectedSearchTrackIds) = remember { mutableStateOf(setOf<String>()) }
-    val isSearchSelectionMode = selectedSearchTrackIds.isNotEmpty()
+    val selectedSearchTrackIds by viewModel.selectedSearchTrackIds.collectAsStateWithLifecycle()
+    val isSearchSelectionMode by viewModel.isSearchSelectionMode.collectAsStateWithLifecycle()
 
     val isSelectionActive = isSelectionMode || isSearchSelectionMode
     LaunchedEffect(isSelectionActive) {
@@ -132,11 +132,11 @@ fun DirectoryBrowserScreen(
     }
 
     LaunchedEffect(uiState.isSearchActive) {
-        setSelectedSearchTrackIds(emptySet())
+        viewModel.clearSearchSelection()
     }
 
     BackHandler(enabled = isCurrentTab && isSearchSelectionMode) {
-        setSelectedSearchTrackIds(emptySet())
+        viewModel.clearSearchSelection()
     }
 
     BackHandler(enabled = isCurrentTab && !isSearchSelectionMode && uiState.isSearchActive) {
@@ -577,13 +577,7 @@ fun DirectoryBrowserScreen(
                     },
                     onTrackClick = { track ->
                         if (isSearchSelectionMode) {
-                            setSelectedSearchTrackIds(
-                                if (track.id in selectedSearchTrackIds) {
-                                    selectedSearchTrackIds - track.id
-                                } else {
-                                    selectedSearchTrackIds + track.id
-                                },
-                            )
+                            viewModel.toggleSearchTrackSelection(track.id)
                         } else {
                             viewModel.onSearchResultTrackClicked(track)
                             viewModel.onSearchActiveChanged(false)
@@ -594,7 +588,7 @@ fun DirectoryBrowserScreen(
                     selectedTrackIds = selectedSearchTrackIds,
                     onTrackLongClick = { track ->
                         if (!isSearchSelectionMode) {
-                            setSelectedSearchTrackIds(setOf(track.id))
+                            viewModel.toggleSearchTrackSelection(track.id)
                         }
                     },
                 )
@@ -602,18 +596,14 @@ fun DirectoryBrowserScreen(
                 FloatingMultiSelectBottomBar(
                     selectedCount = selectedSearchTrackIds.size,
                     onPlayNext = {
-                        val tracks = uiState.searchResult.matchedTracks.filter { it.id in selectedSearchTrackIds }
-                        tracks.reversed().forEach { track ->
-                            viewModel.playNext(track)
-                        }
+                        val tracks = viewModel.playSelectedSearchNext()
                         Toast.makeText(context, "已将 ${tracks.size} 首歌曲添加至下一首播放", Toast.LENGTH_SHORT).show()
-                        setSelectedSearchTrackIds(emptySet())
                     },
                     onAddToPlaylist = {
-                        val tracks = uiState.searchResult.matchedTracks.filter { it.id in selectedSearchTrackIds }
+                        val tracks = viewModel.getSelectedSearchTracks()
                         if (tracks.isNotEmpty()) {
                             onAddTracksToPlaylist(tracks)
-                            setSelectedSearchTrackIds(emptySet())
+                            viewModel.clearSearchSelection()
                         }
                     },
                     modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomBarPadding),
@@ -633,17 +623,15 @@ fun DirectoryBrowserScreen(
             selectedCount = selectedSearchTrackIds.size,
             isAllSelected =
                 uiState.searchResult.matchedTracks.isNotEmpty() && selectedSearchTrackIds.size == uiState.searchResult.matchedTracks.size,
-            onClearSelection = { setSelectedSearchTrackIds(emptySet()) },
+            onClearSelection = { viewModel.clearSearchSelection() },
             onToggleSelectAll = {
                 val selectableTracks = uiState.searchResult.matchedTracks
                 val isAllSelected = selectableTracks.isNotEmpty() && selectedSearchTrackIds.size == selectableTracks.size
-                setSelectedSearchTrackIds(
-                    if (isAllSelected) {
-                        emptySet()
-                    } else {
-                        selectableTracks.map { it.id }.toSet()
-                    },
-                )
+                if (isAllSelected) {
+                    viewModel.clearSearchSelection()
+                } else {
+                    viewModel.selectAllSearchTracks()
+                }
             },
         )
     }

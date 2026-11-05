@@ -297,19 +297,6 @@ object AudioTrackRowDefaults {
         return parts.joinToString(" · ")
     }
 
-    fun formatSubtitle(
-        artist: String?,
-        album: String? = null,
-        durationText: String? = null,
-        extra: String? = null,
-    ): String? =
-        listOfNotNull(
-            artist?.trim()?.takeIf { it.isNotEmpty() },
-            album?.trim()?.takeIf { it.isNotEmpty() },
-            durationText?.trim()?.takeIf { it.isNotEmpty() },
-            extra?.trim()?.takeIf { it.isNotEmpty() },
-        ).takeIf { it.isNotEmpty() }?.joinToString(" · ")
-
     fun badgeColors(
         qualityLevel: AudioQualityLevel,
         colorScheme: ColorScheme,

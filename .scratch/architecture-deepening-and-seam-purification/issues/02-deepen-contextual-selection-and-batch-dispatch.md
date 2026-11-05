@@ -4,13 +4,24 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status: claimed**
+**Status: resolved**
 
 ## Acceptance criteria
 
-- [ ] 在 `DirectoryBrowserViewModel` 中封装多选状态流与操作方法：`selectedFilePaths: StateFlow<Set<String>>`、`isSelectionMode: StateFlow<Boolean>`、`toggleFileSelection(path: String)`、`selectAllAudioFiles()`、`clearSelection()`、`playSelectedNext()` 及 `getSelectedAudioTracks(): List<AudioTrack>`。
-- [ ] 将 `DirectoryBrowserViewModel.musicPlayerAppSession` 访问级别收紧为 `private`，切断 UI 表现层绕过 ViewModel 直接调度底层会话的违规接缝。
-- [ ] 在 ViewModel 内部实现 `playSelectedNext()`，将选定音频文件以用户所选的正向顺序原子添加至当前播放队列的下一首，调度完成后自动清除多选状态。
-- [ ] 精简 `DirectoryBrowserScreen.kt`：移除其本地维护的多选状态与直接会话穿透，改为绑定 ViewModel 的多选状态流与事件接口。
-- [ ] 在 `DirectoryBrowserViewModelTest` 中补充针对多选切换、全选过滤（只选音频忽略文件夹）、清空多选以及正序批量入队的单元测试，保证无 UI 依赖下的高密度单测覆盖。
-- [ ] 运行 `./gradlew testDebugUnitTest --tests "*DirectoryBrowserViewModelTest*"` 且测试全部通过。
+- [x] 在 `DirectoryBrowserViewModel` 中封装多选状态流与操作方法：`selectedFilePaths: StateFlow<Set<String>>`、`isSelectionMode: StateFlow<Boolean>`、`toggleFileSelection(path: String)`、`selectAllAudioFiles()`、`clearSelection()`、`playSelectedNext()` 及 `getSelectedAudioTracks(): List<AudioTrack>`。
+- [x] 将 `DirectoryBrowserViewModel.musicPlayerAppSession` 访问级别收紧为 `private`，切断 UI 表现层绕过 ViewModel 直接调度底层会话的违规接缝。
+- [x] 在 ViewModel 内部实现 `playSelectedNext()`，将选定音频文件以用户所选的正向顺序原子添加至当前播放队列的下一首，调度完成后自动清除多选状态。
+- [x] 精简 `DirectoryBrowserScreen.kt`：移除其本地维护的多选状态与直接会话穿透，改为绑定 ViewModel 的多选状态流与事件接口。
+- [x] 在 `DirectoryBrowserViewModelTest` 中补充针对多选切换、全选过滤（只选音频忽略文件夹）、清空多选以及正序批量入队的单元测试，保证无 UI 依赖下的高密度单测覆盖。
+- [x] 运行 `./gradlew testDebugUnitTest --tests "*DirectoryBrowserViewModelTest*"` 且测试全部通过。
+
+## Answer
+
+已通过 `ticket-02` 工作树子代理完成实现并合入集成分支：
+
+1. `DirectoryBrowserViewModel` 中新增 `selectedFilePaths` / `isSelectionMode` 状态流及 `toggleFileSelection`、`selectAllAudioFiles`、`clearSelection`、`playSelectedNext`、`getSelectedAudioTracks` 领域方法；
+2. `musicPlayerAppSession` 权限收敛为 `private`，UI 层无法直接穿透；
+3. `DirectoryBrowserScreen` 移除本地 `mutableStateOf`，改为响应式消费 ViewModel 状态流；
+4. `DirectoryBrowserViewModelTest` 新增 7 个高覆盖率单元测试用例，60/60 全部通过。
+
+

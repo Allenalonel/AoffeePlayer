@@ -4,12 +4,23 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status: claimed**
+**Status: resolved**
 
 ## Acceptance criteria
 
-- [ ] 从 `MorphingPlayerMath` 接口中安全移除 `artworkSize`、`artworkCornerRadius`、`artworkRotation`、`playButtonSize`、`playButtonCornerRadius`、`queueButtonSize`、`secondaryControlsAlpha`、`miniControlsAlpha`，仅保留实际生产使用的几何插值函数（`containerHeight`、`containerHorizontalMargin`、`containerBottomMargin`、`containerCornerRadius`）。
-- [ ] 将透明度淡入淡出门限（`SecondaryControlsFadeStartProgress = 0.35f`、`MiniControlsFadeEndProgress = 0.25f`）内化在 `MorphingPlayerDefaults` 中，消除多余的公开数学接缝。
-- [ ] 确保 `MorphingPlayerContainer` 容器在形变过程中严格保障 GPU 120Hz 硬件渲染，杜绝多余的 CPU 布局测算开销，且 100% 保持既有视觉效果与圆角形变几何一致。
-- [ ] 更新 `PlayerSheetExpansionTest`，清理针对已删除函数的断言，确保测试直接验证真实的播放器展开、收起手势门禁与可观测几何插值。
-- [ ] 运行 `./gradlew testDebugUnitTest --tests "*PlayerSheetExpansionTest*"` 且测试全部通过。
+- [x] 从 `MorphingPlayerMath` 接口中安全移除 `artworkSize`、`artworkCornerRadius`、`artworkRotation`、`playButtonSize`、`playButtonCornerRadius`、`queueButtonSize`、`secondaryControlsAlpha`、`miniControlsAlpha`，仅保留实际生产使用的几何插值函数（`containerHeight`、`containerHorizontalMargin`、`containerBottomMargin`、`containerCornerRadius`）。
+- [x] 将透明度淡入淡出门限（`SecondaryControlsFadeStartProgress = 0.35f`、`MiniControlsFadeEndProgress = 0.25f`）内化在 `MorphingPlayerDefaults` 中，消除多余的公开数学接缝。
+- [x] 确保 `MorphingPlayerContainer` 容器在形变过程中严格保障 GPU 120Hz 硬件渲染，杜绝多余的 CPU 布局测算开销，且 100% 保持既有视觉效果与圆角形变几何一致。
+- [x] 更新 `PlayerSheetExpansionTest`，清理针对已删除函数的断言，确保测试直接验证真实的播放器展开、收起手势门禁与可观测几何插值。
+- [x] 运行 `./gradlew testDebugUnitTest --tests "*PlayerSheetExpansionTest*"` 且测试全部通过。
+
+## Answer
+
+已通过 `ticket-01` 工作树子代理完成实现并合入集成分支：
+
+1. 剪枝 `MorphingPlayerMath` 中 8 个僵尸数学辅助函数，仅保留 4 个真实几何插值函数；
+2. 内化控制淡入淡出门限常量至 `MorphingPlayerDefaults`；
+3. 将 `MorphingPlayerContainer` 容器尺寸与裁剪动画收敛至 GPU Draw Phase 阶段渲染，杜绝 CPU 每帧重度测量重排；
+4. 重构 `PlayerSheetExpansionTest` 断言真实几何插值与手势门限，14/14 单测通过。
+
+

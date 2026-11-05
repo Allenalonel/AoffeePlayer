@@ -373,18 +373,17 @@ internal fun LazyListScope.searchDirectoriesSection(
 }
 
 internal fun resolveSearchTrackSubtitle(track: AudioTrack): String {
-    val artist = track.artist?.ifBlank { "未知艺术家" } ?: "未知艺术家"
     val extra =
         if (track.isVirtualTrack) {
             track.fileName.ifEmpty { track.remotePath.substringAfterLast('/') }.takeIf { it.isNotBlank() }
         } else {
             null
         }
-    return AudioTrackRowDefaults.formatSubtitle(
-        artist = artist,
+    return AudioTrackRowDefaults.formatTrackSubtitle(
+        artist = track.artist,
         album = track.album,
         extra = extra,
-    ) ?: artist
+    )
 }
 
 @Composable

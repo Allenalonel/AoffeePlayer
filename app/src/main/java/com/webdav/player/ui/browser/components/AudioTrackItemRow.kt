@@ -72,7 +72,13 @@ fun AudioTrackItemRow(
 
     if (file.isAudio) {
         val displayTitle = remember(file.name, metadata?.title) { metadata?.displayTitle(file.name) ?: file.name }
-        val subtitle = remember(file, metadata) { resolveAudioSubtitle(file, metadata) }
+        val subtitle =
+            remember(file, metadata) {
+                AudioTrackRowDefaults.formatTrackSubtitle(
+                    artist = metadata?.displayArtist(),
+                    album = metadata?.album,
+                )
+            }
         val durationStr =
             remember(metadata?.durationMs, file.size) {
                 val d = metadata?.durationMs ?: 0L
@@ -315,16 +321,6 @@ private fun InfoRow(
     }
 }
 
-internal fun resolveAudioSubtitle(
-    file: RemoteFile,
-    metadata: TrackMetadata?,
-): String {
-    val artist = metadata?.displayArtist()
-    val album = metadata?.album?.takeIf { it.isNotBlank() }
-    val formatted = AudioTrackRowDefaults.formatSubtitle(artist = artist, album = album)
-    if (!formatted.isNullOrBlank()) return formatted
-    return "未知"
-}
 
 private fun formatFileSize(bytes: Long): String {
     if (bytes <= 0) return "0 B"

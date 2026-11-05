@@ -52,7 +52,25 @@ class PlaybackQueueBottomSheetTest {
                 isActive = false,
                 playbackProgress = PlaybackProgress.ZERO,
             )
-        assertEquals("未知艺术家", result)
+        assertEquals("未知", result)
+    }
+
+    @Test
+    fun resolveQueueTrackSubtitle_activeTrackWithNullArtist_returnsFallbackWithProgress() {
+        val track = createTrack(artist = null)
+        val progress =
+            PlaybackProgress(
+                currentPositionMs = 65_000L,
+                durationMs = 180_000L,
+                bufferedPositionMs = 100_000L,
+            )
+        val result =
+            resolveQueueTrackSubtitle(
+                track = track,
+                isActive = true,
+                playbackProgress = progress,
+            )
+        assertEquals("未知 · 01:05 / 03:00", result)
     }
 
     @Test

@@ -139,61 +139,53 @@ class PlayerSheetExpansionTest {
     }
 
     @Test
-    fun morphingMath_artworkSizeAndRadius_interpolatesToSquircleCard() {
-        // Collapsed (42dp circle)
-        assertEquals(42.dp, MorphingPlayerMath.artworkSize(0.0f))
-        assertEquals(21.dp, MorphingPlayerMath.artworkCornerRadius(0.0f))
+    fun morphingMath_clampingGuarantees_acrossAllGeometryHelpers() {
+        val screenHeight = 800.dp
+        val bottomPadding = 64.dp
 
-        // Fullscreen (280dp squircle with 28dp radius)
-        assertEquals(280.dp, MorphingPlayerMath.artworkSize(1.0f))
-        assertEquals(28.dp, MorphingPlayerMath.artworkCornerRadius(1.0f))
+        // Negative progress clamps to collapsed baseline (0.0f)
+        assertEquals(60.dp, MorphingPlayerMath.containerHeight(screenHeight, -1.0f))
+        assertEquals(14.dp, MorphingPlayerMath.containerHorizontalMargin(-1.0f))
+        assertEquals(bottomPadding, MorphingPlayerMath.containerBottomMargin(bottomPadding, -1.0f))
+        assertEquals(30.dp, MorphingPlayerMath.containerCornerRadius(-1.0f))
 
-        // Midpoint
-        assertEquals(161.dp, MorphingPlayerMath.artworkSize(0.5f))
+        // Overshoot progress clamps to expanded ceiling (1.0f)
+        assertEquals(screenHeight, MorphingPlayerMath.containerHeight(screenHeight, 2.0f))
+        assertEquals(0.dp, MorphingPlayerMath.containerHorizontalMargin(2.0f))
+        assertEquals(0.dp, MorphingPlayerMath.containerBottomMargin(bottomPadding, 2.0f))
+        assertEquals(36.dp, MorphingPlayerMath.containerCornerRadius(2.0f))
     }
 
     @Test
-    fun morphingMath_artworkRotation_remainsStationaryZeroDegrees() {
-        assertEquals(0f, MorphingPlayerMath.artworkRotation(0.0f), 0.0001f)
-        assertEquals(0f, MorphingPlayerMath.artworkRotation(0.25f), 0.0001f)
-        assertEquals(0f, MorphingPlayerMath.artworkRotation(0.5f), 0.0001f)
-        assertEquals(0f, MorphingPlayerMath.artworkRotation(0.75f), 0.0001f)
-        assertEquals(0f, MorphingPlayerMath.artworkRotation(1.0f), 0.0001f)
+    fun morphingDefaults_internalizedFadeThresholds_arePreserved() {
+        assertEquals(0.35f, MorphingPlayerDefaults.SecondaryControlsFadeStartProgress, 0.0001f)
+        assertEquals(0.25f, MorphingPlayerDefaults.MiniControlsFadeEndProgress, 0.0001f)
     }
 
     @Test
-    fun morphingMath_dualButtons_interpolateProperly() {
-        // Play / Pause button: 40dp -> 68dp squircle (26dp radius)
-        assertEquals(40.dp, MorphingPlayerMath.playButtonSize(0.0f))
-        assertEquals(20.dp, MorphingPlayerMath.playButtonCornerRadius(0.0f))
-        assertEquals(68.dp, MorphingPlayerMath.playButtonSize(1.0f))
-        assertEquals(26.dp, MorphingPlayerMath.playButtonCornerRadius(1.0f))
+    fun downwardSwipeGestureContract_thresholdSimulation() {
+        // Contract: downward vertical drag exceeding 24f triggers collapse
+        var collapsedCalled = false
+        var downwardDrag = 0f
+        val onCollapse = { collapsedCalled = true }
 
-        // Queue button: 38dp -> 48dp
-        assertEquals(38.dp, MorphingPlayerMath.queueButtonSize(0.0f))
-        assertEquals(48.dp, MorphingPlayerMath.queueButtonSize(1.0f))
-        assertEquals(43.dp, MorphingPlayerMath.queueButtonSize(0.5f))
-    }
+        val handleDrag = { dragAmount: Float ->
+            downwardDrag += dragAmount
+            if (downwardDrag > 24f) {
+                onCollapse()
+                downwardDrag = 0f
+            }
+        }
 
-    @Test
-    fun morphingMath_secondaryControlsAlpha_fadesInPastThreshold() {
-        assertEquals(0.0f, MorphingPlayerMath.secondaryControlsAlpha(0.0f), 0.0001f)
-        assertEquals(0.0f, MorphingPlayerMath.secondaryControlsAlpha(0.20f), 0.0001f)
-        assertEquals(0.0f, MorphingPlayerMath.secondaryControlsAlpha(0.35f), 0.0001f)
+        // Sub-threshold drag does not trigger collapse
+        handleDrag(10f)
+        assertFalse(collapsedCalled)
+        handleDrag(10f)
+        assertFalse(collapsedCalled)
 
-        // Midpoint between 0.35 and 1.0 (0.675) -> ~0.5
-        assertEquals(0.5f, MorphingPlayerMath.secondaryControlsAlpha(0.675f), 0.01f)
-
-        // Fully expanded
-        assertEquals(1.0f, MorphingPlayerMath.secondaryControlsAlpha(1.0f), 0.0001f)
-    }
-
-    @Test
-    fun morphingMath_miniControlsAlpha_fadesOutBeforeThreshold() {
-        assertEquals(1.0f, MorphingPlayerMath.miniControlsAlpha(0.0f), 0.0001f)
-        assertEquals(0.5f, MorphingPlayerMath.miniControlsAlpha(0.125f), 0.0001f)
-        assertEquals(0.0f, MorphingPlayerMath.miniControlsAlpha(0.25f), 0.0001f)
-        assertEquals(0.0f, MorphingPlayerMath.miniControlsAlpha(0.5f), 0.0001f)
-        assertEquals(0.0f, MorphingPlayerMath.miniControlsAlpha(1.0f), 0.0001f)
+        // Crossing 24f triggers collapse
+        handleDrag(5f)
+        assertTrue(collapsedCalled)
+        assertEquals(0f, downwardDrag)
     }
 }

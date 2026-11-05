@@ -4,6 +4,26 @@
 
 ---
 
+## [3.4] - 2026-11-06
+
+### 🧱 架构深化与核心接缝净化 (Architecture Deepening & Seam Purification)
+- **胶囊全屏形变容器 GPU 绘制阶段深化 (GPU Draw-Phase Morphing Container)**：
+  - 清理 `MorphingPlayerMath` 接口中 8 个未使用的几何与透明度僵尸数学函数，仅保留 4 个实际生产使用的几何插值工具；
+  - 内化次级控件淡入与胶囊淡出门限常量至 `MorphingPlayerDefaults`，与实际渲染参数严格绑定；
+  - 将 `MorphingPlayerContainer` 容器在展开收起过程中的动态尺寸计算与圆角裁剪彻底迁移至 GPU Draw Phase（`graphicsLayer` 与 `drawBehind`），杜绝每帧 CPU 布局重测重排（Measure/Layout），保障 120Hz 极致丝滑流体体验与 100% 既有视觉呈现一致性。
+- **媒体库上下文多选与批量排队状态内聚 (Directory Contextual Selection & Batch Queueing)**：
+  - 彻底重构 `DirectoryBrowserViewModel`，将原先在 UI 表现层维护的文件与搜索结果多选状态机（`selectedFilePaths` / `selectedSearchTrackIds`）、全选与清空动作彻底内聚至 ViewModel 内部；
+  - 封装批量“下一首播放（Play Next）”调度，将多选音频以用户选定的正向顺序原子插入当前播放队列下一首并自动退出多选模式；
+  - 收紧 `musicPlayerAppSession` 访问级别为 `private`，切断 UI 绕过 ViewModel 直接调度底层会话的违规接缝，精简 `DirectoryBrowserScreen` 表现层代码并补齐 60 项独立单元测试。
+- **全 App 音轨列表行副标题规范与兜底策略统一 (Canonical Subtitle Formatter & Height Parity)**：
+  - 在 `AudioTrackRowDefaults` 中提供单一权威的 `formatTrackSubtitle` 接口，在缺少艺术家与专辑信息时统一安全回退显示 `"未知"`，彻底消除媒体库、歌单、搜索结果与队列抽屉四处分散拼接造成的 `"未知"` 与 `"未知艺术家"` 散落漂移；
+  - 严格满足 72dp 双行高度平齐规范（Track Row Height Parity），防止缺失元数据时单行塌陷；重构 CUE 专辑卡片条目接入统一规范。
+- **歌单曲目复合对账与去重自愈流水线去重 (Unified Playlist Track Reconciliation Pipeline)**：
+  - 在 `PlaylistRepositoryImpl` 中提炼统一私有对账函数 `reconcilePlaylistTracks`，彻底消除响应式 Flow 与一次性快照之间近 80 行高度重复的代码；
+  - 集中处理复合键去重（`serverId:remotePath:virtualTrackId`）与冗余数据库行异步删除、服务器不可达状态合并以及缺失封面后台异步自愈调度。
+
+---
+
 ## [3.3] - 2026-11-06
 
 ### 🎬 Material 3 Expressive 动效系统与连续形态蜕变体系 (M3 Expressive Motion System, ADR-0031)

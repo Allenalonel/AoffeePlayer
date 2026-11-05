@@ -147,73 +147,22 @@ class PlaylistRepositoryImpl(
             _inactiveTracksFlow,
             serversFlow,
         ) { entities, inactiveMap, servers ->
-            val seenKeys = mutableSetOf<String>()
-            val duplicateIds = mutableListOf<Long>()
-            val uniqueEntities = mutableListOf<PlaylistTrackEntity>()
-            for (entity in entities) {
-                val key = "${entity.serverId}:${entity.remotePath}:${entity.virtualTrackId ?: ""}"
-                if (seenKeys.add(key)) {
-                    uniqueEntities.add(entity)
-                } else {
-                    duplicateIds.add(entity.id)
-                }
-            }
-            if (duplicateIds.isNotEmpty()) {
-                coroutineScope.launch {
-                    playlistDao.deleteTracksByIds(duplicateIds)
-                }
-            }
-            val serverMap = servers?.associateBy { it.id }
-
-            val reconciled =
-                uniqueEntities.map { entity ->
-                    val domain = entity.toDomain()
-                    val manualReason = inactiveMap[TrackKey(domain.serverId, domain.remotePath)] ?: domain.inactiveReason
-                    val server = serverMap?.get(domain.serverId)
-                    val isServerUnreachable = servers != null && (server == null || server.url.isBlank())
-
-                    when {
-                        manualReason != null || domain.isInactive -> {
-                            domain.copy(isInactive = true, inactiveReason = manualReason)
-                        }
-
-                        isServerUnreachable -> {
-                            domain.copy(isInactive = true, inactiveReason = InactiveReason.SERVER_UNREACHABLE)
-                        }
-
-                        else -> {
-                            domain
-                        }
-                    }
-                }
-
-            if (trackMetadataRepository != null) {
-                reconciled.map { track ->
-                    if (track.coverThumbnailPath.isNullOrBlank()) {
-                        val cachedMeta = trackMetadataRepository.getCachedMetadata(track.serverId, track.remotePath)
-                        if (cachedMeta?.coverThumbnailPath != null) {
-                            coroutineScope.launch {
-                                playlistDao.updateTrackCover(track.id, cachedMeta.coverThumbnailPath)
-                            }
-                            track.copy(coverThumbnailPath = cachedMeta.coverThumbnailPath)
-                        } else {
-                            if (!track.isInactive) {
-                                triggerBackgroundCoverHealing(track.id, track.serverId, track.remotePath)
-                            }
-                            track
-                        }
-                    } else {
-                        track
-                    }
-                }
-            } else {
-                reconciled
-            }
+            reconcilePlaylistTracks(entities, inactiveMap, servers)
         }
     }
 
     override suspend fun getTracksForPlaylist(playlistId: Long): List<PlaylistTrackEntry> {
         val entities = playlistDao.getTracksForPlaylist(playlistId)
+        val inactiveMap = _inactiveTracksFlow.value
+        val servers = serverRepository?.getAllServers()?.firstOrNull()
+        return reconcilePlaylistTracks(entities, inactiveMap, servers)
+    }
+
+    private suspend fun reconcilePlaylistTracks(
+        entities: List<PlaylistTrackEntity>,
+        inactiveMap: Map<TrackKey, InactiveReason>,
+        servers: List<WebDavServer>?,
+    ): List<PlaylistTrackEntry> {
         val seenKeys = mutableSetOf<String>()
         val duplicateIds = mutableListOf<Long>()
         val uniqueEntities = mutableListOf<PlaylistTrackEntity>()
@@ -230,8 +179,6 @@ class PlaylistRepositoryImpl(
                 playlistDao.deleteTracksByIds(duplicateIds)
             }
         }
-        val inactiveMap = _inactiveTracksFlow.value
-        val servers = serverRepository?.getAllServers()?.firstOrNull()
         val serverMap = servers?.associateBy { it.id }
 
         val reconciled =

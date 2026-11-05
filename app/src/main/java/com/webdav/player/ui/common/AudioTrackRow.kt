@@ -264,6 +264,39 @@ object AudioTrackRowDefaults {
     val TagSpacing: Dp = 6.dp
     val OverlayAlpha: Float = 0.72f
 
+    fun formatTrackSubtitle(
+        artist: String?,
+        album: String? = null,
+        durationText: String? = null,
+        extra: String? = null,
+    ): String {
+        val cleanArtist = artist?.trim()?.takeIf { it.isNotEmpty() }
+        val cleanAlbum = album?.trim()?.takeIf { it.isNotEmpty() }
+        val cleanDuration = durationText?.trim()?.takeIf { it.isNotEmpty() }
+        val cleanExtra = extra?.trim()?.takeIf { it.isNotEmpty() }
+
+        val parts = mutableListOf<String>()
+        if (cleanArtist != null) {
+            parts.add(cleanArtist)
+            if (cleanAlbum != null) {
+                parts.add(cleanAlbum)
+            }
+        } else if (cleanAlbum != null) {
+            parts.add(cleanAlbum)
+        } else {
+            parts.add("未知")
+        }
+
+        if (cleanDuration != null) {
+            parts.add(cleanDuration)
+        }
+        if (cleanExtra != null) {
+            parts.add(cleanExtra)
+        }
+
+        return parts.joinToString(" · ")
+    }
+
     fun formatSubtitle(
         artist: String?,
         album: String? = null,

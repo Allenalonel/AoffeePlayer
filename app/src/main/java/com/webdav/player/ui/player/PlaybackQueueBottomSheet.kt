@@ -50,6 +50,7 @@ import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.ui.common.AudioTrackRow
+import com.webdav.player.ui.common.AudioTrackRowDefaults
 import com.webdav.player.ui.common.TrackThumbnailLeading
 import com.webdav.player.ui.motion.MotionTokens
 import com.webdav.player.ui.theme.AppIcons
@@ -248,12 +249,16 @@ internal fun resolveQueueTrackSubtitle(
     isActive: Boolean,
     playbackProgress: PlaybackProgress,
 ): String {
-    val artistText = track.artist?.ifBlank { "未知艺术家" } ?: "未知艺术家"
-    return if (isActive && playbackProgress.durationMs > 0L) {
-        "$artistText · ${playbackProgress.formattedCurrentPosition} / ${playbackProgress.formattedDuration}"
-    } else {
-        artistText
-    }
+    val progressIndicator =
+        if (isActive && playbackProgress.durationMs > 0L) {
+            "${playbackProgress.formattedCurrentPosition} / ${playbackProgress.formattedDuration}"
+        } else {
+            null
+        }
+    return AudioTrackRowDefaults.formatTrackSubtitle(
+        artist = track.artist,
+        extra = progressIndicator,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

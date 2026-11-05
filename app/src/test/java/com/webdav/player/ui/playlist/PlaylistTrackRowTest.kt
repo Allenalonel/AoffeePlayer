@@ -129,4 +129,16 @@ class PlaylistTrackRowTest {
         assertEquals(6.dp, PlaylistTrackRowDefaults.DragElevation)
         assertEquals(0.dp, PlaylistTrackRowDefaults.IdleElevation)
     }
+
+    @Test
+    fun playlistTrackSubtitle_withArtistAndAlbum_joinsCorrectly() {
+        val subtitle = com.webdav.player.ui.common.AudioTrackRowDefaults.formatTrackSubtitle("Pink Floyd", "The Wall")
+        assertEquals("Pink Floyd · The Wall", subtitle)
+    }
+
+    @Test
+    fun playlistTrackSubtitle_withMissingArtistAndAlbum_defaultsToUnknownForHeightParity() {
+        val subtitle = com.webdav.player.ui.common.AudioTrackRowDefaults.formatTrackSubtitle(null, null)
+        assertEquals("未知", subtitle)
+    }
 }

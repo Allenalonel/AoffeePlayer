@@ -108,8 +108,8 @@ fun DirectoryBrowserScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isReduceMotion = isReduceMotionEnabled()
 
-    val (selectedFilePaths, setSelectedFilePaths) = remember { mutableStateOf(setOf<String>()) }
-    val isSelectionMode = selectedFilePaths.isNotEmpty()
+    val selectedFilePaths by viewModel.selectedFilePaths.collectAsStateWithLifecycle()
+    val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
 
     val (selectedSearchTrackIds, setSelectedSearchTrackIds) = remember { mutableStateOf(setOf<String>()) }
     val isSearchSelectionMode = selectedSearchTrackIds.isNotEmpty()
@@ -128,7 +128,7 @@ fun DirectoryBrowserScreen(
     }
 
     LaunchedEffect(uiState.currentPath) {
-        setSelectedFilePaths(emptySet())
+        viewModel.clearSelection()
     }
 
     LaunchedEffect(uiState.isSearchActive) {
@@ -144,7 +144,7 @@ fun DirectoryBrowserScreen(
     }
 
     BackHandler(enabled = isCurrentTab && isSelectionMode && !uiState.isSearchActive) {
-        setSelectedFilePaths(emptySet())
+        viewModel.clearSelection()
     }
 
     BackHandler(enabled = isCurrentTab && !isSelectionMode && !uiState.isSearchActive) {
@@ -280,7 +280,7 @@ fun DirectoryBrowserScreen(
                             }
                         },
                         navigationIcon = {
-                            IconButton(onClick = { setSelectedFilePaths(emptySet()) }) {
+                            IconButton(onClick = { viewModel.clearSelection() }) {
                                 Icon(
                                     imageVector = AppIcons.Close,
                                     contentDescription = "退出多选",
@@ -292,13 +292,11 @@ fun DirectoryBrowserScreen(
                             val isAllSelected = selectableFiles.isNotEmpty() && selectedFilePaths.size == selectableFiles.size
                             TextButton(
                                 onClick = {
-                                    setSelectedFilePaths(
-                                        if (isAllSelected) {
-                                            emptySet()
-                                        } else {
-                                            selectableFiles.map { it.path }.toSet()
-                                        },
-                                    )
+                                    if (isAllSelected) {
+                                        viewModel.clearSelection()
+                                    } else {
+                                        viewModel.selectAllAudioFiles()
+                                    }
                                 },
                             ) {
                                 Text(
@@ -456,13 +454,7 @@ fun DirectoryBrowserScreen(
                                                     onDirectoryClicked = { viewModel.onDirectoryClicked(it) },
                                                     onFileClicked = { file ->
                                                         if (isSelectionMode && file.isAudio) {
-                                                            setSelectedFilePaths(
-                                                                if (file.path in selectedFilePaths) {
-                                                                    selectedFilePaths - file.path
-                                                                } else {
-                                                                    selectedFilePaths + file.path
-                                                                },
-                                                            )
+                                                            viewModel.toggleFileSelection(file.path)
                                                         } else {
                                                             onFileClicked(file)
                                                         }
@@ -481,7 +473,7 @@ fun DirectoryBrowserScreen(
                                                     selectedFilePaths = selectedFilePaths,
                                                     onFileLongClicked = { file ->
                                                         if (file.isAudio && !isSelectionMode) {
-                                                            setSelectedFilePaths(setOf(file.path))
+                                                            viewModel.toggleFileSelection(file.path)
                                                         }
                                                     },
                                                 )
@@ -528,28 +520,14 @@ fun DirectoryBrowserScreen(
                     FloatingMultiSelectBottomBar(
                         selectedCount = selectedFilePaths.size,
                         onPlayNext = {
-                            val server = uiState.activeServer ?: return@FloatingMultiSelectBottomBar
-                            val tracks =
-                                selectedFilePaths.mapNotNull { path ->
-                                    val file = uiState.files.firstOrNull { it.path == path }
-                                    if (file != null) AudioTrack.fromRemoteFile(server, file, uiState.metadataMap[path]) else null
-                                }
-                            tracks.reversed().forEach { track ->
-                                viewModel.musicPlayerAppSession?.playNext(track)
-                            }
-                            Toast.makeText(context, "已将 ${tracks.size} 首歌曲添加至下一首播放", Toast.LENGTH_SHORT).show()
-                            setSelectedFilePaths(emptySet())
+                            val queuedTracks = viewModel.playSelectedNext()
+                            Toast.makeText(context, "已将 ${queuedTracks.size} 首歌曲添加至下一首播放", Toast.LENGTH_SHORT).show()
                         },
                         onAddToPlaylist = {
-                            val server = uiState.activeServer ?: return@FloatingMultiSelectBottomBar
-                            val tracks =
-                                selectedFilePaths.mapNotNull { path ->
-                                    val file = uiState.files.firstOrNull { it.path == path }
-                                    if (file != null) AudioTrack.fromRemoteFile(server, file, uiState.metadataMap[path]) else null
-                                }
+                            val tracks = viewModel.getSelectedAudioTracks()
                             if (tracks.isNotEmpty()) {
                                 onAddTracksToPlaylist(tracks)
-                                setSelectedFilePaths(emptySet())
+                                viewModel.clearSelection()
                             }
                         },
                         modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomBarPadding),
@@ -626,7 +604,7 @@ fun DirectoryBrowserScreen(
                     onPlayNext = {
                         val tracks = uiState.searchResult.matchedTracks.filter { it.id in selectedSearchTrackIds }
                         tracks.reversed().forEach { track ->
-                            viewModel.musicPlayerAppSession?.playNext(track)
+                            viewModel.playNext(track)
                         }
                         Toast.makeText(context, "已将 ${tracks.size} 首歌曲添加至下一首播放", Toast.LENGTH_SHORT).show()
                         setSelectedSearchTrackIds(emptySet())

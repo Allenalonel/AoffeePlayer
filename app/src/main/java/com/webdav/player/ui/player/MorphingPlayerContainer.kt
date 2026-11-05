@@ -4,9 +4,6 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -14,21 +11,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import com.webdav.player.domain.model.AudioTrack
@@ -49,8 +51,8 @@ object MorphingPlayerDefaults {
     val FullPlayerQueueButtonSize: Dp = 48.dp
     val CapsuleHorizontalMargin: Dp = 14.dp
 
-    const val SecondaryControlsFadeStartProgress: Float = 0.35f
-    const val MiniControlsFadeEndProgress: Float = 0.25f
+    internal const val FullPlayerFadeStartProgress: Float = 0.15f
+    internal const val MiniPlayerFadeEndProgress: Float = 0.40f
 }
 
 /**
@@ -97,87 +99,6 @@ object MorphingPlayerMath {
     fun containerCornerRadius(progress: Float): Dp {
         val p = progress.coerceIn(0f, 1f)
         return lerp(MiniPlayerDefaults.CapsuleCornerRadius, MorphingPlayerDefaults.WindowCornerRadius, p)
-    }
-
-    /**
-     * Interpolates album artwork size from [MiniPlayerDefaults.CoverSize] (42dp)
-     * to [MorphingPlayerDefaults.FullPlayerArtworkSize] (280dp).
-     */
-    fun artworkSize(progress: Float): Dp {
-        val p = progress.coerceIn(0f, 1f)
-        return lerp(MiniPlayerDefaults.CoverSize, MorphingPlayerDefaults.FullPlayerArtworkSize, p)
-    }
-
-    /**
-     * Interpolates artwork corner radius from circular (size / 2) to [MorphingPlayerDefaults.FullPlayerArtworkRadius] (28dp).
-     */
-    fun artworkCornerRadius(progress: Float): Dp {
-        val p = progress.coerceIn(0f, 1f)
-        val currentSize = artworkSize(p)
-        return lerp(currentSize / 2f, MorphingPlayerDefaults.FullPlayerArtworkRadius, p)
-    }
-
-    /**
-     * Rotation of the album artwork: strictly 0° stationary at all progress values.
-     * Guaranteed stationary (NO spinning or rotation).
-     */
-    @Suppress("UNUSED_PARAMETER")
-    fun artworkRotation(progress: Float): Float = 0f
-
-    /**
-     * Interpolates play/pause button size from [MiniPlayerDefaults.PlayPauseButtonSize] (40dp)
-     * to [MorphingPlayerDefaults.FullPlayerPlayButtonSize] (68dp).
-     */
-    fun playButtonSize(progress: Float): Dp {
-        val p = progress.coerceIn(0f, 1f)
-        return lerp(MiniPlayerDefaults.PlayPauseButtonSize, MorphingPlayerDefaults.FullPlayerPlayButtonSize, p)
-    }
-
-    /**
-     * Interpolates play/pause button corner radius from circular (size / 2)
-     * to [MorphingPlayerDefaults.FullPlayerPlayButtonRadius] (26dp squircle).
-     */
-    fun playButtonCornerRadius(progress: Float): Dp {
-        val p = progress.coerceIn(0f, 1f)
-        val currentSize = playButtonSize(p)
-        return lerp(currentSize / 2f, MorphingPlayerDefaults.FullPlayerPlayButtonRadius, p)
-    }
-
-    /**
-     * Interpolates queue button size from [MiniPlayerDefaults.QueueMusicButtonSize] (38dp)
-     * to [MorphingPlayerDefaults.FullPlayerQueueButtonSize] (48dp).
-     */
-    fun queueButtonSize(progress: Float): Dp {
-        val p = progress.coerceIn(0f, 1f)
-        return lerp(MiniPlayerDefaults.QueueMusicButtonSize, MorphingPlayerDefaults.FullPlayerQueueButtonSize, p)
-    }
-
-    /**
-     * Fade-in alpha for secondary controls (slider, top bar, secondary transport buttons).
-     * Returns 0.0f when [progress] <= 0.35f, ramping to 1.0f at progress = 1.0f.
-     */
-    fun secondaryControlsAlpha(progress: Float): Float {
-        val p = progress.coerceIn(0f, 1f)
-        val start = MorphingPlayerDefaults.SecondaryControlsFadeStartProgress
-        return if (p <= start) {
-            0f
-        } else {
-            ((p - start) / (1f - start)).coerceIn(0f, 1f)
-        }
-    }
-
-    /**
-     * Fade-out alpha for mini player title, subtitle, and micro-bar.
-     * Returns 1.0f when [progress] = 0.0f, ramping to 0.0f by progress = 0.25f.
-     */
-    fun miniControlsAlpha(progress: Float): Float {
-        val p = progress.coerceIn(0f, 1f)
-        val end = MorphingPlayerDefaults.MiniControlsFadeEndProgress
-        return if (p >= end) {
-            0f
-        } else {
-            (1f - p / end).coerceIn(0f, 1f)
-        }
     }
 }
 
@@ -254,116 +175,169 @@ fun MorphingPlayerContainer(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.BottomCenter,
     ) {
-        val screenHeight = maxHeight
+        val density = LocalDensity.current
+        val outlineVariantColor = MaterialTheme.colorScheme.outlineVariant
+        val surfaceColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        val backgroundBrush = rememberArtworkBackgroundBrush(currentTrack.coverThumbnailPath)
 
-        val containerHeight = MorphingPlayerMath.containerHeight(screenHeight, expansionProgress)
-        val horizontalMargin = MorphingPlayerMath.containerHorizontalMargin(expansionProgress)
-        val bottomMargin = MorphingPlayerMath.containerBottomMargin(collapsedBottomPadding, expansionProgress)
-        val cornerRadius = MorphingPlayerMath.containerCornerRadius(expansionProgress)
+        val morphingShape =
+            remember(collapsedBottomPadding, expansionProgress) {
+                object : Shape {
+                    override fun createOutline(
+                        size: Size,
+                        layoutDirection: LayoutDirection,
+                        density: Density,
+                    ): Outline {
+                        val p = expansionProgress.coerceIn(0f, 1f)
+                        with(density) {
+                            val hMargin = MorphingPlayerMath.containerHorizontalMargin(p).toPx()
+                            val bMargin = MorphingPlayerMath.containerBottomMargin(collapsedBottomPadding, p).toPx()
+                            val cHeight = MorphingPlayerMath.containerHeight(size.height.toDp(), p).toPx()
+                            val radius = MorphingPlayerMath.containerCornerRadius(p).toPx()
 
-        val containerShape =
-            remember(cornerRadius, expansionProgress) {
-                if (expansionProgress >= 0.99f) {
-                    RoundedCornerShape(
-                        topStart = cornerRadius,
-                        topEnd = cornerRadius,
-                        bottomStart = 0.dp,
-                        bottomEnd = 0.dp,
-                    )
-                } else {
-                    RoundedCornerShape(cornerRadius)
+                            val left = hMargin
+                            val right = size.width - hMargin
+                            val bottom = size.height - bMargin
+                            val top = (bottom - cHeight).coerceAtLeast(0f)
+
+                            return if (p >= 0.99f) {
+                                Outline.Rounded(
+                                    RoundRect(
+                                        left = left,
+                                        top = top,
+                                        right = right,
+                                        bottom = bottom,
+                                        topLeftCornerRadius = CornerRadius(radius, radius),
+                                        topRightCornerRadius = CornerRadius(radius, radius),
+                                        bottomLeftCornerRadius = CornerRadius.Zero,
+                                        bottomRightCornerRadius = CornerRadius.Zero,
+                                    ),
+                                )
+                            } else {
+                                Outline.Rounded(
+                                    RoundRect(
+                                        left = left,
+                                        top = top,
+                                        right = right,
+                                        bottom = bottom,
+                                        cornerRadius = CornerRadius(radius, radius),
+                                    ),
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
-        val backgroundBrush = rememberArtworkBackgroundBrush(currentTrack.coverThumbnailPath)
-
-        Surface(
+        Box(
             modifier =
                 Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = bottomMargin)
-                    .padding(horizontal = horizontalMargin)
-                    .fillMaxWidth()
-                    .height(containerHeight)
-                    .clip(containerShape)
-                    .then(downwardSwipeModifier),
-            shape = containerShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            tonalElevation = lerp(6.dp, 0.dp, expansionProgress),
-            shadowElevation = lerp(10.dp, 0.dp, expansionProgress),
-            border =
-                if (expansionProgress < 0.95f) {
-                    BorderStroke(
-                        MiniPlayerDefaults.SurfaceBorderWidth,
-                        MaterialTheme.colorScheme.outlineVariant.copy(
-                            alpha = MiniPlayerDefaults.SurfaceBorderAlpha * (1f - expansionProgress),
-                        ),
-                    )
-                } else {
-                    null
-                },
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        shape = morphingShape
+                        clip = true
+                        shadowElevation = with(density) { lerp(10.dp, 0.dp, expansionProgress).toPx() }
+                    }.drawBehind {
+                        // 1. Container base surface
+                        drawRect(surfaceColor)
+
+                        // 2. Artwork ambient gradient background
+                        if (expansionProgress > 0.05f) {
+                            drawRect(backgroundBrush)
+                        }
+
+                        // 3. Mini player border stroke (fades out as expansion reaches 0.95f)
+                        if (expansionProgress < 0.95f) {
+                            val p = expansionProgress.coerceIn(0f, 1f)
+                            val hMargin = MorphingPlayerMath.containerHorizontalMargin(p).toPx()
+                            val bMargin = MorphingPlayerMath.containerBottomMargin(collapsedBottomPadding, p).toPx()
+                            val cHeight = MorphingPlayerMath.containerHeight(size.height.toDp(), p).toPx()
+                            val radius = MorphingPlayerMath.containerCornerRadius(p).toPx()
+
+                            val strokeWidth = MiniPlayerDefaults.SurfaceBorderWidth.toPx()
+                            val halfStroke = strokeWidth / 2f
+                            val left = hMargin + halfStroke
+                            val right = size.width - hMargin - halfStroke
+                            val bottom = size.height - bMargin - halfStroke
+                            val top = (bottom - cHeight + strokeWidth).coerceAtLeast(halfStroke)
+                            val r = (radius - halfStroke).coerceAtLeast(0f)
+
+                            val borderAlpha = MiniPlayerDefaults.SurfaceBorderAlpha * (1f - p)
+                            val borderColor = outlineVariantColor.copy(alpha = borderAlpha)
+
+                            drawRoundRect(
+                                color = borderColor,
+                                topLeft = Offset(left, top),
+                                size = Size(right - left, bottom - top),
+                                cornerRadius = CornerRadius(r, r),
+                                style = Stroke(width = strokeWidth),
+                            )
+                        }
+                    }.then(downwardSwipeModifier),
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(
-                            if (expansionProgress > 0.05f) {
-                                backgroundBrush
-                            } else {
-                                Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
+            // 1. Single Living FullPlayerView (Active as container expands past FullPlayerFadeStartProgress)
+            if (expansionProgress > MorphingPlayerDefaults.FullPlayerFadeStartProgress) {
+                val fullAlpha =
+                    (
+                        (expansionProgress - MorphingPlayerDefaults.FullPlayerFadeStartProgress) /
+                            (1f - MorphingPlayerDefaults.FullPlayerFadeStartProgress)
+                    ).coerceIn(0f, 1f)
+                val fullTranslationY = with(density) { 40.dp.toPx() * (1f - expansionProgress) }
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                alpha = fullAlpha
+                                translationY = fullTranslationY
                             },
-                        ),
-            ) {
-                val density = LocalDensity.current
-
-                // 1. Single Living FullPlayerView (Active as container expands past 0.15f)
-                if (expansionProgress > 0.15f) {
-                    val fullAlpha = ((expansionProgress - 0.15f) / 0.85f).coerceIn(0f, 1f)
-                    val fullTranslationY = with(density) { 40.dp.toPx() * (1f - expansionProgress) }
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    alpha = fullAlpha
-                                    translationY = fullTranslationY
-                                },
-                    ) {
-                        FullPlayerView(
-                            sessionState = sessionState,
-                            playbackProgress = playbackProgress,
-                            playbackActions = playbackActions,
-                            onCollapse = onCollapse,
-                            onDismissBatteryBanner = onDismissBatteryBanner,
-                            onConfirmUnsupportedRangeReplay = onConfirmUnsupportedRangeReplay,
-                            onDismissUnsupportedRange = onDismissUnsupportedRange,
-                            onAddToPlaylist = onAddToPlaylist,
-                        )
-                    }
+                ) {
+                    FullPlayerView(
+                        sessionState = sessionState,
+                        playbackProgress = playbackProgress,
+                        playbackActions = playbackActions,
+                        onCollapse = onCollapse,
+                        onDismissBatteryBanner = onDismissBatteryBanner,
+                        onConfirmUnsupportedRangeReplay = onConfirmUnsupportedRangeReplay,
+                        onDismissUnsupportedRange = onDismissUnsupportedRange,
+                        onAddToPlaylist = onAddToPlaylist,
+                    )
                 }
+            }
 
-                // 2. MiniPlayer (Active when collapsed, smoothly fades out as container expands)
-                if (expansionProgress < 0.40f) {
-                    val miniAlpha = if (expansionProgress == 0f) 1f else ((0.40f - expansionProgress) / 0.40f).coerceIn(0f, 1f)
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .align(Alignment.BottomCenter)
-                                .graphicsLayer {
-                                    alpha = miniAlpha
-                                },
-                    ) {
-                        MiniPlayer(
-                            sessionState = sessionState,
-                            playbackActions = playbackActions,
-                            playbackProgress = playbackProgress,
-                            onMiniPlayerClick = onExpand,
-                            onOpenQueue = onOpenQueue,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+            // 2. MiniPlayer (Active when collapsed, smoothly fades out as container expands)
+            if (expansionProgress < MorphingPlayerDefaults.MiniPlayerFadeEndProgress) {
+                val miniAlpha =
+                    if (expansionProgress == 0f) {
+                        1f
+                    } else {
+                        (
+                            (MorphingPlayerDefaults.MiniPlayerFadeEndProgress - expansionProgress) /
+                                MorphingPlayerDefaults.MiniPlayerFadeEndProgress
+                        ).coerceIn(0f, 1f)
                     }
+                val miniTranslationY = with(density) { (collapsedBottomPadding * expansionProgress).toPx() }
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = collapsedBottomPadding)
+                            .padding(horizontal = MorphingPlayerDefaults.CapsuleHorizontalMargin)
+                            .fillMaxWidth()
+                            .height(MiniPlayerDefaults.CapsuleHeight)
+                            .graphicsLayer {
+                                alpha = miniAlpha
+                                translationY = miniTranslationY
+                            },
+                ) {
+                    MiniPlayer(
+                        sessionState = sessionState,
+                        playbackActions = playbackActions,
+                        playbackProgress = playbackProgress,
+                        onMiniPlayerClick = onExpand,
+                        onOpenQueue = onOpenQueue,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }

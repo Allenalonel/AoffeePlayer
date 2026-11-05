@@ -1903,22 +1903,6 @@ class DirectoryBrowserViewModelTest {
         }
 
     @Test
-    fun playNext_withAudioTrack_delegatesDirectlyToAppSession() =
-        runTest {
-            val track =
-                AudioTrack(
-                    id = "1:/direct.flac",
-                    serverId = 1L,
-                    remotePath = "/direct.flac",
-                    title = "Direct Flac",
-                    format = AudioFormat.FLAC,
-                )
-
-            viewModel.playNext(track)
-            assertEquals(track, fakeMusicPlayerAppSession.lastPlayNextTrack)
-        }
-
-    @Test
     fun searchHistory_persistsAcrossViewModelInstances_viaLibrarySearchRepository() =
         runTest {
             val sharedRepo = FakeLibrarySearchRepository()
@@ -1981,7 +1965,66 @@ class DirectoryBrowserViewModelTest {
         }
 
     @Test
-    fun batchPlayNext_preservesSelectedTrackOrderInQueue() =
+    fun toggleSearchTrackSelection_addsAndRemovesTrackId_andUpdatesSearchSelectionMode() =
+        runTest {
+            assertEquals(emptySet<String>(), viewModel.selectedSearchTrackIds.value)
+            assertFalse(viewModel.isSearchSelectionMode.value)
+
+            viewModel.toggleSearchTrackSelection("1:/track1.flac")
+            assertEquals(setOf("1:/track1.flac"), viewModel.selectedSearchTrackIds.value)
+            assertTrue(viewModel.isSearchSelectionMode.value)
+
+            viewModel.toggleSearchTrackSelection("1:/track2.flac")
+            assertEquals(setOf("1:/track1.flac", "1:/track2.flac"), viewModel.selectedSearchTrackIds.value)
+            assertTrue(viewModel.isSearchSelectionMode.value)
+
+            viewModel.toggleSearchTrackSelection("1:/track1.flac")
+            assertEquals(setOf("1:/track2.flac"), viewModel.selectedSearchTrackIds.value)
+            assertTrue(viewModel.isSearchSelectionMode.value)
+
+            viewModel.toggleSearchTrackSelection("1:/track2.flac")
+            assertEquals(emptySet<String>(), viewModel.selectedSearchTrackIds.value)
+            assertFalse(viewModel.isSearchSelectionMode.value)
+        }
+
+    @Test
+    fun selectAllSearchTracks_selectsAllMatchedTracks_andClearSearchSelectionResets() =
+        runTest {
+            val track1 =
+                AudioTrack(
+                    id = "1:/track1.flac",
+                    serverId = 1L,
+                    remotePath = "/track1.flac",
+                    title = "Track 1",
+                    format = AudioFormat.FLAC,
+                )
+            val track2 =
+                AudioTrack(
+                    id = "1:/track2.flac",
+                    serverId = 1L,
+                    remotePath = "/track2.flac",
+                    title = "Track 2",
+                    format = AudioFormat.FLAC,
+                )
+            fakeLibrarySearchRepository.emitResult(LibrarySearchResult(matchedTracks = listOf(track1, track2)))
+            viewModel.onSearchActiveChanged(true)
+            viewModel.onSearchQueryChanged("Track")
+            advanceUntilIdle()
+
+            assertEquals(emptySet<String>(), viewModel.selectedSearchTrackIds.value)
+            assertFalse(viewModel.isSearchSelectionMode.value)
+
+            viewModel.selectAllSearchTracks()
+            assertEquals(setOf("1:/track1.flac", "1:/track2.flac"), viewModel.selectedSearchTrackIds.value)
+            assertTrue(viewModel.isSearchSelectionMode.value)
+
+            viewModel.clearSearchSelection()
+            assertEquals(emptySet<String>(), viewModel.selectedSearchTrackIds.value)
+            assertFalse(viewModel.isSearchSelectionMode.value)
+        }
+
+    @Test
+    fun playSelectedSearchNext_queuesTracksInForwardOrder_andClearsSearchSelection() =
         runTest {
             advanceUntilIdle()
 
@@ -2020,12 +2063,22 @@ class DirectoryBrowserViewModelTest {
                         format = AudioFormat.FLAC,
                     ),
                 )
-
-            // Multi-select batch enqueue: tracks.reversed().forEach { playNext(it) }
-            selectedTracks.reversed().forEach { track ->
-                viewModel.playNext(track)
-            }
+            fakeLibrarySearchRepository.emitResult(LibrarySearchResult(matchedTracks = selectedTracks))
+            viewModel.onSearchActiveChanged(true)
+            viewModel.onSearchQueryChanged("track")
             advanceUntilIdle()
+
+            viewModel.selectAllSearchTracks()
+            assertTrue(viewModel.isSearchSelectionMode.value)
+            assertEquals(3, viewModel.selectedSearchTrackIds.value.size)
+
+            val queued = viewModel.playSelectedSearchNext()
+            advanceUntilIdle()
+
+            assertEquals(3, queued.size)
+            assertEquals(selectedTracks, queued)
+            assertTrue(viewModel.selectedSearchTrackIds.value.isEmpty())
+            assertFalse(viewModel.isSearchSelectionMode.value)
 
             val queueTracks = fakeMusicPlayerAppSession.sessionState.value.queue.tracks
             assertEquals(4, queueTracks.size)
@@ -2033,5 +2086,252 @@ class DirectoryBrowserViewModelTest {
             assertEquals("1:/track_a.flac", queueTracks[1].id)
             assertEquals("1:/track_b.flac", queueTracks[2].id)
             assertEquals("1:/track_c.flac", queueTracks[3].id)
+        }
+
+    @Test
+    fun getSelectedSearchTracks_returnsSelectedTracksInSearchResultOrder() =
+        runTest {
+            val track1 =
+                AudioTrack(
+                    id = "1:/track1.flac",
+                    serverId = 1L,
+                    remotePath = "/track1.flac",
+                    title = "Track 1",
+                    format = AudioFormat.FLAC,
+                )
+            val track2 =
+                AudioTrack(
+                    id = "1:/track2.flac",
+                    serverId = 1L,
+                    remotePath = "/track2.flac",
+                    title = "Track 2",
+                    format = AudioFormat.FLAC,
+                )
+            val track3 =
+                AudioTrack(
+                    id = "1:/track3.flac",
+                    serverId = 1L,
+                    remotePath = "/track3.flac",
+                    title = "Track 3",
+                    format = AudioFormat.FLAC,
+                )
+            fakeLibrarySearchRepository.emitResult(LibrarySearchResult(matchedTracks = listOf(track1, track2, track3)))
+            viewModel.onSearchActiveChanged(true)
+            viewModel.onSearchQueryChanged("Track")
+            advanceUntilIdle()
+
+            // Select track3 first, then track1
+            viewModel.toggleSearchTrackSelection("1:/track3.flac")
+            viewModel.toggleSearchTrackSelection("1:/track1.flac")
+
+            val selected = viewModel.getSelectedSearchTracks()
+            assertEquals(listOf(track1, track3), selected)
+        }
+
+    @Test
+    fun toggleFileSelection_addsAndRemovesPath_andUpdatesSelectionState() =
+        runTest {
+            assertEquals(emptySet<String>(), viewModel.selectedFilePaths.value)
+            assertFalse(viewModel.isSelectionMode.value)
+
+            viewModel.toggleFileSelection("/Music/song1.flac")
+            assertEquals(setOf("/Music/song1.flac"), viewModel.selectedFilePaths.value)
+            assertTrue(viewModel.isSelectionMode.value)
+
+            viewModel.toggleFileSelection("/Music/song2.mp3")
+            assertEquals(setOf("/Music/song1.flac", "/Music/song2.mp3"), viewModel.selectedFilePaths.value)
+            assertTrue(viewModel.isSelectionMode.value)
+
+            viewModel.toggleFileSelection("/Music/song1.flac")
+            assertEquals(setOf("/Music/song2.mp3"), viewModel.selectedFilePaths.value)
+            assertTrue(viewModel.isSelectionMode.value)
+
+            viewModel.toggleFileSelection("/Music/song2.mp3")
+            assertEquals(emptySet<String>(), viewModel.selectedFilePaths.value)
+            assertFalse(viewModel.isSelectionMode.value)
+        }
+
+    @Test
+    fun selectAllAudioFiles_selectsOnlyAudioFilesInCurrentDirectory_ignoringDirectoriesAndNonAudioFiles() =
+        runTest {
+            val mixedDir =
+                RemoteDirectory(
+                    path = "/Mixed/",
+                    name = "Mixed",
+                    subDirectories =
+                        listOf(
+                            RemoteDirectory(path = "/Mixed/SubDir/", name = "SubDir"),
+                        ),
+                    files =
+                        listOf(
+                            RemoteFile(name = "track1.mp3", path = "/Mixed/track1.mp3", size = 1000),
+                            RemoteFile(name = "cover.jpg", path = "/Mixed/cover.jpg", size = 5000),
+                            RemoteFile(name = "track2.flac", path = "/Mixed/track2.flac", size = 2000),
+                            RemoteFile(name = "lyrics.lrc", path = "/Mixed/lyrics.lrc", size = 300),
+                            RemoteFile(name = "track3.wav", path = "/Mixed/track3.wav", size = 3000),
+                        ),
+                )
+            fakeDirectoryRepository.setResult("/Mixed/", ListDirectoryResult.Success(mixedDir))
+
+            viewModel.loadDirectory("/Mixed/")
+            advanceUntilIdle()
+
+            viewModel.selectAllAudioFiles()
+
+            val selected = viewModel.selectedFilePaths.value
+            assertEquals(3, selected.size)
+            assertTrue(selected.contains("/Mixed/track1.mp3"))
+            assertTrue(selected.contains("/Mixed/track2.flac"))
+            assertTrue(selected.contains("/Mixed/track3.wav"))
+            assertFalse(selected.contains("/Mixed/cover.jpg"))
+            assertFalse(selected.contains("/Mixed/lyrics.lrc"))
+            assertFalse(selected.contains("/Mixed/SubDir/"))
+            assertTrue(viewModel.isSelectionMode.value)
+
+            val tracks = viewModel.getSelectedAudioTracks()
+            assertEquals(3, tracks.size)
+            assertEquals("1:/Mixed/track1.mp3", tracks[0].id)
+            assertEquals("1:/Mixed/track2.flac", tracks[1].id)
+            assertEquals("1:/Mixed/track3.wav", tracks[2].id)
+        }
+
+    @Test
+    fun selectAllAudioFiles_whenNoAudioFiles_leavesSelectionEmpty() =
+        runTest {
+            val emptyDir =
+                RemoteDirectory(
+                    path = "/Empty/",
+                    name = "Empty",
+                    subDirectories =
+                        listOf(
+                            RemoteDirectory(path = "/Empty/SubDir/", name = "SubDir"),
+                        ),
+                    files =
+                        listOf(
+                            RemoteFile(name = "notes.txt", path = "/Empty/notes.txt", size = 100),
+                        ),
+                )
+            fakeDirectoryRepository.setResult("/Empty/", ListDirectoryResult.Success(emptyDir))
+
+            viewModel.loadDirectory("/Empty/")
+            advanceUntilIdle()
+
+            viewModel.selectAllAudioFiles()
+
+            assertTrue(viewModel.selectedFilePaths.value.isEmpty())
+            assertFalse(viewModel.isSelectionMode.value)
+        }
+
+    @Test
+    fun clearSelection_clearsAllSelectedPaths_andExitsSelectionMode() =
+        runTest {
+            viewModel.toggleFileSelection("/Music/song1.flac")
+            viewModel.toggleFileSelection("/Music/song2.flac")
+            assertTrue(viewModel.isSelectionMode.value)
+            assertEquals(2, viewModel.selectedFilePaths.value.size)
+
+            viewModel.clearSelection()
+
+            assertTrue(viewModel.selectedFilePaths.value.isEmpty())
+            assertFalse(viewModel.isSelectionMode.value)
+        }
+
+    @Test
+    fun playSelectedNext_queuesTracksInNaturalForwardOrder_andClearsSelection() =
+        runTest {
+            val batchDir =
+                RemoteDirectory(
+                    path = "/Batch/",
+                    name = "Batch",
+                    subDirectories = emptyList(),
+                    files =
+                        listOf(
+                            RemoteFile(name = "track1.flac", path = "/Batch/track1.flac", size = 1000),
+                            RemoteFile(name = "track2.flac", path = "/Batch/track2.flac", size = 2000),
+                            RemoteFile(name = "track3.flac", path = "/Batch/track3.flac", size = 3000),
+                        ),
+                )
+            fakeDirectoryRepository.setResult("/Batch/", ListDirectoryResult.Success(batchDir))
+
+            viewModel.loadDirectory("/Batch/")
+            advanceUntilIdle()
+
+            val initialTrack =
+                AudioTrack(
+                    id = "1:/initial.mp3",
+                    serverId = 1L,
+                    remotePath = "/initial.mp3",
+                    title = "Initial Track",
+                    format = AudioFormat.MP3,
+                )
+            fakeMusicPlayerAppSession.playTrack(initialTrack)
+            advanceUntilIdle()
+
+            // User selects track1, then track2, then track3
+            viewModel.toggleFileSelection("/Batch/track1.flac")
+            viewModel.toggleFileSelection("/Batch/track2.flac")
+            viewModel.toggleFileSelection("/Batch/track3.flac")
+            assertTrue(viewModel.isSelectionMode.value)
+            assertEquals(3, viewModel.selectedFilePaths.value.size)
+
+            val queued = viewModel.playSelectedNext()
+            advanceUntilIdle()
+
+            assertEquals(3, queued.size)
+            // Selection should be cleared
+            assertTrue(viewModel.selectedFilePaths.value.isEmpty())
+            assertFalse(viewModel.isSelectionMode.value)
+
+            // Tracks in queue must be in natural forward order after initial track: track1, track2, track3
+            val queueTracks = fakeMusicPlayerAppSession.sessionState.value.queue.tracks
+            assertEquals(4, queueTracks.size)
+            assertEquals("1:/initial.mp3", queueTracks[0].id)
+            assertEquals("1:/Batch/track1.flac", queueTracks[1].id)
+            assertEquals("1:/Batch/track2.flac", queueTracks[2].id)
+            assertEquals("1:/Batch/track3.flac", queueTracks[3].id)
+        }
+
+    @Test
+    fun getSelectedAudioTracks_preservesSelectionOrder() =
+        runTest {
+            val batchDir =
+                RemoteDirectory(
+                    path = "/Batch/",
+                    name = "Batch",
+                    subDirectories = emptyList(),
+                    files =
+                        listOf(
+                            RemoteFile(name = "track1.flac", path = "/Batch/track1.flac", size = 1000),
+                            RemoteFile(name = "track2.flac", path = "/Batch/track2.flac", size = 2000),
+                            RemoteFile(name = "track3.flac", path = "/Batch/track3.flac", size = 3000),
+                        ),
+                )
+            fakeDirectoryRepository.setResult("/Batch/", ListDirectoryResult.Success(batchDir))
+
+            viewModel.loadDirectory("/Batch/")
+            advanceUntilIdle()
+
+            // Select in order: track3, track1
+            viewModel.toggleFileSelection("/Batch/track3.flac")
+            viewModel.toggleFileSelection("/Batch/track1.flac")
+
+            val tracks = viewModel.getSelectedAudioTracks()
+            assertEquals(2, tracks.size)
+            assertEquals("1:/Batch/track3.flac", tracks[0].id)
+            assertEquals("1:/Batch/track1.flac", tracks[1].id)
+        }
+
+    @Test
+    fun navigatingToDifferentDirectory_clearsSelection() =
+        runTest {
+            advanceUntilIdle()
+            viewModel.toggleFileSelection("/root_track.mp3")
+            assertTrue(viewModel.isSelectionMode.value)
+
+            viewModel.loadDirectory("/Music/")
+            advanceUntilIdle()
+
+            assertTrue(viewModel.selectedFilePaths.value.isEmpty())
+            assertFalse(viewModel.isSelectionMode.value)
         }
 }

@@ -4,16 +4,21 @@ import com.webdav.player.domain.model.AudioQualityBadge
 import com.webdav.player.domain.model.AudioQualityLevel
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
-import com.webdav.player.ui.browser.components.resolveAudioSubtitle
+import com.webdav.player.ui.common.AudioTrackRowDefaults
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 class AudioTrackItemRowTest {
+    private fun formatSubtitleFor(metadata: TrackMetadata?): String =
+        AudioTrackRowDefaults.formatTrackSubtitle(
+            artist = metadata?.displayArtist(),
+            album = metadata?.album,
+        )
+
     @Test
-    fun resolveAudioSubtitle_withArtistAndAlbum_joinsCorrectly() {
+    fun formatTrackSubtitle_withArtistAndAlbum_joinsCorrectly() {
         val file = RemoteFile(name = "01. Time.flac", path = "/Music/01. Time.flac")
         val metadata =
             TrackMetadata(
@@ -23,12 +28,12 @@ class AudioTrackItemRowTest {
                 artist = "Pink Floyd",
                 album = "The Dark Side of the Moon",
             )
-        val subtitle = resolveAudioSubtitle(file, metadata)
+        val subtitle = formatSubtitleFor(metadata)
         assertEquals("Pink Floyd · The Dark Side of the Moon", subtitle)
     }
 
     @Test
-    fun resolveAudioSubtitle_withArtistOnly_returnsArtist() {
+    fun formatTrackSubtitle_withArtistOnly_returnsArtist() {
         val file = RemoteFile(name = "Money.mp3", path = "/Music/Money.mp3")
         val metadata =
             TrackMetadata(
@@ -37,12 +42,12 @@ class AudioTrackItemRowTest {
                 artist = "Pink Floyd",
                 album = null,
             )
-        val subtitle = resolveAudioSubtitle(file, metadata)
+        val subtitle = formatSubtitleFor(metadata)
         assertEquals("Pink Floyd", subtitle)
     }
 
     @Test
-    fun resolveAudioSubtitle_withAlbumOnly_returnsAlbum() {
+    fun formatTrackSubtitle_withAlbumOnly_returnsAlbum() {
         val file = RemoteFile(name = "Track01.wav", path = "/Music/Track01.wav")
         val metadata =
             TrackMetadata(
@@ -51,34 +56,26 @@ class AudioTrackItemRowTest {
                 artist = null,
                 album = "Greatest Hits",
             )
-        val subtitle = resolveAudioSubtitle(file, metadata)
+        val subtitle = formatSubtitleFor(metadata)
         assertEquals("Greatest Hits", subtitle)
     }
 
     @Test
-    fun resolveAudioSubtitle_withoutMetadata_returnsUnknown() {
-        val file = RemoteFile(name = "Unknown.flac", path = "/Music/Unknown.flac", size = 15_728_640L)
-        val subtitle = resolveAudioSubtitle(file, null)
+    fun formatTrackSubtitle_withoutMetadata_returnsUnknown() {
+        val subtitle = formatSubtitleFor(null)
         assertEquals("未知", subtitle)
     }
 
     @Test
-    fun resolveAudioSubtitle_withoutMetadataOrSize_returnsUnknown() {
-        val file =
-            RemoteFile(
-                name = "Unknown.flac",
-                path = "/Music/Unknown.flac",
-                size = 0L,
-                lastModified = "2024-01-15 12:00",
-            )
-        val subtitle = resolveAudioSubtitle(file, null)
+    fun formatTrackSubtitle_withoutMetadataOrSize_returnsUnknown() {
+        val subtitle = formatSubtitleFor(null)
         assertEquals("未知", subtitle)
     }
 
     @Test
-    fun resolveAudioSubtitle_completelyEmpty_returnsUnknown() {
-        val file = RemoteFile(name = "Track.flac", path = "/Music/Track.flac", size = 0L)
-        val subtitle = resolveAudioSubtitle(file, null)
+    fun formatTrackSubtitle_completelyEmpty_returnsUnknown() {
+        val metadata = TrackMetadata(serverId = 1L, remotePath = "/Music/Track.flac", artist = "", album = "")
+        val subtitle = formatSubtitleFor(metadata)
         assertEquals("未知", subtitle)
     }
 

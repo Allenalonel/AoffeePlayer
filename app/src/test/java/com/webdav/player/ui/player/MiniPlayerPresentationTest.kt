@@ -340,7 +340,7 @@ class MiniPlayerPresentationTest {
         assertEquals(48.dp, MorphingPlayerDefaults.FullPlayerQueueButtonSize)
         assertEquals(14.dp, MorphingPlayerDefaults.CapsuleHorizontalMargin)
 
-        assertEquals(0.35f, MorphingPlayerDefaults.SecondaryControlsFadeStartProgress, 0.0001f)
-        assertEquals(0.25f, MorphingPlayerDefaults.MiniControlsFadeEndProgress, 0.0001f)
+        assertEquals(0.15f, MorphingPlayerDefaults.FullPlayerFadeStartProgress, 0.0001f)
+        assertEquals(0.40f, MorphingPlayerDefaults.MiniPlayerFadeEndProgress, 0.0001f)
     }
 }

@@ -12,7 +12,6 @@ import com.webdav.player.domain.model.AudioQualityLevel
 import com.webdav.player.ui.common.EqualizerStateHelper
 import com.webdav.player.ui.common.EqualizerWaveState
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,9 +20,9 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class AudioTrackRowTest {
     @Test
-    fun formatSubtitle_withArtistAndAlbum_combinesWithBullet() {
+    fun formatTrackSubtitle_withArtistAndAlbum_combinesWithBullet() {
         val result =
-            AudioTrackRowDefaults.formatSubtitle(
+            AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = "Pink Floyd",
                 album = "The Wall",
             )
@@ -31,9 +30,9 @@ class AudioTrackRowTest {
     }
 
     @Test
-    fun formatSubtitle_withArtistAlbumAndDuration_combinesAll() {
+    fun formatTrackSubtitle_withArtistAlbumAndDuration_combinesAll() {
         val result =
-            AudioTrackRowDefaults.formatSubtitle(
+            AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = "Pink Floyd",
                 album = "The Dark Side of the Moon",
                 durationText = "06:22",
@@ -42,9 +41,9 @@ class AudioTrackRowTest {
     }
 
     @Test
-    fun formatSubtitle_withArtistOnly_returnsArtist() {
+    fun formatTrackSubtitle_withArtistOnly_returnsArtist() {
         val result =
-            AudioTrackRowDefaults.formatSubtitle(
+            AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = "David Bowie",
                 album = null,
             )
@@ -52,9 +51,19 @@ class AudioTrackRowTest {
     }
 
     @Test
-    fun formatSubtitle_withExtra_appendsExtra() {
+    fun formatTrackSubtitle_withAlbumOnly_returnsAlbum() {
         val result =
-            AudioTrackRowDefaults.formatSubtitle(
+            AudioTrackRowDefaults.formatTrackSubtitle(
+                artist = null,
+                album = "Greatest Hits",
+            )
+        assertEquals("Greatest Hits", result)
+    }
+
+    @Test
+    fun formatTrackSubtitle_withExtra_appendsExtra() {
+        val result =
+            AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = "Pink Floyd",
                 album = "Wish You Were Here",
                 extra = "ShineOn.cue",
@@ -63,13 +72,77 @@ class AudioTrackRowTest {
     }
 
     @Test
-    fun formatSubtitle_withNullArtistAndAlbum_returnsNullFallback() {
+    fun formatTrackSubtitle_withNullArtistAndAlbum_returnsUnknownFallback() {
         val result =
-            AudioTrackRowDefaults.formatSubtitle(
+            AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = null,
                 album = null,
             )
-        assertNull(result)
+        assertEquals("未知", result)
+    }
+
+    @Test
+    fun formatTrackSubtitle_withBlankArtistAndAlbum_returnsUnknownFallback() {
+        val result =
+            AudioTrackRowDefaults.formatTrackSubtitle(
+                artist = "   ",
+                album = "",
+            )
+        assertEquals("未知", result)
+    }
+
+    @Test
+    fun formatTrackSubtitle_withNullArtistAndAlbumAndPresentExtra_prependsUnknown() {
+        val result =
+            AudioTrackRowDefaults.formatTrackSubtitle(
+                artist = null,
+                album = null,
+                extra = "virtual_track.cue",
+            )
+        assertEquals("未知 · virtual_track.cue", result)
+    }
+
+    @Test
+    fun formatTrackSubtitle_withNullArtistAndAlbumAndDuration_prependsUnknown() {
+        val result =
+            AudioTrackRowDefaults.formatTrackSubtitle(
+                artist = null,
+                album = null,
+                durationText = "04:30",
+            )
+        assertEquals("未知 · 04:30", result)
+    }
+
+    @Test
+    fun formatTrackSubtitle_allParametersCombined_formatsInCanonicalOrder() {
+        val result =
+            AudioTrackRowDefaults.formatTrackSubtitle(
+                artist = "Pink Floyd",
+                album = "The Wall",
+                durationText = "06:22",
+                extra = "CD 1",
+            )
+        assertEquals("Pink Floyd · The Wall · 06:22 · CD 1", result)
+    }
+
+    @Test
+    fun formatTrackSubtitle_guaranteesNonEmptyForHeightParity() {
+        val variations =
+            listOf(
+                AudioTrackRowDefaults.formatTrackSubtitle(null, null),
+                AudioTrackRowDefaults.formatTrackSubtitle("", ""),
+                AudioTrackRowDefaults.formatTrackSubtitle("  ", "   "),
+                AudioTrackRowDefaults.formatTrackSubtitle(null, "Album"),
+                AudioTrackRowDefaults.formatTrackSubtitle("Artist", null),
+                AudioTrackRowDefaults.formatTrackSubtitle(null, null, durationText = "03:45"),
+                AudioTrackRowDefaults.formatTrackSubtitle(null, null, extra = "cue.flac"),
+            )
+        variations.forEach { subtitle ->
+            assertTrue(
+                "Subtitle must be non-empty ('$subtitle') to guarantee 72dp double-line height parity",
+                subtitle.isNotBlank(),
+            )
+        }
     }
 
     @Test

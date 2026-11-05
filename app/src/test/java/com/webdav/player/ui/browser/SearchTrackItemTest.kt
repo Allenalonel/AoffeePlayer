@@ -42,17 +42,38 @@ class SearchTrackItemTest {
     }
 
     @Test
-    fun resolveSearchTrackSubtitle_withAlbumOnly_defaultsToUnknownArtist() {
+    fun resolveSearchTrackSubtitle_withAlbumOnly_returnsAlbum() {
         val track = createTrack(artist = null, album = "Greatest Hits")
         val subtitle = resolveSearchTrackSubtitle(track)
-        assertEquals("未知艺术家 · Greatest Hits", subtitle)
+        assertEquals("Greatest Hits", subtitle)
     }
 
     @Test
-    fun resolveSearchTrackSubtitle_withBlankArtist_defaultsToUnknownArtist() {
+    fun resolveSearchTrackSubtitle_withBlankArtist_defaultsToUnknown() {
         val track = createTrack(artist = "   ", album = null)
         val subtitle = resolveSearchTrackSubtitle(track)
-        assertEquals("未知艺术家", subtitle)
+        assertEquals("未知", subtitle)
+    }
+
+    @Test
+    fun resolveSearchTrackSubtitle_withNullArtistAndAlbum_defaultsToUnknown() {
+        val track = createTrack(artist = null, album = null)
+        val subtitle = resolveSearchTrackSubtitle(track)
+        assertEquals("未知", subtitle)
+    }
+
+    @Test
+    fun resolveSearchTrackSubtitle_forVirtualTrackWithMissingMetadata_appendsParentFileNameToUnknown() {
+        val track =
+            createTrack(
+                id = "album.cue#cue_1",
+                title = "Speak to Me",
+                artist = null,
+                album = null,
+                remotePath = "/Music/Pink Floyd/dsotm.flac",
+            )
+        val subtitle = resolveSearchTrackSubtitle(track)
+        assertEquals("未知 · dsotm.flac", subtitle)
     }
 
     @Test

@@ -14,7 +14,9 @@
 
 ## 活跃任务 (Active)
 
-当前暂无进行中的活跃特性任务。
+| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 规范路径 |
+| :--- | :--- | :---: | :---: | :--- |
+| `architecture-deepening-and-seam-purification` | v3.3 后续架构深化：清理形变无用数学接缝、内聚媒体库多选、统一音轨行兜底与消除歌单对账重复代码 | 4 | Ready for Agent | [`.scratch/architecture-deepening-and-seam-purification/spec.md`](architecture-deepening-and-seam-purification/spec.md) |
 
 ---
 

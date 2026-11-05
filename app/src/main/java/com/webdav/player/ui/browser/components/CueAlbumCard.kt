@@ -43,6 +43,7 @@ import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.ui.common.AudioQualityBadgePill
 import com.webdav.player.ui.common.AudioTrackRow
+import com.webdav.player.ui.common.AudioTrackRowDefaults
 import com.webdav.player.ui.common.CoverThumbnailImage
 import com.webdav.player.ui.common.EqualizerStateHelper
 import com.webdav.player.ui.common.EqualizerTrackIndicator
@@ -350,7 +351,7 @@ fun VirtualTrackItemRow(
 
     AudioTrackRow(
         title = track.title,
-        subtitle = track.performer?.takeIf { it.isNotBlank() } ?: "未知",
+        subtitle = AudioTrackRowDefaults.formatTrackSubtitle(artist = track.performer),
         durationText = durationText,
         isActive = isActive,
         isPlaying = isPlaying,

@@ -29,11 +29,17 @@ import kotlinx.coroutines.launch
 class DirectoryBrowserViewModel(
     private val serverRepository: ServerRepository? = null,
     private val directoryRepository: DirectoryRepository,
-    val musicPlayerAppSession: MusicPlayerAppSession? = null,
+    private val musicPlayerAppSession: MusicPlayerAppSession? = null,
     val librarySearchRepository: LibrarySearchRepository? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DirectoryBrowserUiState())
     val uiState: StateFlow<DirectoryBrowserUiState> = _uiState.asStateFlow()
+
+    private val _selectedFilePaths = MutableStateFlow<Set<String>>(emptySet())
+    val selectedFilePaths: StateFlow<Set<String>> = _selectedFilePaths.asStateFlow()
+
+    private val _isSelectionMode = MutableStateFlow(false)
+    val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
 
     private var currentLoadJob: Job? = null
     private var searchJob: Job? = null
@@ -67,6 +73,7 @@ class DirectoryBrowserViewModel(
             activeServerFlow.collect { server ->
                 val previousServer = _uiState.value.activeServer
                 if (server != previousServer) {
+                    clearSelection()
                     currentLoadJob?.cancel()
 
                     // If previousServer == null, this is app startup -> restore saved directory from session.
@@ -119,7 +126,50 @@ class DirectoryBrowserViewModel(
     }
 
     fun resetToRoot() {
+        clearSelection()
         loadDirectory("/", forceRefresh = false)
+    }
+
+    fun toggleFileSelection(path: String) {
+        val current = _selectedFilePaths.value
+        val updated = if (path in current) current - path else current + path
+        _selectedFilePaths.value = updated
+        _isSelectionMode.value = updated.isNotEmpty()
+    }
+
+    fun selectAllAudioFiles() {
+        val audioFiles = _uiState.value.files.filter { it.isAudio }
+        val updated = audioFiles.map { it.path }.toSet()
+        _selectedFilePaths.value = updated
+        _isSelectionMode.value = updated.isNotEmpty()
+    }
+
+    fun clearSelection() {
+        _selectedFilePaths.value = emptySet()
+        _isSelectionMode.value = false
+    }
+
+    fun getSelectedAudioTracks(): List<AudioTrack> {
+        val server = _uiState.value.activeServer ?: return emptyList()
+        val filesByPath = _uiState.value.files.associateBy { it.path }
+        val metadata = _uiState.value.metadataMap
+        return _selectedFilePaths.value.mapNotNull { path ->
+            val file = filesByPath[path]
+            if (file != null && file.isAudio) {
+                AudioTrack.fromRemoteFile(server, file, metadata[path])
+            } else {
+                null
+            }
+        }
+    }
+
+    fun playSelectedNext(): List<AudioTrack> {
+        val tracks = getSelectedAudioTracks()
+        tracks.reversed().forEach { track ->
+            musicPlayerAppSession?.playNext(track)
+        }
+        clearSelection()
+        return tracks
     }
 
     fun onAudioTrackClicked(file: RemoteFile) {
@@ -265,6 +315,9 @@ class DirectoryBrowserViewModel(
         val previousJob = currentLoadJob
 
         val isNavigatingToNewDirectory = _uiState.value.currentDirectory?.path != normalizedPath
+        if (isNavigatingToNewDirectory) {
+            clearSelection()
+        }
 
         _uiState.update { current ->
             current.copy(

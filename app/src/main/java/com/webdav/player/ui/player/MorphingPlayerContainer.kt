@@ -237,8 +237,7 @@ fun MorphingPlayerContainer(
                         shape = morphingShape
                         clip = true
                         shadowElevation = with(density) { lerp(10.dp, 0.dp, expansionProgress).toPx() }
-                    }
-                    .drawBehind {
+                    }.drawBehind {
                         // 1. Container base surface
                         drawRect(surfaceColor)
 
@@ -274,14 +273,15 @@ fun MorphingPlayerContainer(
                                 style = Stroke(width = strokeWidth),
                             )
                         }
-                    }
-                    .then(downwardSwipeModifier),
+                    }.then(downwardSwipeModifier),
         ) {
             // 1. Single Living FullPlayerView (Active as container expands past FullPlayerFadeStartProgress)
             if (expansionProgress > MorphingPlayerDefaults.FullPlayerFadeStartProgress) {
                 val fullAlpha =
-                    ((expansionProgress - MorphingPlayerDefaults.FullPlayerFadeStartProgress) /
-                        (1f - MorphingPlayerDefaults.FullPlayerFadeStartProgress)).coerceIn(0f, 1f)
+                    (
+                        (expansionProgress - MorphingPlayerDefaults.FullPlayerFadeStartProgress) /
+                            (1f - MorphingPlayerDefaults.FullPlayerFadeStartProgress)
+                    ).coerceIn(0f, 1f)
                 val fullTranslationY = with(density) { 40.dp.toPx() * (1f - expansionProgress) }
                 Box(
                     modifier =
@@ -311,8 +311,10 @@ fun MorphingPlayerContainer(
                     if (expansionProgress == 0f) {
                         1f
                     } else {
-                        ((MorphingPlayerDefaults.MiniPlayerFadeEndProgress - expansionProgress) /
-                            MorphingPlayerDefaults.MiniPlayerFadeEndProgress).coerceIn(0f, 1f)
+                        (
+                            (MorphingPlayerDefaults.MiniPlayerFadeEndProgress - expansionProgress) /
+                                MorphingPlayerDefaults.MiniPlayerFadeEndProgress
+                        ).coerceIn(0f, 1f)
                     }
                 val miniTranslationY = with(density) { (collapsedBottomPadding * expansionProgress).toPx() }
                 Box(

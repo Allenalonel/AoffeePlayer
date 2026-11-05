@@ -186,7 +186,10 @@ class DirectoryBrowserViewModel(
     }
 
     fun selectAllSearchTracks() {
-        val allTrackIds = _uiState.value.searchResult.matchedTracks.map { it.id }.toSet()
+        val allTrackIds =
+            _uiState.value.searchResult.matchedTracks
+                .map { it.id }
+                .toSet()
         _selectedSearchTrackIds.value = allTrackIds
         _isSearchSelectionMode.value = allTrackIds.isNotEmpty()
     }
@@ -198,7 +201,8 @@ class DirectoryBrowserViewModel(
 
     fun getSelectedSearchTracks(): List<AudioTrack> {
         val selectedIds = _selectedSearchTrackIds.value
-        return _uiState.value.searchResult.matchedTracks.filter { it.id in selectedIds }
+        return _uiState.value.searchResult.matchedTracks
+            .filter { it.id in selectedIds }
     }
 
     fun playSelectedSearchNext(): List<AudioTrack> {

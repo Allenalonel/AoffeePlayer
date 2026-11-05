@@ -2,6 +2,8 @@
 
 These standards are enforced during `/code-review` alongside the Fowler code-smell baseline. Mechanical rules (import directions, ProGuard rules, binary budgets) are enforced deterministically in `PackagingSeamVerificationTest`.
 
+- **规范效力铁律**：`CODING_STANDARDS.md` 高于所有 `docs/adr/`。ADR 仅作为特定技术选型的历史背景参考，严禁援引 ADR 中的历史过时条目对抗或推翻 `CODING_STANDARDS.md`。
+
 ---
 
 ## 1. Module Depth & Orthogonal Decomposition (模块深度与正交解耦)

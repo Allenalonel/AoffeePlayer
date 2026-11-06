@@ -113,7 +113,7 @@ class MusicPlayerAppSessionImpl(
             getHasStreamLoaded = { hasStreamLoaded },
             clearPrerollIfActive = { clearPrerollIfActive() },
             onRestoreSession = { restoreSession() },
-            onSetActiveServer = { setActiveServer(it) },
+            onSetActiveServer = { setActiveServer(it, resetPlayback = false) },
             onSkipToNext = { skipToNext() },
             onTransitionToQueueIndex = { s, idx -> transitionToQueueIndex(s, idx) },
         )
@@ -285,20 +285,25 @@ class MusicPlayerAppSessionImpl(
     override fun getLastDirectoryForServer(serverId: Long): String = persistenceCoordinator.getLastDirectoryForServer(serverId)
 
     override fun setActiveServer(server: WebDavServer?) {
+        setActiveServer(server, resetPlayback = true)
+    }
+
+    override fun setActiveServer(server: WebDavServer?, resetPlayback: Boolean) {
         _sessionState.update { current ->
             if (current.activeServer?.id == server?.id) return@update current.copy(activeServer = server)
-            if (current.activeServer == null && current.hasTrack) {
-                val path =
-                    current.currentDirectoryPath.takeIf { it.isNotBlank() && it != "/" }
-                        ?: if (server != null) getLastDirectoryForServer(server.id) else "/"
-                return@update current.copy(activeServer = server, currentDirectoryPath = path)
+            val lastPath = if (server != null) getLastDirectoryForServer(server.id) else "/"
+            if (current.hasTrack && !resetPlayback) {
+                // Do not disrupt ongoing playback or wipe queue when switching active browsing storage/server
+                return@update current.copy(
+                    activeServer = server,
+                    currentDirectoryPath = lastPath,
+                )
             }
             if (current.queue.isPlaylistQueue) return@update current.copy(activeServer = server)
 
             if (current.playbackState !is PlaybackState.Idle) playerEngine.stop()
             resetPlaybackState()
             _playbackProgress.value = PlaybackProgress.ZERO
-            val lastPath = if (server != null) getLastDirectoryForServer(server.id) else "/"
             current.copy(
                 activeServer = server,
                 queue = PlaybackQueue.EMPTY,

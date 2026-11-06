@@ -371,7 +371,12 @@ class MainActivity : ComponentActivity() {
                                                     },
                                                     onSelectServerAndNavigate = { server ->
                                                         serverViewModel.onSelectActiveServer(server.id)
-                                                        coordinator.onServerCardClicked(server)
+                                                        appContainer.musicPlayerAppSession.setActiveServer(server, resetPlayback = false)
+                                                        coordinator.onServerCardClicked(server, onResetToRoot = {
+                                                            if (browserViewModel.uiState.value.activeServer?.id == server.id) {
+                                                                browserViewModel.resetToRoot()
+                                                            }
+                                                        })
                                                     },
                                                     fabBottomPadding = fabBottomPadding,
                                                 )

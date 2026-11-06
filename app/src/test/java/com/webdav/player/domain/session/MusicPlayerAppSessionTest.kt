@@ -632,6 +632,28 @@ class MusicPlayerAppSessionTest {
         }
 
     @Test
+    fun switchingActiveServer_withResetPlaybackFalse_preservesOngoingPlaybackAndQueue() =
+        runTest(testDispatcher) {
+            session.setActiveServer(testServer)
+            val track = RemoteFile(name = "01.mp3", path = "/01.mp3")
+            val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track))
+            session.playDirectoryTrack(directory, track)
+            advanceUntilIdle()
+
+            assertTrue(session.sessionState.value.hasTrack)
+
+            val otherServer = WebDavServer(id = 2L, name = "Other", url = "http://example.com")
+            session.setActiveServer(otherServer, resetPlayback = false)
+            advanceUntilIdle()
+
+            val state = session.sessionState.value
+            assertEquals(otherServer, state.activeServer)
+            assertTrue("Queue must be preserved when resetPlayback is false", state.hasTrack)
+            assertEquals("01.mp3", state.currentTrack?.title)
+            assertEquals(0, fakeEngine.stopCount)
+        }
+
+    @Test
     fun playbackControls_dispatchToPlayerEngine() =
         runTest(testDispatcher) {
             session.setActiveServer(testServer)

@@ -209,7 +209,7 @@ fun MiniPlayer(
                                 Brush.horizontalGradient(
                                     listOf(
                                         MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.24f),
                                     ),
                                 ),
                             ),
@@ -218,9 +218,17 @@ fun MiniPlayer(
                         modifier =
                             Modifier
                                 .align(Alignment.CenterEnd)
-                                .width(1.5.dp)
+                                .width(2.dp)
                                 .fillMaxHeight()
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.60f)),
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.70f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                                        ),
+                                    ),
+                                ),
                     )
                 }
             }

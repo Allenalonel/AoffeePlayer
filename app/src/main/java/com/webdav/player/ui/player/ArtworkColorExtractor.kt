@@ -25,6 +25,15 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 /**
+ * Multi-stop ambient glow colors blending vibrant, dominant, and muted tones into background.
+ */
+data class AmbientGlowStops(
+    val topColor: Color,
+    val midColor: Color,
+    val bottomColor: Color,
+)
+
+/**
  * Atmospheric color scheme dynamically derived from track artwork or fallback colors.
  */
 data class ArtworkColors(
@@ -41,15 +50,33 @@ data class ArtworkColors(
 ) {
     fun colorScheme(isDark: Boolean): ColorScheme = if (isDark) darkColorScheme else lightColorScheme
 
+    fun ambientGlowStops(
+        isDarkTheme: Boolean = true,
+        surfaceColor: Color = if (isDarkTheme) backgroundTopColor else Color(0xFFE2E2E9),
+        backgroundColor: Color = backgroundBottomColor,
+    ): AmbientGlowStops =
+        ArtworkColorExtractor.computeAmbientGlowStops(
+            artworkColors = this,
+            isDarkTheme = isDarkTheme,
+            surfaceColor = surfaceColor,
+            backgroundColor = backgroundColor,
+        )
+
+    fun ambientGlowBrush(
+        isDarkTheme: Boolean = true,
+        surfaceColor: Color = if (isDarkTheme) backgroundTopColor else Color(0xFFE2E2E9),
+        backgroundColor: Color = backgroundBottomColor,
+    ): Brush {
+        val stops = ambientGlowStops(isDarkTheme, surfaceColor, backgroundColor)
+        return Brush.verticalGradient(
+            0.0f to stops.topColor,
+            0.45f to stops.midColor,
+            1.0f to stops.bottomColor,
+        )
+    }
+
     val gradientBrush: Brush
-        get() =
-            Brush.verticalGradient(
-                colors =
-                    listOf(
-                        backgroundTopColor,
-                        backgroundBottomColor,
-                    ),
-            )
+        get() = ambientGlowBrush(isDarkTheme = true)
 }
 
 object ArtworkColorExtractor {
@@ -507,6 +534,49 @@ object ArtworkColorExtractor {
         } else {
             createLightColorScheme(dominantColor, isFallback, isMonochrome)
         }
+
+    /**
+     * Computes multi-stop ambient glow colors blending vibrantColor, dominantColor, and mutedColor.
+     * - Top ambient stop: vibrantColor / dominantColor composited with soft alpha (~0.28f - 0.35f in dark mode, ~0.15f - 0.22f in light mode).
+     * - Mid ambient stop: mutedColor composited with ~0.15f - 0.20f alpha over surface.
+     * - Bottom stop: seamless melt into background / surface.
+     * - When isMonochrome is true: ensures clean neutral slate/graphite dark glow with zero red tint.
+     */
+    fun computeAmbientGlowStops(
+        artworkColors: ArtworkColors,
+        isDarkTheme: Boolean,
+        surfaceColor: Color = if (isDarkTheme) artworkColors.backgroundTopColor else Color(0xFFE2E2E9),
+        backgroundColor: Color = artworkColors.backgroundBottomColor,
+    ): AmbientGlowStops {
+        val topAlpha = if (isDarkTheme) 0.32f else 0.18f
+        val midAlpha = if (isDarkTheme) 0.18f else 0.12f
+
+        if (artworkColors.isMonochrome) {
+            val neutralSurface = if (isDarkTheme) Color(0xFF1E1F25) else Color(0xFFE2E2E9)
+            val topStop = artworkColors.mutedColor.copy(alpha = topAlpha).compositeOver(neutralSurface)
+            val midStop = artworkColors.mutedColor.copy(alpha = midAlpha).compositeOver(neutralSurface)
+            val bottomStop = if (isDarkTheme) Color(0xFF121318) else Color(0xFFFFFFFF)
+            return AmbientGlowStops(
+                topColor = topStop,
+                midColor = midStop,
+                bottomColor = bottomStop,
+            )
+        }
+
+        // Chromatic artwork:
+        val dominantTintAlpha = if (isDarkTheme) 0.20f else 0.10f
+        val baseSurface = artworkColors.dominantColor.copy(alpha = dominantTintAlpha).compositeOver(surfaceColor)
+
+        val topStop = artworkColors.vibrantColor.copy(alpha = topAlpha).compositeOver(baseSurface)
+        val midStop = artworkColors.mutedColor.copy(alpha = midAlpha).compositeOver(surfaceColor)
+        val bottomStop = backgroundColor
+
+        return AmbientGlowStops(
+            topColor = topStop,
+            midColor = midStop,
+            bottomColor = bottomStop,
+        )
+    }
 
     /**
      * Extracts dynamic artwork colors from a cached thumbnail file path.

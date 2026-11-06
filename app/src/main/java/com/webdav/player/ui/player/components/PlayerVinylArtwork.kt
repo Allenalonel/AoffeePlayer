@@ -6,6 +6,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,38 +39,65 @@ import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.ui.common.CoverThumbnailImage
+import com.webdav.player.ui.player.ArtworkColorExtractor
+import com.webdav.player.ui.player.ArtworkColors
 import com.webdav.player.ui.player.FullPlayerDefaults
 import com.webdav.player.ui.player.rememberArtworkColors
 import com.webdav.player.ui.theme.AppIcons
+import com.webdav.player.ui.theme.FLUID_THEME_DURATION_MS
+import com.webdav.player.ui.theme.FluidThemeAnimationEasing
 
 /**
- * Dynamic atmospheric gradient sampled from cover art with MD3 fallback.
+ * Dynamic atmospheric multi-stop ambient glow gradient sampled from cover art with MD3 fallback.
+ * Blends vibrantColor, dominantColor, and mutedColor into a soft luminous halo behind the artwork card
+ * and seamlessly melts into background/surface at the bottom.
  */
 @Composable
 internal fun rememberArtworkBackgroundBrush(
     thumbnailPath: String?,
+    artworkColors: ArtworkColors? = null,
     defaultSurfaceColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     defaultBackgroundColor: Color = MaterialTheme.colorScheme.surface,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
 ): Brush {
-    val artworkColors by rememberArtworkColors(
-        thumbnailPath = thumbnailPath,
-        defaultSurfaceColor = defaultSurfaceColor,
-        defaultBackgroundColor = defaultBackgroundColor,
-    )
+    val activeColors =
+        artworkColors
+            ?: rememberArtworkColors(
+                thumbnailPath = thumbnailPath,
+                defaultSurfaceColor = defaultSurfaceColor,
+                defaultBackgroundColor = defaultBackgroundColor,
+                isDarkTheme = isDarkTheme,
+            ).value
+
+    val targetStops =
+        ArtworkColorExtractor.computeAmbientGlowStops(
+            artworkColors = activeColors,
+            isDarkTheme = isDarkTheme,
+            surfaceColor = defaultSurfaceColor,
+            backgroundColor = defaultBackgroundColor,
+        )
 
     val animatedTopColor by animateColorAsState(
-        targetValue = artworkColors.backgroundTopColor,
-        animationSpec = tween(durationMillis = 400),
+        targetValue = targetStops.topColor,
+        animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
         label = "FullPlayerBackgroundTop",
     )
+    val animatedMidColor by animateColorAsState(
+        targetValue = targetStops.midColor,
+        animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
+        label = "FullPlayerBackgroundMid",
+    )
     val animatedBottomColor by animateColorAsState(
-        targetValue = artworkColors.backgroundBottomColor,
-        animationSpec = tween(durationMillis = 400),
+        targetValue = targetStops.bottomColor,
+        animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
         label = "FullPlayerBackgroundBottom",
     )
-    return remember(animatedTopColor, animatedBottomColor) {
+
+    return remember(animatedTopColor, animatedMidColor, animatedBottomColor) {
         Brush.verticalGradient(
-            colors = listOf(animatedTopColor, animatedBottomColor),
+            0.0f to animatedTopColor,
+            0.45f to animatedMidColor,
+            1.0f to animatedBottomColor,
         )
     }
 }
@@ -84,7 +112,39 @@ internal fun PlayerVinylArtwork(
     sessionState: PlayerSessionState,
     onArtworkClick: () -> Unit,
     modifier: Modifier = Modifier,
+    artworkColors: ArtworkColors? = null,
 ) {
+    val isDark = isSystemInDarkTheme()
+    val activeColors =
+        artworkColors
+            ?: rememberArtworkColors(
+                thumbnailPath = currentTrack?.coverThumbnailPath,
+                defaultSurfaceColor = MaterialTheme.colorScheme.surfaceContainer,
+                defaultBackgroundColor = MaterialTheme.colorScheme.surface,
+                isDarkTheme = isDark,
+            ).value
+
+    val shadowSourceColor =
+        if (activeColors.isMonochrome) {
+            activeColors.mutedColor
+        } else {
+            activeColors.vibrantColor
+        }
+
+    val spotAlpha = if (isDark) 0.35f else 0.22f
+    val ambientAlpha = if (isDark) 0.25f else 0.15f
+
+    val animatedSpotColor by animateColorAsState(
+        targetValue = shadowSourceColor.copy(alpha = spotAlpha),
+        animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
+        label = "SquircleCardSpotColor",
+    )
+    val animatedAmbientColor by animateColorAsState(
+        targetValue = shadowSourceColor.copy(alpha = ambientAlpha),
+        animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
+        label = "SquircleCardAmbientColor",
+    )
+
     Column(
         modifier =
             modifier
@@ -103,8 +163,8 @@ internal fun PlayerVinylArtwork(
                     .shadow(
                         elevation = 24.dp,
                         shape = FullPlayerDefaults.ArtworkSquircleShape,
-                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                        spotColor = animatedSpotColor,
+                        ambientColor = animatedAmbientColor,
                     )
                     .clip(FullPlayerDefaults.ArtworkSquircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)

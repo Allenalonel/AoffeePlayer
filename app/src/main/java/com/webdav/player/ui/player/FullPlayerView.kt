@@ -117,7 +117,12 @@ fun FullPlayerView(
     val currentTrack = sessionState.currentTrack
 
     // Dynamic atmospheric gradient sampled from cover art with MD3 fallback
-    val backgroundBrush = rememberArtworkBackgroundBrush(currentTrack?.coverThumbnailPath)
+    val artworkColors by rememberArtworkColors(currentTrack?.coverThumbnailPath)
+    val backgroundBrush =
+        rememberArtworkBackgroundBrush(
+            thumbnailPath = currentTrack?.coverThumbnailPath,
+            artworkColors = artworkColors,
+        )
 
     // Interactive scrubbing state
     var isScrubbing by remember { mutableStateOf(false) }
@@ -298,6 +303,7 @@ fun FullPlayerView(
                                     sessionState = sessionState,
                                     onArtworkClick = {},
                                     modifier = downwardSwipeModifier,
+                                    artworkColors = artworkColors,
                                 )
                             }
 
@@ -347,6 +353,7 @@ fun FullPlayerView(
                                             }
                                         },
                                         modifier = downwardSwipeModifier,
+                                        artworkColors = artworkColors,
                                     )
                                 }
 

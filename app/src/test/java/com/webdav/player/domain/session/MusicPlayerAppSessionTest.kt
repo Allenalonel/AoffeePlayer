@@ -3597,4 +3597,110 @@ class MusicPlayerAppSessionTest {
 
             mixedSession.release()
         }
+
+    @Test
+    fun mixedPlaylist_transitionsSeamlesslyAcrossWebDavAndLocalStorage_skipToNextAndPreviousAndShuffle() =
+        runTest(testDispatcher) {
+            val serverRepo = TestServerRepository(listOf(testServer))
+            val playlist = Playlist(id = 200L, name = "Mixed Queue", createdAtMs = 1000L, updatedAtMs = 1000L, trackCount = 3)
+            val entry1 =
+                PlaylistTrackEntry(
+                    id = 101L,
+                    playlistId = 200L,
+                    serverId = testServer.id,
+                    remotePath = "/cloud1.mp3",
+                    sortOrder = 0,
+                    title = "Cloud 1",
+                    format = AudioFormat.MP3,
+                    durationMs = 200_000L,
+                )
+            val entry2 =
+                PlaylistTrackEntry(
+                    id = 102L,
+                    playlistId = 200L,
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://media/external/audio/local2",
+                    sortOrder = 1,
+                    title = "Local 2",
+                    format = AudioFormat.FLAC,
+                    durationMs = 180_000L,
+                )
+            val entry3 =
+                PlaylistTrackEntry(
+                    id = 103L,
+                    playlistId = 200L,
+                    serverId = testServer.id,
+                    remotePath = "/cloud3.mp3",
+                    sortOrder = 2,
+                    title = "Cloud 3",
+                    format = AudioFormat.MP3,
+                    durationMs = 220_000L,
+                )
+            val playlistRepo = TestPlaylistRepository(mutableListOf(entry1, entry2, entry3))
+
+            val mixedSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = serverRepo,
+                    playlistRepository = playlistRepo,
+                    cueSheetResolver = cueSheetResolver,
+                    coroutineScope = sessionScope,
+                )
+
+            // 1. Play first track (WebDAV)
+            mixedSession.playPlaylist(playlist, startIndex = 0)
+            advanceUntilIdle()
+
+            assertEquals(testServer.id, mixedSession.sessionState.value.activeServer?.id)
+            assertEquals(testServer.id, fakeEngine.loadedTrack?.serverId)
+            assertEquals("/cloud1.mp3", fakeEngine.loadedTrack?.remotePath)
+            assertEquals(0, mixedSession.sessionState.value.queue.currentIndex)
+
+            // 2. Skip to next track (Local Storage)
+            mixedSession.skipToNext()
+            advanceUntilIdle()
+
+            assertEquals(LOCAL_STORAGE_ID, mixedSession.sessionState.value.activeServer?.id)
+            assertEquals(LOCAL_STORAGE_ID, fakeEngine.loadedTrack?.serverId)
+            assertEquals("content://media/external/audio/local2", fakeEngine.loadedTrack?.remotePath)
+            assertEquals(1, mixedSession.sessionState.value.queue.currentIndex)
+
+            // 3. Skip to next track (WebDAV)
+            mixedSession.skipToNext()
+            advanceUntilIdle()
+
+            assertEquals(testServer.id, mixedSession.sessionState.value.activeServer?.id)
+            assertEquals(testServer.id, fakeEngine.loadedTrack?.serverId)
+            assertEquals("/cloud3.mp3", fakeEngine.loadedTrack?.remotePath)
+            assertEquals(2, mixedSession.sessionState.value.queue.currentIndex)
+
+            // 4. Skip to previous track (Local Storage)
+            fakeEngine._currentPositionMs.value = 500L // within 3s threshold
+            mixedSession.skipToPrevious()
+            advanceUntilIdle()
+
+            assertEquals(LOCAL_STORAGE_ID, mixedSession.sessionState.value.activeServer?.id)
+            assertEquals(LOCAL_STORAGE_ID, fakeEngine.loadedTrack?.serverId)
+            assertEquals("content://media/external/audio/local2", fakeEngine.loadedTrack?.remotePath)
+            assertEquals(1, mixedSession.sessionState.value.queue.currentIndex)
+
+            // 5. Shuffle progression
+            mixedSession.setPlaybackMode(PlaybackMode.SHUFFLE)
+            advanceUntilIdle()
+
+            mixedSession.skipToNext()
+            advanceUntilIdle()
+
+            val currentTrack = mixedSession.sessionState.value.currentTrack
+            assertNotNull(currentTrack)
+            val currentServer = mixedSession.sessionState.value.activeServer
+            assertNotNull(currentServer)
+            if (currentTrack!!.serverId == LOCAL_STORAGE_ID) {
+                assertEquals(LOCAL_STORAGE_ID, currentServer!!.id)
+            } else {
+                assertEquals(testServer.id, currentServer!!.id)
+            }
+
+            mixedSession.release()
+        }
 }

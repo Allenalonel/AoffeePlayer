@@ -82,5 +82,7 @@ interface PlaylistRepository {
 
     fun getInactiveTracksFlow(): Flow<Map<TrackKey, InactiveReason>> = emptyFlow()
 
+    suspend fun checkTrackReachability(entry: PlaylistTrackEntry): Boolean = true
+
     suspend fun triggerReachabilitySelfHealing() {}
 }

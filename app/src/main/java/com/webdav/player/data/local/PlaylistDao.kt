@@ -172,4 +172,16 @@ interface PlaylistDao {
         remotePath: String,
         virtualTrackId: String?,
     ): PlaylistTrackEntity?
+
+    @Query("SELECT * FROM playlist_tracks WHERE serverId = :serverId")
+    suspend fun getTracksByServerId(serverId: Long): List<PlaylistTrackEntity>
+
+    @Query("SELECT * FROM playlist_tracks WHERE serverId = :serverId AND isInactive = 1")
+    suspend fun getInactiveTracksForServer(serverId: Long): List<PlaylistTrackEntity>
+
+    @Query("SELECT * FROM playlist_tracks WHERE serverId = :serverId AND remotePath = :remotePath LIMIT 1")
+    suspend fun findTrackInPlaylistByRemotePath(
+        serverId: Long,
+        remotePath: String,
+    ): PlaylistTrackEntity?
 }

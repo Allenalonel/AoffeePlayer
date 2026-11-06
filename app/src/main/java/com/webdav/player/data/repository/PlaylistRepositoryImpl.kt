@@ -1,5 +1,8 @@
 package com.webdav.player.data.repository
 
+import android.content.Context
+import android.net.Uri
+import android.provider.DocumentsContract
 import com.webdav.player.data.local.PlaylistDao
 import com.webdav.player.data.local.PlaylistEntity
 import com.webdav.player.data.local.PlaylistTrackEntity
@@ -7,10 +10,12 @@ import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.InactiveReason
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.Playlist
 import com.webdav.player.domain.model.PlaylistTrackEntry
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackKey
@@ -31,12 +36,16 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileNotFoundException
 
 class PlaylistRepositoryImpl(
     private val playlistDao: PlaylistDao,
     private val serverRepository: ServerRepository? = null,
     private val trackMetadataRepository: TrackMetadataRepository? = null,
     private val webDavClient: WebDavClient? = null,
+    private val context: Context? = null,
+    private val localUriReachabilityChecker: ((String) -> Boolean)? = null,
     private val timeProvider: () -> Long = { System.currentTimeMillis() },
     private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) : PlaylistRepository {
@@ -64,7 +73,7 @@ class PlaylistRepositoryImpl(
                         return@launch
                     }
                     val server = serverRepository.getServerById(serverId)
-                    if (server != null && server.url.isNotBlank()) {
+                    if (server != null && server.url.isNotBlank() && !server.isLocal) {
                         val fileName = remotePath.substringAfterLast('/').ifBlank { "track" }
                         val file = RemoteFile(name = fileName, path = remotePath)
                         val resolved = trackMetadataRepository.resolveSingleTrackMetadata(server, file)
@@ -186,11 +195,11 @@ class PlaylistRepositoryImpl(
                 val domain = entity.toDomain()
                 val manualReason = inactiveMap[TrackKey(domain.serverId, domain.remotePath)] ?: domain.inactiveReason
                 val server = serverMap?.get(domain.serverId)
-                val isServerUnreachable = servers != null && (server == null || server.url.isBlank())
+                val isServerUnreachable = servers != null && domain.serverId != LOCAL_STORAGE_ID && (server == null || server.url.isBlank())
 
                 when {
                     manualReason != null || domain.isInactive -> {
-                        domain.copy(isInactive = true, inactiveReason = manualReason)
+                        domain.copy(isInactive = true, inactiveReason = manualReason ?: domain.inactiveReason)
                     }
 
                     isServerUnreachable -> {
@@ -370,31 +379,165 @@ class PlaylistRepositoryImpl(
 
     override fun getInactiveTracksFlow(): Flow<Map<TrackKey, InactiveReason>> = _inactiveTracksFlow.asStateFlow()
 
+    private fun checkLocalTrackReachability(remotePath: String): Boolean {
+        if (localUriReachabilityChecker != null) {
+            return localUriReachabilityChecker.invoke(remotePath)
+        }
+        val ctx = context
+        return try {
+            if (remotePath.startsWith("content://")) {
+                if (ctx == null) return false
+                val uri = Uri.parse(remotePath)
+                val cursor =
+                    try {
+                        ctx.contentResolver.query(
+                            uri,
+                            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+                            null,
+                            null,
+                            null,
+                        )
+                    } catch (_: SecurityException) {
+                        null
+                    } catch (_: FileNotFoundException) {
+                        null
+                    }
+                val count = cursor?.use { it.count } ?: 0
+                if (count > 0) {
+                    true
+                } else {
+                    try {
+                        ctx.contentResolver.openFileDescriptor(uri, "r")?.use { true }
+                            ?: ctx.contentResolver.openInputStream(uri)?.use { true }
+                            ?: false
+                    } catch (_: SecurityException) {
+                        false
+                    } catch (_: FileNotFoundException) {
+                        false
+                    } catch (_: Throwable) {
+                        false
+                    }
+                }
+            } else if (remotePath.startsWith("file://")) {
+                val file = File(Uri.parse(remotePath).path ?: "")
+                file.exists() && file.canRead()
+            } else if (remotePath.startsWith("/")) {
+                val file = File(remotePath)
+                file.exists() && file.canRead()
+            } else {
+                false
+            }
+        } catch (_: SecurityException) {
+            false
+        } catch (_: FileNotFoundException) {
+            false
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    override suspend fun checkTrackReachability(entry: PlaylistTrackEntry): Boolean =
+        checkTrackReachability(PlaylistTrackEntity.fromDomain(entry))
+
+    suspend fun checkTrackReachability(track: PlaylistTrackEntity): Boolean {
+        if (track.serverId == LOCAL_STORAGE_ID) {
+            val isReachable = checkLocalTrackReachability(track.remotePath)
+            if (isReachable) {
+                playlistDao.updateTrackInactiveStatus(track.serverId, track.remotePath, false, null)
+                _inactiveTracksFlow.update { current ->
+                    current - TrackKey(track.serverId, track.remotePath)
+                }
+            } else {
+                playlistDao.updateTrackInactiveStatus(
+                    track.serverId,
+                    track.remotePath,
+                    true,
+                    InactiveReason.FILE_NOT_FOUND.name,
+                )
+                _inactiveTracksFlow.update { current ->
+                    current + (TrackKey(track.serverId, track.remotePath) to InactiveReason.FILE_NOT_FOUND)
+                }
+            }
+            return isReachable
+        } else {
+            if (webDavClient == null || serverRepository == null) return !track.isInactive
+            val server = serverRepository.getServerById(track.serverId)
+            if (server == null || server.url.isBlank()) {
+                playlistDao.updateTrackInactiveStatus(
+                    track.serverId,
+                    track.remotePath,
+                    true,
+                    InactiveReason.SERVER_UNREACHABLE.name,
+                )
+                _inactiveTracksFlow.update { current ->
+                    current + (TrackKey(track.serverId, track.remotePath) to InactiveReason.SERVER_UNREACHABLE)
+                }
+                return false
+            }
+            val result =
+                try {
+                    webDavClient.testConnection(server)
+                } catch (_: Throwable) {
+                    ConnectionResult.Failure("Reachability probe failed")
+                }
+            val isReachable = result is ConnectionResult.Success
+            if (isReachable) {
+                playlistDao.updateTrackInactiveStatus(track.serverId, track.remotePath, false, null)
+                _inactiveTracksFlow.update { current ->
+                    current - TrackKey(track.serverId, track.remotePath)
+                }
+            } else {
+                playlistDao.updateTrackInactiveStatus(
+                    track.serverId,
+                    track.remotePath,
+                    true,
+                    InactiveReason.SERVER_UNREACHABLE.name,
+                )
+                _inactiveTracksFlow.update { current ->
+                    current + (TrackKey(track.serverId, track.remotePath) to InactiveReason.SERVER_UNREACHABLE)
+                }
+            }
+            return isReachable
+        }
+    }
+
     override suspend fun triggerReachabilitySelfHealing() {
-        if (webDavClient == null || serverRepository == null) return
         if (!isSelfHealingInProgress.compareAndSet(false, true)) return
         try {
-            val serverIds = playlistDao.getDistinctServerIdsForInactiveServers()
-            if (serverIds.isEmpty()) return
-
-            coroutineScope {
-                serverIds
-                    .map { serverId ->
-                        async {
-                            val server = serverRepository.getServerById(serverId)
-                            if (server != null && server.url.isNotBlank()) {
-                                val result =
-                                    try {
-                                        webDavClient.testConnection(server)
-                                    } catch (_: Throwable) {
-                                        ConnectionResult.Failure("Reachability probe failed")
+            // 1. Probe WebDav servers
+            if (webDavClient != null && serverRepository != null) {
+                val serverIds = playlistDao.getDistinctServerIdsForInactiveServers()
+                if (serverIds.isNotEmpty()) {
+                    coroutineScope {
+                        serverIds
+                            .filter { it != LOCAL_STORAGE_ID }
+                            .map { serverId ->
+                                async {
+                                    val server = serverRepository.getServerById(serverId)
+                                    if (server != null && server.url.isNotBlank()) {
+                                        val result =
+                                            try {
+                                                webDavClient.testConnection(server)
+                                            } catch (_: Throwable) {
+                                                ConnectionResult.Failure("Reachability probe failed")
+                                            }
+                                        if (result is ConnectionResult.Success) {
+                                            clearServerUnreachableStatus(serverId)
+                                        }
                                     }
-                                if (result is ConnectionResult.Success) {
-                                    clearServerUnreachableStatus(serverId)
                                 }
-                            }
-                        }
-                    }.awaitAll()
+                            }.awaitAll()
+                    }
+                }
+            }
+
+            // 2. Probe Local Storage tracks
+            val localTracks = playlistDao.getTracksByServerId(LOCAL_STORAGE_ID)
+            if (localTracks.isNotEmpty()) {
+                val distinctLocalTracks = localTracks.distinctBy { it.remotePath }
+                for (track in distinctLocalTracks) {
+                    checkTrackReachability(track)
+                }
             }
         } catch (_: Throwable) {
             // Ignore transient errors during reachability probe

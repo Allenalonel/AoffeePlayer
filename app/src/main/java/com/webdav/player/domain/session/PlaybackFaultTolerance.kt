@@ -7,6 +7,7 @@ import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
+import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.PlaylistRepository
 import kotlinx.coroutines.CoroutineScope
@@ -25,8 +26,11 @@ fun Throwable?.is404Exception(): Boolean {
     return causes.any { cause ->
         (cause is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException && cause.responseCode == 404) ||
             (cause is java.io.FileNotFoundException) ||
-            (cause.message?.contains("404") == true)
-    } || (message?.contains("404") == true)
+            (cause is java.lang.SecurityException) ||
+            (cause is androidx.media3.datasource.ContentDataSource.ContentDataSourceException) ||
+            (cause.message?.contains("404") == true) ||
+            (cause.message?.contains("FileNotFound", ignoreCase = true) == true)
+    } || (message?.contains("404") == true) || (message?.contains("FileNotFound", ignoreCase = true) == true)
 }
 
 /**
@@ -370,6 +374,8 @@ internal class PlaybackFaultTolerance(
                             val nextServer =
                                 if (server.id == nextTrack.serverId) {
                                     server
+                                } else if (nextTrack.serverId == LOCAL_STORAGE_ID) {
+                                    WebDavServer.createLocalStorage()
                                 } else {
                                     serverRepository?.getServerById(nextTrack.serverId) ?: server
                                 }

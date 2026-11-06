@@ -5,11 +5,13 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.PlaylistDao
+import com.webdav.player.data.local.PlaylistTrackEntity
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.InactiveReason
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.PlaylistTrackEntry
 import com.webdav.player.domain.model.RemoteDirectory
@@ -1045,5 +1047,228 @@ class PlaylistRepositoryTest {
             assertEquals(InactiveReason.SERVER_UNREACHABLE, flowResult[1].inactiveReason)
             assertTrue(snapshotResult[1].isInactive)
             assertEquals(InactiveReason.SERVER_UNREACHABLE, snapshotResult[1].inactiveReason)
+        }
+
+    @Test
+    fun storingMixedWebDavAndLocalStorageTracksInSamePlaylist() =
+        runBlocking {
+            val server1 = WebDavServer(id = 1L, name = "Cloud Server", url = "http://192.168.1.100")
+            val serverRepo = TestServerRepository(listOf(server1))
+
+            val repo =
+                PlaylistRepositoryImpl(
+                    playlistDao = dao,
+                    serverRepository = serverRepo,
+                    timeProvider = { simulatedTime },
+                )
+
+            val playlistId = repo.createPlaylist("混合源歌单")
+
+            val webDavTrack =
+                AudioTrack(
+                    id = "1:/cloud/song.mp3",
+                    serverId = 1L,
+                    remotePath = "/cloud/song.mp3",
+                    title = "Cloud Song",
+                    format = AudioFormat.MP3,
+                    durationMs = 200_000L,
+                )
+            val localTrack =
+                AudioTrack(
+                    id = "0:content://media/external/audio/1234",
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://media/external/audio/1234",
+                    title = "Local Lossless Song",
+                    format = AudioFormat.FLAC,
+                    durationMs = 300_000L,
+                )
+
+            val webDavEntryId = repo.addTrackToPlaylist(playlistId, webDavTrack)
+            val localEntryId = repo.addTrackToPlaylist(playlistId, localTrack)
+
+            assertTrue(webDavEntryId > 0)
+            assertTrue(localEntryId > 0)
+
+            val tracks = repo.getTracksForPlaylist(playlistId)
+            assertEquals(2, tracks.size)
+
+            val t1 = tracks.first { it.id == webDavEntryId }
+            assertEquals(1L, t1.serverId)
+            assertEquals("/cloud/song.mp3", t1.remotePath)
+            assertEquals("Cloud Song", t1.title)
+            assertFalse(t1.isInactive)
+
+            val t2 = tracks.first { it.id == localEntryId }
+            assertEquals(LOCAL_STORAGE_ID, t2.serverId)
+            assertEquals("content://media/external/audio/1234", t2.remotePath)
+            assertEquals("Local Lossless Song", t2.title)
+            assertEquals(AudioFormat.FLAC, t2.format)
+            assertFalse(t2.isInactive)
+
+            // Verify toAudioTrack reconstructions
+            val reconstructedLocal = t2.toAudioTrack()
+            assertEquals(LOCAL_STORAGE_ID, reconstructedLocal.serverId)
+            assertEquals("content://media/external/audio/1234", reconstructedLocal.remotePath)
+            assertEquals("Local Lossless Song", reconstructedLocal.title)
+
+            val reconstructedWebDav = t1.toAudioTrack()
+            assertEquals(1L, reconstructedWebDav.serverId)
+            assertEquals("/cloud/song.mp3", reconstructedWebDav.remotePath)
+        }
+
+    @Test
+    fun deduplicationOfLocalTracksInBatchAdditions() =
+        runBlocking {
+            val playlistId = repository.createPlaylist("本地去重测试")
+
+            val local1 =
+                AudioTrack(
+                    id = "0:content://media/audio/1",
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://media/audio/1",
+                    title = "Local 1",
+                    format = AudioFormat.MP3,
+                )
+            val local2 =
+                AudioTrack(
+                    id = "0:content://media/audio/2",
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://media/audio/2",
+                    title = "Local 2",
+                    format = AudioFormat.MP3,
+                )
+            val local1Dup =
+                AudioTrack(
+                    id = "0:content://media/audio/1",
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://media/audio/1",
+                    title = "Local 1 Dup",
+                    format = AudioFormat.MP3,
+                )
+            val remoteWithSamePath =
+                AudioTrack(
+                    id = "1:content://media/audio/1",
+                    serverId = 1L,
+                    remotePath = "content://media/audio/1",
+                    title = "Remote With Matching Path String",
+                    format = AudioFormat.MP3,
+                )
+
+            // Batch add containing 2 unique local tracks, 1 local duplicate, and 1 remote track with identical remotePath string
+            val insertedIds =
+                repository.addTracksToPlaylist(
+                    playlistId,
+                    listOf(local1, local2, local1Dup, remoteWithSamePath),
+                )
+
+            // Exactly 3 tracks inserted (local1, local2, remoteWithSamePath; local1Dup skipped)
+            assertEquals(3, insertedIds.size)
+
+            val tracks = repository.getTracksForPlaylist(playlistId)
+            assertEquals(3, tracks.size)
+            assertEquals(LOCAL_STORAGE_ID, tracks[0].serverId)
+            assertEquals("content://media/audio/1", tracks[0].remotePath)
+            assertEquals(LOCAL_STORAGE_ID, tracks[1].serverId)
+            assertEquals("content://media/audio/2", tracks[1].remotePath)
+            assertEquals(1L, tracks[2].serverId)
+            assertEquals("content://media/audio/1", tracks[2].remotePath)
+
+            // Second batch addition of existing tracks should return empty
+            val secondBatchResult = repository.addTracksToPlaylist(playlistId, listOf(local1, local2))
+            assertTrue(secondBatchResult.isEmpty())
+            assertEquals(3, repository.getTracksForPlaylist(playlistId).size)
+        }
+
+    @Test
+    fun localTrackReachabilityValidation_marksFileNotFound_whenLocalUriIsInaccessible() =
+        runBlocking {
+            val accessibleUris = mutableSetOf("content://media/audio/present")
+            val testRepo =
+                PlaylistRepositoryImpl(
+                    playlistDao = dao,
+                    localUriReachabilityChecker = { path -> accessibleUris.contains(path) },
+                    timeProvider = { simulatedTime },
+                )
+
+            val playlistId = testRepo.createPlaylist("可达性校验测试")
+            val localMissingTrack =
+                AudioTrack(
+                    id = "0:content://media/audio/deleted",
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://media/audio/deleted",
+                    title = "Deleted Song",
+                    format = AudioFormat.MP3,
+                )
+
+            val entryId = testRepo.addTrackToPlaylist(playlistId, localMissingTrack)
+            val entityBefore = dao.getTrackById(entryId)!!
+            assertFalse("Track initially active before reachability probe", entityBefore.isInactive)
+
+            // Validate reachability on inaccessible local track
+            val isReachable = testRepo.checkTrackReachability(entityBefore)
+            assertFalse("Reachability check must report false for inaccessible local URI", isReachable)
+
+            // DB entity and snapshot must reflect inactive state with FILE_NOT_FOUND
+            val entityAfter = dao.getTrackById(entryId)!!
+            assertTrue("Entity in DB must be marked inactive", entityAfter.isInactive)
+            assertEquals("Entity inactiveReason must be FILE_NOT_FOUND", InactiveReason.FILE_NOT_FOUND.name, entityAfter.inactiveReason)
+
+            val tracks = testRepo.getTracksForPlaylist(playlistId)
+            val trackEntry = tracks.first { it.id == entryId }
+            assertTrue("Snapshot track must be inactive", trackEntry.isInactive)
+            assertEquals(InactiveReason.FILE_NOT_FOUND, trackEntry.inactiveReason)
+        }
+
+    @Test
+    fun reachabilitySelfHealing_restoresLocalTrackToActive_whenUriBecomesAccessibleAgain() =
+        runBlocking {
+            val accessibleUris = mutableSetOf<String>() // SD card unmounted: empty
+            val testRepo =
+                PlaylistRepositoryImpl(
+                    playlistDao = dao,
+                    localUriReachabilityChecker = { path -> accessibleUris.contains(path) },
+                    timeProvider = { simulatedTime },
+                )
+
+            val playlistId = testRepo.createPlaylist("自愈恢复测试-本地")
+            val localTrack =
+                AudioTrack(
+                    id = "0:content://sdcard/song.flac",
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://sdcard/song.flac",
+                    title = "SD Card Song",
+                    format = AudioFormat.FLAC,
+                )
+
+            val entryId = testRepo.addTrackToPlaylist(playlistId, localTrack)
+
+            // Mark inactive due to SD card being removed
+            testRepo.markTrackInactive(LOCAL_STORAGE_ID, "content://sdcard/song.flac", InactiveReason.FILE_NOT_FOUND)
+            kotlinx.coroutines.delay(100)
+
+            // Ensure DB and repo reflect inactive status
+            val entityDimmed = dao.getTrackById(entryId)!!
+            assertTrue(entityDimmed.isInactive)
+            assertEquals(InactiveReason.FILE_NOT_FOUND.name, entityDimmed.inactiveReason)
+
+            val dimmedTracks = testRepo.getTracksForPlaylistFlow(playlistId).first()
+            assertTrue(dimmedTracks.first { it.id == entryId }.isInactive)
+            assertEquals(InactiveReason.FILE_NOT_FOUND, dimmedTracks.first { it.id == entryId }.inactiveReason)
+
+            // SD card reinserted: URI becomes accessible again
+            accessibleUris.add("content://sdcard/song.flac")
+
+            // Trigger reachability self-healing
+            testRepo.triggerReachabilitySelfHealing()
+
+            // Verify symmetric self-healing: local track restored to active playable state
+            val entityRestored = dao.getTrackById(entryId)!!
+            assertFalse("Local track must be restored to active in DB", entityRestored.isInactive)
+            assertNull("Inactive reason must be cleared in DB", entityRestored.inactiveReason)
+
+            val restoredTracks = testRepo.getTracksForPlaylistFlow(playlistId).first()
+            val restoredTrackEntry = restoredTracks.first { it.id == entryId }
+            assertFalse("Track in flow must be active", restoredTrackEntry.isInactive)
+            assertNull("Inactive reason in flow must be null", restoredTrackEntry.inactiveReason)
         }
 }

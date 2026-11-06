@@ -244,11 +244,20 @@ class MusicPlayerAppSessionImpl(
             )
         }
         coroutineScope.launch {
-            val (vt, startMs) = queueManager.resolveVirtualTrackOffset(targetTrack, server)
+            val isLocal = targetTrack.serverId == LOCAL_STORAGE_ID ||
+                targetTrack.remotePath.startsWith("content://") ||
+                targetTrack.remotePath.startsWith("file://")
+            val effectiveServer = when {
+                isLocal -> WebDavServer.createLocalStorage()
+                server != null && server.id == targetTrack.serverId -> server
+                serverRepository != null -> serverRepository.getServerById(targetTrack.serverId) ?: server ?: _sessionState.value.activeServer
+                else -> server ?: _sessionState.value.activeServer
+            }
+            val (vt, startMs) = queueManager.resolveVirtualTrackOffset(targetTrack, effectiveServer)
             val parent = if (vt != null) targetTrack.copy(id = targetTrack.id.substringBefore("#cue_")) else null
             val cue = if (vt != null) targetTrack.cuePath ?: (targetTrack.remotePath.substringBeforeLast('.') + ".cue") else null
             val finalStartMs = timelineCoordinator.applyCueContextAndGetStartMs(vt?.let { listOf(it) }, parent, cue, startMs)
-            loadTrackIntoEngine(server, targetTrack, finalStartMs)
+            loadTrackIntoEngine(effectiveServer, targetTrack, finalStartMs)
             if (targetTrack.isVirtualTrack) playerEngine.updateTrackMetadata(targetTrack)
             flushSession()
         }
@@ -480,9 +489,12 @@ class MusicPlayerAppSessionImpl(
             val isLocal = target.serverId == LOCAL_STORAGE_ID ||
                 target.remotePath.startsWith("content://") ||
                 target.remotePath.startsWith("file://")
-            val active = _sessionState.value.activeServer
-                ?: (if (isLocal) WebDavServer.createLocalStorage() else serverRepository?.getServerById(target.serverId))
-                ?: return@launch
+            val active = when {
+                isLocal -> WebDavServer.createLocalStorage()
+                _sessionState.value.activeServer?.id == target.serverId -> _sessionState.value.activeServer
+                serverRepository != null -> serverRepository.getServerById(target.serverId) ?: _sessionState.value.activeServer
+                else -> _sessionState.value.activeServer
+            } ?: return@launch
             dispatchQueueLoad(active, request)
         }
     }
@@ -548,7 +560,18 @@ class MusicPlayerAppSessionImpl(
             },
             onCurrentTrackChanged = { nextTrack ->
                 _playbackProgress.value = PlaybackProgress(0L, nextTrack.durationMs, 0L)
-                _sessionState.value.activeServer?.let { loadTrackIntoEngine(it, nextTrack, 0L) }
+                val isLocal = nextTrack.serverId == LOCAL_STORAGE_ID ||
+                    nextTrack.remotePath.startsWith("content://") ||
+                    nextTrack.remotePath.startsWith("file://")
+                coroutineScope.launch {
+                    val effectiveServer = when {
+                        isLocal -> WebDavServer.createLocalStorage()
+                        _sessionState.value.activeServer?.id == nextTrack.serverId -> _sessionState.value.activeServer
+                        serverRepository != null -> serverRepository.getServerById(nextTrack.serverId) ?: _sessionState.value.activeServer
+                        else -> _sessionState.value.activeServer
+                    }
+                    effectiveServer?.let { loadTrackIntoEngine(it, nextTrack, 0L) }
+                }
             },
         )
     }

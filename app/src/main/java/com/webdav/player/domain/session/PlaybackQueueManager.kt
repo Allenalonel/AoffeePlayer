@@ -2,6 +2,7 @@ package com.webdav.player.domain.session
 
 import com.webdav.player.domain.cue.CueSheetResolver
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlaybackState
@@ -374,7 +375,7 @@ internal class PlaybackQueueManager(
         val cuePath = track.cuePath ?: (track.remotePath.substringBeforeLast('.') + ".cue")
         val targetServer =
             server?.takeIf { it.id == track.serverId }
-                ?: serverRepository?.getServerById(track.serverId)
+                ?: (if (track.serverId == LOCAL_STORAGE_ID) WebDavServer.createLocalStorage() else serverRepository?.getServerById(track.serverId))
                 ?: return null to 0L
 
         val virtualTracks =

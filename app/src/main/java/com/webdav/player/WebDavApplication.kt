@@ -131,6 +131,7 @@ class WebDavApplication :
                 serverRepository = serverRepository,
                 trackMetadataRepository = trackMetadataRepository,
                 webDavClient = webDavClient,
+                context = this,
             )
 
         val networkConnectivityObserver = DefaultNetworkConnectivityObserver(this)

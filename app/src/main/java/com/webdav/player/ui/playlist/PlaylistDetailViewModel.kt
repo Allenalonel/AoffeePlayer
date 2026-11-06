@@ -301,7 +301,8 @@ class PlaylistDetailViewModel(
                 }
             _toastEvent.tryEmit(message)
             if (track.inactiveReason == InactiveReason.SERVER_UNREACHABLE ||
-                track.inactiveReason == InactiveReason.SERVER_CREDENTIAL_INVALID
+                track.inactiveReason == InactiveReason.SERVER_CREDENTIAL_INVALID ||
+                track.inactiveReason == InactiveReason.FILE_NOT_FOUND
             ) {
                 viewModelScope.launch {
                     playlistRepository.triggerReachabilitySelfHealing()

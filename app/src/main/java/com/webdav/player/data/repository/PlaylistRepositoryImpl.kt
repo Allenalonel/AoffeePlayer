@@ -176,7 +176,11 @@ class PlaylistRepositoryImpl(
         }
         if (duplicateIds.isNotEmpty()) {
             coroutineScope.launch {
-                playlistDao.deleteTracksByIds(duplicateIds)
+                try {
+                    playlistDao.deleteTracksByIds(duplicateIds)
+                } catch (_: Exception) {
+                    // Ignore transient errors when database is closing
+                }
             }
         }
         val serverMap = servers?.associateBy { it.id }
@@ -209,7 +213,11 @@ class PlaylistRepositoryImpl(
                     val cachedMeta = trackMetadataRepository.getCachedMetadata(track.serverId, track.remotePath)
                     if (cachedMeta?.coverThumbnailPath != null) {
                         coroutineScope.launch {
-                            playlistDao.updateTrackCover(track.id, cachedMeta.coverThumbnailPath)
+                            try {
+                                playlistDao.updateTrackCover(track.id, cachedMeta.coverThumbnailPath)
+                            } catch (_: Exception) {
+                                // Ignore transient errors when database is closing
+                            }
                         }
                         track.copy(coverThumbnailPath = cachedMeta.coverThumbnailPath)
                     } else {

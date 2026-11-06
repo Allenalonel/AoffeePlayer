@@ -1,5 +1,7 @@
 package com.webdav.player.data.metadata
 
+import android.content.Context
+import android.net.Uri
 import com.webdav.player.data.local.CoverArtStorage
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.RemoteDirectory
@@ -21,6 +23,7 @@ internal class DefaultTrackMetadataResolver(
     private val webDavClient: WebDavClient,
     private val coverArtStorage: CoverArtStorage,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val context: Context? = null,
 ) {
     private val folderArtworkCache = ConcurrentHashMap<String, String>()
     private val folderLocks = ConcurrentHashMap<String, Mutex>()
@@ -42,17 +45,25 @@ internal class DefaultTrackMetadataResolver(
             val cleanFallbackTitle = file.name.substringBeforeLast('.').ifBlank { file.name }
 
             val rangeBytes =
-                if (server.isLocal || file.path.startsWith("/") || file.path.startsWith("file://")) {
+                if (server.isLocal || file.path.startsWith("/") || file.path.startsWith("file://") || file.path.startsWith("content://")) {
                     try {
                         val cleanPath = if (file.path.startsWith("file://")) file.path.removePrefix("file://") else file.path
-                        val localFile = File(cleanPath)
-                        if (localFile.exists()) {
-                            val maxToRead = minOf(localFile.length(), INITIAL_RANGE_END + 1).toInt()
-                            val bytes = ByteArray(maxToRead)
-                            localFile.inputStream().use { it.read(bytes, 0, maxToRead) }
-                            bytes
+                        if (cleanPath.startsWith("content://")) {
+                            context?.contentResolver?.openInputStream(Uri.parse(cleanPath))?.use { input ->
+                                val buffer = ByteArray((INITIAL_RANGE_END + 1).toInt())
+                                val bytesRead = input.read(buffer)
+                                if (bytesRead > 0) buffer.copyOf(bytesRead) else null
+                            }
                         } else {
-                            null
+                            val localFile = File(cleanPath)
+                            if (localFile.exists()) {
+                                val maxToRead = minOf(localFile.length(), INITIAL_RANGE_END + 1).toInt()
+                                val bytes = ByteArray(maxToRead)
+                                localFile.inputStream().use { it.read(bytes, 0, maxToRead) }
+                                bytes
+                            } else {
+                                null
+                            }
                         }
                     } catch (_: Exception) {
                         null
@@ -168,13 +179,30 @@ internal class DefaultTrackMetadataResolver(
 
         if (targetSize <= initialBytes.size) return initialBytes
 
-        if (server.isLocal || file.path.startsWith("/") || file.path.startsWith("file://")) {
+        if (server.isLocal || file.path.startsWith("/") || file.path.startsWith("file://") || file.path.startsWith("content://")) {
             val cleanPath = if (file.path.startsWith("file://")) file.path.removePrefix("file://") else file.path
-            val localFile = File(cleanPath)
-            if (localFile.exists()) {
-                val bytes = ByteArray(targetSize.toInt())
-                localFile.inputStream().use { it.read(bytes, 0, targetSize.toInt()) }
-                return bytes
+            if (cleanPath.startsWith("content://")) {
+                try {
+                    context?.contentResolver?.openInputStream(Uri.parse(cleanPath))?.use { input ->
+                        val buffer = ByteArray(targetSize.toInt())
+                        var totalRead = 0
+                        while (totalRead < targetSize.toInt()) {
+                            val read = input.read(buffer, totalRead, targetSize.toInt() - totalRead)
+                            if (read <= 0) break
+                            totalRead += read
+                        }
+                        return if (totalRead > 0) buffer.copyOf(totalRead) else initialBytes
+                    }
+                } catch (_: Exception) {
+                    return initialBytes
+                }
+            } else {
+                val localFile = File(cleanPath)
+                if (localFile.exists()) {
+                    val bytes = ByteArray(targetSize.toInt())
+                    localFile.inputStream().use { it.read(bytes, 0, targetSize.toInt()) }
+                    return bytes
+                }
             }
         }
 
@@ -369,13 +397,24 @@ internal class DefaultTrackMetadataResolver(
             return localThumb.absolutePath
         }
 
-        if (server.isLocal || candidatePath.startsWith("/") || candidatePath.startsWith("file://")) {
+        if (server.isLocal || candidatePath.startsWith("/") || candidatePath.startsWith("file://") || candidatePath.startsWith("content://")) {
             val cleanPath = if (candidatePath.startsWith("file://")) candidatePath.removePrefix("file://") else candidatePath
-            val localFile = File(cleanPath)
-            if (localFile.exists() && localFile.length() > 0L) {
-                val bytes = localFile.readBytes()
-                if (ImageHeaderValidator.isCompleteImage(bytes)) {
-                    return coverArtStorage.saveThumbnail(server.id, candidatePath, bytes)
+            if (cleanPath.startsWith("content://")) {
+                try {
+                    val bytes = context?.contentResolver?.openInputStream(Uri.parse(cleanPath))?.use { it.readBytes() }
+                    if (bytes != null && ImageHeaderValidator.isCompleteImage(bytes)) {
+                        return coverArtStorage.saveThumbnail(server.id, candidatePath, bytes)
+                    }
+                } catch (_: Exception) {
+                    return null
+                }
+            } else {
+                val localFile = File(cleanPath)
+                if (localFile.exists() && localFile.length() > 0L) {
+                    val bytes = localFile.readBytes()
+                    if (ImageHeaderValidator.isCompleteImage(bytes)) {
+                        return coverArtStorage.saveThumbnail(server.id, candidatePath, bytes)
+                    }
                 }
             }
             return null

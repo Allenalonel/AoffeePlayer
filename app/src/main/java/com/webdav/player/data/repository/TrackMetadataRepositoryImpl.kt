@@ -1,5 +1,7 @@
 package com.webdav.player.data.repository
 
+import android.content.Context
+import android.net.Uri
 import com.webdav.player.data.local.CoverArtStorage
 import com.webdav.player.data.local.TrackMetadataDao
 import com.webdav.player.data.local.TrackMetadataEntity
@@ -41,6 +43,7 @@ class TrackMetadataRepositoryImpl internal constructor(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val repositoryScope: CoroutineScope = CoroutineScope(SupervisorJob() + ioDispatcher),
     private val serverLookup: (suspend (Long) -> WebDavServer?)? = null,
+    private val context: Context? = null,
 ) : TrackMetadataRepository {
     constructor(
         trackMetadataDao: TrackMetadataDao,
@@ -51,9 +54,10 @@ class TrackMetadataRepositoryImpl internal constructor(
         ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
         repositoryScope: CoroutineScope = CoroutineScope(SupervisorJob() + ioDispatcher),
         serverLookup: (suspend (Long) -> WebDavServer?)? = null,
+        context: Context? = null,
     ) : this(
         trackMetadataDao = trackMetadataDao,
-        trackMetadataResolver = DefaultTrackMetadataResolver(webDavClient, coverArtStorage, ioDispatcher),
+        trackMetadataResolver = DefaultTrackMetadataResolver(webDavClient, coverArtStorage, ioDispatcher, context),
         coverArtStorage = coverArtStorage,
         webDavClient = webDavClient,
         webDavServerDao = webDavServerDao,
@@ -61,6 +65,7 @@ class TrackMetadataRepositoryImpl internal constructor(
         ioDispatcher = ioDispatcher,
         repositoryScope = repositoryScope,
         serverLookup = serverLookup,
+        context = context,
     )
 
     private val semaphore = Semaphore(maxConcurrency)
@@ -315,11 +320,16 @@ class TrackMetadataRepositoryImpl internal constructor(
                             track.remotePath.startsWith("file://") -> track.remotePath.removePrefix("file://")
                             else -> track.remotePath
                         }
-                    val lrcPath = cleanPath.substringBeforeLast('.') + ".lrc"
-                    val lrcFile = File(lrcPath)
-                    if (lrcFile.exists() && lrcFile.length() > 0L) {
-                        val text = lrcFile.readText()
-                        val parsed = LrcParser.parse(text)
+                    val lrcText: String? =
+                        if (cleanPath.startsWith("content://")) {
+                            context?.contentResolver?.openInputStream(Uri.parse(cleanPath))?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                        } else {
+                            val lrcPath = cleanPath.substringBeforeLast('.') + ".lrc"
+                            val lrcFile = File(lrcPath)
+                            if (lrcFile.exists() && lrcFile.length() > 0L) lrcFile.readText() else null
+                        }
+                    if (!lrcText.isNullOrBlank()) {
+                        val parsed = LrcParser.parse(lrcText)
                         if (parsed.isNotEmpty) {
                             resolvedLyricsCache[cacheKey] = parsed
                             return@withContext parsed

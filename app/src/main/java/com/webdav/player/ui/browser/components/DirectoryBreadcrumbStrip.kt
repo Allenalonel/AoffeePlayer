@@ -50,23 +50,7 @@ fun DirectoryBreadcrumbStrip(
     val scrollState = rememberScrollState()
     val isReduceMotion = isReduceMotionEnabled()
 
-    val cleanBreadcrumbs =
-        remember(breadcrumbs) {
-            breadcrumbs
-                .filterNot {
-                    it.name == "local" || it.path == "/local/" || it.path == "/local"
-                }.map { crumb ->
-                    if (crumb.name.startsWith("content%") || crumb.name.contains("%2F") ||
-                        crumb.name.contains("%3A") || crumb.name.startsWith("content://")
-                    ) {
-                        crumb.copy(name = RemoteDirectory.deriveMountedFolderName(crumb.name))
-                    } else {
-                        crumb
-                    }
-                }
-        }
-
-    LaunchedEffect(cleanBreadcrumbs, cleanBreadcrumbs.size) {
+    LaunchedEffect(breadcrumbs, breadcrumbs.size) {
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
@@ -80,9 +64,9 @@ fun DirectoryBreadcrumbStrip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        cleanBreadcrumbs.forEachIndexed { index, breadcrumb ->
+        breadcrumbs.forEachIndexed { index, breadcrumb ->
             val isTail =
-                index == cleanBreadcrumbs.lastIndex ||
+                index == breadcrumbs.lastIndex ||
                     breadcrumb.path == currentPath ||
                     RemoteDirectory.normalizePath(breadcrumb.path) == RemoteDirectory.normalizePath(currentPath)
 
@@ -173,7 +157,7 @@ fun DirectoryBreadcrumbStrip(
                         shape = MaterialTheme.shapes.small,
                     )
 
-                    if (index < cleanBreadcrumbs.lastIndex) {
+                    if (index < breadcrumbs.lastIndex) {
                         Icon(
                             imageVector = AppIcons.ChevronRight,
                             contentDescription = null,
@@ -185,22 +169,4 @@ fun DirectoryBreadcrumbStrip(
             }
         }
     }
-}
-
-/**
- * Backward compatibility alias for DirectoryBreadcrumbStrip
- */
-@Composable
-fun BreadcrumbBar(
-    breadcrumbs: List<Breadcrumb>,
-    currentPath: String,
-    onBreadcrumbClicked: (Breadcrumb) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    DirectoryBreadcrumbStrip(
-        breadcrumbs = breadcrumbs,
-        currentPath = currentPath,
-        onBreadcrumbClicked = onBreadcrumbClicked,
-        modifier = modifier,
-    )
 }

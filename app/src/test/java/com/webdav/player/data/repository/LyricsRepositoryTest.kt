@@ -12,8 +12,10 @@ import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.WebDavServer
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -74,6 +76,7 @@ class LyricsRepositoryTest {
                 webDavClient = fakeClient,
                 coverArtStorage = fakeStorage,
                 webDavServerDao = database.webDavServerDao(),
+                context = context,
                 maxConcurrency = 2,
                 ioDispatcher = Dispatchers.Unconfined,
             )
@@ -188,6 +191,90 @@ class LyricsRepositoryTest {
 
             repository.resolveLyrics(testServer, testTrack)
             assertEquals(2, fakeClient.fetchTextCount.get())
+        }
+
+    @Test
+    fun resolveLyrics_localTrack_withCompanionLrcInCachedMetadata_resolvesFromFile() =
+        runTest {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val lrcFile = File(context.cacheDir, "test_companion.lrc").apply {
+                writeText("[00:03.00]Local companion lyrics\n[00:07.00]Second line")
+            }
+            val localServer = WebDavServer.createLocalStorage()
+            val localTrack =
+                AudioTrack(
+                    id = "$LOCAL_STORAGE_ID:/storage/emulated/0/Music/Song.mp3",
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "/storage/emulated/0/Music/Song.mp3",
+                    title = "Song",
+                    format = AudioFormat.MP3,
+                )
+
+            dao.insertOrUpdate(
+                TrackMetadataEntity(
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = localTrack.remotePath,
+                    title = localTrack.title,
+                    artist = null,
+                    album = null,
+                    trackNumber = null,
+                    durationMs = 0L,
+                    coverThumbnailPath = null,
+                    lyrics = lrcFile.absolutePath,
+                ),
+            )
+
+            val lyrics = repository.resolveLyrics(localServer, localTrack)
+            assertTrue(lyrics.isSynchronized)
+            assertEquals(2, lyrics.lines.size)
+            assertEquals(3000L, lyrics.lines[0].timestampMs)
+            assertEquals("Local companion lyrics", lyrics.lines[0].text)
+
+            lrcFile.delete()
+        }
+
+    @Test
+    fun resolveLyrics_localTrack_companionLrcOnFilesystem_resolvesWithoutCachedLyrics() =
+        runTest {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val musicDir = File(context.cacheDir, "local_music_test").apply { mkdirs() }
+            val mp3File = File(musicDir, "Track01.mp3").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+            File(musicDir, "Track01.lrc").writeText("[00:02.50]Found on filesystem")
+
+            val localServer = WebDavServer.createLocalStorage()
+            val localTrack =
+                AudioTrack(
+                    id = "$LOCAL_STORAGE_ID:${mp3File.absolutePath}",
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = mp3File.absolutePath,
+                    title = "Track01",
+                    format = AudioFormat.MP3,
+                )
+
+            val lyrics = repository.resolveLyrics(localServer, localTrack)
+            assertTrue(lyrics.isSynchronized)
+            assertEquals(1, lyrics.lines.size)
+            assertEquals(2500L, lyrics.lines[0].timestampMs)
+            assertEquals("Found on filesystem", lyrics.lines[0].text)
+
+            musicDir.deleteRecursively()
+        }
+
+    @Test
+    fun resolveLyrics_localTrack_contentUriAudioPath_doesNotReadAudioAsLyrics() =
+        runTest {
+            val localServer = WebDavServer.createLocalStorage()
+            val localTrack =
+                AudioTrack(
+                    id = "$LOCAL_STORAGE_ID:content://media/external/audio/media/9999",
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://media/external/audio/media/9999",
+                    title = "Streaming Content Audio",
+                    format = AudioFormat.MP3,
+                )
+
+            val lyrics = repository.resolveLyrics(localServer, localTrack)
+            assertTrue(lyrics.isEmpty)
         }
 
     private class FakeLyricsWebDavClient : WebDavClient {

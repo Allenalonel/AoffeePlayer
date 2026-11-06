@@ -102,4 +102,40 @@ class RemoteDirectoryTest {
         assertEquals(Breadcrumb("Music", "/Music/"), crumbs[1])
         assertEquals(Breadcrumb("Rock", "/Music/Rock/"), crumbs[2])
     }
+
+    @Test
+    fun buildBreadcrumbs_localStorageRoot_returnsLocalStorageLabel() {
+        val localServer = WebDavServer.createLocalStorage()
+        val crumbs = RemoteDirectory.buildBreadcrumbs(localServer, "/")
+        assertEquals(1, crumbs.size)
+        assertEquals("本地存储", crumbs[0].name)
+        assertEquals("/", crumbs[0].path)
+    }
+
+    @Test
+    fun buildBreadcrumbs_localStorageMountedPath_derivesMountedFolderName() {
+        val localServer = WebDavServer.createLocalStorage()
+        val encodedUri = java.net.URLEncoder.encode("content://com.android.externalstorage.documents/tree/primary%3AMusic", "UTF-8")
+        val crumbs = RemoteDirectory.buildBreadcrumbs(localServer, "/local/$encodedUri/")
+
+        assertEquals(2, crumbs.size)
+        assertEquals("本地存储", crumbs[0].name)
+        assertEquals("Music", crumbs[1].name)
+        assertEquals("/local/$encodedUri/", crumbs[1].path)
+    }
+
+    @Test
+    fun buildBreadcrumbs_localStorageSubfolder_decodesSubfolderName() {
+        val localServer = WebDavServer.createLocalStorage()
+        val encodedUri = java.net.URLEncoder.encode("content://com.android.externalstorage.documents/tree/primary%3AMusic", "UTF-8")
+        val crumbs = RemoteDirectory.buildBreadcrumbs(localServer, "/local/$encodedUri/Rock%20Band/Queen/")
+
+        assertEquals(4, crumbs.size)
+        assertEquals("本地存储", crumbs[0].name)
+        assertEquals("Music", crumbs[1].name)
+        assertEquals("Rock Band", crumbs[2].name)
+        assertEquals("/local/$encodedUri/Rock%20Band/", crumbs[2].path)
+        assertEquals("Queen", crumbs[3].name)
+        assertEquals("/local/$encodedUri/Rock%20Band/Queen/", crumbs[3].path)
+    }
 }

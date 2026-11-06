@@ -40,11 +40,13 @@ class LocalStorageDirectoryResolverTest {
         companion object {
             val childrenMap = mutableMapOf<String, List<DocEntry>>()
             val fileContents = mutableMapOf<String, String>()
+            val fileBytes = mutableMapOf<String, ByteArray>()
             lateinit var tempDir: File
 
             fun reset(dir: File) {
                 childrenMap.clear()
                 fileContents.clear()
+                fileBytes.clear()
                 tempDir = dir
             }
         }
@@ -128,14 +130,23 @@ class LocalStorageDirectoryResolverTest {
             mode: String?,
             signal: CancellationSignal?,
         ): ParcelFileDescriptor {
-            val content =
-                fileContents[documentId]
-                    ?: fileContents.entries.firstOrNull {
+            val bytes =
+                fileBytes[documentId]
+                    ?: fileBytes.entries.firstOrNull {
                         documentId != null && (documentId.endsWith(it.key) || it.key.endsWith(documentId))
                     }?.value
-                    ?: ""
             val tempFile = File(tempDir, "temp_${documentId?.replace('/', '_') ?: "doc"}")
-            tempFile.writeText(content, Charsets.UTF_8)
+            if (bytes != null) {
+                tempFile.writeBytes(bytes)
+            } else {
+                val content =
+                    fileContents[documentId]
+                        ?: fileContents.entries.firstOrNull {
+                            documentId != null && (documentId.endsWith(it.key) || it.key.endsWith(documentId))
+                        }?.value
+                        ?: ""
+                tempFile.writeText(content, Charsets.UTF_8)
+            }
             return ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY)
         }
     }
@@ -348,5 +359,52 @@ class LocalStorageDirectoryResolverTest {
             assertEquals(2, album.tracks.size)
             assertEquals("Speak to Me", album.tracks[0].title)
             assertEquals("Breathe", album.tracks[1].title)
+        }
+
+    @Test
+    fun resolve_companionCover_withCoverArtStorage_savesPhysicalThumbnail() =
+        runTest {
+            val coverArtStorage = com.webdav.player.data.local.CoverArtStorageImpl(context)
+            val resolverWithStorage =
+                LocalStorageDirectoryResolver(
+                    context = context,
+                    serverRepository = FakeServerRepository(mountedFolders),
+                    coverArtStorage = coverArtStorage,
+                )
+
+            val rootDocId = "primary:Music"
+            TestDocumentsProvider.childrenMap[rootDocId] =
+                listOf(
+                    TestDocumentsProvider.DocEntry(
+                        docId = "primary:Music/Song.flac",
+                        displayName = "Song.flac",
+                        mimeType = "audio/flac",
+                        size = 20480000L,
+                    ),
+                    TestDocumentsProvider.DocEntry(
+                        docId = "primary:Music/cover.jpg",
+                        displayName = "cover.jpg",
+                        mimeType = "image/jpeg",
+                        size = 22L,
+                    ),
+                )
+            // Valid minimal JPEG bytes: SOI (FF D8) ... EOI (FF D9)
+            val fakeJpeg =
+                byteArrayOf(
+                    0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(),
+                    0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01,
+                    0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+                    0xFF.toByte(), 0xD9.toByte(),
+                )
+            TestDocumentsProvider.fileBytes["primary:Music/cover.jpg"] = fakeJpeg
+
+            val encodedTreeUri = URLEncoder.encode(TREE_URI_STRING, "UTF-8")
+            val result = resolverWithStorage.resolve("/local/$encodedTreeUri/")
+            val audioFile = result.directory.files.first { it.name == "Song.flac" }
+            val audioMeta = result.metadataMap[audioFile.path]
+            assertNotNull(audioMeta)
+            assertNotNull(audioMeta?.coverThumbnailPath)
+            assertTrue(audioMeta?.coverThumbnailPath!!.startsWith(context.cacheDir.absolutePath))
+            assertTrue(coverArtStorage.isValidThumbnailFile(audioMeta.coverThumbnailPath))
         }
 }

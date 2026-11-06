@@ -3,11 +3,11 @@ package com.webdav.player.domain.session
 import com.webdav.player.data.player.UnsupportedRangeReconnectionException
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.InactiveReason
-import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.PlaylistRepository
 import kotlinx.coroutines.CoroutineScope
@@ -49,9 +49,7 @@ internal class PlaybackFaultTolerance(
 
     fun onBufferingStarted() {
         val currentTrack = sessionStateFlow.value.currentTrack
-        val isLocalTrack = currentTrack?.serverId == LOCAL_STORAGE_ID ||
-            currentTrack?.remotePath?.startsWith("content://") == true ||
-            currentTrack?.remotePath?.startsWith("file://") == true
+        val isLocalTrack = currentTrack?.isLocal == true
         if (isLocalTrack) {
             return
         }
@@ -374,7 +372,7 @@ internal class PlaybackFaultTolerance(
                             val nextServer =
                                 if (server.id == nextTrack.serverId) {
                                     server
-                                } else if (nextTrack.serverId == LOCAL_STORAGE_ID) {
+                                } else if (nextTrack.isLocal) {
                                     WebDavServer.createLocalStorage()
                                 } else {
                                     serverRepository?.getServerById(nextTrack.serverId) ?: server

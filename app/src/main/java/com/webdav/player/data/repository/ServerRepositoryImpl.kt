@@ -1,5 +1,6 @@
 package com.webdav.player.data.repository
 
+import android.content.Context
 import com.webdav.player.data.local.CoverArtStorage
 import com.webdav.player.data.local.DirectoryCacheDao
 import com.webdav.player.data.local.LocalStorageFolderDao
@@ -24,8 +25,11 @@ class ServerRepositoryImpl(
     private val directoryCacheDao: DirectoryCacheDao? = null,
     private val trackMetadataDao: TrackMetadataDao? = null,
     private val localStorageFolderDao: LocalStorageFolderDao? = null,
+    private val context: Context? = null,
 ) : ServerRepository {
-    private val isLocalStorageActive = MutableStateFlow(false)
+    private val prefs = context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val isLocalStorageActive =
+        MutableStateFlow(prefs?.getLong(KEY_ACTIVE_STORAGE_ID, -1L) == LOCAL_STORAGE_ID)
 
     override fun getAllServers(): Flow<List<WebDavServer>> =
         combine(serverDao.getAllServersFlow(), getActiveServer()) { remoteServers, activeServer ->
@@ -62,12 +66,14 @@ class ServerRepositoryImpl(
         return if (server.id == 0L) {
             val newId = serverDao.insertServer(entity)
             if (shouldBeDefault) {
+                prefs?.edit()?.remove(KEY_ACTIVE_STORAGE_ID)?.apply()
                 serverDao.setActiveServer(newId)
                 isLocalStorageActive.value = false
             }
             newId
         } else {
             if (server.isDefault) {
+                prefs?.edit()?.remove(KEY_ACTIVE_STORAGE_ID)?.apply()
                 serverDao.setActiveServer(server.id)
                 isLocalStorageActive.value = false
             }
@@ -96,9 +102,11 @@ class ServerRepositoryImpl(
 
     override suspend fun setActiveServer(id: Long) {
         if (id == LOCAL_STORAGE_ID) {
+            prefs?.edit()?.putLong(KEY_ACTIVE_STORAGE_ID, LOCAL_STORAGE_ID)?.apply()
             serverDao.setActiveServer(LOCAL_STORAGE_ID)
             isLocalStorageActive.value = true
         } else {
+            prefs?.edit()?.remove(KEY_ACTIVE_STORAGE_ID)?.apply()
             serverDao.setActiveServer(id)
             isLocalStorageActive.value = false
         }
@@ -121,5 +129,10 @@ class ServerRepositoryImpl(
 
     override suspend fun removeMountedLocalFolder(uriString: String) {
         localStorageFolderDao?.deleteFolderByUri(uriString)
+    }
+
+    companion object {
+        private const val PREFS_NAME = "local_storage_prefs"
+        private const val KEY_ACTIVE_STORAGE_ID = "active_storage_id"
     }
 }

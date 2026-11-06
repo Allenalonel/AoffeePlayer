@@ -84,6 +84,7 @@ class WebDavApplication :
                 directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
                 localStorageFolderDao = database.localStorageFolderDao(),
+                context = this,
             )
 
         trackMetadataRepository =
@@ -110,7 +111,12 @@ class WebDavApplication :
         val cueSheetResolver = DefaultCueSheetResolver(webDavClient)
         this.cueSheetResolver = cueSheetResolver
 
-        val localStorageDirectoryResolver = LocalStorageDirectoryResolver(this, serverRepository)
+        val localStorageDirectoryResolver =
+            LocalStorageDirectoryResolver(
+                context = this,
+                serverRepository = serverRepository,
+                coverArtStorage = coverArtStorage,
+            )
         val directoryRepository =
             DirectoryRepositoryImpl(
                 webDavClient = webDavClient,

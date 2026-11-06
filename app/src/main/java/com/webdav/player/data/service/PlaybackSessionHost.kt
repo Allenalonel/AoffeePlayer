@@ -23,9 +23,9 @@ import com.webdav.player.data.player.DefaultStreamingHardwareLockManager
 import com.webdav.player.data.player.Media3AudioPlayerEngine
 import com.webdav.player.data.player.StreamingHardwareLockManager
 import com.webdav.player.domain.model.AudioTrack
-import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.session.MusicPlayerAppSession
 import kotlinx.coroutines.CoroutineScope
@@ -217,9 +217,7 @@ class PlaybackSessionHost(
                     val currentTrack = session.sessionState.value.currentTrack
                     val isPlaying = session.sessionState.value.isPlaying || playerEngine.playWhenReady
                     if (isPlaying && currentTrack != null) {
-                        val isLocal = currentTrack.serverId == LOCAL_STORAGE_ID ||
-                            currentTrack.remotePath.startsWith("content://") ||
-                            currentTrack.remotePath.startsWith("file://")
+                        val isLocal = currentTrack.isLocal
                         if (isLocal) {
                             hardwareLockManager.acquireWakeLockOnly()
                         } else {
@@ -310,9 +308,7 @@ class PlaybackSessionHost(
     @VisibleForTesting
     fun handlePlaybackStateChanged(state: PlaybackState) {
         val currentTrack = appSession?.sessionState?.value?.currentTrack
-        val isLocalTrack = currentTrack?.serverId == LOCAL_STORAGE_ID ||
-            currentTrack?.remotePath?.startsWith("content://") == true ||
-            currentTrack?.remotePath?.startsWith("file://") == true
+        val isLocalTrack = currentTrack?.isLocal == true
 
         when (state) {
             is PlaybackState.Playing -> {

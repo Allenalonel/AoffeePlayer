@@ -10,7 +10,6 @@ import com.webdav.player.data.lyrics.LrcParser
 import com.webdav.player.data.metadata.DefaultTrackMetadataResolver
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioTrack
-import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.Lyrics
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
@@ -310,29 +309,58 @@ class TrackMetadataRepositoryImpl internal constructor(
             resolvedLyricsCache[cacheKey]?.let { return@withContext it }
 
             // 1. Probe directory for ${baseName}.lrc
-            val isLocal = server.isLocal || track.serverId == LOCAL_STORAGE_ID ||
-                track.remotePath.startsWith("content://") || track.remotePath.startsWith("file://")
+            val isLocal = server.isLocal || track.isLocal
 
             if (isLocal) {
                 try {
-                    val cleanPath =
-                        when {
-                            track.remotePath.startsWith("file://") -> track.remotePath.removePrefix("file://")
-                            else -> track.remotePath
+                    val cachedMetadata = getCachedMetadata(server.id, track.remotePath)
+                    val rawLyrics = cachedMetadata?.lyrics?.takeIf { it.isNotBlank() }
+
+                    if (rawLyrics != null) {
+                        val lrcText: String? =
+                            when {
+                                rawLyrics.startsWith("content://") -> {
+                                    context?.contentResolver?.openInputStream(Uri.parse(rawLyrics))
+                                        ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                                }
+                                rawLyrics.startsWith("[") -> {
+                                    rawLyrics
+                                }
+                                else -> {
+                                    val cleanLyricsPath =
+                                        if (rawLyrics.startsWith("file://")) {
+                                            rawLyrics.removePrefix("file://")
+                                        } else {
+                                            rawLyrics
+                                        }
+                                    val lrcFile = File(cleanLyricsPath)
+                                    if (lrcFile.exists() && lrcFile.length() > 0L) lrcFile.readText() else rawLyrics
+                                }
+                            }
+                        if (!lrcText.isNullOrBlank()) {
+                            val parsed = LrcParser.parse(lrcText)
+                            if (parsed.isNotEmpty) {
+                                resolvedLyricsCache[cacheKey] = parsed
+                                return@withContext parsed
+                            }
                         }
-                    val lrcText: String? =
-                        if (cleanPath.startsWith("content://")) {
-                            context?.contentResolver?.openInputStream(Uri.parse(cleanPath))?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                        } else {
-                            val lrcPath = cleanPath.substringBeforeLast('.') + ".lrc"
-                            val lrcFile = File(lrcPath)
-                            if (lrcFile.exists() && lrcFile.length() > 0L) lrcFile.readText() else null
-                        }
-                    if (!lrcText.isNullOrBlank()) {
-                        val parsed = LrcParser.parse(lrcText)
-                        if (parsed.isNotEmpty) {
-                            resolvedLyricsCache[cacheKey] = parsed
-                            return@withContext parsed
+                    }
+
+                    // If no cached lyrics, look for companion .lrc: do NOT read track.remotePath (audio file) as lyrics!
+                    // If track.remotePath is "file://", check companion file. If content://, companion was already in cached metadata.
+                    if (track.remotePath.startsWith("file://") || (!track.remotePath.startsWith("content://") && !track.remotePath.contains("://"))) {
+                        val cleanPath = track.remotePath.removePrefix("file://")
+                        val lrcPath = cleanPath.substringBeforeLast('.') + ".lrc"
+                        val lrcFile = File(lrcPath)
+                        if (lrcFile.exists() && lrcFile.length() > 0L) {
+                            val lrcText = lrcFile.readText()
+                            if (lrcText.isNotBlank()) {
+                                val parsed = LrcParser.parse(lrcText)
+                                if (parsed.isNotEmpty) {
+                                    resolvedLyricsCache[cacheKey] = parsed
+                                    return@withContext parsed
+                                }
+                            }
                         }
                     }
                 } catch (_: Exception) {
@@ -358,8 +386,12 @@ class TrackMetadataRepositoryImpl internal constructor(
             try {
                 val file = RemoteFile(name = track.title, path = track.remotePath)
                 val embeddedText: String? =
-                    getCachedMetadata(server.id, track.remotePath)?.lyrics?.takeIf { it.isNotBlank() }
-                        ?: resolveSingleTrackMetadata(server, file).lyrics
+                    if (isLocal) {
+                        resolveSingleTrackMetadata(server, file).lyrics?.takeIf { !it.startsWith("content://") }
+                    } else {
+                        getCachedMetadata(server.id, track.remotePath)?.lyrics?.takeIf { it.isNotBlank() }
+                            ?: resolveSingleTrackMetadata(server, file).lyrics
+                    }
 
                 if (!embeddedText.isNullOrBlank()) {
                     val parsed = LrcParser.parse(embeddedText)

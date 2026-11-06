@@ -83,3 +83,7 @@ data class AudioTrack(
         }
     }
 }
+
+val AudioTrack.isLocal: Boolean
+    get() = serverId == LOCAL_STORAGE_ID || remotePath.startsWith("content://") || remotePath.startsWith("file://")
+

@@ -6,6 +6,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
 import com.webdav.player.data.cue.CueParser
+import com.webdav.player.data.local.CoverArtStorage
+import com.webdav.player.data.metadata.ImageHeaderValidator
 import com.webdav.player.domain.model.CueAlbumItem
 import com.webdav.player.domain.model.DirectoryContent
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
@@ -32,6 +34,7 @@ import java.net.URLEncoder
 class LocalStorageDirectoryResolver(
     private val context: Context,
     private val serverRepository: ServerRepository,
+    private val coverArtStorage: CoverArtStorage? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val contentResolver: ContentResolver = context.contentResolver,
 ) {
@@ -161,6 +164,24 @@ class LocalStorageDirectoryResolver(
                     base in listOf("cover", "folder", "front", "album")
                 } ?: imageFiles.firstOrNull()
 
+            val resolvedCoverThumbnailPath: String? =
+                if (companionCover != null && coverArtStorage != null) {
+                    try {
+                        val bytes =
+                            contentResolver.openInputStream(Uri.parse(companionCover.path))?.use { it.readBytes() }
+                        if (bytes != null && ImageHeaderValidator.isCompleteImage(bytes)) {
+                            coverArtStorage.saveThumbnail(LOCAL_STORAGE_ID, companionCover.path, bytes)
+                                ?: companionCover.path
+                        } else {
+                            companionCover.path
+                        }
+                    } catch (_: Exception) {
+                        companionCover.path
+                    }
+                } else {
+                    companionCover?.path
+                }
+
             val metadataMap = mutableMapOf<String, TrackMetadata>()
             for (audio in audioFiles) {
                 val audioBase = audio.name.substringBeforeLast('.')
@@ -176,7 +197,7 @@ class LocalStorageDirectoryResolver(
                         artist = null,
                         album = null,
                         durationMs = 0L,
-                        coverThumbnailPath = companionCover?.path,
+                        coverThumbnailPath = resolvedCoverThumbnailPath,
                         lyrics = companionLrc?.path,
                     )
             }

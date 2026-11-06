@@ -18,7 +18,6 @@ import androidx.media3.extractor.ExtractorsFactory
 import com.webdav.player.data.remote.OkHttpWebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
-import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
 import okhttp3.ConnectionPool
@@ -94,11 +93,7 @@ internal class WebDavMediaSourceBuilder(
         track: AudioTrack,
     ): MediaSource {
         val mediaItem = createMediaItem(server, track)
-        val streamUrl = track.streamUrl(server)
-        val isLocalTrack = server.isLocal ||
-            track.serverId == LOCAL_STORAGE_ID ||
-            streamUrl.startsWith("content://") ||
-            streamUrl.startsWith("file://")
+        val isLocalTrack = server.isLocal || track.isLocal
 
         val dataSourceFactory =
             if (isLocalTrack) {

@@ -52,6 +52,7 @@ class ServerRepositoryTest {
                 directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
                 localStorageFolderDao = database.localStorageFolderDao(),
+                context = context,
             )
     }
 
@@ -306,5 +307,66 @@ class ServerRepositoryTest {
 
             assertNull(dirDao.getCache(id1, "/Music/"))
             assertNull(metaDao.getMetadata(id1, "/Music/song.mp3"))
+        }
+
+    @Test
+    fun setActiveServer_localStorage_persistsAcrossColdStart() =
+        runTest {
+            val s1 = WebDavServer(name = "Server 1", url = "http://srv1")
+            val id1 = repository.saveServer(s1)
+            assertEquals(id1, repository.getActiveServer().first()?.id)
+
+            // Switch to local storage
+            repository.setActiveServer(LOCAL_STORAGE_ID)
+            val activeLocal = repository.getActiveServer().first()
+            assertNotNull(activeLocal)
+            assertEquals(LOCAL_STORAGE_ID, activeLocal?.id)
+            assertTrue(activeLocal?.isDefault == true)
+
+            // Simulate cold restart with a new repository instance sharing the same context and DB
+            val restartedRepo =
+                ServerRepositoryImpl(
+                    serverDao = database.webDavServerDao(),
+                    coverArtStorage = coverArtStorage,
+                    directoryCacheDao = database.directoryCacheDao(),
+                    trackMetadataDao = database.trackMetadataDao(),
+                    localStorageFolderDao = database.localStorageFolderDao(),
+                    context = context,
+                )
+
+            val coldStartActive = restartedRepo.getActiveServer().first()
+            assertNotNull(coldStartActive)
+            assertEquals(LOCAL_STORAGE_ID, coldStartActive?.id)
+            assertTrue(coldStartActive?.isDefault == true)
+        }
+
+    @Test
+    fun setActiveServer_remoteServer_clearsLocalStoragePersistence() =
+        runTest {
+            val s1 = WebDavServer(name = "Server 1", url = "http://srv1")
+            val id1 = repository.saveServer(s1)
+
+            // First activate local storage
+            repository.setActiveServer(LOCAL_STORAGE_ID)
+            assertEquals(LOCAL_STORAGE_ID, repository.getActiveServer().first()?.id)
+
+            // Switch back to remote server
+            repository.setActiveServer(id1)
+            assertEquals(id1, repository.getActiveServer().first()?.id)
+
+            // Simulate cold restart
+            val restartedRepo =
+                ServerRepositoryImpl(
+                    serverDao = database.webDavServerDao(),
+                    coverArtStorage = coverArtStorage,
+                    directoryCacheDao = database.directoryCacheDao(),
+                    trackMetadataDao = database.trackMetadataDao(),
+                    localStorageFolderDao = database.localStorageFolderDao(),
+                    context = context,
+                )
+
+            val coldStartActive = restartedRepo.getActiveServer().first()
+            assertNotNull(coldStartActive)
+            assertEquals(id1, coldStartActive?.id)
         }
 }

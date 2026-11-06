@@ -14,7 +14,9 @@
 
 ## 活跃任务 (Active)
 
-当前暂无进行中的活跃特性任务。
+| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 规范路径 |
+| :--- | :--- | :---: | :---: | :--- |
+| `local-storage-support` | 本地存储集成、SAF 多目录挂载与跨源混编播放 (ADR-0032) | 5 | In Progress | [`local-storage-support/spec.md`](local-storage-support/spec.md) |
 
 ---
 

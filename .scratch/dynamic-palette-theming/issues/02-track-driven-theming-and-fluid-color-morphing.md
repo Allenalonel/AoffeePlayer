@@ -4,10 +4,10 @@
 
 **Blocked by:** 01 (AndroidX Palette 依赖注入与 M3E 色彩推导引擎重构)
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] 音轨驱动全域换肤：全域主题 ColorScheme 100% 随当前在播音轨实时自适应，启动与运行期均以当前在播曲目为唯一色源。
-- [ ] 动画管线全域补全：`animatedColorScheme` 扩展覆盖 Primary、PrimaryContainer、Background、SurfaceContainer 等关键色调层级。
-- [ ] 450ms 流体物理缓动：切歌触发的主题切换在 450ms 内丝滑渐变过度，无突兀跳色。
-- [ ] 全域主界面一致性：长列表卡片、顶栏折叠雾化层及底栏药丸指示舱在切歌时和谐演变。
-- [ ] 主题测试通过：相关主题与动画单元测试全部通过。
+- [x] 音轨驱动全域换肤：全域主题 ColorScheme 100% 随当前在播音轨实时自适应，启动与运行期均以当前在播曲目为唯一色源。
+- [x] 动画管线全域补全：`animatedColorScheme` 扩展覆盖 Primary、PrimaryContainer、Background、SurfaceContainer 等关键色调层级。
+- [x] 450ms 流体物理缓动：切歌触发的主题切换在 450ms 内丝滑渐变过度，无突兀跳色。
+- [x] 全域主界面一致性：长列表卡片、顶栏折叠雾化层及底栏药丸指示舱在切歌时和谐演变。
+- [x] 主题测试通过：相关主题与动画单元测试全部通过。

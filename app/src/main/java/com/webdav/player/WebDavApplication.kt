@@ -82,6 +82,7 @@ class WebDavApplication :
                 webDavClient = webDavClient,
                 directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
+                localStorageFolderDao = database.localStorageFolderDao(),
             )
 
         trackMetadataRepository =

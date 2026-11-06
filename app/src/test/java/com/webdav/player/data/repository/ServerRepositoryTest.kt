@@ -8,7 +8,9 @@ import com.webdav.player.data.local.CoverArtStorageImpl
 import com.webdav.player.data.local.DirectoryCacheEntity
 import com.webdav.player.data.local.TrackMetadataEntity
 import com.webdav.player.data.remote.OkHttpWebDavClient
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -49,6 +51,7 @@ class ServerRepositoryTest {
                 coverArtStorage = coverArtStorage,
                 directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
+                localStorageFolderDao = database.localStorageFolderDao(),
             )
     }
 
@@ -59,11 +62,14 @@ class ServerRepositoryTest {
     }
 
     @Test
-    fun initially_getAllServers_isEmpty_andActiveServer_isNull() =
+    fun initially_getAllServers_hasPinnedLocalStorage_andActiveServer_isNull() =
         runTest {
             val servers = repository.getAllServers().first()
             val active = repository.getActiveServer().first()
-            assertTrue(servers.isEmpty())
+            assertEquals(1, servers.size)
+            assertEquals(LOCAL_STORAGE_ID, servers.first().id)
+            assertEquals("本地存储", servers.first().name)
+            assertFalse(servers.first().isDefault)
             assertNull(active)
         }
 
@@ -133,12 +139,79 @@ class ServerRepositoryTest {
     fun deleteServer_removesServerFromDatabase() =
         runTest {
             val id = repository.saveServer(WebDavServer(name = "To Delete", url = "http://delete-me"))
-            assertEquals(1, repository.getAllServers().first().size)
+            assertEquals(2, repository.getAllServers().first().size)
 
             repository.deleteServer(id)
 
-            assertTrue(repository.getAllServers().first().isEmpty())
+            val servers = repository.getAllServers().first()
+            assertEquals(1, servers.size)
+            assertEquals(LOCAL_STORAGE_ID, servers.first().id)
             assertNull(repository.getServerById(id))
+        }
+
+    @Test
+    fun deleteServer_withLocalStorageId_doesNothing() =
+        runTest {
+            repository.deleteServer(LOCAL_STORAGE_ID)
+            val servers = repository.getAllServers().first()
+            assertEquals(1, servers.size)
+            assertEquals(LOCAL_STORAGE_ID, servers.first().id)
+        }
+
+    @Test
+    fun getServerById_withLocalStorageId_returnsLocalStorageNode() =
+        runTest {
+            val local = repository.getServerById(LOCAL_STORAGE_ID)
+            assertNotNull(local)
+            assertEquals(LOCAL_STORAGE_ID, local?.id)
+            assertEquals("本地存储", local?.name)
+        }
+
+    @Test
+    fun setActiveServer_withLocalStorageId_activatesLocalAndDeactivatesRemote() =
+        runTest {
+            val id = repository.saveServer(WebDavServer(name = "NAS", url = "http://nas"))
+            var active = repository.getActiveServer().first()
+            assertEquals(id, active?.id)
+
+            // Switch to local storage
+            repository.setActiveServer(LOCAL_STORAGE_ID)
+
+            active = repository.getActiveServer().first()
+            assertNotNull(active)
+            assertEquals(LOCAL_STORAGE_ID, active?.id)
+            assertTrue(active?.isLocal == true)
+            assertTrue(active?.isDefault == true)
+
+            val remote = repository.getServerById(id)
+            assertFalse(remote?.isDefault == true)
+
+            val servers = repository.getAllServers().first()
+            assertTrue(servers.first().isDefault)
+            assertFalse(servers[1].isDefault)
+
+            // Switch back to remote
+            repository.setActiveServer(id)
+            active = repository.getActiveServer().first()
+            assertEquals(id, active?.id)
+            assertFalse(active?.isLocal == true)
+        }
+
+    @Test
+    fun mountedFolders_addGetRemove_worksCorrectly() =
+        runTest {
+            var folders = repository.getMountedLocalFolders().first()
+            assertTrue(folders.isEmpty())
+
+            repository.addMountedLocalFolder("content://tree/music", "My Music")
+            folders = repository.getMountedLocalFolders().first()
+            assertEquals(1, folders.size)
+            assertEquals("content://tree/music", folders.first().uriString)
+            assertEquals("My Music", folders.first().displayName)
+
+            repository.removeMountedLocalFolder("content://tree/music")
+            folders = repository.getMountedLocalFolders().first()
+            assertTrue(folders.isEmpty())
         }
 
     @Test

@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
+import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +21,8 @@ import kotlinx.coroutines.launch
 data class ServerManagementUiState(
     val servers: List<WebDavServer> = emptyList(),
     val activeServer: WebDavServer? = null,
+    val mountedFolders: List<LocalStorageFolder> = emptyList(),
+    val isManageFoldersSheetVisible: Boolean = false,
     val isLoading: Boolean = false,
     val isAddEditDialogVisible: Boolean = false,
     val serverToEdit: WebDavServer? = null,
@@ -27,7 +32,14 @@ data class ServerManagementUiState(
     val testingServerId: Long? = null,
     val serverConnectionResults: Map<Long, ConnectionResult> = emptyMap(),
     val userMessage: String? = null,
-)
+) {
+    val remoteServers: List<WebDavServer>
+        get() = servers.filter { !it.isLocal }
+
+    val localStorageServer: WebDavServer
+        get() = servers.firstOrNull { it.isLocal }
+            ?: WebDavServer.createLocalStorage(isDefault = activeServer?.id == LOCAL_STORAGE_ID)
+}
 
 class ServerManagementViewModel(
     private val repository: ServerRepository,
@@ -45,17 +57,21 @@ class ServerManagementViewModel(
         val testingServerId: Long? = null,
         val serverConnectionResults: Map<Long, ConnectionResult> = emptyMap(),
         val userMessage: String? = null,
+        val isManageFoldersSheetVisible: Boolean = false,
     )
 
     val uiState: StateFlow<ServerManagementUiState> =
         combine(
             repository.getAllServers(),
             repository.getActiveServer(),
+            repository.getMountedLocalFolders(),
             _dialogAndActionState,
-        ) { servers, activeServer, dialogState ->
+        ) { servers, activeServer, mountedFolders, dialogState ->
             ServerManagementUiState(
                 servers = servers,
                 activeServer = activeServer,
+                mountedFolders = mountedFolders,
+                isManageFoldersSheetVisible = dialogState.isManageFoldersSheetVisible,
                 isLoading = false,
                 isAddEditDialogVisible = dialogState.isAddEditDialogVisible,
                 serverToEdit = dialogState.serverToEdit,
@@ -180,6 +196,26 @@ class ServerManagementViewModel(
     fun onClearConnectionTestResult() {
         _dialogAndActionState.update {
             it.copy(connectionTestResult = null)
+        }
+    }
+
+    fun onOpenManageFolders() {
+        _dialogAndActionState.update { it.copy(isManageFoldersSheetVisible = true) }
+    }
+
+    fun onDismissManageFolders() {
+        _dialogAndActionState.update { it.copy(isManageFoldersSheetVisible = false) }
+    }
+
+    fun onAddMountedFolder(uriString: String, displayName: String) {
+        viewModelScope.launch {
+            repository.addMountedLocalFolder(uriString, displayName)
+        }
+    }
+
+    fun onRemoveMountedFolder(uriString: String) {
+        viewModelScope.launch {
+            repository.removeMountedLocalFolder(uriString)
         }
     }
 }

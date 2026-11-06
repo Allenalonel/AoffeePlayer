@@ -2,13 +2,17 @@ package com.webdav.player.ui.server
 
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
+import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -252,10 +256,81 @@ class ServerManagementViewModelTest {
 
             assertEquals(11L, clearedServerId)
         }
+
+    @Test
+    fun manageFoldersSheet_openAndDismiss_togglesVisibility() =
+        runTest {
+            assertFalse(viewModel.uiState.value.isManageFoldersSheetVisible)
+
+            viewModel.onOpenManageFolders()
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isManageFoldersSheetVisible)
+
+            viewModel.onDismissManageFolders()
+            advanceUntilIdle()
+            assertFalse(viewModel.uiState.value.isManageFoldersSheetVisible)
+        }
+
+    @Test
+    fun addMountedFolder_and_removeMountedFolder_updatesUiState() =
+        runTest {
+            assertTrue(viewModel.uiState.value.mountedFolders.isEmpty())
+
+            viewModel.onAddMountedFolder("content://tree/music", "My Music")
+            advanceUntilIdle()
+
+            val stateAfterAdd = viewModel.uiState.value
+            assertEquals(1, stateAfterAdd.mountedFolders.size)
+            assertEquals("content://tree/music", stateAfterAdd.mountedFolders.first().uriString)
+            assertEquals("My Music", stateAfterAdd.mountedFolders.first().displayName)
+
+            viewModel.onRemoveMountedFolder("content://tree/music")
+            advanceUntilIdle()
+
+            val stateAfterRemove = viewModel.uiState.value
+            assertTrue(stateAfterRemove.mountedFolders.isEmpty())
+        }
+
+    @Test
+    fun selectActiveServer_withLocalStorageId_activatesLocalStorage() =
+        runTest {
+            val server = WebDavServer(id = 100L, name = "Remote", url = "http://remote", isDefault = true)
+            fakeRepository.addServerDirectly(server)
+            advanceUntilIdle()
+
+            assertEquals(100L, viewModel.uiState.value.activeServer?.id)
+
+            viewModel.onSelectActiveServer(LOCAL_STORAGE_ID)
+            advanceUntilIdle()
+
+            val active = viewModel.uiState.value.activeServer
+            assertNotNull(active)
+            assertEquals(LOCAL_STORAGE_ID, active?.id)
+            assertTrue(active?.isLocal == true)
+            assertTrue(active?.isDefault == true)
+        }
+
+    @Test
+    fun remoteServers_and_localStorageServer_computedCorrectly() =
+        runTest {
+            val remote1 = WebDavServer(id = 1L, name = "Remote 1", url = "http://r1")
+            val local = WebDavServer.createLocalStorage(isDefault = false)
+            fakeRepository.addServerDirectly(local)
+            fakeRepository.addServerDirectly(remote1)
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(2, state.servers.size)
+            assertEquals(1, state.remoteServers.size)
+            assertEquals(1L, state.remoteServers.first().id)
+            assertEquals(LOCAL_STORAGE_ID, state.localStorageServer.id)
+        }
 }
 
 private class FakeServerRepository : ServerRepository {
     private val serversFlow = MutableStateFlow<List<WebDavServer>>(emptyList())
+    private val foldersFlow = MutableStateFlow<List<LocalStorageFolder>>(emptyList())
+    private val isLocalStorageActiveFlow = MutableStateFlow(false)
     val savedServers get() = serversFlow.value
 
     fun addServerDirectly(server: WebDavServer) {
@@ -265,8 +340,12 @@ private class FakeServerRepository : ServerRepository {
     override fun getAllServers(): Flow<List<WebDavServer>> = serversFlow
 
     override fun getActiveServer(): Flow<WebDavServer?> =
-        serversFlow.map { list ->
-            list.firstOrNull { it.isDefault }
+        combine(serversFlow, isLocalStorageActiveFlow) { list, localActive ->
+            if (localActive) {
+                WebDavServer.createLocalStorage(isDefault = true)
+            } else {
+                list.firstOrNull { it.isDefault }
+            }
         }
 
     override suspend fun getServerById(id: Long): WebDavServer? = serversFlow.value.firstOrNull { it.id == id }
@@ -298,10 +377,26 @@ private class FakeServerRepository : ServerRepository {
     }
 
     override suspend fun setActiveServer(id: Long) {
-        serversFlow.value =
-            serversFlow.value.map {
-                it.copy(isDefault = (it.id == id))
-            }
+        if (id == LOCAL_STORAGE_ID) {
+            isLocalStorageActiveFlow.value = true
+            serversFlow.value = serversFlow.value.map { it.copy(isDefault = false) }
+        } else {
+            isLocalStorageActiveFlow.value = false
+            serversFlow.value =
+                serversFlow.value.map {
+                    it.copy(isDefault = (it.id == id))
+                }
+        }
+    }
+
+    override fun getMountedLocalFolders(): Flow<List<LocalStorageFolder>> = foldersFlow
+
+    override suspend fun addMountedLocalFolder(uriString: String, displayName: String) {
+        foldersFlow.value = foldersFlow.value + LocalStorageFolder(uriString, displayName)
+    }
+
+    override suspend fun removeMountedLocalFolder(uriString: String) {
+        foldersFlow.value = foldersFlow.value.filterNot { it.uriString == uriString }
     }
 }
 

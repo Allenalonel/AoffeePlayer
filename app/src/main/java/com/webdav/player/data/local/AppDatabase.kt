@@ -14,8 +14,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DirectoryCacheEntity::class,
         PlaylistEntity::class,
         PlaylistTrackEntity::class,
+        LocalStorageFolderEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -26,6 +27,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun directoryCacheDao(): DirectoryCacheDao
 
     abstract fun playlistDao(): PlaylistDao
+
+    abstract fun localStorageFolderDao(): LocalStorageFolderDao
 
     companion object {
         @Volatile
@@ -98,6 +101,22 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        val MIGRATION_5_6 =
+            object : Migration(5, 6) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `local_storage_folders` (
+                            `uriString` TEXT NOT NULL,
+                            `displayName` TEXT NOT NULL,
+                            `dateAdded` INTEGER NOT NULL,
+                            PRIMARY KEY(`uriString`)
+                        )
+                        """.trimIndent(),
+                    )
+                }
+            }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance =
@@ -106,7 +125,7 @@ abstract class AppDatabase : RoomDatabase() {
                             context.applicationContext,
                             AppDatabase::class.java,
                             "webdav_player.db",
-                        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+                        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                         .fallbackToDestructiveMigration()
                         .build()
                 INSTANCE = instance

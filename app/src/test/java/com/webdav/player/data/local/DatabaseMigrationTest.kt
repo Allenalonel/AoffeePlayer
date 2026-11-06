@@ -143,4 +143,92 @@ class DatabaseMigrationTest {
 
         db.close()
     }
+
+    @Test
+    fun migration_5_to_6_createsLocalStorageFoldersTablePreservingExistingData() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val dbFile = context.getDatabasePath("test_migration_v6.db")
+        dbFile.delete()
+
+        val openHelper =
+            FrameworkSQLiteOpenHelperFactory().create(
+                androidx.sqlite.db.SupportSQLiteOpenHelper.Configuration
+                    .builder(context)
+                    .name("test_migration_v6.db")
+                    .callback(
+                        object : androidx.sqlite.db.SupportSQLiteOpenHelper.Callback(5) {
+                            override fun onCreate(db: SupportSQLiteDatabase) {
+                                // Version 5 schema
+                                db.execSQL(
+                                    """
+                                    CREATE TABLE IF NOT EXISTS `servers` (
+                                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                                        `name` TEXT NOT NULL,
+                                        `url` TEXT NOT NULL,
+                                        `username` TEXT NOT NULL,
+                                        `password` TEXT NOT NULL,
+                                        `isDefault` INTEGER NOT NULL,
+                                        `allowSelfSigned` INTEGER NOT NULL DEFAULT 0
+                                    )
+                                    """.trimIndent(),
+                                )
+                                db.execSQL(
+                                    """
+                                    CREATE TABLE IF NOT EXISTS `playlists` (
+                                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                                        `name` TEXT NOT NULL,
+                                        `createdAtMs` INTEGER NOT NULL,
+                                        `updatedAtMs` INTEGER NOT NULL
+                                    )
+                                    """.trimIndent(),
+                                )
+                            }
+
+                            override fun onUpgrade(
+                                db: SupportSQLiteDatabase,
+                                oldVersion: Int,
+                                newVersion: Int,
+                            ) {}
+                        },
+                    ).build(),
+            )
+
+        val db = openHelper.writableDatabase
+
+        // Insert test data into v5 tables
+        db.execSQL(
+            "INSERT INTO servers (id, name, url, username, password, isDefault, allowSelfSigned) VALUES (1, 'My WebDAV', 'http://webdav', 'u', 'p', 1, 0)",
+        )
+        db.execSQL("INSERT INTO playlists (id, name, createdAtMs, updatedAtMs) VALUES (5, '车载列表', 2000, 2000)")
+
+        // Run MIGRATION_5_6
+        AppDatabase.MIGRATION_5_6.migrate(db)
+
+        // Verify existing v5 data is intact
+        val cursorServers = db.query("SELECT name FROM servers WHERE id = 1")
+        assertTrue(cursorServers.moveToFirst())
+        assertEquals("My WebDAV", cursorServers.getString(0))
+        cursorServers.close()
+
+        val cursorPlaylists = db.query("SELECT name FROM playlists WHERE id = 5")
+        assertTrue(cursorPlaylists.moveToFirst())
+        assertEquals("车载列表", cursorPlaylists.getString(0))
+        cursorPlaylists.close()
+
+        // Verify local_storage_folders table was created and can be written to
+        db.execSQL(
+            """
+            INSERT INTO local_storage_folders (uriString, displayName, dateAdded)
+            VALUES ('content://com.android.externalstorage.documents/tree/primary%3AMusic', 'Music', 1700000000000)
+            """.trimIndent(),
+        )
+        val cursorFolders = db.query("SELECT uriString, displayName, dateAdded FROM local_storage_folders WHERE uriString = 'content://com.android.externalstorage.documents/tree/primary%3AMusic'")
+        assertTrue(cursorFolders.moveToFirst())
+        assertEquals("content://com.android.externalstorage.documents/tree/primary%3AMusic", cursorFolders.getString(0))
+        assertEquals("Music", cursorFolders.getString(1))
+        assertEquals(1700000000000L, cursorFolders.getLong(2))
+        cursorFolders.close()
+
+        db.close()
+    }
 }

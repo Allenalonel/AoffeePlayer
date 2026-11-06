@@ -5,12 +5,15 @@
 
 **Blocked by:** 01: 存储视窗重命名与 SAF 音乐目录挂载管理
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 当本地存储为活跃存储源时，媒体库根路径 `/` 正确列出所有已挂载的本地音乐目录卡片，点击任意卡片可顺畅下钻进入该目录。
-- [ ] 本地目录遍历采用 `DocumentsContract` 子文档游标查询，高效枚举文件夹与音频文件（支持 MP3、FLAC、WAV、WMA、M4A 等格式）。
-- [ ] 媒体库面包屑胶囊、层级返回与连续流体折叠顶栏对本地目录层级提供完整无缝的导航支持。
-- [ ] 本地目录中的 `.cue` 文件被自动识别，并联动同级物理音频文件解析为 `VirtualTrack` 与 `CueAlbumCard`，支持虚拟分轨列表展开与浏览。
-- [ ] 本地音频内嵌标签（标题、艺术家、专辑、时长、内嵌封面）与同目录外置封面（`cover.jpg`、`folder.jpg`）被快速提取并落盘缩略图。
-- [ ] 本地目录数据经过 Room SWR（Stale-While-Revalidate）缓存，弱网或离线状态下再次访问实现 0ms 瞬间呈现，下拉刷新可触发增量重探测。
-- [ ] 媒体库搜索胶囊（FloatingSearchPillCapsule）支持匹配已索引的本地文件与目录。
+- [x] 当本地存储为活跃存储源时，媒体库根路径 `/` 正确列出所有已挂载的本地音乐目录卡片，点击任意卡片可顺畅下钻进入该目录。
+- [x] 本地目录遍历采用 `DocumentsContract` 子文档游标查询，高效枚举文件夹与音频文件（支持 MP3、FLAC、WAV、WMA、M4A 等格式）。
+- [x] 媒体库面包屑胶囊、层级返回与连续流体折叠顶栏对本地目录层级提供完整无缝的导航支持。
+- [x] 本地目录中的 `.cue` 文件被自动识别，并联动同级物理音频文件解析为 `VirtualTrack` 与 `CueAlbumCard`，支持虚拟分轨列表展开与浏览。
+- [x] 本地音频内嵌标签（标题、艺术家、专辑、时长、内嵌封面）与同目录外置封面（`cover.jpg`、`folder.jpg`）被快速提取并落盘缩略图。
+- [x] 本地目录数据经过 Room SWR（Stale-While-Revalidate）缓存，弱网或离线状态下再次访问实现 0ms 瞬间呈现，下拉刷新可触发增量重探测。
+- [x] 媒体库搜索胶囊（FloatingSearchPillCapsule）支持匹配已索引的本地文件与目录。
+
+## Comments
+已实现基于 DocumentsContract 的本地挂载点枚举与层级目录解析（LocalStorageDirectoryResolver），支持子目录深度下钻、面包屑条、伴生 CUE 虚拟专辑解析、同级 LRC 与封面关联，并通过 Room SWR 缓存实现秒级离线呈现。定向单元测试全数通过。

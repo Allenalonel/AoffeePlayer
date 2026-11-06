@@ -23,6 +23,7 @@ import com.webdav.player.data.player.DefaultStreamingHardwareLockManager
 import com.webdav.player.data.player.Media3AudioPlayerEngine
 import com.webdav.player.data.player.StreamingHardwareLockManager
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.player.AudioPlayerEngine
@@ -31,6 +32,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -202,6 +205,29 @@ class PlaybackSessionHost(
         check(mediaSessionCallback == null) { "appSession has already been bound" }
         audioFocusHandler.bindAppSession(session)
         this.mediaSessionCallback = WebDavMediaSessionCallback(appSession = session)
+        observeAppSessionTrackChanges(session)
+    }
+
+    private fun observeAppSessionTrackChanges(session: MusicPlayerAppSession) {
+        coroutineScope.launch {
+            session.sessionState
+                .map { it.currentTrack?.let { t -> t.serverId to t.id } }
+                .distinctUntilChanged()
+                .collect {
+                    val currentTrack = session.sessionState.value.currentTrack
+                    val isPlaying = session.sessionState.value.isPlaying || playerEngine.playWhenReady
+                    if (isPlaying && currentTrack != null) {
+                        val isLocal = currentTrack.serverId == LOCAL_STORAGE_ID ||
+                            currentTrack.remotePath.startsWith("content://") ||
+                            currentTrack.remotePath.startsWith("file://")
+                        if (isLocal) {
+                            hardwareLockManager.acquireWakeLockOnly()
+                        } else {
+                            hardwareLockManager.acquireLocks()
+                        }
+                    }
+                }
+        }
     }
 
     var attachedService: WebDavMediaService? = null
@@ -283,9 +309,18 @@ class PlaybackSessionHost(
 
     @VisibleForTesting
     fun handlePlaybackStateChanged(state: PlaybackState) {
+        val currentTrack = appSession?.sessionState?.value?.currentTrack
+        val isLocalTrack = currentTrack?.serverId == LOCAL_STORAGE_ID ||
+            currentTrack?.remotePath?.startsWith("content://") == true ||
+            currentTrack?.remotePath?.startsWith("file://") == true
+
         when (state) {
             is PlaybackState.Playing -> {
-                hardwareLockManager.acquireLocks()
+                if (isLocalTrack) {
+                    hardwareLockManager.acquireWakeLockOnly()
+                } else {
+                    hardwareLockManager.acquireLocks()
+                }
                 cancelDemotionTimer()
                 hasPlaybackStarted = true
                 registerBecomingNoisyReceiver()
@@ -294,7 +329,11 @@ class PlaybackSessionHost(
 
             is PlaybackState.Buffering -> {
                 if (playerEngine.playWhenReady) {
-                    hardwareLockManager.acquireLocks()
+                    if (isLocalTrack) {
+                        hardwareLockManager.acquireWakeLockOnly()
+                    } else {
+                        hardwareLockManager.acquireLocks()
+                    }
                     cancelDemotionTimer()
                     hasPlaybackStarted = true
                     registerBecomingNoisyReceiver()

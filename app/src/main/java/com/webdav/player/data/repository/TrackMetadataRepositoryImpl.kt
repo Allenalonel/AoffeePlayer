@@ -8,11 +8,14 @@ import com.webdav.player.data.lyrics.LrcParser
 import com.webdav.player.data.metadata.DefaultTrackMetadataResolver
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.Lyrics
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.TrackMetadataRepository
+import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -301,19 +304,44 @@ class TrackMetadataRepositoryImpl internal constructor(
             val cacheKey = "${server.id}:${track.remotePath}"
             resolvedLyricsCache[cacheKey]?.let { return@withContext it }
 
-            // 1. Probe remote directory for ${baseName}.lrc
-            val lrcPath = track.remotePath.substringBeforeLast('.') + ".lrc"
-            try {
-                val remoteText = webDavClient?.fetchText(server, lrcPath)
-                if (!remoteText.isNullOrBlank()) {
-                    val parsed = LrcParser.parse(remoteText)
-                    if (parsed.isNotEmpty) {
-                        resolvedLyricsCache[cacheKey] = parsed
-                        return@withContext parsed
+            // 1. Probe directory for ${baseName}.lrc
+            val isLocal = server.isLocal || track.serverId == LOCAL_STORAGE_ID ||
+                track.remotePath.startsWith("content://") || track.remotePath.startsWith("file://")
+
+            if (isLocal) {
+                try {
+                    val cleanPath =
+                        when {
+                            track.remotePath.startsWith("file://") -> track.remotePath.removePrefix("file://")
+                            else -> track.remotePath
+                        }
+                    val lrcPath = cleanPath.substringBeforeLast('.') + ".lrc"
+                    val lrcFile = File(lrcPath)
+                    if (lrcFile.exists() && lrcFile.length() > 0L) {
+                        val text = lrcFile.readText()
+                        val parsed = LrcParser.parse(text)
+                        if (parsed.isNotEmpty) {
+                            resolvedLyricsCache[cacheKey] = parsed
+                            return@withContext parsed
+                        }
                     }
+                } catch (_: Exception) {
+                    // Fall through to embedded metadata
                 }
-            } catch (_: Exception) {
-                // Ignore and fall through to embedded metadata
+            } else {
+                val lrcPath = track.remotePath.substringBeforeLast('.') + ".lrc"
+                try {
+                    val remoteText = webDavClient?.fetchText(server, lrcPath)
+                    if (!remoteText.isNullOrBlank()) {
+                        val parsed = LrcParser.parse(remoteText)
+                        if (parsed.isNotEmpty) {
+                            resolvedLyricsCache[cacheKey] = parsed
+                            return@withContext parsed
+                        }
+                    }
+                } catch (_: Exception) {
+                    // Ignore and fall through to embedded metadata
+                }
             }
 
             // 2. Fall back to embedded metadata via Room cache / on-demand resolver

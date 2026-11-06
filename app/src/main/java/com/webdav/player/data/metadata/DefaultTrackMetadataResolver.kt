@@ -7,11 +7,13 @@ import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
@@ -40,13 +42,30 @@ internal class DefaultTrackMetadataResolver(
             val cleanFallbackTitle = file.name.substringBeforeLast('.').ifBlank { file.name }
 
             val rangeBytes =
-                try {
-                    webDavClient.fetchRange(server, file.path, INITIAL_RANGE_START, INITIAL_RANGE_END)
-                } catch (e: IOException) {
-                    // Transient network failure fetching audio range -> allow retry later
-                    return@withContext null
-                } catch (e: Exception) {
-                    null
+                if (server.isLocal || file.path.startsWith("/") || file.path.startsWith("file://")) {
+                    try {
+                        val cleanPath = if (file.path.startsWith("file://")) file.path.removePrefix("file://") else file.path
+                        val localFile = File(cleanPath)
+                        if (localFile.exists()) {
+                            val maxToRead = minOf(localFile.length(), INITIAL_RANGE_END + 1).toInt()
+                            val bytes = ByteArray(maxToRead)
+                            localFile.inputStream().use { it.read(bytes, 0, maxToRead) }
+                            bytes
+                        } else {
+                            null
+                        }
+                    } catch (_: Exception) {
+                        null
+                    }
+                } else {
+                    try {
+                        webDavClient.fetchRange(server, file.path, INITIAL_RANGE_START, INITIAL_RANGE_END)
+                    } catch (e: IOException) {
+                        // Transient network failure fetching audio range -> allow retry later
+                        return@withContext null
+                    } catch (e: Exception) {
+                        null
+                    }
                 }
 
             // If rangeBytes is null or empty, audio range could not be read -> transient failure, do not cache
@@ -148,6 +167,16 @@ internal class DefaultTrackMetadataResolver(
             }
 
         if (targetSize <= initialBytes.size) return initialBytes
+
+        if (server.isLocal || file.path.startsWith("/") || file.path.startsWith("file://")) {
+            val cleanPath = if (file.path.startsWith("file://")) file.path.removePrefix("file://") else file.path
+            val localFile = File(cleanPath)
+            if (localFile.exists()) {
+                val bytes = ByteArray(targetSize.toInt())
+                localFile.inputStream().use { it.read(bytes, 0, targetSize.toInt()) }
+                return bytes
+            }
+        }
 
         val expectedBytes = targetSize - initialBytes.size
         val secondChunk =
@@ -338,6 +367,18 @@ internal class DefaultTrackMetadataResolver(
         val localThumb = coverArtStorage.getThumbnailFile(server.id, candidatePath)
         if (localThumb != null && coverArtStorage.isValidThumbnailFile(localThumb.absolutePath)) {
             return localThumb.absolutePath
+        }
+
+        if (server.isLocal || candidatePath.startsWith("/") || candidatePath.startsWith("file://")) {
+            val cleanPath = if (candidatePath.startsWith("file://")) candidatePath.removePrefix("file://") else candidatePath
+            val localFile = File(cleanPath)
+            if (localFile.exists() && localFile.length() > 0L) {
+                val bytes = localFile.readBytes()
+                if (ImageHeaderValidator.isCompleteImage(bytes)) {
+                    return coverArtStorage.saveThumbnail(server.id, candidatePath, bytes)
+                }
+            }
+            return null
         }
 
         val imageBytes =

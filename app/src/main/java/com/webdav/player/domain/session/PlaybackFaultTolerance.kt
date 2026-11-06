@@ -3,6 +3,7 @@ package com.webdav.player.domain.session
 import com.webdav.player.data.player.UnsupportedRangeReconnectionException
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.InactiveReason
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
@@ -43,6 +44,14 @@ internal class PlaybackFaultTolerance(
     val lastBufferingTimestampMs = AtomicLong(0L)
 
     fun onBufferingStarted() {
+        val currentTrack = sessionStateFlow.value.currentTrack
+        val isLocalTrack = currentTrack?.serverId == LOCAL_STORAGE_ID ||
+            currentTrack?.remotePath?.startsWith("content://") == true ||
+            currentTrack?.remotePath?.startsWith("file://") == true
+        if (isLocalTrack) {
+            return
+        }
+
         lastBufferingTimestampMs.set(System.currentTimeMillis())
         if (bufferingWatchdogJobRef.get()?.isActive != true) {
             val job =

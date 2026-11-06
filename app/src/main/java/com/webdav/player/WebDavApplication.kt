@@ -145,6 +145,7 @@ class WebDavApplication :
                 cueSheetResolver = cueSheetResolver,
                 playlistRepository = playlistRepository,
                 networkConnectivityObserver = networkConnectivityObserver,
+                hardwareLockManager = sessionHost.hardwareLockManager,
             )
         sessionHost.bindAppSession(musicPlayerAppSession)
     }

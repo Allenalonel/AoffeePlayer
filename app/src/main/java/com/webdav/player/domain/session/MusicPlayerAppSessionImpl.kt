@@ -1,8 +1,10 @@
 package com.webdav.player.domain.session
 
 import androidx.annotation.VisibleForTesting
+import com.webdav.player.data.player.StreamingHardwareLockManager
 import com.webdav.player.domain.cue.CueSheetResolver
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackQueue
@@ -14,6 +16,7 @@ import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.network.NetworkConnectivityObserver
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.PlaybackSessionStore
@@ -53,6 +56,7 @@ class MusicPlayerAppSessionImpl(
         } ?: Dispatchers.Default,
     periodicDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val networkConnectivityObserver: NetworkConnectivityObserver? = null,
+    private val hardwareLockManager: StreamingHardwareLockManager? = null,
 ) : MusicPlayerAppSession {
     private val _sessionState = MutableStateFlow(PlayerSessionState())
     override val sessionState: StateFlow<PlayerSessionState> = _sessionState.asStateFlow()
@@ -141,6 +145,17 @@ class MusicPlayerAppSessionImpl(
         clearKilledBySystemFlag()
         clearTransientAudioFocusFlag()
 
+        val isLocalTrack = track.serverId == LOCAL_STORAGE_ID ||
+            track.remotePath.startsWith("content://") ||
+            track.remotePath.startsWith("file://")
+
+        if (isLocalTrack) {
+            faultTolerance.cancelWatchdog()
+            hardwareLockManager?.acquireWakeLockOnly()
+        } else {
+            hardwareLockManager?.acquireLocks()
+        }
+
         fun dispatch(target: WebDavServer) {
             _sessionState.update { it.copy(activeServer = target) }
             hasStreamLoaded = true
@@ -155,6 +170,10 @@ class MusicPlayerAppSessionImpl(
         when {
             server != null && server.id == track.serverId -> {
                 dispatch(server)
+            }
+
+            isLocalTrack -> {
+                dispatch(WebDavServer.createLocalStorage())
             }
 
             serverRepository != null -> {
@@ -302,11 +321,14 @@ class MusicPlayerAppSessionImpl(
     }
 
     override fun playTrack(track: AudioTrack) {
-        val server = _sessionState.value.activeServer
+        val isLocalTrack = track.serverId == LOCAL_STORAGE_ID ||
+            track.remotePath.startsWith("content://") ||
+            track.remotePath.startsWith("file://")
+        val server = _sessionState.value.activeServer ?: if (isLocalTrack) WebDavServer.createLocalStorage() else null
         if (server == null && serverRepository == null) return
         coroutineScope.launch {
             val request = queueManager.buildTrackQueue(track, server)
-            val effectiveServer = server ?: serverRepository?.getServerById(track.serverId) ?: return@launch
+            val effectiveServer = server ?: (if (isLocalTrack) WebDavServer.createLocalStorage() else serverRepository?.getServerById(track.serverId)) ?: return@launch
             dispatchQueueLoad(effectiveServer, request)
             metadataCoordinator.enrichSingleTrackMetadata(effectiveServer, track)
         }
@@ -454,7 +476,14 @@ class MusicPlayerAppSessionImpl(
                 _sessionState.update { it.copy(queue = PlaybackQueue.EMPTY, errorMessage = null) }
                 return@launch
             }
-            dispatchQueueLoad(_sessionState.value.activeServer ?: return@launch, request)
+            val target = request.targetTrack
+            val isLocal = target.serverId == LOCAL_STORAGE_ID ||
+                target.remotePath.startsWith("content://") ||
+                target.remotePath.startsWith("file://")
+            val active = _sessionState.value.activeServer
+                ?: (if (isLocal) WebDavServer.createLocalStorage() else serverRepository?.getServerById(target.serverId))
+                ?: return@launch
+            dispatchQueueLoad(active, request)
         }
     }
 

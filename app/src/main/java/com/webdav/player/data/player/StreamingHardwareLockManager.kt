@@ -11,6 +11,10 @@ interface StreamingHardwareLockManager {
 
     fun acquireLocks()
 
+    fun acquireWakeLockOnly()
+
+    fun releaseWifiLock()
+
     fun releaseLocks()
 
     fun release()
@@ -34,6 +38,22 @@ class DefaultStreamingHardwareLockManager(
     override fun acquireLocks() {
         acquireWakeLock()
         acquireWifiLock()
+    }
+
+    @Synchronized
+    override fun acquireWakeLockOnly() {
+        acquireWakeLock()
+        releaseWifiLock()
+    }
+
+    @Synchronized
+    override fun releaseWifiLock() {
+        try {
+            if (wifiLock?.isHeld == true) {
+                wifiLock?.release()
+            }
+        } catch (_: Throwable) {
+        }
     }
 
     private fun acquireWakeLock() {

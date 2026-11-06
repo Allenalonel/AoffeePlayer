@@ -14,7 +14,9 @@
 
 ## 活跃任务 (Active)
 
-当前暂无进行中的活跃特性任务。
+| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 规范路径 |
+| :--- | :--- | :---: | :---: | :--- |
+| `dynamic-palette-theming` | AndroidX Palette 官方多色提取、M3E 纯正色调阶梯与音轨驱动零预设全域换肤 (ADR-0032) | 4 | `ready-for-agent` | [`dynamic-palette-theming/spec.md`](dynamic-palette-theming/spec.md) |
 
 ---
 

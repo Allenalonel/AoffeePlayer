@@ -256,8 +256,16 @@ _Avoid_: Rigid Tap, Static Indicator Jump, Instant Click
 
 
 **Global Dynamic Artwork Palette**:
-全天候全域音轨动态取色系统。在音频回放流转时，由 `ArtworkColorExtractor` 从当前音轨封面提取种子色（Dominant Color），基于 HCT Tonal Palette 算法在深色模式与浅色模式下分别自适应推导整机大背景（Background）、表面容器色（SurfaceContainer）、底栏指示器、顶栏折叠雾化层及在播高亮，实现应用全局大背景与核心组件 100% 随当前在播专辑平滑换肤。
-_Avoid_: Static Theme, Dark Only Ambient, Wallpaper Color Only
+全天候全域音轨动态取色系统。在音频回放流转时，由 `ArtworkColorExtractor` 基于 Google 官方 `androidx.palette` 提取多采样色相 Swatch，严格遵循 Material 3 Expressive 的 HCT Tonal Palette 规范，在深色与浅色模式下自适应推导整机大背景、卡片表面容器、底栏药丸指示舱与在播高亮，伴随 450ms 流体呼吸过渡，实现应用全域 100% 随当前在播音轨真实换肤。
+_Avoid_: Static Theme, Dark Only Ambient, Wallpaper Color Only, Hardcoded Brand Fallback
+
+**Track-Driven Zero-Preset Principle**:
+音轨驱动零预设原则。全域动态换肤彻底废除任何硬编码的固定品牌底色（如暗紫 #141022 / #5544B3），当前加载曲目即为界面色彩的唯一驱动源；应用冷启动与运行期严格以在播音轨封面色系为准，无封面时落入中性灰阶，杜绝任何主观预设偏色。
+_Avoid_: Fixed Brand Preset, Synthetic Theme Fallback, Hardcoded Purple Base
+
+**Zero-Tint Monochrome Safeguard**:
+中性无彩色零偏色防线。当封面彩度低于物理阈值（Chroma < 8 或 Saturation < 0.12，如黑白老照片或金属灰质感封面）时，色彩提取系统强制冻结彩色注入，自动落入 Google 纯正中性灰阶（Pure Neutral Slate，深色石墨黑 / 浅色珍珠雪白），物理杜绝中性色相被误染为红色或任何杂色。
+_Avoid_: Grayscale Red Tint, False Hue Injection, Monochromatic Color Cast
 
 **Continuous Fluid Top App Bar**:
 Material 3 Expressive 规范下的连续流体折叠顶栏。展开时左对齐呈现大气标题与次级信息；向上滑动时大标题容器物理高度平滑收缩至 0，无空白悬空占位，且文字全程严格锁定左侧垂直基准线微缩淡入紧凑顶栏（绝不突兀横向居中跳跃），伴随 24px 毛玻璃弥散雾化，顶栏彻底移除冗余加号。

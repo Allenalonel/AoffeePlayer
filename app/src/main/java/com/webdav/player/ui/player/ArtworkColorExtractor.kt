@@ -31,6 +31,9 @@ data class ArtworkColors(
     val backgroundBottomColor: Color,
     val accentColor: Color,
     val isFallback: Boolean = false,
+    val isMonochrome: Boolean = false,
+    val vibrantColor: Color = dominantColor,
+    val mutedColor: Color = dominantColor,
     val darkColorScheme: ColorScheme = ArtworkColorExtractor.createDarkColorScheme(dominantColor, isFallback),
     val lightColorScheme: ColorScheme = ArtworkColorExtractor.createLightColorScheme(dominantColor, isFallback),
 ) {

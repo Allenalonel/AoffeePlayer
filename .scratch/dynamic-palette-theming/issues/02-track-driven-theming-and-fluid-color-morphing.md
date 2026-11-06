@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (AndroidX Palette 依赖注入与 M3E 色彩推导引擎重构)
 
-**Status:** ready-for-review
+**Status:** completed
 
 - [x] 音轨驱动全域换肤：全域主题 ColorScheme 100% 随当前在播音轨实时自适应，启动与运行期均以当前在播曲目为唯一色源。
 - [x] 动画管线全域补全：`animatedColorScheme` 扩展覆盖 Primary、PrimaryContainer、Background、SurfaceContainer 等关键色调层级。

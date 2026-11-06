@@ -1,47 +1,34 @@
 package com.webdav.player.ui.theme
 
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.TweenSpec
-import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.animation.core.snap
+import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.dp
+import com.webdav.player.ui.player.ArtworkColorExtractor
 import com.webdav.player.ui.player.ArtworkColors
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.pow
+import org.junit.runner.RunWith
+import org.robolectric.Robolectric
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class WebDavPlayerThemeTest {
+    private fun relativeLuminance(color: Color): Double = ArtworkColorExtractor.relativeLuminance(color)
 
-    private fun channelLuminance(channel: Float): Double {
-        return if (channel <= 0.03928) {
-            channel / 12.92
-        } else {
-            ((channel + 0.055) / 1.055).toDouble().pow(2.4)
-        }
-    }
-
-    private fun relativeLuminance(color: Color): Double {
-        val r = channelLuminance(color.red)
-        val g = channelLuminance(color.green)
-        val b = channelLuminance(color.blue)
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b
-    }
-
-    private fun contrastRatio(colorA: Color, colorB: Color): Double {
-        val l1 = relativeLuminance(colorA)
-        val l2 = relativeLuminance(colorB)
-        val lighter = max(l1, l2)
-        val darker = min(l1, l2)
-        return (lighter + 0.05) / (darker + 0.05)
-    }
+    private fun contrastRatio(
+        colorA: Color,
+        colorB: Color,
+    ): Double = ArtworkColorExtractor.contrastRatio(colorA, colorB)
 
     @Test
     fun darkColorScheme_meetsHighContrastAccessibilityStandards() {
@@ -138,12 +125,12 @@ class WebDavPlayerThemeTest {
         assertEquals(BackgroundDark, ExpressiveDarkColorScheme.background)
         assertEquals(SurfaceDark, ExpressiveDarkColorScheme.surface)
         assertEquals(Color(0xFF121318), ExpressiveDarkColorScheme.background)
-        assertEquals(Color(0xFF121318), ExpressiveDarkColorScheme.surface)
+        assertEquals(Color(0xFF1E1F25), ExpressiveDarkColorScheme.surface)
 
         assertEquals(BackgroundLight, ExpressiveLightColorScheme.background)
         assertEquals(SurfaceLight, ExpressiveLightColorScheme.surface)
         assertEquals(Color(0xFFFFFFFF), ExpressiveLightColorScheme.background)
-        assertEquals(Color(0xFFFFFFFF), ExpressiveLightColorScheme.surface)
+        assertEquals(Color(0xFFE2E2E9), ExpressiveLightColorScheme.surface)
     }
 
     @Test
@@ -158,15 +145,48 @@ class WebDavPlayerThemeTest {
         assertNotEquals("Light background must not be legacy purple", legacyPurpleDarkBg, ExpressiveLightColorScheme.background)
 
         // Primary tokens in neutral fallback schemes must be slate/charcoal in light and pearl white in dark
-        assertEquals(Color(0xFF2E3135), ExpressiveLightColorScheme.primary)
-        assertEquals(Color(0xFFE2E2E6), ExpressiveDarkColorScheme.primary)
+        assertEquals(Color(0xFF1E293B), ExpressiveLightColorScheme.primary)
+        assertEquals(Color(0xFFE2E2E9), ExpressiveDarkColorScheme.primary)
 
         // Dark pill contrast meets WCAG AAA standards
         val darkPillContrast = contrastRatio(ExpressiveDarkColorScheme.onPrimaryContainer, ExpressiveDarkColorScheme.primaryContainer)
         assertTrue(
             "Dark onPrimaryContainer vs primaryContainer must be >= 8.5:1, got $darkPillContrast",
-            darkPillContrast >= 8.5
+            darkPillContrast >= 8.5,
         )
+    }
+
+    @Test
+    fun animatedColorScheme_interpolatesAllNineCoreThemeTokens() {
+        val targetScheme =
+            ExpressiveDarkColorScheme.copy(
+                background = Color(0xFF0A1118),
+                surface = Color(0xFF101924),
+                surfaceContainer = Color(0xFF182230),
+                surfaceContainerHigh = Color(0xFF222E40),
+                surfaceContainerLow = Color(0xFF131C28),
+                primary = Color(0xFF66B2FF),
+                primaryContainer = Color(0xFF004C99),
+                onPrimary = Color(0xFF001933),
+                onPrimaryContainer = Color(0xFFD6EBFF),
+            )
+
+        var composedScheme: ColorScheme? = null
+        val controller = Robolectric.buildActivity(ComponentActivity::class.java).setup()
+        controller.get().setContent {
+            composedScheme = animatedColorScheme(target = targetScheme, animationSpec = snap())
+        }
+
+        val resolved = requireNotNull(composedScheme)
+        assertEquals(targetScheme.primary, resolved.primary)
+        assertEquals(targetScheme.primaryContainer, resolved.primaryContainer)
+        assertEquals(targetScheme.onPrimary, resolved.onPrimary)
+        assertEquals(targetScheme.onPrimaryContainer, resolved.onPrimaryContainer)
+        assertEquals(targetScheme.background, resolved.background)
+        assertEquals(targetScheme.surface, resolved.surface)
+        assertEquals(targetScheme.surfaceContainer, resolved.surfaceContainer)
+        assertEquals(targetScheme.surfaceContainerHigh, resolved.surfaceContainerHigh)
+        assertEquals(targetScheme.surfaceContainerLow, resolved.surfaceContainerLow)
     }
 
     @Test

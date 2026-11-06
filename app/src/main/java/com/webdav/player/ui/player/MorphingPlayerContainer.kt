@@ -130,6 +130,7 @@ fun MorphingPlayerContainer(
     onDismissBatteryBanner: () -> Unit = {},
     onConfirmUnsupportedRangeReplay: () -> Unit = {},
     onDismissUnsupportedRange: () -> Unit = {},
+    artworkColors: ArtworkColors? = null,
 ) {
     val currentTrack = sessionState.currentTrack ?: return
     val isReduceMotion = isReduceMotionEnabled()
@@ -178,7 +179,11 @@ fun MorphingPlayerContainer(
         val density = LocalDensity.current
         val outlineVariantColor = MaterialTheme.colorScheme.outlineVariant
         val surfaceColor = MaterialTheme.colorScheme.surfaceContainerHighest
-        val backgroundBrush = rememberArtworkBackgroundBrush(currentTrack.coverThumbnailPath)
+        val backgroundBrush =
+            rememberArtworkBackgroundBrush(
+                thumbnailPath = currentTrack.coverThumbnailPath,
+                artworkColors = artworkColors,
+            )
 
         val morphingShape =
             remember(collapsedBottomPadding, expansionProgress) {
@@ -301,6 +306,7 @@ fun MorphingPlayerContainer(
                         onConfirmUnsupportedRangeReplay = onConfirmUnsupportedRangeReplay,
                         onDismissUnsupportedRange = onDismissUnsupportedRange,
                         onAddToPlaylist = onAddToPlaylist,
+                        artworkColors = artworkColors,
                     )
                 }
             }

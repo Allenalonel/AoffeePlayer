@@ -7,14 +7,17 @@ import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.cue.CueSheetResolver
 import com.webdav.player.domain.model.CueAlbumItem
 import com.webdav.player.domain.model.DirectoryContent
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.DirectoryRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
 
 class DirectoryRepositoryImpl(
@@ -22,6 +25,7 @@ class DirectoryRepositoryImpl(
     private val directoryCacheDao: DirectoryCacheDao? = null,
     private val cueSheetResolver: CueSheetResolver? = null,
     private val trackMetadataRepository: TrackMetadataRepository? = null,
+    private val localStorageDirectoryResolver: LocalStorageDirectoryResolver? = null,
 ) : DirectoryRepository {
     companion object {
         private const val MAX_DIRECTORY_CACHE_SIZE = 50
@@ -88,6 +92,12 @@ class DirectoryRepositoryImpl(
                 )
             }
 
+            val isLocal = server.isLocal || server.id == LOCAL_STORAGE_ID
+            if (isLocal) {
+                observeLocalDirectoryContent(server, normalizedPath, cachedDir, forceRefresh)
+                return@flow
+            }
+
             // 2. Network query
             val remoteResult =
                 try {
@@ -142,6 +152,72 @@ class DirectoryRepositoryImpl(
             }
         }
 
+    private suspend fun FlowCollector<DirectoryContent>.observeLocalDirectoryContent(
+        server: WebDavServer,
+        normalizedPath: String,
+        cachedDir: RemoteDirectory?,
+        forceRefresh: Boolean,
+    ) {
+        val resolver =
+            localStorageDirectoryResolver
+                ?: throw IllegalStateException("LocalStorageDirectoryResolver is not configured")
+
+        val localResult =
+            try {
+                resolver.resolve(normalizedPath)
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (e: Exception) {
+                null
+            }
+
+        if (localResult != null) {
+            val remoteDir = localResult.directory
+            val remoteDiffersFromCache = (cachedDir == null || remoteDir != cachedDir)
+
+            if (remoteDiffersFromCache) {
+                persistCache(server.id, normalizedPath, remoteDir)
+                val currentMeta = getCachedMetadataMap(server.id, remoteDir)
+                val currentCue = localResult.cueAlbums.ifEmpty { getInitialCueAlbums(remoteDir) }
+                emit(
+                    DirectoryContent(
+                        directory = remoteDir,
+                        cueAlbums = currentCue,
+                        metadataMap = if (currentMeta.isNotEmpty()) currentMeta else localResult.metadataMap,
+                        isEnriching = true,
+                    ),
+                )
+            } else {
+                persistCache(server.id, normalizedPath, remoteDir)
+            }
+
+            val enriched =
+                enrichDirectoryContent(
+                    server = server,
+                    directory = remoteDir,
+                    forceRefresh = forceRefresh,
+                    resolvedCueAlbums = localResult.cueAlbums,
+                    resolvedMetadataMap = localResult.metadataMap,
+                )
+            emit(enriched)
+        } else {
+            if (cachedDir != null && !forceRefresh) {
+                val finalMeta = getCachedMetadataMap(server.id, cachedDir)
+                val finalCue = getInitialCueAlbums(cachedDir)
+                emit(
+                    DirectoryContent(
+                        directory = cachedDir,
+                        cueAlbums = finalCue,
+                        metadataMap = finalMeta,
+                        isEnriching = false,
+                    ),
+                )
+            } else {
+                throw IllegalStateException("Failed to resolve local directory: $normalizedPath")
+            }
+        }
+    }
+
     private suspend fun getCachedMetadataMap(
         serverId: Long,
         directory: RemoteDirectory,
@@ -165,6 +241,8 @@ class DirectoryRepositoryImpl(
         server: WebDavServer,
         directory: RemoteDirectory,
         forceRefresh: Boolean,
+        resolvedCueAlbums: List<CueAlbumItem>? = null,
+        resolvedMetadataMap: Map<String, TrackMetadata>? = null,
     ): DirectoryContent {
         val audioFiles = directory.files.filter { it.isAudio }
         val cueFiles = directory.files.filter { it.isCue }
@@ -178,10 +256,33 @@ class DirectoryRepositoryImpl(
             )
         }
 
-        val metadataMap = getCachedMetadataMap(server.id, directory)
+        val cachedMetadata = getCachedMetadataMap(server.id, directory)
+        val metadataMap =
+            if (resolvedMetadataMap != null && cachedMetadata.isEmpty()) {
+                resolvedMetadataMap
+            } else if (resolvedMetadataMap != null) {
+                resolvedMetadataMap + cachedMetadata
+            } else {
+                cachedMetadata
+            }
 
         val cueAlbums =
-            if (cueFiles.isNotEmpty() && cueSheetResolver != null) {
+            if (!resolvedCueAlbums.isNullOrEmpty()) {
+                resolvedCueAlbums.map { alb ->
+                    val parentDuration = alb.audioFile?.path?.let { metadataMap[it]?.durationMs }
+                    if (parentDuration != null && parentDuration > 0L && alb.tracks.isNotEmpty()) {
+                        val lastTrack = alb.tracks.last()
+                        if (lastTrack.endTimeMs == null) {
+                            val updatedTracks = alb.tracks.dropLast(1) + lastTrack.copy(endTimeMs = parentDuration)
+                            alb.copy(tracks = updatedTracks)
+                        } else {
+                            alb
+                        }
+                    } else {
+                        alb
+                    }
+                }
+            } else if (cueFiles.isNotEmpty() && cueSheetResolver != null) {
                 val parentDurations = metadataMap.mapValues { it.value.durationMs }
                 cueSheetResolver.resolveDirectoryCueAlbums(
                     server = server,

@@ -50,7 +50,23 @@ fun DirectoryBreadcrumbStrip(
     val scrollState = rememberScrollState()
     val isReduceMotion = isReduceMotionEnabled()
 
-    LaunchedEffect(breadcrumbs, breadcrumbs.size) {
+    val cleanBreadcrumbs =
+        remember(breadcrumbs) {
+            breadcrumbs
+                .filterNot {
+                    it.name == "local" || it.path == "/local/" || it.path == "/local"
+                }.map { crumb ->
+                    if (crumb.name.startsWith("content%") || crumb.name.contains("%2F") ||
+                        crumb.name.contains("%3A") || crumb.name.startsWith("content://")
+                    ) {
+                        crumb.copy(name = RemoteDirectory.deriveMountedFolderName(crumb.name))
+                    } else {
+                        crumb
+                    }
+                }
+        }
+
+    LaunchedEffect(cleanBreadcrumbs, cleanBreadcrumbs.size) {
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
@@ -64,9 +80,9 @@ fun DirectoryBreadcrumbStrip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        breadcrumbs.forEachIndexed { index, breadcrumb ->
+        cleanBreadcrumbs.forEachIndexed { index, breadcrumb ->
             val isTail =
-                index == breadcrumbs.lastIndex ||
+                index == cleanBreadcrumbs.lastIndex ||
                     breadcrumb.path == currentPath ||
                     RemoteDirectory.normalizePath(breadcrumb.path) == RemoteDirectory.normalizePath(currentPath)
 
@@ -114,9 +130,10 @@ fun DirectoryBreadcrumbStrip(
                         },
                         leadingIcon = {
                             if (index == 0) {
+                                val isLocalRoot = breadcrumb.name == "本地存储"
                                 Icon(
-                                    imageVector = AppIcons.Home,
-                                    contentDescription = "根目录",
+                                    imageVector = if (isLocalRoot) AppIcons.Storage else AppIcons.Home,
+                                    contentDescription = if (isLocalRoot) "本地存储" else "根目录",
                                     modifier = Modifier.size(AssistChipDefaults.IconSize),
                                 )
                             } else {
@@ -156,7 +173,7 @@ fun DirectoryBreadcrumbStrip(
                         shape = MaterialTheme.shapes.small,
                     )
 
-                    if (index < breadcrumbs.lastIndex) {
+                    if (index < cleanBreadcrumbs.lastIndex) {
                         Icon(
                             imageVector = AppIcons.ChevronRight,
                             contentDescription = null,

@@ -12,6 +12,7 @@ import com.webdav.player.data.remote.OkHttpWebDavClient
 import com.webdav.player.data.repository.DataStorePlaybackSessionStore
 import com.webdav.player.data.repository.DirectoryRepositoryImpl
 import com.webdav.player.data.repository.LibrarySearchRepositoryImpl
+import com.webdav.player.data.repository.LocalStorageDirectoryResolver
 import com.webdav.player.data.repository.PlaylistRepositoryImpl
 import com.webdav.player.data.repository.ServerRepositoryImpl
 import com.webdav.player.data.repository.TrackMetadataRepositoryImpl
@@ -91,6 +92,7 @@ class WebDavApplication :
                 webDavClient = webDavClient,
                 coverArtStorage = coverArtStorage,
                 webDavServerDao = database.webDavServerDao(),
+                context = this,
             )
 
         val media3Engine =
@@ -108,12 +110,14 @@ class WebDavApplication :
         val cueSheetResolver = DefaultCueSheetResolver(webDavClient)
         this.cueSheetResolver = cueSheetResolver
 
+        val localStorageDirectoryResolver = LocalStorageDirectoryResolver(this, serverRepository)
         val directoryRepository =
             DirectoryRepositoryImpl(
                 webDavClient = webDavClient,
                 directoryCacheDao = database.directoryCacheDao(),
                 cueSheetResolver = cueSheetResolver,
                 trackMetadataRepository = trackMetadataRepository,
+                localStorageDirectoryResolver = localStorageDirectoryResolver,
             )
         this.directoryRepository = directoryRepository
 

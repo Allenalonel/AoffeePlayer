@@ -2,8 +2,6 @@ package com.webdav.player.ui.player
 
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.Color
-import com.webdav.player.ui.theme.ExpressiveDarkColorScheme
-import com.webdav.player.ui.theme.ExpressiveLightColorScheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -62,6 +60,7 @@ class ArtworkColorExtractorTest {
             )
 
         assertTrue(result.isFallback)
+        assertTrue(result.isMonochrome)
         assertEquals(defaultSurface, result.dominantColor)
         assertEquals(defaultSurface, result.backgroundTopColor)
         assertEquals(defaultBackground, result.backgroundBottomColor)
@@ -78,6 +77,7 @@ class ArtworkColorExtractorTest {
             )
 
         assertTrue(result.isFallback)
+        assertTrue(result.isMonochrome)
         assertEquals(defaultSurface, result.dominantColor)
         assertEquals(defaultSurface, result.backgroundTopColor)
     }
@@ -93,6 +93,7 @@ class ArtworkColorExtractorTest {
             )
 
         assertTrue(result.isFallback)
+        assertTrue(result.isMonochrome)
         assertEquals(defaultSurface, result.dominantColor)
     }
 
@@ -146,6 +147,7 @@ class ArtworkColorExtractorTest {
             )
 
         assertFalse(result.isFallback)
+        assertFalse(result.isMonochrome)
         // Dominant should be green
         assertEquals(0f, result.dominantColor.red, 0.05f)
         assertEquals(1f, result.dominantColor.green, 0.05f)
@@ -174,6 +176,7 @@ class ArtworkColorExtractorTest {
             )
 
         assertFalse(result.isFallback)
+        assertFalse(result.isMonochrome)
         // Magenta is Red + Blue
         assertTrue(result.dominantColor.red > 0.8f)
         assertTrue(result.dominantColor.blue > 0.8f)
@@ -191,11 +194,12 @@ class ArtworkColorExtractorTest {
             )
 
         assertTrue(result.isFallback)
+        assertTrue(result.isMonochrome)
         assertEquals(defaultSurface, result.dominantColor)
     }
 
     @Test
-    fun extractArtworkColors_fallback_providesDefaultMD3ColorSchemes() {
+    fun extractArtworkColors_fallback_providesNeutralMonochromeColorSchemesWithoutBrandPurple() {
         val result =
             ArtworkColorExtractor.extractArtworkColors(
                 thumbnailPath = null,
@@ -204,10 +208,178 @@ class ArtworkColorExtractorTest {
             )
 
         assertTrue(result.isFallback)
-        assertEquals(ExpressiveDarkColorScheme, result.darkColorScheme)
-        assertEquals(ExpressiveLightColorScheme, result.lightColorScheme)
-        assertEquals(ExpressiveDarkColorScheme, result.colorScheme(isDark = true))
-        assertEquals(ExpressiveLightColorScheme, result.colorScheme(isDark = false))
+        assertTrue(result.isMonochrome)
+        assertEquals(ArtworkColorExtractor.createMonochromeDarkColorScheme(), result.darkColorScheme)
+        assertEquals(ArtworkColorExtractor.createMonochromeLightColorScheme(), result.lightColorScheme)
+        assertEquals(result.darkColorScheme, result.colorScheme(isDark = true))
+        assertEquals(result.lightColorScheme, result.colorScheme(isDark = false))
+
+        // Must not contain hardcoded brand purple #5544B3 or #141022
+        val brandPurpleLight = Color(0xFF5544B3)
+        val brandPurpleDark = Color(0xFF141022)
+        assertFalse(result.lightColorScheme.primary == brandPurpleLight)
+        assertFalse(result.darkColorScheme.background == brandPurpleDark)
+    }
+
+    @Test
+    fun extractArtworkColors_chromaticBitmaps_identifiesCorrectHueAndNotMonochrome() {
+        val colors =
+            listOf(
+                android.graphics.Color.RED to "Red",
+                android.graphics.Color.BLUE to "Blue",
+                android.graphics.Color.GREEN to "Green",
+                android.graphics.Color.MAGENTA to "Magenta",
+            )
+
+        for ((androidColor, name) in colors) {
+            val bitmap = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888)
+            bitmap.eraseColor(androidColor)
+
+            val result =
+                ArtworkColorExtractor.extractArtworkColors(
+                    bitmap = bitmap,
+                    defaultSurfaceColor = defaultSurface,
+                    defaultBackgroundColor = defaultBackground,
+                )
+
+            assertFalse("$name: isFallback should be false", result.isFallback)
+            assertFalse("$name: isMonochrome should be false", result.isMonochrome)
+            assertNotNull("$name: dominantColor should be present", result.dominantColor)
+            assertNotNull("$name: vibrantColor should be present", result.vibrantColor)
+
+            // WCAG checks on the derived schemes
+            val darkScheme = result.darkColorScheme
+            val lightScheme = result.lightColorScheme
+
+            assertTrue(
+                "$name: dark onPrimary vs primary >= 4.5",
+                contrastRatio(darkScheme.onPrimary, darkScheme.primary) >= 4.5,
+            )
+            assertTrue(
+                "$name: light onPrimary vs primary >= 4.5",
+                contrastRatio(lightScheme.onPrimary, lightScheme.primary) >= 4.5,
+            )
+            assertTrue(
+                "$name: light onSurfaceVariant vs background >= 8.5",
+                contrastRatio(lightScheme.onSurfaceVariant, lightScheme.background) >= 8.5,
+            )
+            assertTrue(
+                "$name: light onPrimaryContainer vs primaryContainer >= 8.5",
+                contrastRatio(lightScheme.onPrimaryContainer, lightScheme.primaryContainer) >= 8.5,
+            )
+        }
+    }
+
+    @Test
+    fun extractArtworkColors_syntheticGrayscaleBitmap_triggersZeroTintMonochromeSafeguard() {
+        // Pure grayscale bitmap where R == G == B simulating album cover like AS I AM
+        val bitmap = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888)
+        for (y in 0 until 16) {
+            for (x in 0 until 16) {
+                val gray = (x * 16).coerceIn(0, 255)
+                bitmap.setPixel(x, y, android.graphics.Color.rgb(gray, gray, gray))
+            }
+        }
+
+        val result =
+            ArtworkColorExtractor.extractArtworkColors(
+                bitmap = bitmap,
+                defaultSurfaceColor = defaultSurface,
+                defaultBackgroundColor = defaultBackground,
+            )
+
+        assertFalse("isFallback must be false for valid grayscale image", result.isFallback)
+        assertTrue("isMonochrome must be true for grayscale image", result.isMonochrome)
+
+        val darkScheme = result.darkColorScheme
+        val lightScheme = result.lightColorScheme
+
+        // Check primary and background for zero red tint / low chroma
+        val darkBgChroma = ArtworkColorExtractor.perceptualChroma(darkScheme.background)
+        val darkPrimaryChroma = ArtworkColorExtractor.perceptualChroma(darkScheme.primary)
+        assertTrue("Dark background perceptual Chroma must be < 8, got $darkBgChroma", darkBgChroma < 8f)
+        assertTrue("Dark primary perceptual Chroma must be < 8, got $darkPrimaryChroma", darkPrimaryChroma < 8f)
+
+        // Zero red tint: red channel should not dominate (the old bug was Hue 0° high saturation wine red #8F2D2D)
+        val darkPrimaryHsl = ArtworkColorExtractor.colorToHsl(darkScheme.primary)
+        val darkBgHsl = ArtworkColorExtractor.colorToHsl(darkScheme.background)
+        assertFalse(
+            "Primary must not have red hue with high saturation",
+            darkPrimaryHsl[1] > 0.30f && (darkPrimaryHsl[0] < 25f || darkPrimaryHsl[0] > 340f),
+        )
+        assertFalse(
+            "Background must not have red hue with high saturation",
+            darkBgHsl[1] > 0.30f && (darkBgHsl[0] < 25f || darkBgHsl[0] > 340f),
+        )
+
+        // Dark theme: Background Tone 8 (#121318), Surface Tone 12 (#1E1F25), Primary Tone 85 (#E2E2E9), OnPrimary Tone 10 (#191C20)
+        assertEquals(Color(0xFF121318), darkScheme.background)
+        assertEquals(Color(0xFF1E1F25), darkScheme.surface)
+        assertEquals(Color(0xFFE2E2E9), darkScheme.primary)
+        assertEquals(Color(0xFF191C20), darkScheme.onPrimary)
+
+        // Light theme: Background Tone 98 (#FFFFFF), Surface Tone 94 (#E2E2E9), Primary Tone 20 (#1E293B), OnPrimary Tone 100 (#FFFFFF)
+        assertEquals(Color(0xFFFFFFFF), lightScheme.background)
+        assertEquals(Color(0xFFE2E2E9), lightScheme.surface)
+        assertEquals(Color(0xFF1E293B), lightScheme.primary)
+        assertEquals(Color(0xFFFFFFFF), lightScheme.onPrimary)
+
+        // WCAG assertions
+        assertTrue("Dark onPrimary vs primary >= 4.5", contrastRatio(darkScheme.onPrimary, darkScheme.primary) >= 4.5)
+        assertTrue("Light onPrimary vs primary >= 4.5", contrastRatio(lightScheme.onPrimary, lightScheme.primary) >= 4.5)
+        assertTrue(
+            "Light onSurfaceVariant vs background >= 8.5",
+            contrastRatio(lightScheme.onSurfaceVariant, lightScheme.background) >= 8.5,
+        )
+        assertTrue(
+            "Light onPrimaryContainer vs primaryContainer >= 8.5",
+            contrastRatio(lightScheme.onPrimaryContainer, lightScheme.primaryContainer) >= 8.5,
+        )
+    }
+
+    @Test
+    fun wcagContrastRatios_satisfiedAcrossAllDerivedColorSchemes() {
+        val testBitmaps =
+            listOf(
+                Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.RED) },
+                Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.BLUE) },
+                Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888).apply {
+                    eraseColor(android.graphics.Color.rgb(100, 100, 100))
+                },
+            )
+
+        for (bitmap in testBitmaps) {
+            val result =
+                ArtworkColorExtractor.extractArtworkColors(
+                    bitmap = bitmap,
+                    defaultSurfaceColor = defaultSurface,
+                    defaultBackgroundColor = defaultBackground,
+                )
+
+            for (scheme in listOf(result.darkColorScheme, result.lightColorScheme)) {
+                val onPrimaryContrast = contrastRatio(scheme.onPrimary, scheme.primary)
+                val onPrimaryContainerContrast = contrastRatio(scheme.onPrimaryContainer, scheme.primaryContainer)
+
+                assertTrue("onPrimary vs primary >= 4.5:1, got $onPrimaryContrast", onPrimaryContrast >= 4.5)
+                assertTrue(
+                    "onPrimaryContainer vs primaryContainer >= 4.5:1, got $onPrimaryContainerContrast",
+                    onPrimaryContainerContrast >= 4.5,
+                )
+            }
+
+            // Light scheme specific WCAG AAA requirements
+            val lightScheme = result.lightColorScheme
+            val onSurfaceVariantBgContrast = contrastRatio(lightScheme.onSurfaceVariant, lightScheme.background)
+            val onSurfaceVariantContainerContrast = contrastRatio(lightScheme.onSurfaceVariant, lightScheme.surfaceContainer)
+            assertTrue(
+                "onSurfaceVariant vs background >= 8.5:1 (WCAG AAA), got $onSurfaceVariantBgContrast",
+                onSurfaceVariantBgContrast >= 8.5,
+            )
+            assertTrue(
+                "onSurfaceVariant vs surfaceContainer >= 8.5:1 (WCAG AAA), got $onSurfaceVariantContainerContrast",
+                onSurfaceVariantContainerContrast >= 8.5,
+            )
+        }
     }
 
     @Test

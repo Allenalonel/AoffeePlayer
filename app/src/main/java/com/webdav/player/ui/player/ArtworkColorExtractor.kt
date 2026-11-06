@@ -10,6 +10,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.palette.graphics.Palette
 import com.webdav.player.ui.theme.ExpressiveDarkColorScheme
 import com.webdav.player.ui.theme.ExpressiveLightColorScheme
 import com.webdav.player.ui.theme.SurfaceContainerDark
@@ -21,6 +22,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
  * Atmospheric color scheme dynamically derived from track artwork or fallback colors.
@@ -34,8 +36,8 @@ data class ArtworkColors(
     val isMonochrome: Boolean = false,
     val vibrantColor: Color = dominantColor,
     val mutedColor: Color = dominantColor,
-    val darkColorScheme: ColorScheme = ArtworkColorExtractor.createDarkColorScheme(dominantColor, isFallback),
-    val lightColorScheme: ColorScheme = ArtworkColorExtractor.createLightColorScheme(dominantColor, isFallback),
+    val darkColorScheme: ColorScheme = ArtworkColorExtractor.createDarkColorScheme(dominantColor, isFallback, isMonochrome),
+    val lightColorScheme: ColorScheme = ArtworkColorExtractor.createLightColorScheme(dominantColor, isFallback, isMonochrome),
 ) {
     fun colorScheme(isDark: Boolean): ColorScheme = if (isDark) darkColorScheme else lightColorScheme
 
@@ -51,8 +53,6 @@ data class ArtworkColors(
 }
 
 object ArtworkColorExtractor {
-    private const val SAMPLE_SIZE = 32
-
     /**
      * Converts a Compose [Color] into HSL components:
      * - Hue in [0f, 360f)
@@ -120,47 +120,228 @@ object ArtworkColorExtractor {
     }
 
     /**
-     * Derives a complete dark [ColorScheme] from the dominant seed color.
-     * Produces deep dark immersive background (Tone 6~8), dark container (Tone 12~14), and vibrant primary (Tone 80).
+     * Computes the perceptual Chroma (C*) in CIE L*a*b* color space for the given [Color].
      */
-    fun deriveDarkColorScheme(dominantColor: Color): ColorScheme {
-        val hsl = colorToHsl(dominantColor)
-        val h = hsl[0]
-        val s = hsl[1]
+    fun perceptualChroma(color: Color): Float {
+        fun pivot(n: Double): Double = if (n <= 0.04045) n / 12.92 else ((n + 0.055) / 1.055).pow(2.4)
 
-        // Tone 6~8 deep dark immersive background & surface (e.g. #141022 for violet)
-        val background = hslToColor(h, s * 0.28f, 0.07f)
+        val rLin = pivot(color.red.toDouble())
+        val gLin = pivot(color.green.toDouble())
+        val bLin = pivot(color.blue.toDouble())
+
+        val x = (0.4124 * rLin + 0.3576 * gLin + 0.1805 * bLin) / 0.95047
+        val y = (0.2126 * rLin + 0.7152 * gLin + 0.0722 * bLin) / 1.00000
+        val z = (0.0193 * rLin + 0.1192 * gLin + 0.9505 * bLin) / 1.08883
+
+        fun f(t: Double): Double = if (t > 0.008856) t.pow(1.0 / 3.0) else (7.787 * t) + (16.0 / 116.0)
+
+        val fx = f(x)
+        val fy = f(y)
+        val fz = f(z)
+
+        val a = 500.0 * (fx - fy)
+        val b = 200.0 * (fy - fz)
+        return sqrt(a * a + b * b).toFloat()
+    }
+
+    /**
+     * Checks if a [Color] is neutral monochrome (saturation < 0.12 or perceptual Chroma < 8).
+     */
+    fun isMonochrome(color: Color): Boolean {
+        val hsl = colorToHsl(color)
+        if (hsl[1] < 0.12f) return true
+        return perceptualChroma(color) < 8f
+    }
+
+    /**
+     * Clean neutral Material 3 monochrome dark color scheme (Tone 8 background, Tone 12 surface, Tone 85 primary).
+     * Has zero hue bias (zero red tint).
+     */
+    val MonochromeDarkColorScheme: ColorScheme = buildMonochromeDarkColorScheme()
+
+    /**
+     * Clean neutral Material 3 monochrome light color scheme (Tone 98 background, Tone 94 surface, Tone 20 primary).
+     * Has zero hue bias (zero red tint).
+     */
+    val MonochromeLightColorScheme: ColorScheme = buildMonochromeLightColorScheme()
+
+    private fun buildMonochromeDarkColorScheme(): ColorScheme {
+        val background = Color(0xFF121318) // Tone 8
+        val surface = Color(0xFF1E1F25) // Tone 12
+        val surfaceContainerLowest = Color(0xFF0D0E12)
+        val surfaceContainerLow = Color(0xFF1A1B20)
+        val surfaceContainer = Color(0xFF1E1F25) // Tone 12
+        val surfaceContainerHigh = Color(0xFF292A30)
+        val surfaceContainerHighest = Color(0xFF34343B)
+        val surfaceVariant = Color(0xFF46464F)
+
+        val primary = Color(0xFFE2E2E9) // Tone 85 pearl white
+        val onPrimary = Color(0xFF191C20) // Tone 10 slate black
+        val primaryContainer = Color(0xFF353940)
+        val onPrimaryContainer = Color(0xFFE2E2E9)
+
+        val secondary = Color(0xFFC7C6CF)
+        val onSecondary = Color(0xFF303036)
+        val secondaryContainer = Color(0xFF474459)
+        val onSecondaryContainer = Color(0xFFE5E0F9)
+
+        val onBackground = Color(0xFFE4E1E8)
+        val onSurface = Color(0xFFE4E1E8)
+        val onSurfaceVariant = Color(0xFFC7C5D0)
+
+        val outline = Color(0xFF91909A)
+        val outlineVariant = Color(0xFF46464F)
+
+        return ExpressiveDarkColorScheme.copy(
+            primary = primary,
+            onPrimary = onPrimary,
+            primaryContainer = primaryContainer,
+            onPrimaryContainer = onPrimaryContainer,
+            secondary = secondary,
+            onSecondary = onSecondary,
+            secondaryContainer = secondaryContainer,
+            onSecondaryContainer = onSecondaryContainer,
+            background = background,
+            surface = surface,
+            surfaceVariant = surfaceVariant,
+            surfaceContainerLowest = surfaceContainerLowest,
+            surfaceContainerLow = surfaceContainerLow,
+            surfaceContainer = surfaceContainer,
+            surfaceContainerHigh = surfaceContainerHigh,
+            surfaceContainerHighest = surfaceContainerHighest,
+            onBackground = onBackground,
+            onSurface = onSurface,
+            onSurfaceVariant = onSurfaceVariant,
+            outline = outline,
+            outlineVariant = outlineVariant,
+            surfaceTint = primary,
+        )
+    }
+
+    private fun buildMonochromeLightColorScheme(): ColorScheme {
+        val background = Color(0xFFFFFFFF) // Tone 98 pure white
+        val surface = Color(0xFFE2E2E9) // Tone 94 clean gray
+        val surfaceContainerLowest = Color(0xFFFFFFFF)
+        val surfaceContainerLow = Color(0xFFF5F6F8)
+        val surfaceContainer = Color(0xFFE2E2E9) // Tone 94 clean gray
+        val surfaceContainerHigh = Color(0xFFDADAE0)
+        val surfaceContainerHighest = Color(0xFFD4D4DA)
+        val surfaceVariant = Color(0xFFE2E2E9)
+
+        val primary = Color(0xFF1E293B) // Tone 20 slate charcoal
+        val onPrimary = Color(0xFFFFFFFF) // Tone 100
+        val primaryContainer = Color(0xFFE2E2E9)
+        val onPrimaryContainer = Color(0xFF1E293B)
+
+        val secondary = Color(0xFF5F5C71)
+        val onSecondary = Color(0xFFFFFFFF)
+        val secondaryContainer = Color(0xFFE5E0F9)
+        val onSecondaryContainer = Color(0xFF1C192C)
+
+        val onBackground = Color(0xFF191C20)
+        val onSurface = Color(0xFF1E293B) // Tone 20 dark slate charcoal
+        val onSurfaceVariant = Color(0xFF3A3546) // Tone 30 dark slate charcoal, contrast >= 8.5:1
+
+        val outline = Color(0xFF777680)
+        val outlineVariant = Color(0xFFC7C5D0)
+
+        return ExpressiveLightColorScheme.copy(
+            primary = primary,
+            onPrimary = onPrimary,
+            primaryContainer = primaryContainer,
+            onPrimaryContainer = onPrimaryContainer,
+            secondary = secondary,
+            onSecondary = onSecondary,
+            secondaryContainer = secondaryContainer,
+            onSecondaryContainer = onSecondaryContainer,
+            background = background,
+            surface = surface,
+            surfaceVariant = surfaceVariant,
+            surfaceContainerLowest = surfaceContainerLowest,
+            surfaceContainerLow = surfaceContainerLow,
+            surfaceContainer = surfaceContainer,
+            surfaceContainerHigh = surfaceContainerHigh,
+            surfaceContainerHighest = surfaceContainerHighest,
+            onBackground = onBackground,
+            onSurface = onSurface,
+            onSurfaceVariant = onSurfaceVariant,
+            outline = outline,
+            outlineVariant = outlineVariant,
+            surfaceTint = primary,
+        )
+    }
+
+    /**
+     * Clean neutral Material 3 monochrome dark color scheme (Tone 8 background, Tone 12 surface, Tone 85 primary).
+     * Has zero hue bias (zero red tint).
+     */
+    fun createMonochromeDarkColorScheme(): ColorScheme = MonochromeDarkColorScheme
+
+    /**
+     * Clean neutral Material 3 monochrome light color scheme (Tone 98 background, Tone 94 surface, Tone 20 primary).
+     * Has zero hue bias (zero red tint).
+     */
+    fun createMonochromeLightColorScheme(): ColorScheme = MonochromeLightColorScheme
+
+    /**
+     * Derives a complete dark [ColorScheme] from the dominant seed color.
+     * Produces deep dark immersive background (Tone 6~8, Chroma <= 12), dark container (Tone 12~14),
+     * and vibrant primary (Tone 80) with contrast >= 4.5:1.
+     */
+    fun deriveDarkColorScheme(
+        seedColor: Color,
+        dominantColor: Color = seedColor,
+    ): ColorScheme {
+        val seedHsl = colorToHsl(seedColor)
+        val seedH = seedHsl[0]
+        val seedS = seedHsl[1]
+
+        val domHsl = colorToHsl(dominantColor)
+        val domH = domHsl[0]
+        val domS = domHsl[1]
+
+        // Tone 6~8 deep dark immersive background & surface (Chroma <= 12, Saturation <= 0.12)
+        val background = hslToColor(domH, minOf(0.12f, domS * 0.28f), 0.07f)
         val surface = background
-        val surfaceContainerLowest = hslToColor(h, s * 0.25f, 0.04f)
-        val surfaceContainerLow = hslToColor(h, s * 0.25f, 0.09f)
-        val surfaceContainer = hslToColor(h, s * 0.25f, 0.13f)
-        val surfaceContainerHigh = hslToColor(h, s * 0.25f, 0.17f)
-        val surfaceContainerHighest = hslToColor(h, s * 0.25f, 0.22f)
-        val surfaceVariant = hslToColor(h, s * 0.20f, 0.26f)
+        val surfaceContainerLowest = hslToColor(domH, minOf(0.10f, domS * 0.25f), 0.04f)
+        val surfaceContainerLow = hslToColor(domH, minOf(0.12f, domS * 0.25f), 0.09f)
+        val surfaceContainer = hslToColor(domH, minOf(0.12f, domS * 0.25f), 0.13f)
+        val surfaceContainerHigh = hslToColor(domH, minOf(0.14f, domS * 0.25f), 0.17f)
+        val surfaceContainerHighest = hslToColor(domH, minOf(0.14f, domS * 0.25f), 0.22f)
+        val surfaceVariant = hslToColor(domH, minOf(0.15f, domS * 0.20f), 0.26f)
 
         // Tone 80 primary - ensure contrast with onPrimary >= 4.5:1
         var primaryL = 0.80f
-        var primary = hslToColor(h, maxOf(0.40f, s * 0.85f), primaryL)
+        var primary = hslToColor(seedH, maxOf(0.40f, seedS * 0.85f), primaryL)
         var onPrimaryL = 0.20f
-        var onPrimary = hslToColor(h, s * 0.90f, onPrimaryL)
+        var onPrimary = hslToColor(seedH, seedS * 0.90f, onPrimaryL)
         while (contrastRatio(onPrimary, primary) < 4.5 && (primaryL < 0.92f || onPrimaryL > 0.08f)) {
             if (primaryL < 0.92f) primaryL += 0.02f
             if (onPrimaryL > 0.08f) onPrimaryL -= 0.02f
-            primary = hslToColor(h, maxOf(0.40f, s * 0.85f), primaryL)
-            onPrimary = hslToColor(h, s * 0.90f, onPrimaryL)
+            primary = hslToColor(seedH, maxOf(0.40f, seedS * 0.85f), primaryL)
+            onPrimary = hslToColor(seedH, seedS * 0.90f, onPrimaryL)
         }
 
-        val primaryContainer = hslToColor(h, s * 0.70f, 0.30f)
-        val onPrimaryContainer = hslToColor(h, s * 0.30f, 0.90f)
+        // PrimaryContainer (Tone 30) and onPrimaryContainer (Tone 90), contrast >= 4.5:1
+        var pContainerL = 0.30f
+        var primaryContainer = hslToColor(seedH, seedS * 0.70f, pContainerL)
+        var onPContainerL = 0.90f
+        var onPrimaryContainer = hslToColor(seedH, seedS * 0.30f, onPContainerL)
+        while (contrastRatio(onPrimaryContainer, primaryContainer) < 4.5 && (onPContainerL < 0.98f || pContainerL > 0.15f)) {
+            if (onPContainerL < 0.98f) onPContainerL += 0.02f
+            if (pContainerL > 0.15f) pContainerL -= 0.02f
+            primaryContainer = hslToColor(seedH, seedS * 0.70f, pContainerL)
+            onPrimaryContainer = hslToColor(seedH, seedS * 0.30f, onPContainerL)
+        }
 
-        val secondary = hslToColor(h, s * 0.50f, 0.80f)
-        val onSecondary = hslToColor(h, s * 0.50f, 0.20f)
-        val secondaryContainer = hslToColor(h, s * 0.40f, 0.30f)
-        val onSecondaryContainer = hslToColor(h, s * 0.20f, 0.90f)
+        val secondary = hslToColor(domH, domS * 0.50f, 0.80f)
+        val onSecondary = hslToColor(domH, domS * 0.50f, 0.20f)
+        val secondaryContainer = hslToColor(domH, domS * 0.40f, 0.30f)
+        val onSecondaryContainer = hslToColor(domH, domS * 0.20f, 0.90f)
 
-        val inverseSurface = hslToColor(h, maxOf(0.08f, s * 0.22f), 0.90f)
+        val inverseSurface = hslToColor(domH, maxOf(0.08f, domS * 0.22f), 0.90f)
         val inverseOnSurface = Color(0xFF1A1B21)
-        val inversePrimary = hslToColor(h, maxOf(0.50f, s * 0.95f), 0.40f)
+        val inversePrimary = hslToColor(seedH, maxOf(0.50f, seedS * 0.95f), 0.40f)
 
         return ExpressiveDarkColorScheme.copy(
             primary = primary,
@@ -188,45 +369,53 @@ object ArtworkColorExtractor {
 
     /**
      * Derives a complete light [ColorScheme] from the dominant seed color.
-     * Produces soft ambient pastel background (Tone 96~98), delicate container (Tone 92~94),
-     * dark slate charcoal secondary text (#3A3546, contrast > 8.5:1), and high-contrast pills (> 8.5:1).
+     * Produces soft ambient pastel background (Tone 97~98, Chroma <= 8), delicate container (Tone 93~95),
+     * fixed dark slate charcoal text (#1E293B / #3A3546, contrast >= 8.5:1 WCAG AAA),
+     * and high-contrast pills (>= 8.5:1 WCAG AAA).
      */
-    fun deriveLightColorScheme(dominantColor: Color): ColorScheme {
-        val hsl = colorToHsl(dominantColor)
-        val h = hsl[0]
-        val s = hsl[1]
+    fun deriveLightColorScheme(
+        seedColor: Color,
+        dominantColor: Color = seedColor,
+    ): ColorScheme {
+        val seedHsl = colorToHsl(seedColor)
+        val seedH = seedHsl[0]
+        val seedS = seedHsl[1]
 
-        // Tone 96~98 delicate soft pastel ambient background
-        val background = hslToColor(h, maxOf(0.08f, s * 0.22f), 0.97f)
+        val domHsl = colorToHsl(dominantColor)
+        val domH = domHsl[0]
+        val domS = domHsl[1]
+
+        // Tone 97~98 delicate soft pastel ambient background (Chroma <= 8, Saturation <= 0.08)
+        val background = hslToColor(domH, minOf(0.08f, domS * 0.20f), 0.975f)
         val surface = background
         val surfaceContainerLowest = Color.White
-        val surfaceContainerLow = hslToColor(h, maxOf(0.06f, s * 0.18f), 0.95f)
-        val surfaceContainer = hslToColor(h, maxOf(0.06f, s * 0.16f), 0.93f)
-        val surfaceContainerHigh = hslToColor(h, maxOf(0.06f, s * 0.16f), 0.90f)
-        val surfaceContainerHighest = hslToColor(h, maxOf(0.06f, s * 0.16f), 0.86f)
-        val surfaceVariant = hslToColor(h, maxOf(0.06f, s * 0.14f), 0.90f)
+        val surfaceContainerLow = hslToColor(domH, minOf(0.08f, domS * 0.18f), 0.95f)
+        val surfaceContainer = hslToColor(domH, minOf(0.08f, domS * 0.16f), 0.93f)
+        val surfaceContainerHigh = hslToColor(domH, minOf(0.08f, domS * 0.16f), 0.90f)
+        val surfaceContainerHighest = hslToColor(domH, minOf(0.08f, domS * 0.16f), 0.86f)
+        val surfaceVariant = hslToColor(domH, minOf(0.08f, domS * 0.14f), 0.90f)
 
         // Tone 40 primary - ensure contrast with onPrimary (White) >= 4.5:1
-        var primaryL = 0.38f
-        var primary = hslToColor(h, maxOf(0.50f, s * 0.95f), primaryL)
+        var primaryL = 0.40f
+        var primary = hslToColor(seedH, maxOf(0.50f, seedS * 0.95f), primaryL)
         while (contrastRatio(Color.White, primary) < 4.5 && primaryL > 0.15f) {
             primaryL -= 0.02f
-            primary = hslToColor(h, maxOf(0.50f, s * 0.95f), primaryL)
+            primary = hslToColor(seedH, maxOf(0.50f, seedS * 0.95f), primaryL)
         }
         val onPrimary = Color.White
 
         // Pills: primaryContainer (Tone 92) + onPrimaryContainer (Tone 8~10) reaching WCAG AAA (>= 8.5:1)
-        val primaryContainer = hslToColor(h, minOf(0.35f, s * 0.45f), 0.92f)
+        val primaryContainer = hslToColor(seedH, minOf(0.35f, seedS * 0.45f), 0.92f)
         var textL = 0.08f
-        var onPrimaryContainer = hslToColor(h, minOf(0.60f, s * 0.70f), textL)
+        var onPrimaryContainer = hslToColor(seedH, minOf(0.60f, seedS * 0.70f), textL)
         while (contrastRatio(onPrimaryContainer, primaryContainer) < 8.5 && textL > 0.02f) {
             textL -= 0.01f
-            onPrimaryContainer = hslToColor(h, minOf(0.60f, s * 0.70f), textL)
+            onPrimaryContainer = hslToColor(seedH, minOf(0.60f, seedS * 0.70f), textL)
         }
 
-        val inverseSurface = hslToColor(h, s * 0.25f, 0.20f)
+        val inverseSurface = hslToColor(domH, domS * 0.25f, 0.20f)
         val inverseOnSurface = Color(0xFFE4E1E8)
-        val inversePrimary = hslToColor(h, maxOf(0.40f, s * 0.85f), 0.80f)
+        val inversePrimary = hslToColor(seedH, maxOf(0.40f, seedS * 0.85f), 0.80f)
 
         return ExpressiveLightColorScheme.copy(
             primary = primary,
@@ -237,6 +426,9 @@ object ArtworkColorExtractor {
             background = background,
             surface = surface,
             surfaceVariant = surfaceVariant,
+            // Main text is dark slate charcoal (#1E293B) reaching WCAG AAA (> 8.5:1)
+            onBackground = Color(0xFF1E293B),
+            onSurface = Color(0xFF1E293B),
             // Secondary text is dark slate charcoal (#3A3546) reaching WCAG AAA (> 8.5:1)
             onSurfaceVariant = Color(0xFF3A3546),
             surfaceContainerLowest = surfaceContainerLowest,
@@ -276,38 +468,49 @@ object ArtworkColorExtractor {
     }
 
     /**
-     * Creates dark [ColorScheme] respecting the fallback flag.
+     * Creates dark [ColorScheme] respecting fallback and monochrome flags.
      */
     fun createDarkColorScheme(
         dominantColor: Color,
         isFallback: Boolean = false,
-    ): ColorScheme = if (isFallback) ExpressiveDarkColorScheme else deriveDarkColorScheme(dominantColor)
+        isMonochrome: Boolean = false,
+    ): ColorScheme =
+        when {
+            isFallback || isMonochrome -> createMonochromeDarkColorScheme()
+            else -> deriveDarkColorScheme(dominantColor)
+        }
 
     /**
-     * Creates light [ColorScheme] respecting the fallback flag.
+     * Creates light [ColorScheme] respecting fallback and monochrome flags.
      */
     fun createLightColorScheme(
         dominantColor: Color,
         isFallback: Boolean = false,
-    ): ColorScheme = if (isFallback) ExpressiveLightColorScheme else deriveLightColorScheme(dominantColor)
+        isMonochrome: Boolean = false,
+    ): ColorScheme =
+        when {
+            isFallback || isMonochrome -> createMonochromeLightColorScheme()
+            else -> deriveLightColorScheme(dominantColor)
+        }
 
     /**
-     * Derives [ColorScheme] based on mode and fallback flag.
+     * Derives [ColorScheme] based on mode, fallback flag, and monochrome flag.
      */
     fun deriveColorScheme(
         dominantColor: Color,
         isDark: Boolean,
         isFallback: Boolean = false,
+        isMonochrome: Boolean = false,
     ): ColorScheme =
         if (isDark) {
-            createDarkColorScheme(dominantColor, isFallback)
+            createDarkColorScheme(dominantColor, isFallback, isMonochrome)
         } else {
-            createLightColorScheme(dominantColor, isFallback)
+            createLightColorScheme(dominantColor, isFallback, isMonochrome)
         }
 
     /**
      * Extracts dynamic artwork colors from a cached thumbnail file path.
-     * Gracefully falls back to standard MD3 surface colors if file is null, empty, or unreadable.
+     * Gracefully falls back to pure neutral MD3 monochrome if file is null, empty, or unreadable.
      */
     fun extractArtworkColors(
         thumbnailPath: String?,
@@ -346,8 +549,24 @@ object ArtworkColorExtractor {
         }
     }
 
+    private fun hasNonTransparentPixels(bitmap: Bitmap): Boolean {
+        val stepX = maxOf(1, bitmap.width / 16)
+        val stepY = maxOf(1, bitmap.height / 16)
+        for (y in 0 until bitmap.height step stepY) {
+            for (x in 0 until bitmap.width step stepX) {
+                if (((bitmap.getPixel(x, y) ushr 24) and 0xFF) >= 32) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
     /**
-     * Extracts dynamic artwork colors from a Bitmap instance.
+     * Extracts dynamic artwork colors from a Bitmap instance using androidx.palette.
+     * Extracts Vibrant, Dominant, and Muted swatches.
+     * Implements Zero-Tint Monochrome Safeguard: if saturation < 0.12 or chroma < 8,
+     * outputs clean neutral monochrome slate/pearl tones without red hue bias.
      */
     fun extractArtworkColors(
         bitmap: Bitmap?,
@@ -355,17 +574,84 @@ object ArtworkColorExtractor {
         defaultBackgroundColor: Color = SurfaceDark,
         isDarkTheme: Boolean = true,
     ): ArtworkColors {
-        if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0) {
+        if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0 || !hasNonTransparentPixels(bitmap)) {
             return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
         }
 
-        val dominant =
-            extractDominantColor(bitmap) ?: return createFallbackColors(
-                defaultSurfaceColor,
-                defaultBackgroundColor,
-            )
+        val palette =
+            try {
+                Palette
+                    .from(bitmap)
+                    .maximumColorCount(16)
+                    .clearFilters()
+                    .addFilter { rgb, _ -> ((rgb ushr 24) and 0xFF) >= 64 }
+                    .generate()
+            } catch (_: Throwable) {
+                return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
+            }
 
-        // Atmospheric top tint composited over surface
+        if (palette.swatches.isEmpty()) {
+            return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
+        }
+
+        val dominantSwatch =
+            palette.dominantSwatch
+                ?: palette.swatches.maxByOrNull { it.population }
+                ?: palette.swatches.first()
+
+        val dominant = Color(dominantSwatch.rgb)
+
+        val vibrantSwatch =
+            palette.vibrantSwatch
+                ?: palette.lightVibrantSwatch
+                ?: palette.darkVibrantSwatch
+                ?: palette.dominantSwatch
+                ?: palette.mutedSwatch
+                ?: palette.lightMutedSwatch
+                ?: palette.darkMutedSwatch
+                ?: dominantSwatch
+
+        val vibrant = Color(vibrantSwatch.rgb)
+
+        val mutedSwatch =
+            palette.mutedSwatch
+                ?: palette.lightMutedSwatch
+                ?: palette.darkMutedSwatch
+                ?: palette.dominantSwatch
+                ?: vibrantSwatch
+
+        val muted = Color(mutedSwatch.rgb)
+
+        // Zero-Tint Monochrome Safeguard:
+        // If extracted swatches or sampled colors exhibit saturation < 0.12 or perceptual Chroma < 8
+        val isMono =
+            isMonochrome(dominant) &&
+                (palette.vibrantSwatch == null || isMonochrome(Color(palette.vibrantSwatch!!.rgb))) &&
+                palette.swatches.none { swatch ->
+                    val c = Color(swatch.rgb)
+                    val hsl = colorToHsl(c)
+                    hsl[1] >= 0.12f && perceptualChroma(c) >= 8f && swatch.population > 5
+                }
+
+        if (isMono) {
+            val bgTop = if (isDarkTheme) Color(0xFF1E1F25) else Color(0xFFE2E2E9)
+            val bgBottom = if (isDarkTheme) Color(0xFF121318) else Color(0xFFFFFFFF)
+            val accent = if (isDarkTheme) Color(0xFFE2E2E9) else Color(0xFF1E293B)
+            return ArtworkColors(
+                dominantColor = dominant,
+                backgroundTopColor = bgTop,
+                backgroundBottomColor = bgBottom,
+                accentColor = accent,
+                isFallback = false,
+                isMonochrome = true,
+                vibrantColor = if (isDarkTheme) Color(0xFFE2E2E9) else Color(0xFF1E293B),
+                mutedColor = if (isDarkTheme) Color(0xFF8E9099) else Color(0xFF74777F),
+                darkColorScheme = createMonochromeDarkColorScheme(),
+                lightColorScheme = createMonochromeLightColorScheme(),
+            )
+        }
+
+        // Chromatic artwork:
         val atmosphericTintAlpha = if (isDarkTheme) 0.50f else 0.28f
         val backgroundTop = dominant.copy(alpha = atmosphericTintAlpha).compositeOver(defaultSurfaceColor)
         val backgroundBottom = defaultBackgroundColor
@@ -374,104 +660,45 @@ object ArtworkColorExtractor {
             dominantColor = dominant,
             backgroundTopColor = backgroundTop,
             backgroundBottomColor = backgroundBottom,
-            accentColor = dominant,
+            accentColor = vibrant,
             isFallback = false,
-            darkColorScheme = deriveDarkColorScheme(dominant),
-            lightColorScheme = deriveLightColorScheme(dominant),
+            isMonochrome = false,
+            vibrantColor = vibrant,
+            mutedColor = muted,
+            darkColorScheme = deriveDarkColorScheme(seedColor = vibrant, dominantColor = dominant),
+            lightColorScheme = deriveLightColorScheme(seedColor = vibrant, dominantColor = dominant),
         )
     }
 
     /**
-     * Extracts the most prominent/vibrant dominant color from a bitmap using hue-binning sampling.
-     * Returns null if no non-transparent pixels exist.
+     * Extracts the most prominent/vibrant dominant color from a bitmap using androidx.palette.
+     * Returns null if bitmap is invalid or has no non-transparent pixels.
      */
     fun extractDominantColor(bitmap: Bitmap): Color? {
-        val scaledBitmap =
-            if (bitmap.width > SAMPLE_SIZE || bitmap.height > SAMPLE_SIZE) {
-                Bitmap.createScaledBitmap(bitmap, SAMPLE_SIZE, SAMPLE_SIZE, false)
-            } else {
-                bitmap
-            }
+        if (bitmap.width <= 0 || bitmap.height <= 0 || !hasNonTransparentPixels(bitmap)) return null
+        return try {
+            val palette =
+                Palette
+                    .from(bitmap)
+                    .maximumColorCount(16)
+                    .clearFilters()
+                    .addFilter { rgb, _ -> ((rgb ushr 24) and 0xFF) >= 64 }
+                    .generate()
 
-        val width = scaledBitmap.width
-        val height = scaledBitmap.height
-        val totalPixels = width * height
-        if (totalPixels <= 0) return null
-
-        val pixels = IntArray(totalPixels)
-        scaledBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-
-        if (scaledBitmap != bitmap && !scaledBitmap.isRecycled) {
-            scaledBitmap.recycle()
-        }
-
-        val hsv = FloatArray(3)
-        // 12 hue bins: 0°..30°, 30°..60°, ..., 330°..360°
-        val binCounts = DoubleArray(12)
-        val binRed = DoubleArray(12)
-        val binGreen = DoubleArray(12)
-        val binBlue = DoubleArray(12)
-
-        var nonTransparentCount = 0
-        var totalRed = 0.0
-        var totalGreen = 0.0
-        var totalBlue = 0.0
-
-        for (pixel in pixels) {
-            val alpha = (pixel ushr 24) and 0xFF
-            if (alpha < 64) continue // Skip transparent pixels
-
-            val r = (pixel ushr 16) and 0xFF
-            val g = (pixel ushr 8) and 0xFF
-            val b = pixel and 0xFF
-
-            nonTransparentCount++
-            totalRed += r
-            totalGreen += g
-            totalBlue += b
-
-            android.graphics.Color.colorToHSV(pixel, hsv)
-            val saturation = hsv[1]
-            val value = hsv[2]
-
-            // Give extra weight to saturated, vibrant colors over flat gray/black/white
-            val vibrancyWeight = ((1.0f + saturation * 2.5f) * (0.3f + value * 0.7f)).toDouble()
-            val hue = hsv[0]
-            val binIndex = ((hue % 360f) / 30f).toInt().coerceIn(0, 11)
-
-            binCounts[binIndex] = binCounts[binIndex] + vibrancyWeight
-            binRed[binIndex] = binRed[binIndex] + (r * vibrancyWeight)
-            binGreen[binIndex] = binGreen[binIndex] + (g * vibrancyWeight)
-            binBlue[binIndex] = binBlue[binIndex] + (b * vibrancyWeight)
-        }
-
-        if (nonTransparentCount == 0) return null
-
-        // Find the bin with the highest weighted count
-        var bestBin = -1
-        var maxWeight = 0.0
-        for (i in 0 until 12) {
-            if (binCounts[i] > maxWeight) {
-                maxWeight = binCounts[i]
-                bestBin = i
-            }
-        }
-
-        return if (bestBin >= 0 && maxWeight > 0.0) {
-            val avgR = (binRed[bestBin] / binCounts[bestBin]).toInt().coerceIn(0, 255)
-            val avgG = (binGreen[bestBin] / binCounts[bestBin]).toInt().coerceIn(0, 255)
-            val avgB = (binBlue[bestBin] / binCounts[bestBin]).toInt().coerceIn(0, 255)
-            Color(avgR, avgG, avgB)
-        } else {
-            val avgR = (totalRed / nonTransparentCount).toInt().coerceIn(0, 255)
-            val avgG = (totalGreen / nonTransparentCount).toInt().coerceIn(0, 255)
-            val avgB = (totalBlue / nonTransparentCount).toInt().coerceIn(0, 255)
-            Color(avgR, avgG, avgB)
+            val swatch =
+                palette.dominantSwatch
+                    ?: palette.swatches.maxByOrNull { it.population }
+                    ?: palette.vibrantSwatch
+                    ?: palette.mutedSwatch
+            swatch?.let { Color(it.rgb) }
+        } catch (_: Throwable) {
+            null
         }
     }
 
     /**
      * Fallback atmospheric colors when artwork thumbnail is missing or cannot be loaded.
+     * Pure neutral Material 3 monochrome without hardcoded brand purple (#141022 or #5544B3).
      */
     fun createFallbackColors(
         defaultSurfaceColor: Color = SurfaceContainerDark,
@@ -481,10 +708,13 @@ object ArtworkColorExtractor {
             dominantColor = defaultSurfaceColor,
             backgroundTopColor = defaultSurfaceColor,
             backgroundBottomColor = defaultBackgroundColor,
-            accentColor = defaultSurfaceColor,
+            accentColor = Color(0xFFE2E2E9),
             isFallback = true,
-            darkColorScheme = ExpressiveDarkColorScheme,
-            lightColorScheme = ExpressiveLightColorScheme,
+            isMonochrome = true,
+            vibrantColor = Color(0xFFE2E2E9),
+            mutedColor = Color(0xFF8E9099),
+            darkColorScheme = createMonochromeDarkColorScheme(),
+            lightColorScheme = createMonochromeLightColorScheme(),
         )
 }
 

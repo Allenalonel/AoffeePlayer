@@ -519,4 +519,119 @@ class ArtworkColorExtractorTest {
         val secTextContrast = contrastRatio(lightScheme.onSurfaceVariant, lightScheme.background)
         assertTrue("Secondary text contrast >= 8.5:1, got $secTextContrast", secTextContrast >= 8.5)
     }
+
+    @Test
+    fun computeAmbientGlowStops_forChromaticArtwork_generatesMultiStopAtmosphericTones() {
+        val bitmap = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888)
+        bitmap.eraseColor(android.graphics.Color.BLUE)
+
+        val artworkColors =
+            ArtworkColorExtractor.extractArtworkColors(
+                bitmap = bitmap,
+                defaultSurfaceColor = defaultSurface,
+                defaultBackgroundColor = defaultBackground,
+            )
+
+        assertFalse(artworkColors.isMonochrome)
+
+        // Dark theme multi-stop
+        val darkStops = artworkColors.ambientGlowStops(isDarkTheme = true)
+        assertNotNull(darkStops.topColor)
+        assertNotNull(darkStops.midColor)
+        assertNotNull(darkStops.bottomColor)
+
+        // Top ambient stop should have blue hue component
+        val topHsl = ArtworkColorExtractor.colorToHsl(darkStops.topColor)
+        assertTrue("Top stop hue should be in blue family (180..260), got ${topHsl[0]}", topHsl[0] in 180f..260f)
+        assertTrue("Top stop should have non-zero saturation, got ${topHsl[1]}", topHsl[1] > 0.15f)
+
+        // Bottom stop should melt into background
+        assertEquals(defaultBackground, darkStops.bottomColor)
+
+        // Ambient brush can be created without crashing
+        val darkBrush = artworkColors.ambientGlowBrush(isDarkTheme = true)
+        assertNotNull(darkBrush)
+
+        // Light theme multi-stop
+        val lightStops = artworkColors.ambientGlowStops(isDarkTheme = false)
+        assertNotNull(lightStops.topColor)
+        assertNotNull(lightStops.midColor)
+        assertNotNull(lightStops.bottomColor)
+
+        val lightBrush = artworkColors.ambientGlowBrush(isDarkTheme = false)
+        assertNotNull(lightBrush)
+    }
+
+    @Test
+    fun computeAmbientGlowStops_forMonochromeArtwork_producesZeroRedTintNeutralSmoke() {
+        // Pure grayscale bitmap where R == G == B simulating album cover like AS I AM
+        val bitmap = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888)
+        for (y in 0 until 16) {
+            for (x in 0 until 16) {
+                val gray = (x * 16).coerceIn(0, 255)
+                bitmap.setPixel(x, y, android.graphics.Color.rgb(gray, gray, gray))
+            }
+        }
+
+        val artworkColors =
+            ArtworkColorExtractor.extractArtworkColors(
+                bitmap = bitmap,
+                defaultSurfaceColor = defaultSurface,
+                defaultBackgroundColor = defaultBackground,
+            )
+
+        assertTrue(artworkColors.isMonochrome)
+
+        // Dark theme neutral smoke tones
+        val darkStops = artworkColors.ambientGlowStops(isDarkTheme = true)
+        val topDark = darkStops.topColor
+        val midDark = darkStops.midColor
+        val bottomDark = darkStops.bottomColor
+
+        // Perceptual Chroma of all stops must be strictly neutral (< 8.0)
+        val topChroma = ArtworkColorExtractor.perceptualChroma(topDark)
+        val midChroma = ArtworkColorExtractor.perceptualChroma(midDark)
+        val bottomChroma = ArtworkColorExtractor.perceptualChroma(bottomDark)
+
+        assertTrue("Dark top stop Chroma must be < 8, got $topChroma", topChroma < 8f)
+        assertTrue("Dark mid stop Chroma must be < 8, got $midChroma", midChroma < 8f)
+        assertTrue("Dark bottom stop Chroma must be < 8, got $bottomChroma", bottomChroma < 8f)
+
+        // Zero red hue bias check: red channel must not dominate and saturation must remain neutral
+        val topHsl = ArtworkColorExtractor.colorToHsl(topDark)
+        assertFalse(
+            "Monochrome top stop must never have high saturation red tint",
+            topHsl[1] > 0.25f && (topHsl[0] < 30f || topHsl[0] > 330f),
+        )
+
+        // Light theme neutral pearl/silver smoke tones
+        val lightStops = artworkColors.ambientGlowStops(isDarkTheme = false)
+        val topLightChroma = ArtworkColorExtractor.perceptualChroma(lightStops.topColor)
+        val midLightChroma = ArtworkColorExtractor.perceptualChroma(lightStops.midColor)
+        val bottomLightChroma = ArtworkColorExtractor.perceptualChroma(lightStops.bottomColor)
+
+        assertTrue("Light top stop Chroma must be < 8, got $topLightChroma", topLightChroma < 8f)
+        assertTrue("Light mid stop Chroma must be < 8, got $midLightChroma", midLightChroma < 8f)
+        assertTrue("Light bottom stop Chroma must be < 8, got $bottomLightChroma", bottomLightChroma < 8f)
+
+        // Verify gradient brushes construct without crash
+        assertNotNull(artworkColors.ambientGlowBrush(isDarkTheme = true))
+        assertNotNull(artworkColors.ambientGlowBrush(isDarkTheme = false))
+        assertNotNull(artworkColors.gradientBrush)
+    }
+
+    @Test
+    fun computeAmbientGlowStops_forFallback_producesNeutralMonochromeSmoke() {
+        val fallback = ArtworkColorExtractor.createFallbackColors(defaultSurface, defaultBackground)
+        assertTrue(fallback.isFallback)
+        assertTrue(fallback.isMonochrome)
+
+        val stops = fallback.ambientGlowStops(isDarkTheme = true)
+        val topChroma = ArtworkColorExtractor.perceptualChroma(stops.topColor)
+        val midChroma = ArtworkColorExtractor.perceptualChroma(stops.midColor)
+
+        assertTrue("Fallback top Chroma must be < 8, got $topChroma", topChroma < 8f)
+        assertTrue("Fallback mid Chroma must be < 8, got $midChroma", midChroma < 8f)
+        assertNotNull(fallback.ambientGlowBrush(isDarkTheme = true))
+    }
 }

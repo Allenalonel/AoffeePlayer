@@ -6,6 +6,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.LoadEventInfo
@@ -14,6 +15,7 @@ import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.test.core.app.ApplicationProvider
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.WebDavServer
 import okhttp3.Credentials
 import okhttp3.mockwebserver.MockResponse
@@ -407,6 +409,74 @@ class WebDavMediaSourceBuilderTest {
         val mediaSource = builder.createMediaSource(testServer, wmaTrack)
         assertNotNull(mediaSource)
         assertEquals("audio/x-ms-wma", mediaSource.mediaItem.localConfiguration?.mimeType)
+    }
+
+    @Test
+    fun getDataSourceFactory_forLocalStorageServer_returnsDefaultDataSourceFactory() {
+        val localServer = WebDavServer.createLocalStorage()
+        val factory = builder.getDataSourceFactory(localServer)
+        assertTrue("Local server must yield DefaultDataSource.Factory", factory is DefaultDataSource.Factory)
+    }
+
+    @Test
+    fun createMediaSource_forLocalStorageTrack_buildsMediaSourceUsingDefaultDataSource() {
+        val localServer = WebDavServer.createLocalStorage()
+        val localTrack =
+            AudioTrack(
+                id = "0:content://com.android.providers.media.documents/document/audio%3A123",
+                serverId = LOCAL_STORAGE_ID,
+                remotePath = "content://com.android.providers.media.documents/document/audio%3A123",
+                title = "Local FLAC Song",
+                artist = "Local Artist",
+                album = "Local Album",
+                format = AudioFormat.FLAC,
+                size = 10485760L,
+            )
+
+        val mediaSource = builder.createMediaSource(localServer, localTrack)
+        assertNotNull(mediaSource)
+        assertEquals(localTrack.id, mediaSource.mediaItem.mediaId)
+        assertEquals(localTrack.remotePath, mediaSource.mediaItem.localConfiguration?.uri.toString())
+        assertEquals(AudioFormat.FLAC.mimeType, mediaSource.mediaItem.localConfiguration?.mimeType)
+    }
+
+    @Test
+    fun createMediaItem_withContentSchemeStreamUrl_parsesUriCleanly() {
+        val localServer = WebDavServer.createLocalStorage()
+        val contentTrack =
+            AudioTrack(
+                id = "0:content://media/external/audio/media/42",
+                serverId = LOCAL_STORAGE_ID,
+                remotePath = "content://media/external/audio/media/42",
+                title = "Content Song",
+                format = AudioFormat.MP3,
+                size = 4096L,
+            )
+
+        val mediaItem = builder.createMediaItem(localServer, contentTrack)
+        assertEquals("content://media/external/audio/media/42", mediaItem.localConfiguration?.uri.toString())
+        assertEquals("Content Song", mediaItem.mediaMetadata.title.toString())
+    }
+
+    @Test
+    fun createMediaItem_withContentArtworkUri_attachesContentArtworkUriCleanly() {
+        val localServer = WebDavServer.createLocalStorage()
+        val contentArtTrack =
+            AudioTrack(
+                id = "0:content://media/external/audio/media/42",
+                serverId = LOCAL_STORAGE_ID,
+                remotePath = "content://media/external/audio/media/42",
+                title = "Track with Art",
+                format = AudioFormat.MP3,
+                size = 4096L,
+                coverThumbnailPath = "content://media/external/audio/albumart/7",
+            )
+
+        val mediaItem = builder.createMediaItem(localServer, contentArtTrack)
+        assertEquals(
+            Uri.parse("content://media/external/audio/albumart/7"),
+            mediaItem.mediaMetadata.artworkUri,
+        )
     }
 
     @Test

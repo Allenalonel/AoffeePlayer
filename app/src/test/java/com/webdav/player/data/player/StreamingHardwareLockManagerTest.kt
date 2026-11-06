@@ -70,6 +70,35 @@ class StreamingHardwareLockManagerTest {
     }
 
     @Test
+    fun acquireWakeLockOnly_holdsOnlyWakeLock_notWifiLock() {
+        lockManager.acquireWakeLockOnly()
+        assertTrue(lockManager.isWakeLockHeld)
+        assertFalse(lockManager.isWifiLockHeld)
+    }
+
+    @Test
+    fun releaseWifiLock_releasesWifiLockWhileRetainingWakeLock() {
+        lockManager.acquireLocks()
+        assertTrue(lockManager.isWakeLockHeld)
+        assertTrue(lockManager.isWifiLockHeld)
+
+        lockManager.releaseWifiLock()
+        assertTrue(lockManager.isWakeLockHeld)
+        assertFalse(lockManager.isWifiLockHeld)
+    }
+
+    @Test
+    fun reacquireLocks_afterAcquireWakeLockOnly_restoresWifiLock() {
+        lockManager.acquireWakeLockOnly()
+        assertTrue(lockManager.isWakeLockHeld)
+        assertFalse(lockManager.isWifiLockHeld)
+
+        lockManager.acquireLocks()
+        assertTrue(lockManager.isWakeLockHeld)
+        assertTrue(lockManager.isWifiLockHeld)
+    }
+
+    @Test
     fun reacquireLocks_afterRelease_holdsLocksAgain() {
         lockManager.acquireLocks()
         lockManager.releaseLocks()

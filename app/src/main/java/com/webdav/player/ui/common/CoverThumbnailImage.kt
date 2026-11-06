@@ -61,6 +61,8 @@ fun CoverThumbnailImage(
     crossfadeDurationMs: Int = 250,
     fallback: @Composable () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
+
     // Fast-path: Check memory cache directly
     val initialCached = remember(thumbnailPath) {
         if (!thumbnailPath.isNullOrBlank()) {
@@ -84,14 +86,26 @@ fun CoverThumbnailImage(
         if (imageBitmapState.value == null) {
             val loaded = withContext(Dispatchers.IO) {
                 try {
-                    val file = File(thumbnailPath)
-                    if (file.exists() && file.length() > 0) {
-                        val opts = BitmapFactory.Options().apply {
-                            inPreferredConfig = Bitmap.Config.RGB_565
+                    val opts = BitmapFactory.Options().apply {
+                        inPreferredConfig = Bitmap.Config.RGB_565
+                    }
+                    if (thumbnailPath.startsWith("content://")) {
+                        context.contentResolver.openInputStream(android.net.Uri.parse(thumbnailPath))?.use { stream ->
+                            BitmapFactory.decodeStream(stream, null, opts)?.asImageBitmap()
                         }
-                        BitmapFactory.decodeFile(file.absolutePath, opts)?.asImageBitmap()
                     } else {
-                        null
+                        val cleanPath =
+                            if (thumbnailPath.startsWith("file://")) {
+                                thumbnailPath.removePrefix("file://")
+                            } else {
+                                thumbnailPath
+                            }
+                        val file = File(cleanPath)
+                        if (file.exists() && file.length() > 0) {
+                            BitmapFactory.decodeFile(file.absolutePath, opts)?.asImageBitmap()
+                        } else {
+                            null
+                        }
                     }
                 } catch (e: Throwable) {
                     null

@@ -1,5 +1,6 @@
 package com.webdav.player.ui.player
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -311,25 +312,40 @@ object ArtworkColorExtractor {
         defaultSurfaceColor: Color = SurfaceContainerDark,
         defaultBackgroundColor: Color = SurfaceDark,
         isDarkTheme: Boolean = true,
+        context: Context? = null,
     ): ArtworkColors {
         if (thumbnailPath.isNullOrBlank()) {
             return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
         }
 
         return try {
-            val file = File(thumbnailPath)
-            if (!file.exists() || file.length() == 0L) {
-                return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
-            }
-
-            val options =
-                BitmapFactory.Options().apply {
-                    inJustDecodeBounds = false
-                    inPreferredConfig = Bitmap.Config.ARGB_8888
-                }
             val bitmap =
-                BitmapFactory.decodeFile(file.absolutePath, options)
-                    ?: return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
+                when {
+                    thumbnailPath.startsWith("content://") && context != null -> {
+                        context.contentResolver.openInputStream(android.net.Uri.parse(thumbnailPath))?.use { stream ->
+                            BitmapFactory.decodeStream(stream)
+                        }
+                    }
+
+                    else -> {
+                        val cleanPath =
+                            when {
+                                thumbnailPath.startsWith("file://") -> thumbnailPath.removePrefix("file://")
+                                else -> thumbnailPath
+                            }
+                        val file = File(cleanPath)
+                        if (!file.exists() || file.length() == 0L) {
+                            return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
+                        }
+
+                        val options =
+                            BitmapFactory.Options().apply {
+                                inJustDecodeBounds = false
+                                inPreferredConfig = Bitmap.Config.ARGB_8888
+                            }
+                        BitmapFactory.decodeFile(file.absolutePath, options)
+                    }
+                } ?: return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
 
             try {
                 extractArtworkColors(bitmap, defaultSurfaceColor, defaultBackgroundColor, isDarkTheme)
@@ -514,6 +530,8 @@ fun rememberArtworkColors(
             SurfaceLight
         }
 
+    val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
+
     val initialFallback =
         ArtworkColorExtractor.createFallbackColors(
             resolvedSurface,
@@ -539,6 +557,7 @@ fun rememberArtworkColors(
                     defaultSurfaceColor = resolvedSurface,
                     defaultBackgroundColor = resolvedBackground,
                     isDarkTheme = isDarkTheme,
+                    context = context,
                 )
             }
         value = extracted

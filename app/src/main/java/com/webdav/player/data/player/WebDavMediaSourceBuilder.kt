@@ -8,6 +8,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
@@ -17,7 +18,9 @@ import androidx.media3.extractor.ExtractorsFactory
 import com.webdav.player.data.remote.OkHttpWebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import java.io.File
@@ -25,8 +28,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 @OptIn(UnstableApi::class)
 internal class WebDavMediaSourceBuilder(
-    @Suppress("UNUSED_PARAMETER")
-    context: Context? = null,
+    val context: Context? = null,
     val webDavClient: OkHttpWebDavClient = OkHttpWebDavClient(),
     val loadErrorHandlingPolicy: LoadErrorHandlingPolicy = WebDavLoadErrorHandlingPolicy(),
     val resilientSleeper: ((Long) -> Unit)? = null,
@@ -40,6 +42,7 @@ internal class WebDavMediaSourceBuilder(
     )
 
     private val dataSourceFactoryCache = ConcurrentHashMap<DataSourceCacheKey, DataSource.Factory>()
+    private var defaultDataSourceFactory: DataSource.Factory? = null
 
     val streamingConnectionPool: ConnectionPool
         get() = webDavClient.streamingConnectionPool
@@ -47,7 +50,21 @@ internal class WebDavMediaSourceBuilder(
     @VisibleForTesting
     fun getStreamingClientForServer(server: WebDavServer): OkHttpClient = webDavClient.getStreamingClientForServer(server)
 
-    fun getDataSourceFactory(server: WebDavServer): DataSource.Factory = getOrCreateDataSourceFactory(server)
+    private fun getDefaultDataSourceFactory(): DataSource.Factory {
+        val cached = defaultDataSourceFactory
+        if (cached != null) return cached
+        val ctx = checkNotNull(context) { "Context is required for local storage playback" }
+        val created = DefaultDataSource.Factory(ctx)
+        defaultDataSourceFactory = created
+        return created
+    }
+
+    fun getDataSourceFactory(server: WebDavServer): DataSource.Factory =
+        if (server.isLocal) {
+            getDefaultDataSourceFactory()
+        } else {
+            getOrCreateDataSourceFactory(server)
+        }
 
     private fun getOrCreateDataSourceFactory(server: WebDavServer): DataSource.Factory {
         val cacheKey =
@@ -77,7 +94,18 @@ internal class WebDavMediaSourceBuilder(
         track: AudioTrack,
     ): MediaSource {
         val mediaItem = createMediaItem(server, track)
-        val dataSourceFactory = getOrCreateDataSourceFactory(server)
+        val streamUrl = track.streamUrl(server)
+        val isLocalTrack = server.isLocal ||
+            track.serverId == LOCAL_STORAGE_ID ||
+            streamUrl.startsWith("content://") ||
+            streamUrl.startsWith("file://")
+
+        val dataSourceFactory =
+            if (isLocalTrack) {
+                getDefaultDataSourceFactory()
+            } else {
+                getOrCreateDataSourceFactory(server)
+            }
         val extractorsFactory = resolveExtractorsFactory(track.format)
 
         return ProgressiveMediaSource
@@ -152,7 +180,13 @@ internal class WebDavMediaSourceBuilder(
                 .setAlbumTitle(track.album)
 
         track.coverThumbnailPath?.let { path ->
-            metaBuilder.setArtworkUri(Uri.fromFile(File(path)))
+            val artUri =
+                if (path.startsWith("content://") || path.startsWith("file://")) {
+                    Uri.parse(path)
+                } else {
+                    Uri.fromFile(File(path))
+                }
+            metaBuilder.setArtworkUri(artUri)
         }
 
         return MediaItem

@@ -49,6 +49,7 @@ val ExpressiveDarkColorScheme =
         onError = OnErrorDark,
         errorContainer = ErrorContainerDark,
         onErrorContainer = OnErrorContainerDark,
+        surfaceTint = PrimaryDark,
     )
 
 val ExpressiveLightColorScheme =
@@ -82,6 +83,7 @@ val ExpressiveLightColorScheme =
         onError = OnErrorLight,
         errorContainer = ErrorContainerLight,
         onErrorContainer = OnErrorContainerLight,
+        surfaceTint = PrimaryLight,
     )
 
 /**

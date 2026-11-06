@@ -421,6 +421,7 @@ class MainActivity : ComponentActivity() {
                             onDismissBatteryBanner = { musicSession.clearKilledBySystemFlag() },
                             onConfirmUnsupportedRangeReplay = { musicSession.confirmUnsupportedRangeReplay() },
                             onDismissUnsupportedRange = { musicSession.dismissUnsupportedRange() },
+                            artworkColors = artworkColors,
                         )
                     }
 

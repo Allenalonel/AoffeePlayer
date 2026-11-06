@@ -94,6 +94,7 @@ fun FullPlayerView(
     onConfirmUnsupportedRangeReplay: () -> Unit = {},
     onDismissUnsupportedRange: () -> Unit = {},
     onAddToPlaylist: (AudioTrack) -> Unit = {},
+    artworkColors: ArtworkColors? = null,
 ) {
     var showQueueSheet by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -117,7 +118,6 @@ fun FullPlayerView(
     val currentTrack = sessionState.currentTrack
 
     // Dynamic atmospheric gradient sampled from cover art with MD3 fallback
-    val artworkColors by rememberArtworkColors(currentTrack?.coverThumbnailPath)
     val backgroundBrush =
         rememberArtworkBackgroundBrush(
             thumbnailPath = currentTrack?.coverThumbnailPath,
@@ -303,7 +303,6 @@ fun FullPlayerView(
                                     sessionState = sessionState,
                                     onArtworkClick = {},
                                     modifier = downwardSwipeModifier,
-                                    artworkColors = artworkColors,
                                 )
                             }
 
@@ -353,7 +352,6 @@ fun FullPlayerView(
                                             }
                                         },
                                         modifier = downwardSwipeModifier,
-                                        artworkColors = artworkColors,
                                     )
                                 }
 

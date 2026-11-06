@@ -94,10 +94,8 @@ internal fun rememberArtworkBackgroundBrush(
     )
 
     return remember(animatedTopColor, animatedMidColor, animatedBottomColor) {
-        Brush.verticalGradient(
-            0.0f to animatedTopColor,
-            0.45f to animatedMidColor,
-            1.0f to animatedBottomColor,
+        Brush.radialGradient(
+            colors = listOf(animatedTopColor, animatedMidColor, animatedBottomColor),
         )
     }
 }
@@ -112,39 +110,7 @@ internal fun PlayerVinylArtwork(
     sessionState: PlayerSessionState,
     onArtworkClick: () -> Unit,
     modifier: Modifier = Modifier,
-    artworkColors: ArtworkColors? = null,
 ) {
-    val isDark = isSystemInDarkTheme()
-    val activeColors =
-        artworkColors
-            ?: rememberArtworkColors(
-                thumbnailPath = currentTrack?.coverThumbnailPath,
-                defaultSurfaceColor = MaterialTheme.colorScheme.surfaceContainer,
-                defaultBackgroundColor = MaterialTheme.colorScheme.surface,
-                isDarkTheme = isDark,
-            ).value
-
-    val shadowSourceColor =
-        if (activeColors.isMonochrome) {
-            activeColors.mutedColor
-        } else {
-            activeColors.vibrantColor
-        }
-
-    val spotAlpha = if (isDark) 0.35f else 0.22f
-    val ambientAlpha = if (isDark) 0.25f else 0.15f
-
-    val animatedSpotColor by animateColorAsState(
-        targetValue = shadowSourceColor.copy(alpha = spotAlpha),
-        animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
-        label = "SquircleCardSpotColor",
-    )
-    val animatedAmbientColor by animateColorAsState(
-        targetValue = shadowSourceColor.copy(alpha = ambientAlpha),
-        animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
-        label = "SquircleCardAmbientColor",
-    )
-
     Column(
         modifier =
             modifier
@@ -163,8 +129,8 @@ internal fun PlayerVinylArtwork(
                     .shadow(
                         elevation = 24.dp,
                         shape = FullPlayerDefaults.ArtworkSquircleShape,
-                        spotColor = animatedSpotColor,
-                        ambientColor = animatedAmbientColor,
+                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                     )
                     .clip(FullPlayerDefaults.ArtworkSquircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)

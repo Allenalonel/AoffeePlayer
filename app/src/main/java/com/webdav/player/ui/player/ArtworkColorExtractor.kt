@@ -11,12 +11,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.palette.graphics.Palette
+import com.webdav.player.ui.theme.BackgroundDark
+import com.webdav.player.ui.theme.BackgroundLight
 import com.webdav.player.ui.theme.ExpressiveDarkColorScheme
 import com.webdav.player.ui.theme.ExpressiveLightColorScheme
 import com.webdav.player.ui.theme.SurfaceContainerDark
 import com.webdav.player.ui.theme.SurfaceContainerLight
-import com.webdav.player.ui.theme.SurfaceDark
-import com.webdav.player.ui.theme.SurfaceLight
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -50,33 +50,22 @@ data class ArtworkColors(
 ) {
     fun colorScheme(isDark: Boolean): ColorScheme = if (isDark) darkColorScheme else lightColorScheme
 
-    fun ambientGlowStops(
-        isDarkTheme: Boolean = true,
-        surfaceColor: Color = if (isDarkTheme) backgroundTopColor else Color(0xFFE2E2E9),
-        backgroundColor: Color = backgroundBottomColor,
-    ): AmbientGlowStops =
-        ArtworkColorExtractor.computeAmbientGlowStops(
-            artworkColors = this,
-            isDarkTheme = isDarkTheme,
-            surfaceColor = surfaceColor,
-            backgroundColor = backgroundColor,
-        )
-
     fun ambientGlowBrush(
         isDarkTheme: Boolean = true,
         surfaceColor: Color = if (isDarkTheme) backgroundTopColor else Color(0xFFE2E2E9),
         backgroundColor: Color = backgroundBottomColor,
     ): Brush {
-        val stops = ambientGlowStops(isDarkTheme, surfaceColor, backgroundColor)
-        return Brush.verticalGradient(
-            0.0f to stops.topColor,
-            0.45f to stops.midColor,
-            1.0f to stops.bottomColor,
+        val stops =
+            ArtworkColorExtractor.computeAmbientGlowStops(
+                artworkColors = this,
+                isDarkTheme = isDarkTheme,
+                surfaceColor = surfaceColor,
+                backgroundColor = backgroundColor,
+            )
+        return Brush.radialGradient(
+            colors = listOf(stops.topColor, stops.midColor, stops.bottomColor),
         )
     }
-
-    val gradientBrush: Brush
-        get() = ambientGlowBrush(isDarkTheme = true)
 }
 
 object ArtworkColorExtractor {
@@ -184,131 +173,13 @@ object ArtworkColorExtractor {
      * Clean neutral Material 3 monochrome dark color scheme (Tone 8 background, Tone 12 surface, Tone 85 primary).
      * Has zero hue bias (zero red tint).
      */
-    val MonochromeDarkColorScheme: ColorScheme = buildMonochromeDarkColorScheme()
+    val MonochromeDarkColorScheme: ColorScheme = ExpressiveDarkColorScheme
 
     /**
      * Clean neutral Material 3 monochrome light color scheme (Tone 98 background, Tone 94 surface, Tone 20 primary).
      * Has zero hue bias (zero red tint).
      */
-    val MonochromeLightColorScheme: ColorScheme = buildMonochromeLightColorScheme()
-
-    private fun buildMonochromeDarkColorScheme(): ColorScheme {
-        val background = Color(0xFF121318) // Tone 8
-        val surface = Color(0xFF1E1F25) // Tone 12
-        val surfaceContainerLowest = Color(0xFF0D0E12)
-        val surfaceContainerLow = Color(0xFF1A1B20)
-        val surfaceContainer = Color(0xFF1E1F25) // Tone 12
-        val surfaceContainerHigh = Color(0xFF292A30)
-        val surfaceContainerHighest = Color(0xFF34343B)
-        val surfaceVariant = Color(0xFF46464F)
-
-        val primary = Color(0xFFE2E2E9) // Tone 85 pearl white
-        val onPrimary = Color(0xFF191C20) // Tone 10 slate black
-        val primaryContainer = Color(0xFF353940)
-        val onPrimaryContainer = Color(0xFFE2E2E9)
-
-        val secondary = Color(0xFFC7C6CF)
-        val onSecondary = Color(0xFF303036)
-        val secondaryContainer = Color(0xFF474459)
-        val onSecondaryContainer = Color(0xFFE5E0F9)
-
-        val onBackground = Color(0xFFE4E1E8)
-        val onSurface = Color(0xFFE4E1E8)
-        val onSurfaceVariant = Color(0xFFC7C5D0)
-
-        val outline = Color(0xFF91909A)
-        val outlineVariant = Color(0xFF46464F)
-
-        return ExpressiveDarkColorScheme.copy(
-            primary = primary,
-            onPrimary = onPrimary,
-            primaryContainer = primaryContainer,
-            onPrimaryContainer = onPrimaryContainer,
-            secondary = secondary,
-            onSecondary = onSecondary,
-            secondaryContainer = secondaryContainer,
-            onSecondaryContainer = onSecondaryContainer,
-            background = background,
-            surface = surface,
-            surfaceVariant = surfaceVariant,
-            surfaceContainerLowest = surfaceContainerLowest,
-            surfaceContainerLow = surfaceContainerLow,
-            surfaceContainer = surfaceContainer,
-            surfaceContainerHigh = surfaceContainerHigh,
-            surfaceContainerHighest = surfaceContainerHighest,
-            onBackground = onBackground,
-            onSurface = onSurface,
-            onSurfaceVariant = onSurfaceVariant,
-            outline = outline,
-            outlineVariant = outlineVariant,
-            surfaceTint = primary,
-        )
-    }
-
-    private fun buildMonochromeLightColorScheme(): ColorScheme {
-        val background = Color(0xFFFFFFFF) // Tone 98 pure white
-        val surface = Color(0xFFE2E2E9) // Tone 94 clean gray
-        val surfaceContainerLowest = Color(0xFFFFFFFF)
-        val surfaceContainerLow = Color(0xFFF5F6F8)
-        val surfaceContainer = Color(0xFFE2E2E9) // Tone 94 clean gray
-        val surfaceContainerHigh = Color(0xFFDADAE0)
-        val surfaceContainerHighest = Color(0xFFD4D4DA)
-        val surfaceVariant = Color(0xFFE2E2E9)
-
-        val primary = Color(0xFF1E293B) // Tone 20 slate charcoal
-        val onPrimary = Color(0xFFFFFFFF) // Tone 100
-        val primaryContainer = Color(0xFFE2E2E9)
-        val onPrimaryContainer = Color(0xFF1E293B)
-
-        val secondary = Color(0xFF5F5C71)
-        val onSecondary = Color(0xFFFFFFFF)
-        val secondaryContainer = Color(0xFFE5E0F9)
-        val onSecondaryContainer = Color(0xFF1C192C)
-
-        val onBackground = Color(0xFF191C20)
-        val onSurface = Color(0xFF1E293B) // Tone 20 dark slate charcoal
-        val onSurfaceVariant = Color(0xFF3A3546) // Tone 30 dark slate charcoal, contrast >= 8.5:1
-
-        val outline = Color(0xFF777680)
-        val outlineVariant = Color(0xFFC7C5D0)
-
-        return ExpressiveLightColorScheme.copy(
-            primary = primary,
-            onPrimary = onPrimary,
-            primaryContainer = primaryContainer,
-            onPrimaryContainer = onPrimaryContainer,
-            secondary = secondary,
-            onSecondary = onSecondary,
-            secondaryContainer = secondaryContainer,
-            onSecondaryContainer = onSecondaryContainer,
-            background = background,
-            surface = surface,
-            surfaceVariant = surfaceVariant,
-            surfaceContainerLowest = surfaceContainerLowest,
-            surfaceContainerLow = surfaceContainerLow,
-            surfaceContainer = surfaceContainer,
-            surfaceContainerHigh = surfaceContainerHigh,
-            surfaceContainerHighest = surfaceContainerHighest,
-            onBackground = onBackground,
-            onSurface = onSurface,
-            onSurfaceVariant = onSurfaceVariant,
-            outline = outline,
-            outlineVariant = outlineVariant,
-            surfaceTint = primary,
-        )
-    }
-
-    /**
-     * Clean neutral Material 3 monochrome dark color scheme (Tone 8 background, Tone 12 surface, Tone 85 primary).
-     * Has zero hue bias (zero red tint).
-     */
-    fun createMonochromeDarkColorScheme(): ColorScheme = MonochromeDarkColorScheme
-
-    /**
-     * Clean neutral Material 3 monochrome light color scheme (Tone 98 background, Tone 94 surface, Tone 20 primary).
-     * Has zero hue bias (zero red tint).
-     */
-    fun createMonochromeLightColorScheme(): ColorScheme = MonochromeLightColorScheme
+    val MonochromeLightColorScheme: ColorScheme = ExpressiveLightColorScheme
 
     /**
      * Derives a complete dark [ColorScheme] from the dominant seed color.
@@ -503,7 +374,7 @@ object ArtworkColorExtractor {
         isMonochrome: Boolean = false,
     ): ColorScheme =
         when {
-            isFallback || isMonochrome -> createMonochromeDarkColorScheme()
+            isFallback || isMonochrome -> MonochromeDarkColorScheme
             else -> deriveDarkColorScheme(dominantColor)
         }
 
@@ -516,29 +387,14 @@ object ArtworkColorExtractor {
         isMonochrome: Boolean = false,
     ): ColorScheme =
         when {
-            isFallback || isMonochrome -> createMonochromeLightColorScheme()
+            isFallback || isMonochrome -> MonochromeLightColorScheme
             else -> deriveLightColorScheme(dominantColor)
         }
 
     /**
-     * Derives [ColorScheme] based on mode, fallback flag, and monochrome flag.
-     */
-    fun deriveColorScheme(
-        dominantColor: Color,
-        isDark: Boolean,
-        isFallback: Boolean = false,
-        isMonochrome: Boolean = false,
-    ): ColorScheme =
-        if (isDark) {
-            createDarkColorScheme(dominantColor, isFallback, isMonochrome)
-        } else {
-            createLightColorScheme(dominantColor, isFallback, isMonochrome)
-        }
-
-    /**
      * Computes multi-stop ambient glow colors blending vibrantColor, dominantColor, and mutedColor.
-     * - Top ambient stop: vibrantColor / dominantColor composited with soft alpha (~0.28f - 0.35f in dark mode, ~0.15f - 0.22f in light mode).
-     * - Mid ambient stop: mutedColor composited with ~0.15f - 0.20f alpha over surface.
+     * - Top ambient stop: vibrantColor / dominantColor composited with 28%~35% alpha (0.35f in dark mode, 0.28f in light mode).
+     * - Mid ambient stop: mutedColor composited with ~0.12f - 0.18f alpha over surface.
      * - Bottom stop: seamless melt into background / surface.
      * - When isMonochrome is true: ensures clean neutral slate/graphite dark glow with zero red tint.
      */
@@ -548,7 +404,7 @@ object ArtworkColorExtractor {
         surfaceColor: Color = if (isDarkTheme) artworkColors.backgroundTopColor else Color(0xFFE2E2E9),
         backgroundColor: Color = artworkColors.backgroundBottomColor,
     ): AmbientGlowStops {
-        val topAlpha = if (isDarkTheme) 0.32f else 0.18f
+        val topAlpha = if (isDarkTheme) 0.35f else 0.28f
         val midAlpha = if (isDarkTheme) 0.18f else 0.12f
 
         if (artworkColors.isMonochrome) {
@@ -585,7 +441,7 @@ object ArtworkColorExtractor {
     fun extractArtworkColors(
         thumbnailPath: String?,
         defaultSurfaceColor: Color = SurfaceContainerDark,
-        defaultBackgroundColor: Color = SurfaceDark,
+        defaultBackgroundColor: Color = BackgroundDark,
         isDarkTheme: Boolean = true,
     ): ArtworkColors {
         if (thumbnailPath.isNullOrBlank()) {
@@ -641,7 +497,7 @@ object ArtworkColorExtractor {
     fun extractArtworkColors(
         bitmap: Bitmap?,
         defaultSurfaceColor: Color = SurfaceContainerDark,
-        defaultBackgroundColor: Color = SurfaceDark,
+        defaultBackgroundColor: Color = BackgroundDark,
         isDarkTheme: Boolean = true,
     ): ArtworkColors {
         if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0 || !hasNonTransparentPixels(bitmap)) {
@@ -716,8 +572,8 @@ object ArtworkColorExtractor {
                 isMonochrome = true,
                 vibrantColor = if (isDarkTheme) Color(0xFFE2E2E9) else Color(0xFF1E293B),
                 mutedColor = if (isDarkTheme) Color(0xFF8E9099) else Color(0xFF74777F),
-                darkColorScheme = createMonochromeDarkColorScheme(),
-                lightColorScheme = createMonochromeLightColorScheme(),
+                darkColorScheme = MonochromeDarkColorScheme,
+                lightColorScheme = MonochromeLightColorScheme,
             )
         }
 
@@ -772,7 +628,7 @@ object ArtworkColorExtractor {
      */
     fun createFallbackColors(
         defaultSurfaceColor: Color = SurfaceContainerDark,
-        defaultBackgroundColor: Color = SurfaceDark,
+        defaultBackgroundColor: Color = BackgroundDark,
     ): ArtworkColors =
         ArtworkColors(
             dominantColor = defaultSurfaceColor,
@@ -783,8 +639,8 @@ object ArtworkColorExtractor {
             isMonochrome = true,
             vibrantColor = Color(0xFFE2E2E9),
             mutedColor = Color(0xFF8E9099),
-            darkColorScheme = createMonochromeDarkColorScheme(),
-            lightColorScheme = createMonochromeLightColorScheme(),
+            darkColorScheme = MonochromeDarkColorScheme,
+            lightColorScheme = MonochromeLightColorScheme,
         )
 }
 
@@ -812,9 +668,9 @@ fun rememberArtworkColors(
         if (defaultBackgroundColor != Color.Unspecified) {
             defaultBackgroundColor
         } else if (isDarkTheme) {
-            SurfaceDark
+            BackgroundDark
         } else {
-            SurfaceLight
+            BackgroundLight
         }
 
     val initialFallback =

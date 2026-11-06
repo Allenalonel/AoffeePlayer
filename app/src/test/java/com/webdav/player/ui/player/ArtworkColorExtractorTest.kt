@@ -2,6 +2,8 @@ package com.webdav.player.ui.player
 
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.Color
+import com.webdav.player.ui.theme.ExpressiveDarkColorScheme
+import com.webdav.player.ui.theme.ExpressiveLightColorScheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -13,9 +15,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
 import java.io.FileOutputStream
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.pow
 
 @RunWith(RobolectricTestRunner::class)
 class ArtworkColorExtractorTest {
@@ -25,30 +24,12 @@ class ArtworkColorExtractorTest {
     private val defaultSurface = Color(0xFF1E1E2E)
     private val defaultBackground = Color(0xFF11111B)
 
-    private fun channelLuminance(channel: Float): Double =
-        if (channel <= 0.03928) {
-            channel / 12.92
-        } else {
-            ((channel + 0.055) / 1.055).toDouble().pow(2.4)
-        }
-
-    private fun relativeLuminance(color: Color): Double {
-        val r = channelLuminance(color.red)
-        val g = channelLuminance(color.green)
-        val b = channelLuminance(color.blue)
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b
-    }
+    private fun relativeLuminance(color: Color): Double = ArtworkColorExtractor.relativeLuminance(color)
 
     private fun contrastRatio(
         colorA: Color,
         colorB: Color,
-    ): Double {
-        val l1 = relativeLuminance(colorA)
-        val l2 = relativeLuminance(colorB)
-        val lighter = max(l1, l2)
-        val darker = min(l1, l2)
-        return (lighter + 0.05) / (darker + 0.05)
-    }
+    ): Double = ArtworkColorExtractor.contrastRatio(colorA, colorB)
 
     @Test
     fun extractArtworkColors_withNullPath_returnsFallback() {
@@ -64,7 +45,7 @@ class ArtworkColorExtractorTest {
         assertEquals(defaultSurface, result.dominantColor)
         assertEquals(defaultSurface, result.backgroundTopColor)
         assertEquals(defaultBackground, result.backgroundBottomColor)
-        assertNotNull(result.gradientBrush)
+        assertNotNull(result.ambientGlowBrush())
     }
 
     @Test
@@ -155,7 +136,7 @@ class ArtworkColorExtractorTest {
 
         // Bottom background matches requested background
         assertEquals(defaultBackground, result.backgroundBottomColor)
-        assertNotNull(result.gradientBrush)
+        assertNotNull(result.ambientGlowBrush())
     }
 
     @Test
@@ -209,8 +190,10 @@ class ArtworkColorExtractorTest {
 
         assertTrue(result.isFallback)
         assertTrue(result.isMonochrome)
-        assertEquals(ArtworkColorExtractor.createMonochromeDarkColorScheme(), result.darkColorScheme)
-        assertEquals(ArtworkColorExtractor.createMonochromeLightColorScheme(), result.lightColorScheme)
+        assertEquals(ArtworkColorExtractor.MonochromeDarkColorScheme, result.darkColorScheme)
+        assertEquals(ArtworkColorExtractor.MonochromeLightColorScheme, result.lightColorScheme)
+        assertEquals(ExpressiveDarkColorScheme, ArtworkColorExtractor.MonochromeDarkColorScheme)
+        assertEquals(ExpressiveLightColorScheme, ArtworkColorExtractor.MonochromeLightColorScheme)
         assertEquals(result.darkColorScheme, result.colorScheme(isDark = true))
         assertEquals(result.lightColorScheme, result.colorScheme(isDark = false))
 
@@ -219,6 +202,39 @@ class ArtworkColorExtractorTest {
         val brandPurpleDark = Color(0xFF141022)
         assertFalse(result.lightColorScheme.primary == brandPurpleLight)
         assertFalse(result.darkColorScheme.background == brandPurpleDark)
+    }
+
+    @Test
+    fun extractArtworkColors_vividCyanBlueBitmap_preservesCyanBluePrimaryHueRange() {
+        val cyanBlueBitmap = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888)
+        cyanBlueBitmap.eraseColor(android.graphics.Color.rgb(0, 180, 255))
+
+        val result =
+            ArtworkColorExtractor.extractArtworkColors(
+                bitmap = cyanBlueBitmap,
+                defaultSurfaceColor = defaultSurface,
+                defaultBackgroundColor = defaultBackground,
+            )
+
+        assertFalse(result.isFallback)
+        assertFalse(result.isMonochrome)
+
+        val extractedAccentHue = ArtworkColorExtractor.colorToHsl(result.accentColor)[0]
+        val darkPrimaryHue = ArtworkColorExtractor.colorToHsl(result.darkColorScheme.primary)[0]
+        val lightPrimaryHue = ArtworkColorExtractor.colorToHsl(result.lightColorScheme.primary)[0]
+
+        assertTrue(
+            "Extracted accent hue must be in cyan/blue range (180..260), got $extractedAccentHue",
+            extractedAccentHue in 180f..260f,
+        )
+        assertTrue(
+            "Derived dark colorScheme.primary hue must be in cyan/blue range (180..260), got $darkPrimaryHue",
+            darkPrimaryHue in 180f..260f,
+        )
+        assertTrue(
+            "Derived light colorScheme.primary hue must be in cyan/blue range (180..260), got $lightPrimaryHue",
+            lightPrimaryHue in 180f..260f,
+        )
     }
 
     @Test
@@ -535,7 +551,7 @@ class ArtworkColorExtractorTest {
         assertFalse(artworkColors.isMonochrome)
 
         // Dark theme multi-stop
-        val darkStops = artworkColors.ambientGlowStops(isDarkTheme = true)
+        val darkStops = ArtworkColorExtractor.computeAmbientGlowStops(artworkColors, isDarkTheme = true)
         assertNotNull(darkStops.topColor)
         assertNotNull(darkStops.midColor)
         assertNotNull(darkStops.bottomColor)
@@ -553,7 +569,7 @@ class ArtworkColorExtractorTest {
         assertNotNull(darkBrush)
 
         // Light theme multi-stop
-        val lightStops = artworkColors.ambientGlowStops(isDarkTheme = false)
+        val lightStops = ArtworkColorExtractor.computeAmbientGlowStops(artworkColors, isDarkTheme = false)
         assertNotNull(lightStops.topColor)
         assertNotNull(lightStops.midColor)
         assertNotNull(lightStops.bottomColor)
@@ -583,7 +599,7 @@ class ArtworkColorExtractorTest {
         assertTrue(artworkColors.isMonochrome)
 
         // Dark theme neutral smoke tones
-        val darkStops = artworkColors.ambientGlowStops(isDarkTheme = true)
+        val darkStops = ArtworkColorExtractor.computeAmbientGlowStops(artworkColors, isDarkTheme = true)
         val topDark = darkStops.topColor
         val midDark = darkStops.midColor
         val bottomDark = darkStops.bottomColor
@@ -605,7 +621,7 @@ class ArtworkColorExtractorTest {
         )
 
         // Light theme neutral pearl/silver smoke tones
-        val lightStops = artworkColors.ambientGlowStops(isDarkTheme = false)
+        val lightStops = ArtworkColorExtractor.computeAmbientGlowStops(artworkColors, isDarkTheme = false)
         val topLightChroma = ArtworkColorExtractor.perceptualChroma(lightStops.topColor)
         val midLightChroma = ArtworkColorExtractor.perceptualChroma(lightStops.midColor)
         val bottomLightChroma = ArtworkColorExtractor.perceptualChroma(lightStops.bottomColor)
@@ -617,7 +633,6 @@ class ArtworkColorExtractorTest {
         // Verify gradient brushes construct without crash
         assertNotNull(artworkColors.ambientGlowBrush(isDarkTheme = true))
         assertNotNull(artworkColors.ambientGlowBrush(isDarkTheme = false))
-        assertNotNull(artworkColors.gradientBrush)
     }
 
     @Test
@@ -626,7 +641,7 @@ class ArtworkColorExtractorTest {
         assertTrue(fallback.isFallback)
         assertTrue(fallback.isMonochrome)
 
-        val stops = fallback.ambientGlowStops(isDarkTheme = true)
+        val stops = ArtworkColorExtractor.computeAmbientGlowStops(fallback, isDarkTheme = true)
         val topChroma = ArtworkColorExtractor.perceptualChroma(stops.topColor)
         val midChroma = ArtworkColorExtractor.perceptualChroma(stops.midColor)
 

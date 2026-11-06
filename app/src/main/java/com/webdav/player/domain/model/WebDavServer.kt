@@ -1,5 +1,10 @@
 package com.webdav.player.domain.model
 
+const val LOCAL_STORAGE_ID = 0L
+
+val WebDavServer.isLocal: Boolean
+    get() = id == LOCAL_STORAGE_ID
+
 data class WebDavServer(
     val id: Long = 0L,
     val name: String,
@@ -84,5 +89,15 @@ data class WebDavServer(
             java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20")
         }
         return if (endsWithSlash) "$baseUrl/$encodedPath/" else "$baseUrl/$encodedPath"
+    }
+
+    companion object {
+        fun createLocalStorage(isDefault: Boolean = false): WebDavServer =
+            WebDavServer(
+                id = LOCAL_STORAGE_ID,
+                name = "本地存储",
+                url = "content://local",
+                isDefault = isDefault,
+            )
     }
 }

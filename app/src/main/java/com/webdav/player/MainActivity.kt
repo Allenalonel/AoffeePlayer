@@ -210,7 +210,7 @@ class MainActivity : ComponentActivity() {
                                                     AppIcons.Folder
                                                 },
                                             ),
-                                            Triple(AppDestination.SERVER_LIST, "服务器", AppIcons.Storage),
+                                            Triple(AppDestination.SERVER_LIST, "存储", AppIcons.Storage),
                                         )
                                     destinations.forEach { (destination, label, icon) ->
                                         val isSelected = navState.currentDestination == destination

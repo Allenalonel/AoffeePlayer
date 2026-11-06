@@ -12,7 +12,7 @@ enum class AppDestination(
 ) {
     PLAYLISTS("歌单"),
     DIRECTORY_BROWSER("媒体库"),
-    SERVER_LIST("服务器"),
+    SERVER_LIST("存储"),
 }
 
 data class MainNavigationUiState(

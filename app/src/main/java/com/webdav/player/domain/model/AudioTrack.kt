@@ -47,7 +47,8 @@ data class AudioTrack(
 
     fun formatQualitySummary(): String = qualitySummary
 
-    fun streamUrl(server: WebDavServer): String = server.resolveFileUrl(remotePath)
+    fun streamUrl(server: WebDavServer): String =
+        if (server.isLocal) remotePath else server.resolveFileUrl(remotePath)
 
     fun withMetadata(metadata: TrackMetadata): AudioTrack =
         copy(

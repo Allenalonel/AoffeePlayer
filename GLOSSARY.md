@@ -10,6 +10,24 @@ Android 平台上的现代化高保真 WebDAV 音频流式播放器，通过 HTT
 本播放器应用的正式官方名称，遵循 Material Design 3 Expressive (M3E) 视觉语言与纯流式零磁盘占用架构。
 _Avoid_: WebDAVPlayer, WebDavPlayer, WebDav Music Player
 
+### Storage & Sources
+
+**Storage Source**:
+统一抽象的音乐存储源概念，涵盖本地存储节点（Local Storage，保留标识符 `LOCAL_STORAGE_ID = 0L`）与用户配置的各个远程 WebDAV Server 节点。
+_Avoid_: Drive, Source Provider, Media Account
+
+**Active Storage**:
+用户当前选定用于浏览目录与获取音频资源的活跃存储源（可以是本地存储或某个特定 WebDAV 服务器）。
+_Avoid_: Current Server, Selected Source, Default Target
+
+**Local Storage**:
+内置不可删除的本地设备存储源节点，基于 Android Storage Access Framework (SAF) 挂载的用户音乐目录，实现离线、零网络缓冲的即时音频与伴生 CUE/LRC 解析与直放。
+_Avoid_: Phone Storage, Local File System, Internal Drive
+
+**Mounted Directory**:
+用户通过 Android 原生 SAF 目录选择器（`ACTION_OPEN_DOCUMENT_TREE`）授权并持久化访问权限（`takePersistableUriPermission`）的本地音乐文件夹，展示在媒体库根路径与目录管理弹层中。
+_Avoid_: Document Tree, Folder Access, Local Path
+
 ### Remote Storage
 
 **WebDAV Server**:

@@ -45,7 +45,7 @@ internal class DefaultTrackMetadataResolver(
             val cleanFallbackTitle = file.name.substringBeforeLast('.').ifBlank { file.name }
 
             val rangeBytes =
-                if (server.isLocal || file.path.startsWith("/") || file.path.startsWith("file://") || file.path.startsWith("content://")) {
+                if (server.isLocal || file.path.startsWith("content://") || file.path.startsWith("file://")) {
                     try {
                         val cleanPath = if (file.path.startsWith("file://")) file.path.removePrefix("file://") else file.path
                         if (cleanPath.startsWith("content://")) {
@@ -179,7 +179,7 @@ internal class DefaultTrackMetadataResolver(
 
         if (targetSize <= initialBytes.size) return initialBytes
 
-        if (server.isLocal || file.path.startsWith("/") || file.path.startsWith("file://") || file.path.startsWith("content://")) {
+        if (server.isLocal || file.path.startsWith("content://") || file.path.startsWith("file://")) {
             val cleanPath = if (file.path.startsWith("file://")) file.path.removePrefix("file://") else file.path
             if (cleanPath.startsWith("content://")) {
                 try {
@@ -397,7 +397,7 @@ internal class DefaultTrackMetadataResolver(
             return localThumb.absolutePath
         }
 
-        if (server.isLocal || candidatePath.startsWith("/") || candidatePath.startsWith("file://") || candidatePath.startsWith("content://")) {
+        if (server.isLocal || candidatePath.startsWith("content://") || candidatePath.startsWith("file://")) {
             val cleanPath = if (candidatePath.startsWith("file://")) candidatePath.removePrefix("file://") else candidatePath
             if (cleanPath.startsWith("content://")) {
                 try {

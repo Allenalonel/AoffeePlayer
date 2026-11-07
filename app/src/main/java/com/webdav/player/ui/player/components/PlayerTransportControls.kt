@@ -182,45 +182,45 @@ internal fun PlayerPlaybackControls(
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 ),
         ) {
-                AnimatedContent(
-                    targetState = sessionState.playbackState,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    label = "FullPlayerPlayPause",
-                ) { state ->
-                    when (state) {
-                        is PlaybackState.Buffering -> {
-                            if (sessionState.isSuspendedRetry) {
-                                Icon(
-                                    imageVector = AppIcons.Refresh,
-                                    contentDescription = "重试",
-                                    modifier = Modifier.size(32.dp),
-                                )
-                            } else {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(32.dp),
-                                    strokeWidth = 3.dp,
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                )
-                            }
-                        }
-
-                        is PlaybackState.Playing -> {
+            AnimatedContent(
+                targetState = sessionState.playbackState,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "FullPlayerPlayPause",
+            ) { state ->
+                when (state) {
+                    is PlaybackState.Buffering -> {
+                        if (sessionState.isSuspendedRetry) {
                             Icon(
-                                imageVector = AppIcons.Pause,
-                                contentDescription = "暂停",
+                                imageVector = AppIcons.Refresh,
+                                contentDescription = "重试",
                                 modifier = Modifier.size(32.dp),
                             )
-                        }
-
-                        else -> {
-                            Icon(
-                                imageVector = AppIcons.PlayArrow,
-                                contentDescription = "播放",
+                        } else {
+                            CircularProgressIndicator(
                                 modifier = Modifier.size(32.dp),
+                                strokeWidth = 3.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
                             )
                         }
                     }
+
+                    is PlaybackState.Playing -> {
+                        Icon(
+                            imageVector = AppIcons.Pause,
+                            contentDescription = "暂停",
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
+
+                    else -> {
+                        Icon(
+                            imageVector = AppIcons.PlayArrow,
+                            contentDescription = "播放",
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
                 }
+            }
         }
 
         // Next Track Button: FilledTonal Pill Button

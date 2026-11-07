@@ -409,9 +409,10 @@ object ArtworkColorExtractor {
 
     /**
      * Computes multi-stop ambient glow colors blending vibrantColor, dominantColor, and mutedColor.
-     * - Top ambient stop: vibrantColor / dominantColor composited with 28%~35% alpha (0.35f in dark mode, 0.28f in light mode).
-     * - Mid ambient stop: mutedColor composited with ~0.12f - 0.18f alpha over surface.
-     * - Bottom stop: seamless melt into background / surface.
+     * Implements universal Perceptual Tonal Normalization:
+     * - Top Stop: radiant luminous source normalized to Tone 60~72 with authentic hue.
+     * - Mid Stop: ambient dispersion layer normalized to Tone 32~45.
+     * - Bottom Stop: deep obsidian melt (Tone 8~9) tinted with the artwork's dominant hue.
      * - When isMonochrome is true: ensures clean neutral slate/graphite dark glow with zero red tint.
      */
     fun computeAmbientGlowStops(
@@ -420,14 +421,14 @@ object ArtworkColorExtractor {
         surfaceColor: Color = if (isDarkTheme) artworkColors.backgroundTopColor else Color(0xFFE2E2E9),
         backgroundColor: Color = artworkColors.backgroundBottomColor,
     ): AmbientGlowStops {
-        val topAlpha = if (isDarkTheme) 0.58f else 0.28f
-        val midAlpha = if (isDarkTheme) 0.34f else 0.12f
+        val topAlpha = if (isDarkTheme) 0.62f else 0.28f
+        val midAlpha = if (isDarkTheme) 0.36f else 0.12f
 
         if (artworkColors.isMonochrome) {
             val neutralSurface = if (isDarkTheme) Color(0xFF1E1F25) else Color(0xFFE2E2E9)
             val topStop = artworkColors.mutedColor.copy(alpha = topAlpha).compositeOver(neutralSurface)
             val midStop = artworkColors.mutedColor.copy(alpha = midAlpha).compositeOver(neutralSurface)
-            val bottomStop = if (isDarkTheme) backgroundColor else Color(0xFFFFFFFF)
+            val bottomStop = if (isDarkTheme) Color(0xFF121318) else Color(0xFFFFFFFF)
             return AmbientGlowStops(
                 topColor = topStop,
                 midColor = midStop,
@@ -435,17 +436,34 @@ object ArtworkColorExtractor {
             )
         }
 
-        // Chromatic artwork (Tier 0.5 calibrated brightness):
+        // Universal Chromatic Perceptual Tonal Normalization:
+        val vibrantHsl = colorToHsl(artworkColors.vibrantColor)
+        val mutedHsl = colorToHsl(artworkColors.mutedColor)
         val domHsl = colorToHsl(artworkColors.dominantColor)
-        val dominantTintAlpha = if (isDarkTheme) 0.28f else 0.10f
-        val baseSurface = artworkColors.dominantColor.copy(alpha = dominantTintAlpha).compositeOver(surfaceColor)
 
-        val topStop = artworkColors.vibrantColor.copy(alpha = topAlpha).compositeOver(baseSurface)
-        val midStop = artworkColors.mutedColor.copy(alpha = midAlpha).compositeOver(surfaceColor)
-        // Deep chromatic bottom tone (~Tone 10) instead of dead black #121318 in dark theme:
+        // 1. Radiant luminous source (Top Stop): Hue preserved, Lightness normalized to Tone 60~72
+        val radiantLightness = vibrantHsl[2].coerceIn(0.58f, 0.72f)
+        val radiantSaturation = maxOf(0.50f, vibrantHsl[1])
+        val radiantTopColor = hslToColor(vibrantHsl[0], radiantSaturation, radiantLightness)
+
+        // 2. Mid ambient dispersion: Hue preserved, Lightness normalized to Tone 32~45
+        val midLightness = mutedHsl[2].coerceIn(0.32f, 0.45f)
+        val midSaturation = minOf(0.50f, mutedHsl[1])
+        val midDiffuseColor = hslToColor(mutedHsl[0], midSaturation, midLightness)
+
+        // 3. Deep tone surface base with matching hue tint (Tone 10~11)
+        val baseSurfaceTone =
+            if (isDarkTheme) {
+                hslToColor(domHsl[0], minOf(0.30f, domHsl[1] * 0.40f), 0.11f)
+            } else {
+                surfaceColor
+            }
+
+        val topStop = radiantTopColor.copy(alpha = topAlpha).compositeOver(baseSurfaceTone)
+        val midStop = midDiffuseColor.copy(alpha = midAlpha).compositeOver(baseSurfaceTone)
         val bottomStop =
             if (isDarkTheme) {
-                hslToColor(domHsl[0], minOf(0.40f, domHsl[1] * 0.50f), 0.09f)
+                hslToColor(domHsl[0], minOf(0.25f, domHsl[1] * 0.35f), 0.085f)
             } else {
                 backgroundColor
             }
@@ -555,9 +573,11 @@ object ArtworkColorExtractor {
                 palette.lightVibrantSwatch != null && (palette.vibrantSwatch == null || palette.vibrantSwatch!!.hsl[2] < 0.58f) -> {
                     palette.lightVibrantSwatch!!
                 }
+
                 palette.vibrantSwatch != null -> {
                     palette.vibrantSwatch!!
                 }
+
                 else -> {
                     palette.lightVibrantSwatch
                         ?: palette.dominantSwatch

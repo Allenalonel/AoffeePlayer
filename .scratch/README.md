@@ -14,7 +14,9 @@
 
 ## 活跃任务 (Active)
 
-当前无进行中的特性任务，所有规划特性均已结项归档。
+| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 规范与工单路径 |
+| :--- | :--- | :---: | :---: | :--- |
+| `unified-library-indexing-and-search` | 跨源（本地 SAF + 远程 WebDAV）统一曲库索引与增量即时搜索体系 | 4 | `ready-for-agent` | [`.scratch/unified-library-indexing-and-search/`](unified-library-indexing-and-search/) |
 
 ---
 

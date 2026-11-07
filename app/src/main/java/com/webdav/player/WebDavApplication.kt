@@ -5,6 +5,7 @@ import android.content.ComponentCallbacks2
 import com.webdav.player.data.cue.DefaultCueSheetResolver
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.CoverArtStorageImpl
+import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.network.DefaultNetworkConnectivityObserver
 import com.webdav.player.data.player.Media3AudioPlayerEngine
 import com.webdav.player.data.player.WebDavMediaSourceBuilder
@@ -13,6 +14,7 @@ import com.webdav.player.data.repository.DataStorePlaybackSessionStore
 import com.webdav.player.data.repository.DirectoryRepositoryImpl
 import com.webdav.player.data.repository.LibrarySearchRepositoryImpl
 import com.webdav.player.data.repository.LocalStorageDirectoryResolver
+import com.webdav.player.data.repository.LocalStorageIndexScanner
 import com.webdav.player.data.repository.PlaylistRepositoryImpl
 import com.webdav.player.data.repository.ServerRepositoryImpl
 import com.webdav.player.data.repository.TrackMetadataRepositoryImpl
@@ -67,6 +69,12 @@ class WebDavApplication :
         private set
 
     override lateinit var networkConnectivityObserver: NetworkConnectivityObserver
+        private set
+
+    override lateinit var mediaTrackIndexDao: MediaTrackIndexDao
+        private set
+
+    override lateinit var localStorageIndexScanner: LocalStorageIndexScanner
         private set
 
     override fun onCreate() {
@@ -127,10 +135,24 @@ class WebDavApplication :
             )
         this.directoryRepository = directoryRepository
 
+        val mediaTrackIndexDao = database.mediaTrackIndexDao()
+        this.mediaTrackIndexDao = mediaTrackIndexDao
+
+        val localStorageIndexScanner =
+            LocalStorageIndexScanner(
+                context = this,
+                mediaTrackIndexDao = mediaTrackIndexDao,
+                checkpointDao = database.directorySyncCheckpointDao(),
+                localStorageFolderDao = database.localStorageFolderDao(),
+            )
+        this.localStorageIndexScanner = localStorageIndexScanner
+
         librarySearchRepository =
             LibrarySearchRepositoryImpl(
                 directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
+                mediaTrackIndexDao = mediaTrackIndexDao,
+                directorySyncCheckpointDao = database.directorySyncCheckpointDao(),
                 cueSheetResolver = cueSheetResolver,
                 context = this,
             )

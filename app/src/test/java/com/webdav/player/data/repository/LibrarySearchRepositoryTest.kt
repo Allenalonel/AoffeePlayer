@@ -7,12 +7,17 @@ import com.webdav.player.data.cue.DefaultCueSheetResolver
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.DirectoryCacheDao
 import com.webdav.player.data.local.DirectoryCacheEntity
+import com.webdav.player.data.local.DirectorySyncCheckpointDao
+import com.webdav.player.data.local.DirectorySyncCheckpointEntity
+import com.webdav.player.data.local.MediaTrackIndexDao
+import com.webdav.player.data.local.MediaTrackIndexEntity
 import com.webdav.player.data.local.RemoteDirectoryJsonSerializer
 import com.webdav.player.data.local.TrackMetadataDao
 import com.webdav.player.data.local.TrackMetadataEntity
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
@@ -37,6 +42,8 @@ class LibrarySearchRepositoryTest {
     private lateinit var database: AppDatabase
     private lateinit var directoryCacheDao: DirectoryCacheDao
     private lateinit var trackMetadataDao: TrackMetadataDao
+    private lateinit var mediaTrackIndexDao: MediaTrackIndexDao
+    private lateinit var checkpointDao: DirectorySyncCheckpointDao
     private lateinit var repository: LibrarySearchRepository
 
     private val fakeWebDavClient =
@@ -74,6 +81,8 @@ class LibrarySearchRepositoryTest {
                 .build()
         directoryCacheDao = database.directoryCacheDao()
         trackMetadataDao = database.trackMetadataDao()
+        mediaTrackIndexDao = database.mediaTrackIndexDao()
+        checkpointDao = database.directorySyncCheckpointDao()
         fakeWebDavClient.textResponses.clear()
 
         val cueSheetResolver = DefaultCueSheetResolver(fakeWebDavClient)
@@ -82,6 +91,8 @@ class LibrarySearchRepositoryTest {
             LibrarySearchRepositoryImpl(
                 directoryCacheDao = directoryCacheDao,
                 trackMetadataDao = trackMetadataDao,
+                mediaTrackIndexDao = mediaTrackIndexDao,
+                directorySyncCheckpointDao = checkpointDao,
                 cueSheetResolver = cueSheetResolver,
                 context = context,
             )
@@ -629,5 +640,151 @@ class LibrarySearchRepositoryTest {
                 )
 
             assertEquals(listOf("Persistent Query 2", "Persistent Query 1"), newRepo.getSearchHistory())
+        }
+
+    @Test
+    fun search_withMediaTrackIndex_retrievesUnvisitedDeepTracksInstantly() =
+        runTest {
+            val deepTrack =
+                MediaTrackIndexEntity(
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://media/external/audio/12345",
+                    fileName = "01 - Pink Floyd - Comfortably Numb.flac",
+                    fileSize = 52000000L,
+                    lastModified = 1700000000L,
+                    format = "FLAC",
+                    isCue = false,
+                    parentPath = "/local/primary%3AMusic/Rock/PinkFloyd/TheWall/",
+                    parsedTitle = "Comfortably Numb",
+                    parsedArtist = "Pink Floyd",
+                )
+            mediaTrackIndexDao.insertOrUpdate(deepTrack)
+
+            val startTime = System.currentTimeMillis()
+            val result = repository.search("Comfortably").first()
+            val elapsed = System.currentTimeMillis() - startTime
+
+            assertTrue("Search completed in under 50ms (actual: ${elapsed}ms)", elapsed < 50)
+            assertEquals(1, result.matchedTracks.size)
+            val track = result.matchedTracks.first()
+            assertEquals("Comfortably Numb", track.title)
+            assertEquals("Pink Floyd", track.artist)
+            assertEquals(LOCAL_STORAGE_ID, track.serverId)
+            assertEquals("content://media/external/audio/12345", track.remotePath)
+            assertEquals(AudioFormat.FLAC, track.format)
+        }
+
+    @Test
+    fun search_withMediaTrackIndex_discoversDeepUnvisitedDirectories() =
+        runTest {
+            val deepTrack =
+                MediaTrackIndexEntity(
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://media/external/audio/999",
+                    fileName = "Symphony5.flac",
+                    fileSize = 40000000L,
+                    lastModified = 1700000000L,
+                    format = "FLAC",
+                    isCue = false,
+                    parentPath = "/local/primary%3AMusic/Classical/Beethoven/",
+                    parsedTitle = "Symphony 5",
+                    parsedArtist = "Beethoven",
+                )
+            mediaTrackIndexDao.insertOrUpdate(deepTrack)
+
+            val result = repository.search("Beethoven").first()
+            assertEquals(1, result.matchedDirectories.size)
+            val dir = result.matchedDirectories.first()
+            assertEquals("/local/primary%3AMusic/Classical/Beethoven/", dir.path)
+            assertEquals("Beethoven", dir.name)
+            assertEquals(LOCAL_STORAGE_ID, dir.serverId)
+        }
+
+    @Test
+    fun search_withMediaTrackIndex_overlaysTrackMetadataWhenPresent() =
+        runTest {
+            val indexed =
+                MediaTrackIndexEntity(
+                    serverId = 1L,
+                    remotePath = "/Music/song.mp3",
+                    fileName = "01 - Artist - Song.mp3",
+                    fileSize = 10000000L,
+                    lastModified = 1000L,
+                    format = "MP3",
+                    isCue = false,
+                    parentPath = "/Music/",
+                    parsedTitle = "Song",
+                    parsedArtist = "Artist",
+                )
+            mediaTrackIndexDao.insertOrUpdate(indexed)
+
+            // TrackMetadataDao contains rich ID3 tags
+            trackMetadataDao.insertOrUpdate(
+                TrackMetadataEntity(
+                    serverId = 1L,
+                    remotePath = "/Music/song.mp3",
+                    title = "Enriched Song Title",
+                    artist = "Enriched Artist",
+                    album = "Enriched Album",
+                    trackNumber = 1,
+                    durationMs = 245000L,
+                    coverThumbnailPath = "/thumbnails/cover.jpg",
+                ),
+            )
+
+            val result = repository.search("Enriched").first()
+            assertEquals(1, result.matchedTracks.size)
+            val track = result.matchedTracks.first()
+            assertEquals("Enriched Song Title", track.title)
+            assertEquals("Enriched Artist", track.artist)
+            assertEquals("Enriched Album", track.album)
+            assertEquals(245000L, track.durationMs)
+            assertEquals("/thumbnails/cover.jpg", track.coverThumbnailPath)
+        }
+
+    @Test
+    fun search_withLocalStorage_filtersByLocalStorageId() =
+        runTest {
+            val localTrack =
+                MediaTrackIndexEntity(
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://local/song.flac",
+                    fileName = "song.flac",
+                    fileSize = 20000000L,
+                    lastModified = 1000L,
+                    format = "FLAC",
+                    isCue = false,
+                    parentPath = "/local/Music/",
+                    parsedTitle = "Acoustic Melody",
+                    parsedArtist = "Guitarist",
+                )
+            val remoteTrack =
+                MediaTrackIndexEntity(
+                    serverId = 10L,
+                    remotePath = "/nas/song.flac",
+                    fileName = "song.flac",
+                    fileSize = 20000000L,
+                    lastModified = 1000L,
+                    format = "FLAC",
+                    isCue = false,
+                    parentPath = "/nas/",
+                    parsedTitle = "Acoustic Melody",
+                    parsedArtist = "Guitarist",
+                )
+            mediaTrackIndexDao.insertAll(listOf(localTrack, remoteTrack))
+
+            // Search local only
+            val localOnly = repository.search("Acoustic", serverId = LOCAL_STORAGE_ID).first()
+            assertEquals(1, localOnly.matchedTracks.size)
+            assertEquals(LOCAL_STORAGE_ID, localOnly.matchedTracks.first().serverId)
+
+            // Search remote only
+            val remoteOnly = repository.search("Acoustic", serverId = 10L).first()
+            assertEquals(1, remoteOnly.matchedTracks.size)
+            assertEquals(10L, remoteOnly.matchedTracks.first().serverId)
+
+            // Global search
+            val global = repository.search("Acoustic", serverId = null).first()
+            assertEquals(2, global.matchedTracks.size)
         }
 }

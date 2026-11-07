@@ -15,8 +15,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaylistEntity::class,
         PlaylistTrackEntity::class,
         LocalStorageFolderEntity::class,
+        MediaTrackIndexEntity::class,
+        DirectorySyncCheckpointEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -29,6 +31,10 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun playlistDao(): PlaylistDao
 
     abstract fun localStorageFolderDao(): LocalStorageFolderDao
+
+    abstract fun mediaTrackIndexDao(): MediaTrackIndexDao
+
+    abstract fun directorySyncCheckpointDao(): DirectorySyncCheckpointDao
 
     companion object {
         @Volatile
@@ -117,6 +123,62 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        val MIGRATION_6_7 =
+            object : Migration(6, 7) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `media_track_index` (
+                            `serverId` INTEGER NOT NULL,
+                            `remotePath` TEXT NOT NULL,
+                            `fileName` TEXT NOT NULL,
+                            `fileSize` INTEGER NOT NULL,
+                            `lastModified` INTEGER NOT NULL,
+                            `format` TEXT NOT NULL,
+                            `isCue` INTEGER NOT NULL,
+                            `parentPath` TEXT NOT NULL,
+                            `parsedTitle` TEXT NOT NULL,
+                            `parsedArtist` TEXT,
+                            PRIMARY KEY(`serverId`, `remotePath`)
+                        )
+                        """.trimIndent(),
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_fileName` ON `media_track_index` (`serverId`, `fileName`)",
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_fileName` ON `media_track_index` (`fileName`)",
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_remotePath` ON `media_track_index` (`serverId`, `remotePath`)",
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedTitle` ON `media_track_index` (`parsedTitle`)",
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedArtist` ON `media_track_index` (`parsedArtist`)",
+                    )
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `directory_sync_checkpoint` (
+                            `serverId` INTEGER NOT NULL,
+                            `path` TEXT NOT NULL,
+                            `lastModified` INTEGER NOT NULL,
+                            `etag` TEXT,
+                            `lastScannedMs` INTEGER NOT NULL,
+                            PRIMARY KEY(`serverId`, `path`)
+                        )
+                        """.trimIndent(),
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_directory_sync_checkpoint_serverId` ON `directory_sync_checkpoint` (`serverId`)",
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_directory_sync_checkpoint_serverId_path` ON `directory_sync_checkpoint` (`serverId`, `path`)",
+                    )
+                }
+            }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance =
@@ -125,7 +187,7 @@ abstract class AppDatabase : RoomDatabase() {
                             context.applicationContext,
                             AppDatabase::class.java,
                             "webdav_player.db",
-                        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                         .fallbackToDestructiveMigration()
                         .build()
                 INSTANCE = instance

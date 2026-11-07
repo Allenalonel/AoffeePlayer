@@ -340,4 +340,41 @@ class PackagingSeamVerificationTest {
             zip.close()
         }
     }
+
+    @Test
+    fun uiLayer_enforcesDynamicColorPurityAndForbidsHardcodedHexColorsInComponents() {
+        val uiDir = File(sourceRoot, "ui")
+        assertTrue("UI source directory must exist", uiDir.exists())
+
+        // Whitelisted files that are legitimately permitted to declare theme palette constants or color extraction defaults
+        val whitelistedFiles =
+            setOf(
+                "Color.kt",
+                "ArtworkColorExtractor.kt",
+            )
+
+        val hexColorRegex = Regex("""\bColor\s*\(\s*0x[0-9a-fA-F]{8}\b""")
+
+        val violations = mutableListOf<String>()
+
+        uiDir
+            .walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .filter { it.name !in whitelistedFiles }
+            .forEach { file ->
+                file.useLines { lines ->
+                    lines.forEachIndexed { index, line ->
+                        val trimmed = line.trim()
+                        if (!trimmed.startsWith("//") && hexColorRegex.containsMatchIn(trimmed)) {
+                            violations.add("${file.name}:${index + 1} -> $trimmed")
+                        }
+                    }
+                }
+            }
+
+        assertTrue(
+            "UI components must use MaterialTheme.colorScheme or theme tokens instead of hardcoded hex Color(0x...): $violations",
+            violations.isEmpty(),
+        )
+    }
 }

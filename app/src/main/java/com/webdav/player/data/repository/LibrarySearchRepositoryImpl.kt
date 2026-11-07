@@ -125,6 +125,7 @@ class LibrarySearchRepositoryImpl(
         titleFallback: String? = null,
         artistFallback: String? = null,
         albumFallback: String? = null,
+        cuePath: String? = null,
     ): AudioTrack =
         AudioTrack(
             id = "$serverId:$remotePath",
@@ -137,6 +138,7 @@ class LibrarySearchRepositoryImpl(
             size = fileSize,
             format = format,
             coverThumbnailPath = metadata?.coverThumbnailPath,
+            cuePath = cuePath,
         )
 
     override fun search(
@@ -153,14 +155,24 @@ class LibrarySearchRepositoryImpl(
         val checkpointFlow: Flow<List<DirectorySyncCheckpointEntity>> =
             directorySyncCheckpointDao?.searchCheckpoints(cleanQuery, serverId) ?: flowOf(emptyList())
         val dirFlow = directoryCacheDao.searchDirectoryCacheFlow(cleanQuery, serverId)
-        val metaFlow = trackMetadataDao.searchMetadataFlow(cleanQuery, serverId)
+        val metaFlow =
+            if (serverId != null) {
+                trackMetadataDao.getAllMetadataForServerFlow(serverId)
+            } else {
+                trackMetadataDao.getAllMetadataFlow()
+            }
 
         return combine(
             indexFlow,
             checkpointFlow,
             dirFlow,
             metaFlow,
-        ) { indexedTracks: List<MediaTrackIndexEntity>, checkpoints: List<DirectorySyncCheckpointEntity>, dirEntities: List<DirectoryCacheEntity>, metaEntities: List<TrackMetadataEntity> ->
+        ) {
+            indexedTracks: List<MediaTrackIndexEntity>,
+            checkpoints: List<DirectorySyncCheckpointEntity>,
+            dirEntities: List<DirectoryCacheEntity>,
+            metaEntities: List<TrackMetadataEntity>,
+            ->
             val metadataMap = metaEntities.associateBy { "${it.serverId}:${it.remotePath}" }
             val matchedDirs = mutableMapOf<String, RemoteDirectory>()
             val matchedTracks = mutableMapOf<String, AudioTrack>()
@@ -182,24 +194,88 @@ class LibrarySearchRepositoryImpl(
             }
 
             for (entity in indexedTracks) {
-                val metaKey = "${entity.serverId}:${entity.remotePath}"
-                val meta = metadataMap[metaKey]
-                val format =
-                    AudioFormat.fromExtension(entity.format)
-                        ?: AudioFormat.fromFileName(entity.fileName)
-                        ?: AudioFormat.MP3
-                val track =
-                    createAudioTrack(
-                        serverId = entity.serverId,
-                        remotePath = entity.remotePath,
-                        fileName = entity.fileName,
-                        fileSize = entity.fileSize,
-                        format = format,
-                        metadata = meta,
-                        titleFallback = entity.parsedTitle,
-                        artistFallback = entity.parsedArtist,
-                    )
-                matchedTracks[metaKey] = track
+                if (entity.isCue && !entity.remotePath.contains("#cue_")) {
+                    // Raw .cue file row, not a playable audio track. Skip from matchedTracks.
+                } else if (entity.isCue && entity.remotePath.contains("#cue_")) {
+                    val parentAudioPath = entity.remotePath.substringBefore("#cue_")
+                    val parentAudioBase = parentAudioPath.substringAfterLast('/').substringBeforeLast('.')
+                    val trackNum = entity.remotePath.substringAfter("#cue_").toIntOrNull() ?: 1
+
+                    val parentMeta = metadataMap["${entity.serverId}:$parentAudioPath"]
+                    val directMeta = metadataMap["${entity.serverId}:${entity.remotePath}"]
+                    val effectiveMeta = directMeta ?: parentMeta
+
+                    val cueFileFromIndex =
+                        indexedTracks
+                            .firstOrNull {
+                                it.serverId == entity.serverId &&
+                                    it.parentPath == entity.parentPath &&
+                                    it.isCue &&
+                                    !it.remotePath.contains("#cue_") &&
+                                    it.remotePath
+                                        .substringAfterLast('/')
+                                        .substringBeforeLast('.')
+                                        .equals(parentAudioBase, ignoreCase = true)
+                            }?.remotePath ?: indexedTracks
+                            .firstOrNull {
+                                it.serverId == entity.serverId &&
+                                    it.parentPath == entity.parentPath &&
+                                    it.isCue &&
+                                    !it.remotePath.contains("#cue_")
+                            }?.remotePath
+
+                    val cuePath = cueFileFromIndex ?: (parentAudioPath.substringBeforeLast('.') + ".cue")
+                    val server = WebDavServer(id = entity.serverId, name = "", url = "", port = 0)
+                    val cachedTracks = cueSheetResolver?.getCachedVirtualTracks(server, cuePath, parentAudioPath)
+                    val cachedVt = cachedTracks?.firstOrNull { it.trackNumber == trackNum }
+
+                    val format =
+                        AudioFormat.fromExtension(entity.format)
+                            ?: AudioFormat.fromFileName(parentAudioPath)
+                            ?: AudioFormat.FLAC
+
+                    val durationMs =
+                        when {
+                            cachedVt != null && cachedVt.durationMs > 0L -> cachedVt.durationMs
+                            effectiveMeta != null && effectiveMeta.durationMs > 0L -> effectiveMeta.durationMs
+                            else -> 0L
+                        }
+
+                    val track =
+                        AudioTrack(
+                            id = "${entity.serverId}:${entity.remotePath}",
+                            serverId = entity.serverId,
+                            remotePath = entity.remotePath,
+                            title = entity.parsedTitle.ifBlank { entity.fileName },
+                            artist = entity.parsedArtist ?: effectiveMeta?.artist,
+                            album = effectiveMeta?.album ?: parentAudioPath.trimEnd('/').substringAfterLast('/').substringBeforeLast('.'),
+                            durationMs = durationMs,
+                            size = entity.fileSize,
+                            format = format,
+                            coverThumbnailPath = effectiveMeta?.coverThumbnailPath,
+                            cuePath = cuePath,
+                        )
+                    matchedTracks["${entity.serverId}:${entity.remotePath}"] = track
+                } else {
+                    val metaKey = "${entity.serverId}:${entity.remotePath}"
+                    val meta = metadataMap[metaKey]
+                    val format =
+                        AudioFormat.fromExtension(entity.format)
+                            ?: AudioFormat.fromFileName(entity.fileName)
+                            ?: AudioFormat.MP3
+                    val track =
+                        createAudioTrack(
+                            serverId = entity.serverId,
+                            remotePath = entity.remotePath,
+                            fileName = entity.fileName,
+                            fileSize = entity.fileSize,
+                            format = format,
+                            metadata = meta,
+                            titleFallback = entity.parsedTitle,
+                            artistFallback = entity.parsedArtist,
+                        )
+                    matchedTracks[metaKey] = track
+                }
 
                 if (entity.parentPath.contains(cleanQuery, ignoreCase = true)) {
                     val dirName = entity.parentPath.trimEnd('/').substringAfterLast('/')

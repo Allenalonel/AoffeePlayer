@@ -50,8 +50,7 @@ class LibrarySearchRepositoryTest {
         object : WebDavClient {
             val textResponses = mutableMapOf<String, String>()
 
-            override suspend fun testConnection(server: WebDavServer): ConnectionResult =
-                ConnectionResult.Success
+            override suspend fun testConnection(server: WebDavServer): ConnectionResult = ConnectionResult.Success
 
             override suspend fun listDirectory(
                 server: WebDavServer,
@@ -786,5 +785,232 @@ class LibrarySearchRepositoryTest {
             // Global search
             val global = repository.search("Acoustic", serverId = null).first()
             assertEquals(2, global.matchedTracks.size)
+        }
+
+    @Test
+    fun search_withCueVirtualTracksInMediaTrackIndex_returnsVirtualTrackWithMetadataAndCuePath() =
+        runTest {
+            val virtualTrack =
+                MediaTrackIndexEntity(
+                    serverId = 1L,
+                    remotePath = "/Music/Album.flac#cue_1",
+                    fileName = "Track One",
+                    fileSize = 120000000L,
+                    lastModified = 1700000000L,
+                    format = "FLAC",
+                    isCue = true,
+                    parentPath = "/Music/",
+                    parsedTitle = "Track One",
+                    parsedArtist = "Band Artist",
+                )
+            mediaTrackIndexDao.insertOrUpdate(virtualTrack)
+
+            // Parent audio metadata cached in TrackMetadataDao
+            trackMetadataDao.insertOrUpdate(
+                TrackMetadataEntity(
+                    serverId = 1L,
+                    remotePath = "/Music/Album.flac",
+                    title = "Album Title",
+                    artist = "Parent Artist",
+                    album = "Masterpiece Album",
+                    trackNumber = 1,
+                    durationMs = 2400000L,
+                    coverThumbnailPath = "/thumbnails/masterpiece.jpg",
+                ),
+            )
+
+            val result = repository.search("Track One").first()
+            assertEquals(1, result.matchedTracks.size)
+            val track = result.matchedTracks.first()
+
+            assertTrue(track.isVirtualTrack)
+            assertEquals("/Music/Album.flac#cue_1", track.remotePath)
+            assertEquals("Track One", track.title)
+            assertEquals("Band Artist", track.artist)
+            assertEquals("Masterpiece Album", track.album)
+            assertEquals("/thumbnails/masterpiece.jpg", track.coverThumbnailPath)
+            assertEquals("/Music/Album.cue", track.cuePath)
+            assertEquals(2400000L, track.durationMs)
+        }
+
+    @Test
+    fun search_crossSourceGlobalSearch_combinesLocalStorageAndMultipleWebDavServers() =
+        runTest {
+            val localTrack =
+                MediaTrackIndexEntity(
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://media/external/audio/501",
+                    fileName = "Nocturne.mp3",
+                    fileSize = 10000000L,
+                    lastModified = 1000L,
+                    format = "MP3",
+                    isCue = false,
+                    parentPath = "/local/Classical/",
+                    parsedTitle = "Nocturne in E-flat",
+                    parsedArtist = "Chopin",
+                )
+            val remoteServer1Track =
+                MediaTrackIndexEntity(
+                    serverId = 1L,
+                    remotePath = "/nas1/Music/Nocturne.flac",
+                    fileName = "Nocturne.flac",
+                    fileSize = 30000000L,
+                    lastModified = 2000L,
+                    format = "FLAC",
+                    isCue = false,
+                    parentPath = "/nas1/Music/",
+                    parsedTitle = "Nocturne in C-sharp minor",
+                    parsedArtist = "Chopin",
+                )
+            val remoteServer2Track =
+                MediaTrackIndexEntity(
+                    serverId = 2L,
+                    remotePath = "/nas2/Audio/Nocturne.wav",
+                    fileName = "Nocturne.wav",
+                    fileSize = 50000000L,
+                    lastModified = 3000L,
+                    format = "WAV",
+                    isCue = false,
+                    parentPath = "/nas2/Audio/",
+                    parsedTitle = "Nocturne Op. 9",
+                    parsedArtist = "Chopin",
+                )
+            mediaTrackIndexDao.insertAll(listOf(localTrack, remoteServer1Track, remoteServer2Track))
+
+            // Global search (serverId = null) combines all 3 sources
+            val globalResult = repository.search("Nocturne", serverId = null).first()
+            assertEquals(3, globalResult.matchedTracks.size)
+            val serverIds = globalResult.matchedTracks.map { it.serverId }.toSet()
+            assertEquals(setOf(LOCAL_STORAGE_ID, 1L, 2L), serverIds)
+
+            // Local only search (serverId = LOCAL_STORAGE_ID)
+            val localOnly = repository.search("Nocturne", serverId = LOCAL_STORAGE_ID).first()
+            assertEquals(1, localOnly.matchedTracks.size)
+            assertEquals(LOCAL_STORAGE_ID, localOnly.matchedTracks.first().serverId)
+
+            // Remote server 1 only
+            val server1Only = repository.search("Nocturne", serverId = 1L).first()
+            assertEquals(1, server1Only.matchedTracks.size)
+            assertEquals(1L, server1Only.matchedTracks.first().serverId)
+
+            // Remote server 2 only
+            val server2Only = repository.search("Nocturne", serverId = 2L).first()
+            assertEquals(1, server2Only.matchedTracks.size)
+            assertEquals(2L, server2Only.matchedTracks.first().serverId)
+        }
+
+    @Test
+    fun search_metadataHarmonization_enrichesDurationCoverAlbumForBothRegularAndCueTracks() =
+        runTest {
+            val regularTrack =
+                MediaTrackIndexEntity(
+                    serverId = 1L,
+                    remotePath = "/Music/Ordinary.flac",
+                    fileName = "Ordinary.flac",
+                    fileSize = 25000000L,
+                    lastModified = 1000L,
+                    format = "FLAC",
+                    isCue = false,
+                    parentPath = "/Music/",
+                    parsedTitle = "Ordinary",
+                    parsedArtist = "Indie Band",
+                )
+            val virtualTrack =
+                MediaTrackIndexEntity(
+                    serverId = 1L,
+                    remotePath = "/Music/Concert.flac#cue_1",
+                    fileName = "Concert Intro",
+                    fileSize = 300000000L,
+                    lastModified = 1000L,
+                    format = "FLAC",
+                    isCue = true,
+                    parentPath = "/Music/",
+                    parsedTitle = "Concert Intro",
+                    parsedArtist = "Live Band",
+                )
+            mediaTrackIndexDao.insertAll(listOf(regularTrack, virtualTrack))
+
+            // Enriched ID3 metadata in trackMetadataDao
+            trackMetadataDao.insertOrUpdateAll(
+                listOf(
+                    TrackMetadataEntity(
+                        serverId = 1L,
+                        remotePath = "/Music/Ordinary.flac",
+                        title = "Ordinary Song",
+                        artist = "Indie Band",
+                        album = "Studio Album",
+                        trackNumber = 1,
+                        durationMs = 210000L,
+                        coverThumbnailPath = "/covers/studio.jpg",
+                    ),
+                    TrackMetadataEntity(
+                        serverId = 1L,
+                        remotePath = "/Music/Concert.flac",
+                        title = "Full Concert",
+                        artist = "Live Band",
+                        album = "Live at Wembley",
+                        trackNumber = 1,
+                        durationMs = 5400000L,
+                        coverThumbnailPath = "/covers/wembley.jpg",
+                    ),
+                ),
+            )
+
+            // Regular track harmonization
+            val regularResult = repository.search("Ordinary").first()
+            assertEquals(1, regularResult.matchedTracks.size)
+            val matchedRegular = regularResult.matchedTracks.first()
+            assertEquals("Ordinary Song", matchedRegular.title)
+            assertEquals("Studio Album", matchedRegular.album)
+            assertEquals(210000L, matchedRegular.durationMs)
+            assertEquals("/covers/studio.jpg", matchedRegular.coverThumbnailPath)
+
+            // CUE track harmonization
+            val virtualResult = repository.search("Concert Intro").first()
+            assertEquals(1, virtualResult.matchedTracks.size)
+            val matchedVirtual = virtualResult.matchedTracks.first()
+            assertEquals("Concert Intro", matchedVirtual.title)
+            assertEquals("Live at Wembley", matchedVirtual.album)
+            assertEquals(5400000L, matchedVirtual.durationMs)
+            assertEquals("/covers/wembley.jpg", matchedVirtual.coverThumbnailPath)
+        }
+
+    @Test
+    fun search_withRawCueFileInIndex_doesNotReturnCueFileAsAudioTrack() =
+        runTest {
+            val rawCueFile =
+                MediaTrackIndexEntity(
+                    serverId = 1L,
+                    remotePath = "/Music/Symphony.cue",
+                    fileName = "Symphony.cue",
+                    fileSize = 1024L,
+                    lastModified = 1000L,
+                    format = "CUE",
+                    isCue = true,
+                    parentPath = "/Music/",
+                    parsedTitle = "Symphony",
+                    parsedArtist = null,
+                )
+            val virtualTrack =
+                MediaTrackIndexEntity(
+                    serverId = 1L,
+                    remotePath = "/Music/Symphony.flac#cue_1",
+                    fileName = "Movement I",
+                    fileSize = 100000000L,
+                    lastModified = 1000L,
+                    format = "FLAC",
+                    isCue = true,
+                    parentPath = "/Music/",
+                    parsedTitle = "Movement I",
+                    parsedArtist = "Beethoven",
+                )
+            mediaTrackIndexDao.insertAll(listOf(rawCueFile, virtualTrack))
+
+            val result = repository.search("Symphony").first()
+            // The raw .cue file must not be in matchedTracks; only the virtual track should appear
+            assertEquals(1, result.matchedTracks.size)
+            val track = result.matchedTracks.first()
+            assertEquals("/Music/Symphony.flac#cue_1", track.remotePath)
+            assertTrue(track.isVirtualTrack)
         }
 }

@@ -47,6 +47,7 @@ interface MediaTrackIndexDao {
             OR parsedTitle LIKE '%' || :query || '%'
             OR (parsedArtist IS NOT NULL AND parsedArtist LIKE '%' || :query || '%')
             OR parentPath LIKE '%' || :query || '%'
+            OR remotePath LIKE '%' || :query || '%'
           )
         ORDER BY parsedTitle ASC
         """,
@@ -65,6 +66,7 @@ interface MediaTrackIndexDao {
             OR parsedTitle LIKE '%' || :query || '%'
             OR (parsedArtist IS NOT NULL AND parsedArtist LIKE '%' || :query || '%')
             OR parentPath LIKE '%' || :query || '%'
+            OR remotePath LIKE '%' || :query || '%'
           )
         ORDER BY parsedTitle ASC
         """,

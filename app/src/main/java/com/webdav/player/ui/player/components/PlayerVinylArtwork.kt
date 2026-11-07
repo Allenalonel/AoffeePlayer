@@ -149,8 +149,7 @@ internal fun PlayerVinylArtwork(
                         shape = FullPlayerDefaults.ArtworkSquircleShape,
                         spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
                         ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                    )
-                    .clip(FullPlayerDefaults.ArtworkSquircleShape)
+                    ).clip(FullPlayerDefaults.ArtworkSquircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onArtworkClick() },
             contentAlignment = Alignment.Center,
@@ -235,4 +234,3 @@ private fun PlayerVinylArtworkPreview() {
         )
     }
 }
-

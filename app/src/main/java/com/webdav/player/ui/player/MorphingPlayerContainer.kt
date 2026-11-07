@@ -131,6 +131,7 @@ fun MorphingPlayerContainer(
     onConfirmUnsupportedRangeReplay: () -> Unit = {},
     onDismissUnsupportedRange: () -> Unit = {},
     artworkColors: ArtworkColors? = null,
+    progressOverride: Float? = null,
 ) {
     val currentTrack = sessionState.currentTrack ?: return
     val isReduceMotion = isReduceMotionEnabled()
@@ -147,11 +148,12 @@ fun MorphingPlayerContainer(
             }
         }
 
-    val expansionProgress by animateFloatAsState(
+    val internalProgress by animateFloatAsState(
         targetValue = if (isExpanded) 1f else 0f,
         animationSpec = morphingSpec,
         label = "PlayerMorphingProgress",
     )
+    val expansionProgress = progressOverride ?: internalProgress
 
     // Downward swipe gesture to collapse player sheet smoothly
     val downwardSwipeModifier =

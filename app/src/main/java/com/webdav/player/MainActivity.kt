@@ -11,7 +11,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -60,6 +63,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.webdav.player.data.service.PlaybackSessionHost
@@ -176,14 +180,38 @@ class MainActivity : ComponentActivity() {
                     coordinator.onSessionStateChanged(playerSessionState)
                 }
 
+                val isReduceMotion = isReduceMotionEnabled()
+                val playerMorphingSpec =
+                    remember(isReduceMotion) {
+                        if (isReduceMotion) {
+                            snap()
+                        } else {
+                            tween<Float>(
+                                durationMillis = 480,
+                                easing = CubicBezierEasing(0.20f, 0.0f, 0.0f, 1.0f),
+                            )
+                        }
+                    }
+                val playerExpansionProgress by animateFloatAsState(
+                    targetValue = if (navState.isFullPlayerExpanded) 1f else 0f,
+                    animationSpec = playerMorphingSpec,
+                    label = "GlobalPlayerMorphingProgress",
+                )
+
                 Box(modifier = Modifier.fillMaxSize()) {
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         contentWindowInsets = WindowInsets(0, 0, 0, 0),
                         bottomBar = {
-                            // Persistent M3 Expressive Navigation Bar
+                            // Persistent M3 Expressive Navigation Bar with Sinking Parallax
                             Surface(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .graphicsLayer {
+                                            translationY = 80.dp.toPx() * playerExpansionProgress
+                                            alpha = (1f - playerExpansionProgress * 1.4f).coerceIn(0f, 1f)
+                                        },
                                 color = MaterialTheme.colorScheme.surfaceContainer,
                                 tonalElevation = 3.dp,
                             ) {
@@ -276,9 +304,18 @@ class MainActivity : ComponentActivity() {
                         )
 
                         val saveableStateHolder = rememberSaveableStateHolder()
-                        val isReduceMotion = isReduceMotionEnabled()
 
-                        Box(modifier = Modifier.fillMaxSize()) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        val scale = lerp(1f, 0.94f, playerExpansionProgress)
+                                        scaleX = scale
+                                        scaleY = scale
+                                        alpha = lerp(1f, 0.70f, playerExpansionProgress)
+                                    },
+                        ) {
                             // Preserved view hierarchy with M3 Shared Axis X horizontal transition
                             AnimatedContent(
                                 targetState = navState.currentDestination,
@@ -422,6 +459,7 @@ class MainActivity : ComponentActivity() {
                             onConfirmUnsupportedRangeReplay = { musicSession.confirmUnsupportedRangeReplay() },
                             onDismissUnsupportedRange = { musicSession.dismissUnsupportedRange() },
                             artworkColors = artworkColors,
+                            progressOverride = playerExpansionProgress,
                         )
                     }
 

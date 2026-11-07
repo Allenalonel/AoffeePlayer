@@ -128,3 +128,15 @@ Status: `completed`
 4. **全天候高对比度纯白字体**：全屏播放器内部字体与播控图标锁定为高亮纯白（`#FFFFFF`），对比度达到 12.8:1，彻底消除白天浅底发虚与看不清问题。
 5. **格式徽章全格式动态换肤**：废除 `if (isHiRes)` 导致普通 FLAC/MP3 降级为死灰色的缺陷，全格式统一由当前曲目的动态主色 `primary` 驱动（半透底舱 + 细边框 + 高亮文字）。
 6. **顶栏轻量去重**：顶栏精简为单行来源展示（`正在播放自 $serverName`），彻底消除与大封面下方歌名、歌手的双重视觉冗余。
+
+## Decision Addendum: Single Component Ownership & Fluid Color Morphing (单一实体所有权与流体变色附录)
+
+在真机高频展开/收起实测与逐帧录屏排查中，针对跨主题色彩突变与动画终点偶发 1 帧空白闪烁问题，经实证分析完成最高工业级标准（对标 Apple Music / Spotify）的架构重构：
+1. **跨深浅主题双向流体色彩插值（Fluid Color Morphing）**：
+   针对 MiniPlayer（白天浅色模式下 Primary 为 Tone 40 深色调）与全屏播放器（全天候深色舞台下 Primary 为 Tone 80 亮金色）的色阶差异，在展开形变期由根容器通过 `lerpColor` 将主播放按键背景色、图标色以及无封面卡片底色沿流体曲线平滑插值，金色高光随上升过程自然泛起，终点色差绝对为 0，彻底消除按键与底色闪烁。
+2. **无封面曲目（评书/WMA）占位 Token 语义对称**：
+   将 `MiniPlayer` 无封面底色与图标统一对齐为 `surfaceVariant` 与 `onSurfaceVariant.copy(alpha = 0.7f)`，消除由浅色 `primaryContainer` 与深色 `surfaceVariant` 混用引发的底色突跳。
+3. **真·单一实体与纯几何插槽架构（Single Component Ownership & Slot Architecture）**：
+   - **痛点根因**：原实现由于在子组件与宿主中各自声明了独立的 `CoverThumbnailImage`，并在 $p=0.995f$ 终点通过 `if (isMorphing)` 执行了节点销毁与显隐交接，在 90Hz 高刷屏上因 RenderThread 的 DisplayList 重建与 Vsync 错峰偶发产生 1 帧空白闪烁；
+   - **工业级解法**：子视图（`MiniPlayer` 与 `PlayerVinylArtwork`）全面退化为纯几何插槽（Slot Anchor，仅负责提供尺寸约束与 `onGloballyPositioned` 绝对坐标测量，不创建多媒体节点）；
+   - **全局唯一实例常驻**：唯一的封面、主播放按键与队列按键提升至 `MorphingPlayerContainer` 顶层全生命周期常驻渲染，彻底废除 `if (isMorphing)` 的结构性组合卸载。在 $p=0.0$ 时精确定格在 Mini 槽位，在 $0 < p < 1$ 时平滑变焦滑行，在 $p=1.0$ 时直接停驻作为全屏大封面与大播放键，自始至终是同一实例，物理数学层面上 0 节点替换、0 闪烁、0 偷换。

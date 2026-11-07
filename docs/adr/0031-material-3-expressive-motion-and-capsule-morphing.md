@@ -49,6 +49,8 @@ Accepted
   - 容器圆角从 `30.dp` 药丸圆角平滑演变为屏幕顶部的 `36.dp`；
   - 封面从左侧 `42.dp` 正圆黑胶（`CircleShape`），沿物理轨迹滑向中央变焦为 `280.dp` 方圆大卡片（严格对齐 `PlayerVinylArtwork` 280dp 约束，消除 30dp 尺寸瞬移），且在全屏态完全静止不自转；
   - 封面缩放位移统一在 `graphicsLayer` Draw 阶段由 GPU 硬件矩阵驱动，避免逐帧 Measure & Layout 引发的 40ms 掉帧；
+  - 动效曲线演进为 560ms Material 3 Emphasized Decelerate 流体减速曲线 `CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)`，消除前段急促冲开与末端超调弹跳，呈现丝绸般舒展贴合的流体质感；
+  - 彻底消除胶囊与底栏阴影冲突：内层 `MiniPlayer` 的 `Surface` 阴影设为 `0.dp` 杜绝双层阴影叠加，外层容器收起态统一为轻盈通透的 `4.dp` 微投影，彻底消除底栏上方的粗黑脏阴影带；
   - `CoverThumbnailImage` 命中内存缓存时采用硬绘制，消除多余的 250ms 二次渐变拖尾；
   - `LyricsView` 内边距强制加上 `coerceAtLeast(0.dp)` 兜底，杜绝容器低高度时负数 padding 崩溃；
   - 双按钮连续拓扑映射：左侧 40dp 播放/暂停键（Primary）滑向中央升格为 68dp Squircle 方圆大按键；右侧 38dp 队列键（Tonal）滑向右侧槽位。

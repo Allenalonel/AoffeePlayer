@@ -54,12 +54,12 @@ Accepted
   - **全局时钟源驱动多层空间视差联动（Parallax Space Orchestration）**：
     1. **底栏沉降退场**：底栏 `PrimaryNavigationBar` 随展开进度沿 Y 轴平滑沉降退出（`translationY = 80.dp * progress`, `alpha = 1f - progress * 1.4f`），收起时从容弹回；
     2. **主视窗景深微缩**：媒体库/歌单主界面随展开轻微后退微缩至 `0.94f`（`scale = 1f - 0.06f * progress`）并优雅变暗至 `0.70f`，营造出强烈的“大播放器浮起、主应用退入深层”的电影级空间纵深感；
-    3. **单一实体架构（Single Living View）**：容器采用 Material 3 Emphasized Decelerate 减速曲线 `CubicBezierEasing(0.20f, 0.0f, 0.0f, 1.0f)`；
-    4. **动态测量驱动的 1:1 连续形态蜕变（Measured Continuous Shared Element Morphing）**：
-       - **动态物理锚点捕获**：通过 `Modifier.onGloballyPositioned` 实时测量 MiniPlayer 与 FullPlayerView 内部封面、68dp 播放大按键与 48dp 队列键相对于容器的绝对 Rect，彻底告别写死绝对坐标导致的屏幕碎片化与终点跳动；
-       - **形变期双向纯净占位（Zero-Ghosting Invariant）**：在形变阶段（$0.005f < p < 0.995f$），MiniPlayer 和 FullPlayerView 内部真实对应组件的 `alpha` 设为 `0f`（物理保留尺寸与测量锚点），由顶层唯一的 Shared Element 图层绘制封面与按键，物理级消灭双重重影（Ghosting）与直角底板脱落；
-       - **容器相对安全位移（Capsule Boundary Invariant）**：封面的 Y 轴插值严格锚定胶囊容器顶端，通过 `maxOf(rawCenterY, capsuleTop + halfHeight + 6dp)` 确保在任何屏幕与伸展进度下，封面始终优雅处于胶囊内部，彻底根除被容器顶部切割削头的视觉畸变；
-       - **终点零缝隙交接（Seamless Convergence）**：当 $p \ge 0.995f$ 时，Shared Layer 隐去，FullPlayerView 真实组件在微米级重合的同一物理坐标完美接管，实现绝对零跳跃、零抽搐。
+    3. **单一组件所有权与插槽架构（Single Component Ownership & Slot Architecture）**：
+       - 容器采用 Material 3 Emphasized Decelerate 减速曲线 `CubicBezierEasing(0.20f, 0.0f, 0.0f, 1.0f)`；
+       - **全局唯一实例常驻（Zero End-State Swaps）**：核心视觉元素（专辑封面、主控按键）全生命周期常驻于根容器宿主 `MorphingPlayerContainer` 中，彻底消除 `if (isMorphing)` 的结构性组合卸载；
+       - **子组件纯净几何插槽化**：`MiniPlayer` 和 `FullPlayerView`（`PlayerVinylArtwork`）内部退化为纯几何插槽（Slot Anchor），仅提供尺寸约束与 `onGloballyPositioned` 坐标测量，绝不创建多余的重复渲染节点，彻底杜绝 RenderNode 切换引发的 1 帧空白闪烁；
+       - **双向流体色彩插值（Fluid Color Morphing）**：常驻组件在白天浅色系统底栏与全天候暗调沉浸舞台之间，背景色与图标色随进度沿流体曲线平滑执行 `lerpColor`，高光自然泛起，终点色彩差值为 0，彻底杜绝闪烁跳色；
+       - **容器相对安全位移（Capsule Boundary Invariant）**：封面的 Y 轴插值严格锚定胶囊容器顶端，通过 `maxOf(rawCenterY, capsuleTop + halfHeight + 6dp)` 确保在任何屏幕与伸展进度下，封面始终优雅处于胶囊内部，彻底根除被容器顶部切割削头的视觉畸变。
   - `CoverThumbnailImage` 命中内存缓存时采用硬绘制，消除多余的 250ms 二次渐变拖尾；
   - `LyricsView` 内边距强制加上 `coerceAtLeast(0.dp)` 兜底，杜绝容器低高度时负数 padding 崩溃；
   - 双按钮连续拓扑映射：左侧 40dp 播放/暂停键（Primary）滑向中央升格为 68dp Squircle 方圆大按键；右侧 38dp 队列键（Tonal）滑向右侧槽位。

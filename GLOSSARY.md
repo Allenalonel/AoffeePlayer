@@ -300,8 +300,8 @@ _Avoid_: File Info Activity, Song Property Window
 _Avoid_: Bottom Player, Small Player, Playback Bar
 
 **Capsule-to-Fullscreen Morphing**:
-MiniPlayer 药丸胶囊与全屏播放器之间统一由单一真实实体（Single Living View）驱动的连续形态蜕变体系。彻底废除割裂的模态弹窗与过渡期假替身组件（Mock Clone），在容器伸展过程中直接承载真实 `FullPlayerView`，避免动画终点的组件偷换导致排版重算抖动与残影；通过统一全局时钟源（Global Expansion Progress）驱动全套空间视差联动：外层胶囊连续拉伸撑满全屏、底栏 NavigationBar 平滑沉降退出（`translateY`）、主视窗内容区向后微缩至 0.94f 营造纵深景深。核心组件（42dp 圆形封面、40dp 播放键、38dp 队列键）通过动态测量绝对 Rect（`onGloballyPositioned`）在形变期由顶层唯一的 Shared Element 图层执行平滑矩阵插值，底层真实槽位透明占位杜绝双重重影，且封面的 Y 轴位移严格约束在胶囊边界内防止被切，实现 100% 物理连贯、零声学卡顿与零视觉跳动的旗舰级形态映射，且 100% 免疫多端机型与平板折叠屏碎片化。
-_Avoid_: Bottom Sheet Popup, Pop-up Overlay, Disjointed Expansion, Fake Player Resize, Mock Transition Swap, Coordinate Drifting Bug
+MiniPlayer 药丸胶囊与全屏播放器之间由单一真实实体与插槽架构（Single Component Ownership & Slot Architecture）驱动的连续形态蜕变体系。核心视觉元素（42dp~280dp 封面、主控播放按钮、队列按钮）在全 App 渲染树中自始至终由顶层容器唯一持有并全生命周期常驻；子视图（MiniPlayer 与 FullPlayerView）退化为纯几何插槽（Slot Anchor，仅提供排版尺寸约束与 `onGloballyPositioned` 绝对坐标测量，不创建重复多媒体节点）；在展开过程中，由统一全局时钟源（Global Expansion Progress）驱动空间视差（底栏下沉 80dp、主视窗微缩 0.94f）与核心实体的物理矩阵插值及流体变色（Color Morphing），彻底废除动画终点的 `if (isMorphing)` 销毁逻辑与“替身到真实视图”的偷换（Zero End-State Swaps），实现 100% 物理连贯、零声学卡顿、零闪烁与零视觉跳动的旗舰级形态映射，且 100% 免疫多端机型与平板折叠屏碎片化。
+_Avoid_: Bottom Sheet Popup, Pop-up Overlay, Disjointed Expansion, Fake Player Resize, Mock Transition Swap, Coordinate Drifting Bug, End-State Swap Flashing
 
 **Track Row Height Parity**:
 应用全域（歌单、媒体库、搜索、队列）音频曲目列表行严格遵循双行 72dp 对齐与未知兜底规范。当曲目缺失艺术家或专辑标签信息时，副标题必须回退显示“未知”，严禁完全隐藏导致 ListItem 塌缩为 56dp 单行，保证全列表行高严格一致。

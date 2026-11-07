@@ -154,32 +154,39 @@ internal fun PlayerVinylArtwork(
                     } else {
                         Modifier
                     },
-                ).graphicsLayer {
-                    alpha = if (isArtworkVisible) 1f else 0f
-                }.shadow(
-                    elevation = if (isArtworkVisible) 24.dp else 0.dp,
-                    shape = FullPlayerDefaults.ArtworkSquircleShape,
-                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                ).clip(FullPlayerDefaults.ArtworkSquircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable { onArtworkClick() }
+                ).clickable { onArtworkClick() }
 
         Box(
             modifier = artworkModifier,
             contentAlignment = Alignment.Center,
         ) {
-            CoverThumbnailImage(
-                thumbnailPath = currentTrack?.coverThumbnailPath,
-                contentDescription = "专辑封面",
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                Icon(
-                    imageVector = AppIcons.Audiotrack,
-                    contentDescription = "专辑封面",
-                    modifier = Modifier.size(100.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                )
+            if (isArtworkVisible) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .shadow(
+                                elevation = 24.dp,
+                                shape = FullPlayerDefaults.ArtworkSquircleShape,
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                            ).clip(FullPlayerDefaults.ArtworkSquircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CoverThumbnailImage(
+                        thumbnailPath = currentTrack?.coverThumbnailPath,
+                        contentDescription = "专辑封面",
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Audiotrack,
+                            contentDescription = "专辑封面",
+                            modifier = Modifier.size(100.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        )
+                    }
+                }
             }
         }
 

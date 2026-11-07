@@ -25,22 +25,29 @@ import java.io.File
 
 object ThumbnailMemoryCache {
     private val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
+
     // Allocate up to 1/8th of available app memory, capped at 24MB
     private val cacheSize = (maxMemory / 8).coerceIn(4096, 24 * 1024)
 
-    private val cache = object : LruCache<String, ImageBitmap>(cacheSize) {
-        override fun sizeOf(key: String, value: ImageBitmap): Int {
-            return (value.width * value.height * 2) / 1024 // RGB_565 is 2 bytes per pixel
+    private val cache =
+        object : LruCache<String, ImageBitmap>(cacheSize) {
+            override fun sizeOf(
+                key: String,
+                value: ImageBitmap,
+            ): Int {
+                return (value.width * value.height * 2) / 1024 // RGB_565 is 2 bytes per pixel
+            }
         }
-    }
 
-    fun get(path: String): ImageBitmap? {
-        return synchronized(cache) {
+    fun get(path: String): ImageBitmap? =
+        synchronized(cache) {
             cache.get(path)
         }
-    }
 
-    fun put(path: String, bitmap: ImageBitmap) {
+    fun put(
+        path: String,
+        bitmap: ImageBitmap,
+    ) {
         synchronized(cache) {
             cache.put(path, bitmap)
         }
@@ -59,20 +66,22 @@ fun CoverThumbnailImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     crossfadeDurationMs: Int = 250,
-    fallback: @Composable () -> Unit
+    fallback: @Composable () -> Unit,
 ) {
     // Fast-path: Check memory cache directly
-    val initialCached = remember(thumbnailPath) {
-        if (!thumbnailPath.isNullOrBlank()) {
-            ThumbnailMemoryCache.get(thumbnailPath)
-        } else {
-            null
+    val initialCached =
+        remember(thumbnailPath) {
+            if (!thumbnailPath.isNullOrBlank()) {
+                ThumbnailMemoryCache.get(thumbnailPath)
+            } else {
+                null
+            }
         }
-    }
 
-    val imageBitmapState = remember(thumbnailPath) {
-        mutableStateOf(initialCached)
-    }
+    val imageBitmapState =
+        remember(thumbnailPath) {
+            mutableStateOf(initialCached)
+        }
     val imageBitmap = imageBitmapState.value
 
     // Off-main-thread loading if cache missed
@@ -82,21 +91,23 @@ fun CoverThumbnailImage(
             return@LaunchedEffect
         }
         if (imageBitmapState.value == null) {
-            val loaded = withContext(Dispatchers.IO) {
-                try {
-                    val file = File(thumbnailPath)
-                    if (file.exists() && file.length() > 0) {
-                        val opts = BitmapFactory.Options().apply {
-                            inPreferredConfig = Bitmap.Config.RGB_565
+            val loaded =
+                withContext(Dispatchers.IO) {
+                    try {
+                        val file = File(thumbnailPath)
+                        if (file.exists() && file.length() > 0) {
+                            val opts =
+                                BitmapFactory.Options().apply {
+                                    inPreferredConfig = Bitmap.Config.RGB_565
+                                }
+                            BitmapFactory.decodeFile(file.absolutePath, opts)?.asImageBitmap()
+                        } else {
+                            null
                         }
-                        BitmapFactory.decodeFile(file.absolutePath, opts)?.asImageBitmap()
-                    } else {
+                    } catch (e: Throwable) {
                         null
                     }
-                } catch (e: Throwable) {
-                    null
                 }
-            }
             if (loaded != null) {
                 ThumbnailMemoryCache.put(thumbnailPath, loaded)
                 imageBitmapState.value = loaded

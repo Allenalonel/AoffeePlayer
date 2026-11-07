@@ -269,23 +269,31 @@ fun MiniPlayer(
                                     } else {
                                         Modifier
                                     },
-                                ).graphicsLayer {
-                                    alpha = if (isCoverVisible) 1f else 0f
-                                }.clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        CoverThumbnailImage(
-                            thumbnailPath = currentTrack.coverThumbnailPath,
-                            contentDescription = "封面",
-                            modifier = Modifier.fillMaxSize().clip(CircleShape),
-                        ) {
-                            Icon(
-                                imageVector = AppIcons.Audiotrack,
-                                contentDescription = "音轨",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                modifier = Modifier.size(22.dp),
-                            )
+                        if (isCoverVisible) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CoverThumbnailImage(
+                                    thumbnailPath = currentTrack.coverThumbnailPath,
+                                    contentDescription = "封面",
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                ) {
+                                    Icon(
+                                        imageVector = AppIcons.Audiotrack,
+                                        contentDescription = "音轨",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(22.dp),
+                                    )
+                                }
+                            }
                         }
                     }
 

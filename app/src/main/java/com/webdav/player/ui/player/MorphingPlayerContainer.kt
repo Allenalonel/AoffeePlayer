@@ -199,8 +199,6 @@ fun MorphingPlayerContainer(
     var fullPlayRect by remember { mutableStateOf<Rect?>(null) }
     var fullQueueRect by remember { mutableStateOf<Rect?>(null) }
 
-    val isMorphing = expansionProgress > 0.005f && expansionProgress < 0.995f
-
     // Downward swipe gesture to collapse player sheet smoothly
     val downwardSwipeModifier =
         Modifier.pointerInput(isExpanded) {
@@ -360,15 +358,15 @@ fun MorphingPlayerContainer(
                         onDismissUnsupportedRange = onDismissUnsupportedRange,
                         onAddToPlaylist = onAddToPlaylist,
                         artworkColors = artworkColors,
-                        isArtworkVisible = !isMorphing && expansionProgress >= 0.995f,
+                        isArtworkVisible = false,
                         onArtworkPositioned = { coords ->
                             coords.boundsIn(containerCoordinates)?.let { fullCoverRect = it }
                         },
-                        isPlayButtonVisible = !isMorphing && expansionProgress >= 0.995f,
+                        isPlayButtonVisible = false,
                         onPlayButtonPositioned = { coords ->
                             coords.boundsIn(containerCoordinates)?.let { fullPlayRect = it }
                         },
-                        isQueueButtonVisible = !isMorphing && expansionProgress >= 0.995f,
+                        isQueueButtonVisible = false,
                         onQueueButtonPositioned = { coords ->
                             coords.boundsIn(containerCoordinates)?.let { fullQueueRect = it }
                         },
@@ -404,15 +402,15 @@ fun MorphingPlayerContainer(
                         playbackProgress = playbackProgress,
                         onMiniPlayerClick = onExpand,
                         onOpenQueue = onOpenQueue,
-                        isCoverVisible = !isMorphing && expansionProgress <= 0.005f,
+                        isCoverVisible = false,
                         onCoverPositioned = { coords ->
                             coords.boundsIn(containerCoordinates)?.let { miniCoverRect = it }
                         },
-                        isPlayButtonVisible = !isMorphing && expansionProgress <= 0.005f,
+                        isPlayButtonVisible = false,
                         onPlayButtonPositioned = { coords ->
                             coords.boundsIn(containerCoordinates)?.let { miniPlayRect = it }
                         },
-                        isQueueButtonVisible = !isMorphing && expansionProgress <= 0.005f,
+                        isQueueButtonVisible = false,
                         onQueueButtonPositioned = { coords ->
                             coords.boundsIn(containerCoordinates)?.let { miniQueueRect = it }
                         },
@@ -421,253 +419,260 @@ fun MorphingPlayerContainer(
                 }
             }
 
-            // 3. Shared Continuous Morphing Elements Layer (Artwork & Dual Control Buttons)
-            if (isMorphing) {
-                val p = expansionProgress.coerceIn(0f, 1f)
-                val cWidth = rootConstraints.maxWidth.toFloat()
-                val cHeight = rootConstraints.maxHeight.toFloat()
-                val bMarginPx = with(density) { MorphingPlayerMath.containerBottomMargin(collapsedBottomPadding, p).toPx() }
-                val hMarginPx = with(density) { MorphingPlayerMath.containerHorizontalMargin(p).toPx() }
-                val containerHeightPx = with(density) { MorphingPlayerMath.containerHeight(cHeight.toDp(), p).toPx() }
+            // 3. Single Living Real Entities Host (Artwork & Dual Control Buttons: Always Active, Zero Swap, Zero Flash)
+            val p = expansionProgress.coerceIn(0f, 1f)
+            val cWidth = rootConstraints.maxWidth.toFloat()
+            val cHeight = rootConstraints.maxHeight.toFloat()
+            val bMarginPx = with(density) { MorphingPlayerMath.containerBottomMargin(collapsedBottomPadding, p).toPx() }
+            val hMarginPx = with(density) { MorphingPlayerMath.containerHorizontalMargin(p).toPx() }
+            val containerHeightPx = with(density) { MorphingPlayerMath.containerHeight(cHeight.toDp(), p).toPx() }
 
-                val capsuleBottom = cHeight - bMarginPx
-                val capsuleTop = (capsuleBottom - containerHeightPx).coerceAtLeast(0f)
+            val capsuleBottom = cHeight - bMarginPx
+            val capsuleTop = (capsuleBottom - containerHeightPx).coerceAtLeast(0f)
 
-                val miniCapsuleTopPx =
-                    cHeight - with(density) { collapsedBottomPadding.toPx() } - with(density) { MiniPlayerDefaults.CapsuleHeight.toPx() }
+            val miniCapsuleTopPx =
+                cHeight - with(density) { collapsedBottomPadding.toPx() } - with(density) { MiniPlayerDefaults.CapsuleHeight.toPx() }
 
-                val fallbackMiniCover =
-                    Rect(
-                        Offset(hMarginPx + with(density) { 10.dp.toPx() }, miniCapsuleTopPx + with(density) { 9.dp.toPx() }),
-                        Size(with(density) { 42.dp.toPx() }, with(density) { 42.dp.toPx() }),
-                    )
-                val fallbackMiniQueue =
-                    Rect(
-                        Offset(
-                            cWidth - hMarginPx - with(density) { 12.dp.toPx() } - with(density) { 38.dp.toPx() },
-                            miniCapsuleTopPx + with(density) { 11.dp.toPx() },
-                        ),
-                        Size(with(density) { 38.dp.toPx() }, with(density) { 38.dp.toPx() }),
-                    )
-                val fallbackMiniPlay =
-                    Rect(
-                        Offset(
-                            fallbackMiniQueue.left - with(density) { 8.dp.toPx() } - with(density) { 40.dp.toPx() },
-                            miniCapsuleTopPx + with(density) { 10.dp.toPx() },
-                        ),
-                        Size(with(density) { 40.dp.toPx() }, with(density) { 40.dp.toPx() }),
-                    )
+            val fallbackMiniCover =
+                Rect(
+                    Offset(hMarginPx + with(density) { 10.dp.toPx() }, miniCapsuleTopPx + with(density) { 9.dp.toPx() }),
+                    Size(with(density) { 42.dp.toPx() }, with(density) { 42.dp.toPx() }),
+                )
+            val fallbackMiniQueue =
+                Rect(
+                    Offset(
+                        cWidth - hMarginPx - with(density) { 12.dp.toPx() } - with(density) { 38.dp.toPx() },
+                        miniCapsuleTopPx + with(density) { 11.dp.toPx() },
+                    ),
+                    Size(with(density) { 38.dp.toPx() }, with(density) { 38.dp.toPx() }),
+                )
+            val fallbackMiniPlay =
+                Rect(
+                    Offset(
+                        fallbackMiniQueue.left - with(density) { 8.dp.toPx() } - with(density) { 40.dp.toPx() },
+                        miniCapsuleTopPx + with(density) { 10.dp.toPx() },
+                    ),
+                    Size(with(density) { 40.dp.toPx() }, with(density) { 40.dp.toPx() }),
+                )
 
-                val fullArtSizePx = minOf(with(density) { 280.dp.toPx() }, cWidth * 0.85f)
-                val fallbackFullCover =
-                    Rect(
-                        Offset((cWidth - fullArtSizePx) / 2f, cHeight * 0.22f),
-                        Size(fullArtSizePx, fullArtSizePx),
-                    )
-                val fullPlaySizePx = with(density) { FullPlayerDefaults.PlayButtonSize.toPx() }
-                val fallbackFullPlay =
-                    Rect(
-                        Offset((cWidth - fullPlaySizePx) / 2f, cHeight - with(density) { 96.dp.toPx() }),
-                        Size(fullPlaySizePx, fullPlaySizePx),
-                    )
-                val fallbackFullQueue =
-                    Rect(
-                        Offset(
-                            cWidth - with(density) { 48.dp.toPx() } - with(density) { 20.dp.toPx() },
-                            cHeight - with(density) { 86.dp.toPx() },
-                        ),
-                        Size(with(density) { 48.dp.toPx() }, with(density) { 48.dp.toPx() }),
-                    )
+            val fullArtSizePx = minOf(with(density) { 280.dp.toPx() }, cWidth * 0.85f)
+            val fallbackFullCover =
+                Rect(
+                    Offset((cWidth - fullArtSizePx) / 2f, cHeight * 0.22f),
+                    Size(fullArtSizePx, fullArtSizePx),
+                )
+            val fullPlaySizePx = with(density) { FullPlayerDefaults.PlayButtonSize.toPx() }
+            val fallbackFullPlay =
+                Rect(
+                    Offset((cWidth - fullPlaySizePx) / 2f, cHeight - with(density) { 96.dp.toPx() }),
+                    Size(fullPlaySizePx, fullPlaySizePx),
+                )
+            val fallbackFullQueue =
+                Rect(
+                    Offset(
+                        cWidth - with(density) { 48.dp.toPx() } - with(density) { 20.dp.toPx() },
+                        cHeight - with(density) { 86.dp.toPx() },
+                    ),
+                    Size(with(density) { 48.dp.toPx() }, with(density) { 48.dp.toPx() }),
+                )
 
-                val startCover = miniCoverRect ?: fallbackMiniCover
-                val endCover = fullCoverRect ?: fallbackFullCover
+            val startCover = miniCoverRect ?: fallbackMiniCover
+            val endCover = fullCoverRect ?: fallbackFullCover
 
-                val startPlay = miniPlayRect ?: fallbackMiniPlay
-                val endPlay = fullPlayRect ?: fallbackFullPlay
+            val startPlay = miniPlayRect ?: fallbackMiniPlay
+            val endPlay = fullPlayRect ?: fallbackFullPlay
 
-                val startQueue = miniQueueRect ?: fallbackMiniQueue
-                val endQueue = fullQueueRect ?: fallbackFullQueue
+            val startQueue = miniQueueRect ?: fallbackMiniQueue
+            val endQueue = fullQueueRect ?: fallbackFullQueue
 
-                // Color Morphing: Fluid interpolation between ambient app theme and all-weather dark stage
-                val currentScheme = MaterialTheme.colorScheme
-                val stageScheme = artworkColors?.colorScheme(isDark = true) ?: ExpressiveDarkColorScheme
+            // Color Morphing: Fluid interpolation between ambient app theme and all-weather dark stage
+            val currentScheme = MaterialTheme.colorScheme
+            val stageScheme = artworkColors?.colorScheme(isDark = true) ?: ExpressiveDarkColorScheme
 
-                val curCoverBgColor = lerpColor(currentScheme.surfaceVariant, stageScheme.surfaceVariant, p)
-                val curCoverIconColor =
-                    lerpColor(
-                        currentScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        stageScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        p,
-                    )
-                val curPlayContainerColor = lerpColor(currentScheme.primary, stageScheme.primary, p)
-                val curPlayContentColor = lerpColor(currentScheme.onPrimary, stageScheme.onPrimary, p)
+            val curCoverBgColor = lerpColor(currentScheme.surfaceVariant, stageScheme.surfaceVariant, p)
+            val curCoverIconColor =
+                lerpColor(
+                    currentScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    stageScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    p,
+                )
+            val curPlayContainerColor = lerpColor(currentScheme.primary, stageScheme.primary, p)
+            val curPlayContentColor = lerpColor(currentScheme.onPrimary, stageScheme.onPrimary, p)
 
-                // Interpolated Cover Geometry (Guaranteed inside expanding capsule)
-                val curCoverCenterX = lerp(startCover.center.x, endCover.center.x, p)
-                val rawCoverCenterY = lerp(startCover.center.y, endCover.center.y, p)
-                val curCoverWidth = lerp(startCover.width, endCover.width, p)
-                val curCoverHeight = curCoverWidth
-                val safeCoverCenterY = maxOf(rawCoverCenterY, capsuleTop + curCoverHeight / 2f + with(density) { 6.dp.toPx() })
-                val curCoverRadiusPx = lerp(curCoverWidth / 2f, with(density) { FullPlayerDefaults.ArtworkSquircleRadius.toPx() }, p)
-                val curCoverElevation = with(density) { lerp(0.dp, 24.dp, p).toPx() }
+            // Interpolated Cover Geometry (Guaranteed inside expanding capsule)
+            val curCoverCenterX = lerp(startCover.center.x, endCover.center.x, p)
+            val rawCoverCenterY = lerp(startCover.center.y, endCover.center.y, p)
+            val curCoverWidth = lerp(startCover.width, endCover.width, p)
+            val curCoverHeight = curCoverWidth
+            val safeCoverCenterY = maxOf(rawCoverCenterY, capsuleTop + curCoverHeight / 2f + with(density) { 6.dp.toPx() })
+            val curCoverRadiusPx = lerp(curCoverWidth / 2f, with(density) { FullPlayerDefaults.ArtworkSquircleRadius.toPx() }, p)
+            val curCoverElevation = with(density) { lerp(0.dp, 24.dp, p).toPx() }
 
-                // Continuous Morphing Album Artwork
-                Box(
-                    modifier =
-                        Modifier
-                            .offset {
-                                IntOffset(
-                                    (curCoverCenterX - curCoverWidth / 2f).roundToInt(),
-                                    (safeCoverCenterY - curCoverHeight / 2f).roundToInt(),
-                                )
-                            }.size(with(density) { curCoverWidth.toDp() })
-                            .shadow(
-                                elevation = with(density) { curCoverElevation.toDp() },
-                                shape = RoundedCornerShape(curCoverRadiusPx),
-                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                            ).clip(RoundedCornerShape(curCoverRadiusPx))
-                            .background(curCoverBgColor),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CoverThumbnailImage(
-                        thumbnailPath = currentTrack.coverThumbnailPath,
-                        contentDescription = "专辑封面",
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        Icon(
-                            imageVector = AppIcons.Audiotrack,
-                            contentDescription = "专辑封面",
-                            modifier = Modifier.size(with(density) { lerp(22.dp, 100.dp, p) }),
-                            tint = curCoverIconColor,
-                        )
-                    }
-                }
-
-                // Interpolated Play Button Geometry
-                val curPlayCenterX = lerp(startPlay.center.x, endPlay.center.x, p)
-                val curPlayCenterY = lerp(startPlay.center.y, endPlay.center.y, p)
-                val curPlayWidth = lerp(startPlay.width, endPlay.width, p)
-                val curPlayRadiusPx = lerp(curPlayWidth / 2f, with(density) { FullPlayerDefaults.PlayButtonSquircleRadius.toPx() }, p)
-                val curPlayElevation = with(density) { lerp(0.dp, 8.dp, p).toPx() }
-
-                // Continuous Morphing Play / Pause Button
-                Box(
-                    modifier =
-                        Modifier
-                            .offset {
-                                IntOffset(
-                                    (curPlayCenterX - curPlayWidth / 2f).roundToInt(),
-                                    (curPlayCenterY - curPlayWidth / 2f).roundToInt(),
-                                )
-                            }.size(with(density) { curPlayWidth.toDp() })
-                            .shadow(
-                                elevation = with(density) { curPlayElevation.toDp() },
-                                shape = RoundedCornerShape(curPlayRadiusPx),
-                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                            ).clip(RoundedCornerShape(curPlayRadiusPx))
-                            .background(curPlayContainerColor)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = {
-                                    if (sessionState.isSuspendedRetry) {
-                                        playbackActions.retryPlayback()
-                                    } else {
-                                        playbackActions.togglePlayPause()
-                                    }
-                                },
-                            ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    val iconSize = with(density) { lerp(22.dp, 32.dp, p) }
-                    AnimatedContent(
-                        targetState = sessionState.playbackState,
-                        transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        label = "MorphingPlayPause",
-                    ) { state ->
-                        when (state) {
-                            is PlaybackState.Buffering -> {
-                                if (sessionState.isSuspendedRetry) {
-                                    Icon(
-                                        imageVector = AppIcons.Refresh,
-                                        contentDescription = "重试",
-                                        tint = curPlayContentColor,
-                                        modifier = Modifier.size(iconSize),
-                                    )
-                                } else {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(iconSize),
-                                        strokeWidth = with(density) { lerp(2.dp, 3.dp, p) },
-                                        color = curPlayContentColor,
-                                    )
+            // Continuous Morphing Album Artwork (Single Living Instance)
+            Box(
+                modifier =
+                    Modifier
+                        .offset {
+                            IntOffset(
+                                (curCoverCenterX - curCoverWidth / 2f).roundToInt(),
+                                (safeCoverCenterY - curCoverHeight / 2f).roundToInt(),
+                            )
+                        }.size(with(density) { curCoverWidth.toDp() })
+                        .shadow(
+                            elevation = with(density) { curCoverElevation.toDp() },
+                            shape = RoundedCornerShape(curCoverRadiusPx),
+                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                        ).clip(RoundedCornerShape(curCoverRadiusPx))
+                        .background(curCoverBgColor)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                if (p < 0.85f) {
+                                    onExpand()
                                 }
-                            }
+                            },
+                        ),
+                contentAlignment = Alignment.Center,
+            ) {
+                CoverThumbnailImage(
+                    thumbnailPath = currentTrack.coverThumbnailPath,
+                    contentDescription = "专辑封面",
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Audiotrack,
+                        contentDescription = "专辑封面",
+                        modifier = Modifier.size(with(density) { lerp(22.dp, 100.dp, p) }),
+                        tint = curCoverIconColor,
+                    )
+                }
+            }
 
-                            is PlaybackState.Playing -> {
+            // Interpolated Play Button Geometry
+            val curPlayCenterX = lerp(startPlay.center.x, endPlay.center.x, p)
+            val curPlayCenterY = lerp(startPlay.center.y, endPlay.center.y, p)
+            val curPlayWidth = lerp(startPlay.width, endPlay.width, p)
+            val curPlayRadiusPx = lerp(curPlayWidth / 2f, with(density) { FullPlayerDefaults.PlayButtonSquircleRadius.toPx() }, p)
+            val curPlayElevation = with(density) { lerp(0.dp, 8.dp, p).toPx() }
+
+            // Continuous Morphing Play / Pause Button (Single Living Instance)
+            Box(
+                modifier =
+                    Modifier
+                        .offset {
+                            IntOffset(
+                                (curPlayCenterX - curPlayWidth / 2f).roundToInt(),
+                                (curPlayCenterY - curPlayWidth / 2f).roundToInt(),
+                            )
+                        }.size(with(density) { curPlayWidth.toDp() })
+                        .shadow(
+                            elevation = with(density) { curPlayElevation.toDp() },
+                            shape = RoundedCornerShape(curPlayRadiusPx),
+                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                        ).clip(RoundedCornerShape(curPlayRadiusPx))
+                        .background(curPlayContainerColor)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                if (sessionState.isSuspendedRetry) {
+                                    playbackActions.retryPlayback()
+                                } else {
+                                    playbackActions.togglePlayPause()
+                                }
+                            },
+                        ),
+                contentAlignment = Alignment.Center,
+            ) {
+                val iconSize = with(density) { lerp(22.dp, 32.dp, p) }
+                AnimatedContent(
+                    targetState = sessionState.playbackState,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "MorphingPlayPause",
+                ) { state ->
+                    when (state) {
+                        is PlaybackState.Buffering -> {
+                            if (sessionState.isSuspendedRetry) {
                                 Icon(
-                                    imageVector = AppIcons.Pause,
-                                    contentDescription = "暂停",
+                                    imageVector = AppIcons.Refresh,
+                                    contentDescription = "重试",
                                     tint = curPlayContentColor,
                                     modifier = Modifier.size(iconSize),
                                 )
-                            }
-
-                            else -> {
-                                Icon(
-                                    imageVector = AppIcons.PlayArrow,
-                                    contentDescription = "播放",
-                                    tint = curPlayContentColor,
+                            } else {
+                                CircularProgressIndicator(
                                     modifier = Modifier.size(iconSize),
+                                    strokeWidth = with(density) { lerp(2.dp, 3.dp, p) },
+                                    color = curPlayContentColor,
                                 )
                             }
                         }
+
+                        is PlaybackState.Playing -> {
+                            Icon(
+                                imageVector = AppIcons.Pause,
+                                contentDescription = "暂停",
+                                tint = curPlayContentColor,
+                                modifier = Modifier.size(iconSize),
+                            )
+                        }
+
+                        else -> {
+                            Icon(
+                                imageVector = AppIcons.PlayArrow,
+                                contentDescription = "播放",
+                                tint = curPlayContentColor,
+                                modifier = Modifier.size(iconSize),
+                            )
+                        }
                     }
                 }
+            }
 
-                // Interpolated Queue Button Geometry
-                val curQueueCenterX = lerp(startQueue.center.x, endQueue.center.x, p)
-                val curQueueCenterY = lerp(startQueue.center.y, endQueue.center.y, p)
-                val curQueueWidth = lerp(startQueue.width, endQueue.width, p)
-                val curQueueRadiusPx = lerp(curQueueWidth / 2f, with(density) { 16.dp.toPx() }, p)
-                val curQueueIconColor =
-                    lerpColor(
-                        if (p > 0.35f) currentScheme.onSurfaceVariant else currentScheme.onSurface,
-                        stageScheme.onSurfaceVariant,
-                        p,
-                    )
+            // Interpolated Queue Button Geometry
+            val curQueueCenterX = lerp(startQueue.center.x, endQueue.center.x, p)
+            val curQueueCenterY = lerp(startQueue.center.y, endQueue.center.y, p)
+            val curQueueWidth = lerp(startQueue.width, endQueue.width, p)
+            val curQueueRadiusPx = lerp(curQueueWidth / 2f, with(density) { 16.dp.toPx() }, p)
+            val curQueueIconColor =
+                lerpColor(
+                    if (p > 0.35f) currentScheme.onSurfaceVariant else currentScheme.onSurface,
+                    stageScheme.onSurfaceVariant,
+                    p,
+                )
 
-                // Continuous Morphing Queue Button
-                Box(
-                    modifier =
-                        Modifier
-                            .offset {
-                                IntOffset(
-                                    (curQueueCenterX - curQueueWidth / 2f).roundToInt(),
-                                    (curQueueCenterY - curQueueWidth / 2f).roundToInt(),
-                                )
-                            }.size(with(density) { curQueueWidth.toDp() })
-                            .clip(RoundedCornerShape(curQueueRadiusPx))
-                            .background(
-                                MaterialTheme.colorScheme.surfaceContainer.copy(
-                                    alpha = (1f - p * 2.5f).coerceIn(0f, 1f),
-                                ),
-                            ).clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onOpenQueue,
+            // Continuous Morphing Queue Button (Single Living Instance)
+            Box(
+                modifier =
+                    Modifier
+                        .offset {
+                            IntOffset(
+                                (curQueueCenterX - curQueueWidth / 2f).roundToInt(),
+                                (curQueueCenterY - curQueueWidth / 2f).roundToInt(),
+                            )
+                        }.size(with(density) { curQueueWidth.toDp() })
+                        .clip(RoundedCornerShape(curQueueRadiusPx))
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainer.copy(
+                                alpha = (1f - p * 2.5f).coerceIn(0f, 1f),
                             ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    val iconSize = with(density) { lerp(20.dp, 28.dp, p) }
-                    Icon(
-                        imageVector = AppIcons.QueueMusic,
-                        contentDescription = "播放队列",
-                        tint = curQueueIconColor,
-                        modifier = Modifier.size(iconSize),
-                    )
-                }
+                        ).clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onOpenQueue,
+                        ),
+                contentAlignment = Alignment.Center,
+            ) {
+                val iconSize = with(density) { lerp(20.dp, 28.dp, p) }
+                Icon(
+                    imageVector = AppIcons.QueueMusic,
+                    contentDescription = "播放队列",
+                    tint = curQueueIconColor,
+                    modifier = Modifier.size(iconSize),
+                )
             }
         }
     }

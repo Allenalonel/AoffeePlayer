@@ -445,7 +445,7 @@ object ArtworkColorExtractor {
         // Deep chromatic bottom tone (~Tone 10) instead of dead black #121318 in dark theme:
         val bottomStop =
             if (isDarkTheme) {
-                hslToColor(domHsl[0], minOf(0.35f, domHsl[1] * 0.50f), 0.085f)
+                hslToColor(domHsl[0], minOf(0.40f, domHsl[1] * 0.50f), 0.09f)
             } else {
                 backgroundColor
             }
@@ -551,14 +551,21 @@ object ArtworkColorExtractor {
         val dominant = Color(dominantSwatch.rgb)
 
         val vibrantSwatch =
-            palette.vibrantSwatch
-                ?: palette.lightVibrantSwatch
-                ?: palette.darkVibrantSwatch
-                ?: palette.dominantSwatch
-                ?: palette.mutedSwatch
-                ?: palette.lightMutedSwatch
-                ?: palette.darkMutedSwatch
-                ?: dominantSwatch
+            when {
+                palette.lightVibrantSwatch != null && (palette.vibrantSwatch == null || palette.vibrantSwatch!!.hsl[2] < 0.58f) -> {
+                    palette.lightVibrantSwatch!!
+                }
+                palette.vibrantSwatch != null -> {
+                    palette.vibrantSwatch!!
+                }
+                else -> {
+                    palette.lightVibrantSwatch
+                        ?: palette.dominantSwatch
+                        ?: palette.mutedSwatch
+                        ?: palette.lightMutedSwatch
+                        ?: dominantSwatch
+                }
+            }
 
         val vibrant = Color(vibrantSwatch.rgb)
 

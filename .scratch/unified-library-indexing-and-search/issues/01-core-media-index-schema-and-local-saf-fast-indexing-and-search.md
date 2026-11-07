@@ -5,7 +5,7 @@ A persistent media index schema and high-speed B-Tree search engine for local st
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] Room database migration v6 -> v7 creates `media_track_index` with B-Tree indexes on `(serverId, fileName)`, `(fileName)`, and `(serverId, remotePath)`, along with `directory_sync_checkpoint` for incremental sync tracking.
 - [ ] Direct ContentResolver cursor projection traversal indexes mounted local SAF directory trees into `media_track_index` with `serverId = 0L`.

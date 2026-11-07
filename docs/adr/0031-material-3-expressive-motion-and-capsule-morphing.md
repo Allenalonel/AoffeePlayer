@@ -51,6 +51,10 @@ Accepted
   - 封面缩放位移统一在 `graphicsLayer` Draw 阶段由 GPU 硬件矩阵驱动，避免逐帧 Measure & Layout 引发的 40ms 掉帧；
   - 动效曲线演进为 560ms Material 3 Emphasized Decelerate 流体减速曲线 `CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)`，消除前段急促冲开与末端超调弹跳，呈现丝绸般舒展贴合的流体质感；
   - 彻底消除胶囊与底栏阴影冲突：内层 `MiniPlayer` 的 `Surface` 阴影设为 `0.dp` 杜绝双层阴影叠加，外层容器收起态统一为轻盈通透的 `4.dp` 微投影，彻底消除底栏上方的粗黑脏阴影带；
+  - **全局时钟源驱动多层空间视差联动（Parallax Space Orchestration）**：
+    1. **底栏沉降退场**：底栏 `PrimaryNavigationBar` 随展开进度沿 Y 轴平滑沉降退出（`translationY = 80.dp * progress`, `alpha = 1f - progress * 1.4f`），收起时从容弹回；
+    2. **主视窗景深微缩**：媒体库/歌单主界面随展开轻微后退微缩至 `0.94f`（`scale = 1f - 0.06f * progress`）并优雅变暗至 `0.70f`，营造出强烈的“大播放器浮起、主应用退入深层”的电影级空间纵深感；
+    3. **单一实体架构（Single Living View）**：容器采用 Material 3 Emphasized Decelerate 减速曲线 `CubicBezierEasing(0.20f, 0.0f, 0.0f, 1.0f)`，彻底移除虚拟替身（Mock Clone）避免双重重影与坐标误差引发的二次跳动，100% 自适应多端机型与平板折叠屏。
   - `CoverThumbnailImage` 命中内存缓存时采用硬绘制，消除多余的 250ms 二次渐变拖尾；
   - `LyricsView` 内边距强制加上 `coerceAtLeast(0.dp)` 兜底，杜绝容器低高度时负数 padding 崩溃；
   - 双按钮连续拓扑映射：左侧 40dp 播放/暂停键（Primary）滑向中央升格为 68dp Squircle 方圆大按键；右侧 38dp 队列键（Tonal）滑向右侧槽位。

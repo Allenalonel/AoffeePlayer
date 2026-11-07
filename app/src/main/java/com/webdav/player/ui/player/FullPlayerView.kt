@@ -194,7 +194,7 @@ fun FullPlayerView(
                         )
                     }
 
-                    Column(
+                    Box(
                         modifier =
                             Modifier
                                 .weight(1f)
@@ -203,26 +203,17 @@ fun FullPlayerView(
                                     indication = null,
                                     onClick = onCollapse,
                                 ).then(downwardSwipeModifier),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                        contentAlignment = Alignment.Center,
                     ) {
                         val serverName = sessionState.activeServer?.name?.takeIf { it.isNotBlank() } ?: "WebDAV"
                         Text(
                             text = "正在播放自 $serverName",
                             style =
-                                MaterialTheme.typography.labelSmall.copy(
+                                MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.8.sp,
+                                    letterSpacing = 0.5.sp,
                                 ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
-                        val trackTitle = currentTrack?.title ?: "WebDAV 曲库"
-                        val artist = currentTrack?.artist?.takeIf { it.isNotBlank() }
-                        val displaySubtitle = if (artist != null) "$trackTitle · $artist" else trackTitle
-                        Text(
-                            text = displaySubtitle,
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )

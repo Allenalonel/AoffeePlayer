@@ -5,7 +5,7 @@ An incremental, rate-limited background synchronization provider for remote WebD
 
 **Blocked by:** 01: Core Media Index Schema & Local SAF Fast Indexing & Search
 
-**Status:** ready-for-review
+**Status:** resolved
 
 - [x] WebDAV directory synchronization crawls remote directories using BFS traversal guarded by a strict concurrency limiter (max 3 concurrent requests).
 - [x] Known system and noise directories (e.g., `.@eaDir`, `#recycle`, `.Trash-*`, `LOST.DIR`, `.git`) are automatically excluded from indexing.

@@ -5,7 +5,7 @@ Integration of CUE sheet virtual track discovery into the unified search index a
 
 **Blocked by:** 01: Core Media Index Schema & Local SAF Fast Indexing & Search
 
-**Status:** ready-for-review
+**Status:** resolved
 
 - [x] Directory synchronization identifies `.cue` files alongside parent audio files, resolving track listings into virtual track entries within the index.
 - [x] Searching for a song title or performer contained inside a CUE sheet returns the virtual track with parent duration and cue offsets.

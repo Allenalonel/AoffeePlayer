@@ -5,7 +5,7 @@ A responsive, non-intrusive UI experience for library synchronization and search
 
 **Blocked by:** 02: WebDAV Remote Incremental Sync Engine & Concurrency-Limited Traversal, 03: CUE Sheet Virtual Track Indexing & Cross-Source Global Search Harmonization
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] `LibrarySearchRepository` exposes reactive synchronization status (`LibrarySyncState`: Idle, Scanning with progress and count, Completed, Failed).
 - [ ] `DirectoryBrowserViewModel` projects sync state into UI state without blocking browsing or search interactions.

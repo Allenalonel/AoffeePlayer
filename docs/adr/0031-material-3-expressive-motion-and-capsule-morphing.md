@@ -49,6 +49,17 @@ Accepted
   - 容器圆角从 `30.dp` 药丸圆角平滑演变为屏幕顶部的 `36.dp`；
   - 封面从左侧 `42.dp` 正圆黑胶（`CircleShape`），沿物理轨迹滑向中央变焦为 `280.dp` 方圆大卡片（严格对齐 `PlayerVinylArtwork` 280dp 约束，消除 30dp 尺寸瞬移），且在全屏态完全静止不自转；
   - 封面缩放位移统一在 `graphicsLayer` Draw 阶段由 GPU 硬件矩阵驱动，避免逐帧 Measure & Layout 引发的 40ms 掉帧；
+  - 动效曲线演进为 560ms Material 3 Emphasized Decelerate 流体减速曲线 `CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)`，消除前段急促冲开与末端超调弹跳，呈现丝绸般舒展贴合的流体质感；
+  - 彻底消除胶囊与底栏阴影冲突：内层 `MiniPlayer` 的 `Surface` 阴影设为 `0.dp` 杜绝双层阴影叠加，外层容器收起态统一为轻盈通透的 `4.dp` 微投影，彻底消除底栏上方的粗黑脏阴影带；
+  - **全局时钟源驱动多层空间视差联动（Parallax Space Orchestration）**：
+    1. **底栏沉降退场**：底栏 `PrimaryNavigationBar` 随展开进度沿 Y 轴平滑沉降退出（`translationY = 80.dp * progress`, `alpha = 1f - progress * 1.4f`），收起时从容弹回；
+    2. **主视窗景深微缩**：媒体库/歌单主界面随展开轻微后退微缩至 `0.94f`（`scale = 1f - 0.06f * progress`）并优雅变暗至 `0.70f`，营造出强烈的“大播放器浮起、主应用退入深层”的电影级空间纵深感；
+    3. **单一组件所有权与插槽架构（Single Component Ownership & Slot Architecture）**：
+       - 容器采用 Material 3 Emphasized Decelerate 减速曲线 `CubicBezierEasing(0.20f, 0.0f, 0.0f, 1.0f)`；
+       - **全局唯一实例常驻（Zero End-State Swaps）**：核心视觉元素（专辑封面、主控按键）全生命周期常驻于根容器宿主 `MorphingPlayerContainer` 中，彻底消除 `if (isMorphing)` 的结构性组合卸载；
+       - **子组件纯净几何插槽化**：`MiniPlayer` 和 `FullPlayerView`（`PlayerVinylArtwork`）内部退化为纯几何插槽（Slot Anchor），仅提供尺寸约束与 `onGloballyPositioned` 坐标测量，绝不创建多余的重复渲染节点，彻底杜绝 RenderNode 切换引发的 1 帧空白闪烁；
+       - **双向流体色彩插值（Fluid Color Morphing）**：常驻组件在白天浅色系统底栏与全天候暗调沉浸舞台之间，背景色与图标色随进度沿流体曲线平滑执行 `lerpColor`，高光自然泛起，终点色彩差值为 0，彻底杜绝闪烁跳色；
+       - **容器相对安全位移（Capsule Boundary Invariant）**：封面的 Y 轴插值严格锚定胶囊容器顶端，通过 `maxOf(rawCenterY, capsuleTop + halfHeight + 6dp)` 确保在任何屏幕与伸展进度下，封面始终优雅处于胶囊内部，彻底根除被容器顶部切割削头的视觉畸变。
   - `CoverThumbnailImage` 命中内存缓存时采用硬绘制，消除多余的 250ms 二次渐变拖尾；
   - `LyricsView` 内边距强制加上 `coerceAtLeast(0.dp)` 兜底，杜绝容器低高度时负数 padding 崩溃；
   - 双按钮连续拓扑映射：左侧 40dp 播放/暂停键（Primary）滑向中央升格为 68dp Squircle 方圆大按键；右侧 38dp 队列键（Tonal）滑向右侧槽位。

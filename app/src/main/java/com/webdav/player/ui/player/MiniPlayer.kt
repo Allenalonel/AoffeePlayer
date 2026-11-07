@@ -43,8 +43,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -114,6 +117,12 @@ fun MiniPlayer(
     playbackProgress: PlaybackProgress = PlaybackProgress.ZERO,
     onMiniPlayerClick: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
+    isCoverVisible: Boolean = true,
+    onCoverPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    isPlayButtonVisible: Boolean = true,
+    onPlayButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    isQueueButtonVisible: Boolean = true,
+    onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
 ) {
     val currentTrack = sessionState.currentTrack ?: return
     val density = LocalDensity.current
@@ -191,8 +200,8 @@ fun MiniPlayer(
         shape = MiniPlayerDefaults.CapsuleShape,
         color = surfaceColor,
         border = borderStroke,
-        tonalElevation = 6.dp,
-        shadowElevation = 10.dp,
+        tonalElevation = 3.dp,
+        shadowElevation = 0.dp,
     ) {
         Box(
             modifier = Modifier.fillMaxWidth().height(MiniPlayerDefaults.CapsuleHeight),
@@ -209,7 +218,7 @@ fun MiniPlayer(
                                 Brush.horizontalGradient(
                                     listOf(
                                         MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.24f),
                                     ),
                                 ),
                             ),
@@ -218,9 +227,17 @@ fun MiniPlayer(
                         modifier =
                             Modifier
                                 .align(Alignment.CenterEnd)
-                                .width(1.5.dp)
+                                .width(2.dp)
                                 .fillMaxHeight()
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.60f)),
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.70f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                                        ),
+                                    ),
+                                ),
                     )
                 }
             }
@@ -246,21 +263,37 @@ fun MiniPlayer(
                         modifier =
                             Modifier
                                 .size(MiniPlayerDefaults.CoverSize)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer),
+                                .then(
+                                    if (onCoverPositioned != null) {
+                                        Modifier.onGloballyPositioned(onCoverPositioned)
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        CoverThumbnailImage(
-                            thumbnailPath = currentTrack.coverThumbnailPath,
-                            contentDescription = "封面",
-                            modifier = Modifier.fillMaxSize().clip(CircleShape),
-                        ) {
-                            Icon(
-                                imageVector = AppIcons.Audiotrack,
-                                contentDescription = "音轨",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(22.dp),
-                            )
+                        if (isCoverVisible) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CoverThumbnailImage(
+                                    thumbnailPath = currentTrack.coverThumbnailPath,
+                                    contentDescription = "封面",
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                ) {
+                                    Icon(
+                                        imageVector = AppIcons.Audiotrack,
+                                        contentDescription = "音轨",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(22.dp),
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -298,6 +331,17 @@ fun MiniPlayer(
                                 playbackActions.togglePlayPause()
                             }
                         },
+                        modifier =
+                            Modifier
+                                .then(
+                                    if (onPlayButtonPositioned != null) {
+                                        Modifier.onGloballyPositioned(onPlayButtonPositioned)
+                                    } else {
+                                        Modifier
+                                    },
+                                ).graphicsLayer {
+                                    alpha = if (isPlayButtonVisible) 1f else 0f
+                                },
                     )
 
                     Spacer(modifier = Modifier.width(MiniPlayerDefaults.ButtonSpacing))
@@ -307,7 +351,16 @@ fun MiniPlayer(
                         onClick = onOpenQueue,
                         modifier =
                             Modifier
-                                .size(MiniPlayerDefaults.QueueMusicButtonSize),
+                                .size(MiniPlayerDefaults.QueueMusicButtonSize)
+                                .then(
+                                    if (onQueueButtonPositioned != null) {
+                                        Modifier.onGloballyPositioned(onQueueButtonPositioned)
+                                    } else {
+                                        Modifier
+                                    },
+                                ).graphicsLayer {
+                                    alpha = if (isQueueButtonVisible) 1f else 0f
+                                },
                         colors =
                             IconButtonDefaults.filledTonalIconButtonColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,

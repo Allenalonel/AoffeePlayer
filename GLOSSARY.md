@@ -274,8 +274,24 @@ _Avoid_: Rigid Tap, Static Indicator Jump, Instant Click
 
 
 **Global Dynamic Artwork Palette**:
-全天候全域音轨动态取色系统。在音频回放流转时，由 `ArtworkColorExtractor` 从当前音轨封面提取种子色（Dominant Color），基于 HCT Tonal Palette 算法在深色模式与浅色模式下分别自适应推导整机大背景（Background）、表面容器色（SurfaceContainer）、底栏指示器、顶栏折叠雾化层及在播高亮，实现应用全局大背景与核心组件 100% 随当前在播专辑平滑换肤。
-_Avoid_: Static Theme, Dark Only Ambient, Wallpaper Color Only
+全天候全域音轨动态取色系统。在音频回放流转时，由 `ArtworkColorExtractor` 基于 Google 官方 `androidx.palette` 提取多采样色相 Swatch，严格遵循 Material 3 Expressive 的 HCT Tonal Palette 规范，在深色与浅色模式下自适应推导整机大背景、卡片表面容器、底栏药丸指示舱与在播高亮，伴随 450ms 流体呼吸过渡，实现应用全域 100% 随当前在播音轨真实换肤。在全屏大播放器态升格为 `Immersive Stage Player` 沉浸流光舞台。
+_Avoid_: Static Theme, Dark Only Ambient, Wallpaper Color Only, Hardcoded Brand Fallback
+
+**Immersive Stage Player**:
+沉浸舞台式全屏播放器。针对真机在白天浅色模式下若机械套用浅底会导致“四周白斑截断”与“白底白字反差失效（对比度 < 1.2:1）”的物理缺陷，确立分层法则：主界面（媒体库/歌单/服务器）保持深浅双模自适应，而全屏播放器（FullPlayerView）升格为全天候独立音乐舞台。无论系统处于白天浅色还是夜间深色，全屏大背景均统一展现为由当前在播曲目 100% 动态推导的深邃暗调彩色流体舞台（Tone 10~14 暗调流光 + 封面 Vibrant 活力色光晕 + 封面 Muted 辅色上扬流光，黑白封面落入石墨灰阶），全屏文字和控制按键锁定为高对比度纯白（对比度 12.8:1），彻底终结浅底白字发虚看不清的问题。
+_Avoid_: Shallow Player White Bleed, White-on-White Contrast Loss, Fixed Dark Player, Non-Dynamic Stage
+
+**Perceptual Tonal Normalization**:
+感知色调归一化模型。全屏动态取色坚决杜绝针对单一测试曲目的魔法参数或固定底色硬编码，在 HSL / HCT 感知色彩空间中通过严谨数学不变量自适应映射：发散高光源（Top Stop）保留真实色相，优先仲裁透光度更佳的 `lightVibrantSwatch` 并自适应归一化在 Tone 60~72（$S \ge 0.50f$），彻底克服背光暗部像素绑架导致的泥浆暗沉；中间弥散层（Mid Stop）定标在 Tone 32~45；底部基底色（Bottom Stop）随专辑核心色相动态沉降至 Tone 8~9（$L = 0.085f$），确保全曲目在全屏背景上呈现出高度一致的温润透光感。
+_Avoid_: Single Song Overfitting, Muddy Backlight Bias, Hardcoded Hex Background, Inconsistent Glow Brightness
+
+**Track-Driven Zero-Preset Principle**:
+音轨驱动零预设原则。全域动态换肤彻底废除任何硬编码的固定品牌底色（如暗紫 #141022 / #5544B3），当前加载曲目即为界面色彩的唯一驱动源；应用冷启动与运行期严格以在播音轨封面色系为准，无封面时落入中性灰阶，杜绝任何主观预设偏色。
+_Avoid_: Fixed Brand Preset, Synthetic Theme Fallback, Hardcoded Purple Base
+
+**Zero-Tint Monochrome Safeguard**:
+中性无彩色零偏色防线。当封面彩度低于物理阈值（Chroma < 8 或 Saturation < 0.12，如黑白老照片或金属灰质感封面）时，色彩提取系统强制冻结彩色注入，自动落入 Google 纯正中性灰阶（Pure Neutral Slate，深色石墨黑 / 浅色珍珠雪白），物理杜绝中性色相被误染为红色或任何杂色。
+_Avoid_: Grayscale Red Tint, False Hue Injection, Monochromatic Color Cast
 
 **Continuous Fluid Top App Bar**:
 Material 3 Expressive 规范下的连续流体折叠顶栏。展开时左对齐呈现大气标题与次级信息；向上滑动时大标题容器物理高度平滑收缩至 0，无空白悬空占位，且文字全程严格锁定左侧垂直基准线微缩淡入紧凑顶栏（绝不突兀横向居中跳跃），伴随 24px 毛玻璃弥散雾化，顶栏彻底移除冗余加号。
@@ -302,8 +318,8 @@ _Avoid_: File Info Activity, Song Property Window
 _Avoid_: Bottom Player, Small Player, Playback Bar
 
 **Capsule-to-Fullscreen Morphing**:
-MiniPlayer 药丸胶囊与全屏播放器之间统一由单一真实实体（Single Living View）驱动的连续形态蜕变体系。彻底废除割裂的模态弹窗与过渡期假替身组件（Mock Clone），在容器伸展过程中直接承载真实 `FullPlayerView`，避免动画终点的组件偷换导致排版重算抖动；通过统一进度状态在 GPU Draw 阶段驱动硬件矩阵变换，将胶囊边界、圆角（30dp → 0dp/36dp）、封面（42dp 正圆黑胶 → 280dp Squircle 方圆大卡片，严格锁定 0° 静止）、文字基准线与播控按键实现 100% 物理连贯、零声学卡顿与零视觉割裂的双向形态映射。
-_Avoid_: Bottom Sheet Popup, Pop-up Overlay, Disjointed Expansion, Fake Player Resize, Mock Transition Swap
+MiniPlayer 药丸胶囊与全屏播放器之间由单一真实实体与插槽架构（Single Component Ownership & Slot Architecture）驱动的连续形态蜕变体系。核心视觉元素（42dp~280dp 封面、主控播放按钮、队列按钮）在全 App 渲染树中自始至终由顶层容器唯一持有并全生命周期常驻；子视图（MiniPlayer 与 FullPlayerView）退化为纯几何插槽（Slot Anchor，仅提供排版尺寸约束与 `onGloballyPositioned` 绝对坐标测量，不创建重复多媒体节点）；在展开过程中，由统一全局时钟源（Global Expansion Progress）驱动空间视差（底栏下沉 80dp、主视窗微缩 0.94f）与核心实体的物理矩阵插值及流体变色（Color Morphing），彻底废除动画终点的 `if (isMorphing)` 销毁逻辑与“替身到真实视图”的偷换（Zero End-State Swaps），实现 100% 物理连贯、零声学卡顿、零闪烁与零视觉跳动的旗舰级形态映射，且 100% 免疫多端机型与平板折叠屏碎片化。
+_Avoid_: Bottom Sheet Popup, Pop-up Overlay, Disjointed Expansion, Fake Player Resize, Mock Transition Swap, Coordinate Drifting Bug, End-State Swap Flashing
 
 **Track Row Height Parity**:
 应用全域（歌单、媒体库、搜索、队列）音频曲目列表行严格遵循双行 72dp 对齐与未知兜底规范。当曲目缺失艺术家或专辑标签信息时，副标题必须回退显示“未知”，严禁完全隐藏导致 ListItem 塌缩为 56dp 单行，保证全列表行高严格一致。
@@ -327,8 +343,8 @@ Material 3 Expressive 规范下的流体氛围聚焦流歌词体系。全屏沉�
 _Avoid_: Centered Rigid Lyrics, Duplicated Header Lyrics
 
 **Full Player Sheet**:
-全屏沉浸式大播放器视图，采用极致纯净留白顶栏与自适应封面全域环境光晕背景。核心告别圆形黑胶唱片，升级为 28dp 方形圆角大封面卡片（Squircle 250x250，具备 clamp 流体宽高比），集成流体进度拖拽、Squircle 圆角方块播控键与无损规格胶囊，通过轻量顶部拖拽条及下滑手势收起，支持左右滑动切换至逐行同步高亮双语歌词页，并在平板/折叠大屏模式下自动自适应为左右双栏分屏。
-_Avoid_: Player Activity, Big Player, Music Detail
+全屏沉浸式大播放器视图，采用单行轻量留白顶栏与自适应封面全域环境光晕背景。顶栏彻底剔除原重复第二行的曲目与歌手信息，单行居中呈现 `正在播放自 $serverName` 来源，杜绝与大封面下方正中信息的视觉冗余。核心告别圆形黑胶唱片，升级为 28dp 方形圆角大封面卡片（Squircle 250x250，具备 clamp 流体宽高比），集成流体进度拖拽、Squircle 圆角方块播控键与全格式动态自适应规格胶囊，通过轻量顶部拖拽条及下滑手势收起，支持左右滑动切换至逐行同步高亮双语歌词页，并在平板/折叠大屏模式下自动自适应为左右双栏分屏。
+_Avoid_: Player Activity, Big Player, Music Detail, Duplicate Header Track Title
 
 **Immersive Chrome**:
 基于 Android Edge-to-Edge 规范的全沉浸式系统窗口体系，应用内容完整延伸至状态栏与手势导航条后方，并根据当前主题色调与封面氛围光晕自适应反转状态栏与导航栏图标明暗反差。
@@ -343,8 +359,8 @@ _Avoid_: Path Bar, Folder Tree, Location Bar
 _Avoid_: Edit Mode, Checkbox View, Batch Mode
 
 **Audio Quality Badge**:
-音频曲目列表中标识音频编码格式（如 FLAC、MP3、WAV、WMA）及无损/高解析度层级的视觉标签胶囊。
-_Avoid_: Format Icon, Audio Tag
+音频曲目列表中标识音频编码格式（如 FLAC、MP3、WAV、WMA）及无损/高解析度层级的视觉标签胶囊。在全屏大播放器下（`AudiophileSpecsBadge`），彻底拔除写死固定金色与 `if (isHiRes)` 导致普通 FLAC/MP3 降级为死灰色的缺陷，全格式统一由当前曲目的动态主色 `primary` 驱动（半透底舱 + 细边框 + 高亮文字），100% 随歌自适应变色。
+_Avoid_: Format Icon, Audio Tag, Hardcoded HiRes Gold, Static Gray Fallback
 
 **Equalizer Track Indicator**:
 媒体库与歌单曲目列表中标识当前回放状态曲目的动态三柱等化器跳动脉冲视觉指示。在媒体库文件行与歌单歌曲详情行（PlaylistTrackRow）双向完全对齐，暂停时静止，播放时跳动，配合主标题 Primary 色加粗高亮，秒级定位当前播放音轨。

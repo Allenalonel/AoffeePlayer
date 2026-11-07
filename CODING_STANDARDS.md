@@ -71,8 +71,12 @@ These standards are enforced during `/code-review` alongside the Fowler code-sme
 
 ## 7. Motion & Container Morphing Architecture (动效系统与容器形变工程准则)
 
-- **Single Living Entity Principle (单一真实实体原则，严禁过渡替身偷换)**:
-  在容器连续形态蜕变（Morphing Container）与多阶界面过渡中，严禁编写仅具备部分假 UI 的过渡期“替身克隆组件（Mock Clone）”。展开或切换的目标界面必须自始至终由其真实组件充当唯一实体，通过 `graphicsLayer` 的 Alpha 与 Translation 随容器几何伸展平滑浮现并微移归位。禁止在动画终点执行“替身到真实视图”的偷换（End-State Swap），彻底从物理根源上消灭排版重算导致的界面突发抖动与组件跳跃。
+- **Single Living Entity & Slot Architecture (单一真实实体与插槽架构法则)**:
+  在容器连续形态蜕变（Morphing Container）与多阶界面过渡中，核心视觉元素（专辑封面、主控按钮）必须且仅能在根容器宿主中拥有唯一的实例，全生命周期常驻；子视图（MiniPlayer 与 FullPlayerView）严禁重复实例化同名多媒体视图，必须退化为纯几何插槽（Slot Anchor，仅保留约束尺寸与坐标测量回调）。严禁在动画终点通过 `if (isMorphing)` 等条件分支进行结构性组件卸载与“替身到真实视图”的偷换（End-State Swap），彻底从物理根源上消灭 RenderNode 切换导致的 1 帧空白闪烁与排版跳跃。
 - **Draw Phase Animation Rule (GPU 绘制阶段渲染原则)**:
   在 60/120fps 连续高频形变中，严禁逐帧修改 `Modifier.size()` 与 `Modifier.offset()`（这会强迫 Compose 逐帧回退至 CPU Measure & Layout 测量重排与图片重采样，引发掉帧卡顿）；必须以固定目标尺寸为基底，统一在 `Modifier.graphicsLayer { scaleX/Y = ...; translationX/Y = ...; shape = ...; clip = true }` 内通过 GPU 矩阵变换完成缩放位移，保障 CPU 零重新测算与 120Hz 硬件加速。
+- **Zero-Ghosting & Parallax Space Orchestration (零残影与全局空间视差联动)**:
+  容器在形变或展开过程中，屏幕上严禁出现同一封面或同一定位控件的二次重叠绘制（Double Rendering / Ghosting Artifacts）。当通过顶层共享图层执行飞行动画时，底层的真实目标槽位必须使用纯净的 `Spacer` 进行无渲染几何占位，严禁底层在半透明浮现期间重复渲染封面背板、阴影或按钮图形，杜绝重影叠印与月牙阴影。同时必须保持全局空间视差联动（底栏下沉 80dp 退出与主视窗微缩至 0.94f），杜绝突兀硬切。
+- **Dynamic Theme Purity & Universal Perceptual Normalization (组件色调动态纯净度与通用感知归一化)**:
+  严禁在 UI 表现层针对特定业务状态（如 Hi-Res 24-bit 标志、格式徽章、播放按钮）硬编码孤立颜色常量（如 `#FFB703` 或写死 Hex 色值）；所有高亮标签、指示器与边框必须统一绑定到 `MaterialTheme.colorScheme` 的动态语义 Token，由当前曲目封面通过 Google Palette + HCT 规范提取的种子色全自动推导，保障在任意色调（冷青、暖金、玫红、纯黑白）专辑下 100% 动态跟随自适应。
 

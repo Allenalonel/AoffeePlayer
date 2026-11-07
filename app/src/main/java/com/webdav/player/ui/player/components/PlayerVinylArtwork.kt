@@ -6,6 +6,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,8 +28,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RadialGradientShader
+import androidx.compose.ui.graphics.Shader
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,39 +48,76 @@ import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.ui.common.CoverThumbnailImage
+import com.webdav.player.ui.player.ArtworkColorExtractor
+import com.webdav.player.ui.player.ArtworkColors
 import com.webdav.player.ui.player.FullPlayerDefaults
 import com.webdav.player.ui.player.rememberArtworkColors
 import com.webdav.player.ui.theme.AppIcons
+import com.webdav.player.ui.theme.BackgroundDark
+import com.webdav.player.ui.theme.FLUID_THEME_DURATION_MS
+import com.webdav.player.ui.theme.FluidThemeAnimationEasing
+import com.webdav.player.ui.theme.SurfaceContainerDark
 
 /**
- * Dynamic atmospheric gradient sampled from cover art with MD3 fallback.
+ * Dynamic atmospheric multi-stop ambient glow gradient sampled from cover art with MD3 fallback.
+ * Anchored to the cover card's center (50%, 26%) with long-axis radial diffusion across the screen.
+ * Operates in all-weather Immersive Stage mode to ensure high-contrast white typography.
  */
 @Composable
 internal fun rememberArtworkBackgroundBrush(
     thumbnailPath: String?,
-    defaultSurfaceColor: Color = MaterialTheme.colorScheme.surfaceContainer,
-    defaultBackgroundColor: Color = MaterialTheme.colorScheme.surface,
+    artworkColors: ArtworkColors? = null,
+    defaultSurfaceColor: Color = SurfaceContainerDark,
+    defaultBackgroundColor: Color = BackgroundDark,
+    isDarkTheme: Boolean = true,
 ): Brush {
-    val artworkColors by rememberArtworkColors(
-        thumbnailPath = thumbnailPath,
-        defaultSurfaceColor = defaultSurfaceColor,
-        defaultBackgroundColor = defaultBackgroundColor,
-    )
+    val activeColors =
+        artworkColors
+            ?: rememberArtworkColors(
+                thumbnailPath = thumbnailPath,
+                defaultSurfaceColor = defaultSurfaceColor,
+                defaultBackgroundColor = defaultBackgroundColor,
+                isDarkTheme = true,
+            ).value
+
+    val targetStops =
+        ArtworkColorExtractor.computeAmbientGlowStops(
+            artworkColors = activeColors,
+            isDarkTheme = isDarkTheme,
+            surfaceColor = defaultSurfaceColor,
+            backgroundColor = defaultBackgroundColor,
+        )
 
     val animatedTopColor by animateColorAsState(
-        targetValue = artworkColors.backgroundTopColor,
-        animationSpec = tween(durationMillis = 400),
+        targetValue = targetStops.topColor,
+        animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
         label = "FullPlayerBackgroundTop",
     )
+    val animatedMidColor by animateColorAsState(
+        targetValue = targetStops.midColor,
+        animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
+        label = "FullPlayerBackgroundMid",
+    )
     val animatedBottomColor by animateColorAsState(
-        targetValue = artworkColors.backgroundBottomColor,
-        animationSpec = tween(durationMillis = 400),
+        targetValue = targetStops.bottomColor,
+        animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
         label = "FullPlayerBackgroundBottom",
     )
-    return remember(animatedTopColor, animatedBottomColor) {
-        Brush.verticalGradient(
-            colors = listOf(animatedTopColor, animatedBottomColor),
-        )
+
+    return remember(animatedTopColor, animatedMidColor, animatedBottomColor) {
+        object : ShaderBrush() {
+            override fun createShader(size: Size): Shader {
+                val center = Offset(size.width * 0.5f, size.height * 0.26f)
+                val radius = maxOf(size.width, size.height) * 0.85f
+                return RadialGradientShader(
+                    colors = listOf(animatedTopColor, animatedMidColor, animatedBottomColor),
+                    colorStops = listOf(0.0f, 0.48f, 1.0f),
+                    center = center,
+                    radius = radius.coerceAtLeast(1f),
+                    tileMode = TileMode.Clamp,
+                )
+            }
+        }
     }
 }
 
@@ -84,6 +131,8 @@ internal fun PlayerVinylArtwork(
     sessionState: PlayerSessionState,
     onArtworkClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isArtworkVisible: Boolean = true,
+    onArtworkPositioned: ((LayoutCoordinates) -> Unit)? = null,
 ) {
     Column(
         modifier =
@@ -94,34 +143,50 @@ internal fun PlayerVinylArtwork(
         verticalArrangement = Arrangement.Center,
     ) {
         // Large Album Artwork Card with 28dp Squircle & Ambient Glow
+        val artworkModifier =
+            Modifier
+                .fillMaxWidth(0.85f)
+                .sizeIn(minWidth = 190.dp, minHeight = 190.dp, maxWidth = 280.dp, maxHeight = 280.dp)
+                .aspectRatio(1f)
+                .then(
+                    if (onArtworkPositioned != null) {
+                        Modifier.onGloballyPositioned(onArtworkPositioned)
+                    } else {
+                        Modifier
+                    },
+                ).clickable { onArtworkClick() }
+
         Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth(0.85f)
-                    .sizeIn(minWidth = 190.dp, minHeight = 190.dp, maxWidth = 280.dp, maxHeight = 280.dp)
-                    .aspectRatio(1f)
-                    .shadow(
-                        elevation = 24.dp,
-                        shape = FullPlayerDefaults.ArtworkSquircleShape,
-                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                    )
-                    .clip(FullPlayerDefaults.ArtworkSquircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { onArtworkClick() },
+            modifier = artworkModifier,
             contentAlignment = Alignment.Center,
         ) {
-            CoverThumbnailImage(
-                thumbnailPath = currentTrack?.coverThumbnailPath,
-                contentDescription = "专辑封面",
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                Icon(
-                    imageVector = AppIcons.Audiotrack,
-                    contentDescription = "专辑封面",
-                    modifier = Modifier.size(100.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                )
+            if (isArtworkVisible) {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .shadow(
+                                elevation = 24.dp,
+                                shape = FullPlayerDefaults.ArtworkSquircleShape,
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                            ).clip(FullPlayerDefaults.ArtworkSquircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CoverThumbnailImage(
+                        thumbnailPath = currentTrack?.coverThumbnailPath,
+                        contentDescription = "专辑封面",
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Audiotrack,
+                            contentDescription = "专辑封面",
+                            modifier = Modifier.size(100.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        )
+                    }
+                }
             }
         }
 
@@ -191,4 +256,3 @@ private fun PlayerVinylArtworkPreview() {
         )
     }
 }
-

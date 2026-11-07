@@ -25,22 +25,29 @@ import java.io.File
 
 object ThumbnailMemoryCache {
     private val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
+
     // Allocate up to 1/8th of available app memory, capped at 24MB
     private val cacheSize = (maxMemory / 8).coerceIn(4096, 24 * 1024)
 
-    private val cache = object : LruCache<String, ImageBitmap>(cacheSize) {
-        override fun sizeOf(key: String, value: ImageBitmap): Int {
-            return (value.width * value.height * 2) / 1024 // RGB_565 is 2 bytes per pixel
+    private val cache =
+        object : LruCache<String, ImageBitmap>(cacheSize) {
+            override fun sizeOf(
+                key: String,
+                value: ImageBitmap,
+            ): Int {
+                return (value.width * value.height * 2) / 1024 // RGB_565 is 2 bytes per pixel
+            }
         }
-    }
 
-    fun get(path: String): ImageBitmap? {
-        return synchronized(cache) {
+    fun get(path: String): ImageBitmap? =
+        synchronized(cache) {
             cache.get(path)
         }
-    }
 
-    fun put(path: String, bitmap: ImageBitmap) {
+    fun put(
+        path: String,
+        bitmap: ImageBitmap,
+    ) {
         synchronized(cache) {
             cache.put(path, bitmap)
         }
@@ -59,22 +66,24 @@ fun CoverThumbnailImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     crossfadeDurationMs: Int = 250,
-    fallback: @Composable () -> Unit
+    fallback: @Composable () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
 
     // Fast-path: Check memory cache directly
-    val initialCached = remember(thumbnailPath) {
-        if (!thumbnailPath.isNullOrBlank()) {
-            ThumbnailMemoryCache.get(thumbnailPath)
-        } else {
-            null
+    val initialCached =
+        remember(thumbnailPath) {
+            if (!thumbnailPath.isNullOrBlank()) {
+                ThumbnailMemoryCache.get(thumbnailPath)
+            } else {
+                null
+            }
         }
-    }
 
-    val imageBitmapState = remember(thumbnailPath) {
-        mutableStateOf(initialCached)
-    }
+    val imageBitmapState =
+        remember(thumbnailPath) {
+            mutableStateOf(initialCached)
+        }
     val imageBitmap = imageBitmapState.value
 
     // Off-main-thread loading if cache missed
@@ -84,33 +93,35 @@ fun CoverThumbnailImage(
             return@LaunchedEffect
         }
         if (imageBitmapState.value == null) {
-            val loaded = withContext(Dispatchers.IO) {
-                try {
-                    val opts = BitmapFactory.Options().apply {
-                        inPreferredConfig = Bitmap.Config.RGB_565
-                    }
-                    if (thumbnailPath.startsWith("content://")) {
-                        context.contentResolver.openInputStream(android.net.Uri.parse(thumbnailPath))?.use { stream ->
-                            BitmapFactory.decodeStream(stream, null, opts)?.asImageBitmap()
-                        }
-                    } else {
-                        val cleanPath =
-                            if (thumbnailPath.startsWith("file://")) {
-                                thumbnailPath.removePrefix("file://")
-                            } else {
-                                thumbnailPath
+            val loaded =
+                withContext(Dispatchers.IO) {
+                    try {
+                        val opts =
+                            BitmapFactory.Options().apply {
+                                inPreferredConfig = Bitmap.Config.RGB_565
                             }
-                        val file = File(cleanPath)
-                        if (file.exists() && file.length() > 0) {
-                            BitmapFactory.decodeFile(file.absolutePath, opts)?.asImageBitmap()
+                        if (thumbnailPath.startsWith("content://")) {
+                            context.contentResolver.openInputStream(android.net.Uri.parse(thumbnailPath))?.use { stream ->
+                                BitmapFactory.decodeStream(stream, null, opts)?.asImageBitmap()
+                            }
                         } else {
-                            null
+                            val cleanPath =
+                                if (thumbnailPath.startsWith("file://")) {
+                                    thumbnailPath.removePrefix("file://")
+                                } else {
+                                    thumbnailPath
+                                }
+                            val file = File(cleanPath)
+                            if (file.exists() && file.length() > 0) {
+                                BitmapFactory.decodeFile(file.absolutePath, opts)?.asImageBitmap()
+                            } else {
+                                null
+                            }
                         }
+                    } catch (e: Throwable) {
+                        null
                     }
-                } catch (e: Throwable) {
-                    null
                 }
-            }
             if (loaded != null) {
                 ThumbnailMemoryCache.put(thumbnailPath, loaded)
                 imageBitmapState.value = loaded

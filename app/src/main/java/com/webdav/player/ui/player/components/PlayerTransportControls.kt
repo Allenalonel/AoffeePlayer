@@ -29,6 +29,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -46,6 +49,7 @@ import com.webdav.player.ui.theme.AppIcons
 
 /**
  * Audiophile format specification badge capsule (e.g. "96kHz · 24bit · FLAC" or "Hi-Res").
+ * Dynamically harmonized with the active track's primary color theme across all formats.
  */
 @Composable
 internal fun AudiophileSpecsBadge(
@@ -53,24 +57,14 @@ internal fun AudiophileSpecsBadge(
     modifier: Modifier = Modifier,
 ) {
     if (specs == null || specs.formatted.isBlank()) return
-    val isHiRes = specs.isHiRes
+    val primaryColor = MaterialTheme.colorScheme.primary
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color =
-            if (isHiRes) {
-                Color(0x26FFB703) // Subtle gold tint for Hi-Res
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f)
-            },
+        color = primaryColor.copy(alpha = 0.18f),
         border =
             BorderStroke(
                 width = 1.dp,
-                color =
-                    if (isHiRes) {
-                        Color(0x4DFFB703) // Subtle gold border for Hi-Res
-                    } else {
-                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    },
+                color = primaryColor.copy(alpha = 0.45f),
             ),
         modifier = modifier,
     ) {
@@ -81,12 +75,7 @@ internal fun AudiophileSpecsBadge(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,
                 ),
-            color =
-                if (isHiRes) {
-                    Color(0xFFFFB703)
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
+            color = primaryColor,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
     }
@@ -138,6 +127,10 @@ internal fun PlayerPlaybackControls(
     onCyclePlaybackMode: () -> Unit,
     onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
+    isPlayButtonVisible: Boolean = true,
+    onPlayButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    isQueueButtonVisible: Boolean = true,
+    onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
 ) {
     Row(
         modifier =
@@ -175,19 +168,29 @@ internal fun PlayerPlaybackControls(
         }
 
         // Expressive Prominent Play / Pause / Buffering Toggle Button: 68dp Squircle (26dp rounded corner)
+        val playModifier =
+            Modifier
+                .size(FullPlayerDefaults.PlayButtonSize)
+                .then(
+                    if (onPlayButtonPositioned != null) {
+                        Modifier.onGloballyPositioned(onPlayButtonPositioned)
+                    } else {
+                        Modifier
+                    },
+                ).graphicsLayer {
+                    alpha = if (isPlayButtonVisible) 1f else 0f
+                }.shadow(
+                    elevation = if (isPlayButtonVisible) 8.dp else 0.dp,
+                    shape = FullPlayerDefaults.PlayButtonSquircleShape,
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                )
+
         FilledIconButton(
             onClick = {
                 if (sessionState.isSuspendedRetry) onRetryPlayback() else onTogglePlayPause()
             },
-            modifier =
-                Modifier
-                    .size(FullPlayerDefaults.PlayButtonSize)
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = FullPlayerDefaults.PlayButtonSquircleShape,
-                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                    ),
+            modifier = playModifier,
             shape = FullPlayerDefaults.PlayButtonSquircleShape,
             colors =
                 IconButtonDefaults.filledIconButtonColors(
@@ -258,9 +261,22 @@ internal fun PlayerPlaybackControls(
         }
 
         // Queue Sheet Button
+        val queueModifier =
+            Modifier
+                .size(48.dp)
+                .then(
+                    if (onQueueButtonPositioned != null) {
+                        Modifier.onGloballyPositioned(onQueueButtonPositioned)
+                    } else {
+                        Modifier
+                    },
+                ).graphicsLayer {
+                    alpha = if (isQueueButtonVisible) 1f else 0f
+                }
+
         IconButton(
             onClick = onOpenQueue,
-            modifier = Modifier.size(48.dp),
+            modifier = queueModifier,
         ) {
             Icon(
                 imageVector = AppIcons.QueueMusic,
@@ -290,6 +306,10 @@ internal fun PlayerTransportControls(
     onCyclePlaybackMode: () -> Unit,
     onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
+    isPlayButtonVisible: Boolean = true,
+    onPlayButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    isQueueButtonVisible: Boolean = true,
+    onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         PlayerProgressSlider(
@@ -311,6 +331,10 @@ internal fun PlayerTransportControls(
             onSkipToPrevious = onSkipToPrevious,
             onCyclePlaybackMode = onCyclePlaybackMode,
             onOpenQueue = onOpenQueue,
+            isPlayButtonVisible = isPlayButtonVisible,
+            onPlayButtonPositioned = onPlayButtonPositioned,
+            isQueueButtonVisible = isQueueButtonVisible,
+            onQueueButtonPositioned = onQueueButtonPositioned,
         )
     }
 }

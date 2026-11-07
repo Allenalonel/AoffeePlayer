@@ -47,7 +47,10 @@ class PlaylistRepositoryImpl(
     private val context: Context? = null,
     private val localUriReachabilityChecker: ((String) -> Boolean)? = null,
     private val timeProvider: () -> Long = { System.currentTimeMillis() },
-    private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    private val coroutineScope: CoroutineScope =
+        CoroutineScope(
+            SupervisorJob() + Dispatchers.IO + kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> },
+        ),
 ) : PlaylistRepository {
     private val _inactiveTracksFlow = MutableStateFlow<Map<TrackKey, InactiveReason>>(emptyMap())
     private val inFlightCoverHealing = java.util.concurrent.ConcurrentHashMap<Long, Job>()
@@ -81,7 +84,7 @@ class PlaylistRepositoryImpl(
                             playlistDao.updateTrackCover(trackEntryId, resolved.coverThumbnailPath)
                         }
                     }
-                } catch (_: Exception) {
+                } catch (_: Throwable) {
                     // Ignore transient errors during background self-healing
                 } finally {
                     inFlightCoverHealing.remove(trackEntryId)
@@ -187,7 +190,8 @@ class PlaylistRepositoryImpl(
             coroutineScope.launch {
                 try {
                     playlistDao.deleteTracksByIds(duplicateIds)
-                } catch (_: Exception) {
+                } catch (_: Throwable) {
+                    // Ignore transient errors when database is closing
                 }
             }
         }
@@ -223,7 +227,8 @@ class PlaylistRepositoryImpl(
                         coroutineScope.launch {
                             try {
                                 playlistDao.updateTrackCover(track.id, cachedMeta.coverThumbnailPath)
-                            } catch (_: Exception) {
+                            } catch (_: Throwable) {
+                                // Ignore transient errors when database is closing
                             }
                         }
                         track.copy(coverThumbnailPath = cachedMeta.coverThumbnailPath)

@@ -5,13 +5,13 @@ A responsive, non-intrusive UI experience for library synchronization and search
 
 **Blocked by:** 02: WebDAV Remote Incremental Sync Engine & Concurrency-Limited Traversal, 03: CUE Sheet Virtual Track Indexing & Cross-Source Global Search Harmonization
 
-**Status:** claimed
+**Status:** ready-for-review
 
-- [ ] `LibrarySearchRepository` exposes reactive synchronization status (`LibrarySyncState`: Idle, Scanning with progress and count, Completed, Failed).
-- [ ] `DirectoryBrowserViewModel` projects sync state into UI state without blocking browsing or search interactions.
-- [ ] Top bar / library header displays a subtle Material 3 progress indicator with track counts during active scans.
-- [ ] Overflow menu provides an explicit "Sync Library" action to trigger on-demand synchronization.
-- [ ] Deleting a WebDAV server or removing a mounted local storage directory cascades atomic deletion of all its indexed tracks and checkpoints.
-- [ ] Clicking a search result track inserts it as the next item in the playback queue and begins playback immediately without wiping the existing queue.
-- [ ] Clicking a search result directory navigates directly to that folder and updates the breadcrumbs.
-- [ ] Robolectric / UI tests verify sync progress state transitions, manual trigger invocation, and cascade index deletion on source removal.
+- [x] `LibrarySearchRepository` exposes reactive synchronization status (`LibrarySyncState`: Idle, Scanning with progress and count, Completed, Failed).
+- [x] `DirectoryBrowserViewModel` projects sync state into UI state without blocking browsing or search interactions.
+- [x] Top bar / library header displays a subtle Material 3 progress indicator with track counts during active scans.
+- [x] Overflow menu provides an explicit "Sync Library" action to trigger on-demand synchronization.
+- [x] Deleting a WebDAV server or removing a mounted local storage directory cascades atomic deletion of all its indexed tracks and checkpoints.
+- [x] Clicking a search result track inserts it as the next item in the playback queue and begins playback immediately without wiping the existing queue.
+- [x] Clicking a search result directory navigates directly to that folder and updates the breadcrumbs.
+- [x] Robolectric / UI tests verify sync progress state transitions, manual trigger invocation, and cascade index deletion on source removal.

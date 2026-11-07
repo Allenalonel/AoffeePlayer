@@ -13,13 +13,19 @@ import com.webdav.player.data.local.TrackMetadataEntity
 import com.webdav.player.domain.cue.CueSheetResolver
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LibrarySearchResult
+import com.webdav.player.domain.model.LibrarySyncResult
+import com.webdav.player.domain.model.LibrarySyncState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.LibrarySearchRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import org.json.JSONArray
 
@@ -29,6 +35,8 @@ class LibrarySearchRepositoryImpl(
     private val mediaTrackIndexDao: MediaTrackIndexDao? = null,
     private val directorySyncCheckpointDao: DirectorySyncCheckpointDao? = null,
     private val cueSheetResolver: CueSheetResolver? = null,
+    private val webDavSyncScanner: WebDavSyncScanner? = null,
+    private val localStorageIndexScanner: LocalStorageIndexScanner? = null,
     private val context: Context? = null,
     private val prefsName: String = "webdav_search_history",
 ) : LibrarySearchRepository {
@@ -39,6 +47,85 @@ class LibrarySearchRepositoryImpl(
     }
 
     private val inMemoryHistory = mutableListOf<String>()
+    private val _syncState = MutableStateFlow<LibrarySyncState>(LibrarySyncState.Idle)
+
+    override fun observeSyncState(serverId: Long?): Flow<LibrarySyncState> {
+        val scannerFlow = webDavSyncScanner?.syncState ?: flowOf(LibrarySyncState.Idle)
+        return combine(_syncState, scannerFlow) { internalState, webDavState ->
+            when {
+                webDavState is LibrarySyncState.Scanning -> webDavState
+                internalState is LibrarySyncState.Scanning -> internalState
+                webDavState is LibrarySyncState.Failed -> webDavState
+                internalState is LibrarySyncState.Failed -> internalState
+                webDavState is LibrarySyncState.Completed -> webDavState
+                internalState is LibrarySyncState.Completed -> internalState
+                else -> LibrarySyncState.Idle
+            }
+        }.distinctUntilChanged()
+    }
+
+    override suspend fun syncServer(
+        server: WebDavServer,
+        force: Boolean,
+    ): LibrarySyncResult =
+        if (server.isLocal || server.id == LOCAL_STORAGE_ID) {
+            _syncState.value =
+                LibrarySyncState.Scanning(
+                    progress = 0f,
+                    currentPath = "local",
+                    tracksFound = 0,
+                )
+            try {
+                val count =
+                    localStorageIndexScanner?.indexAllMountedFolders(
+                        force = force,
+                        onProgress = { _syncState.value = it },
+                    ) ?: 0
+                val total = mediaTrackIndexDao?.countByServerId(LOCAL_STORAGE_ID) ?: count
+                val state = LibrarySyncState.Completed(totalTracks = total)
+                _syncState.value = state
+                LibrarySyncResult.Success(totalTracksIndexed = count)
+            } catch (e: Exception) {
+                val errorMsg = e.message ?: "Local storage scan failed"
+                val state = LibrarySyncState.Failed(errorMsg)
+                _syncState.value = state
+                LibrarySyncResult.Error(errorMsg, e)
+            }
+        } else {
+            if (webDavSyncScanner != null) {
+                _syncState.value =
+                    LibrarySyncState.Scanning(
+                        progress = 0f,
+                        currentPath = server.pathPrefix.ifBlank { "/" },
+                        tracksFound = 0,
+                    )
+                try {
+                    val result =
+                        webDavSyncScanner.sync(
+                            server = server,
+                            force = force,
+                            onProgress = { _syncState.value = it },
+                        )
+                    when (result) {
+                        is LibrarySyncResult.Success -> {
+                            val total = mediaTrackIndexDao?.countByServerId(server.id) ?: result.totalTracksIndexed
+                            _syncState.value = LibrarySyncState.Completed(totalTracks = total)
+                        }
+
+                        is LibrarySyncResult.Error -> {
+                            _syncState.value = LibrarySyncState.Failed(result.message)
+                        }
+                    }
+                    result
+                } catch (e: Exception) {
+                    val errorMsg = e.message ?: "WebDAV sync failed"
+                    _syncState.value = LibrarySyncState.Failed(errorMsg)
+                    LibrarySyncResult.Error(errorMsg, e)
+                }
+            } else {
+                LibrarySyncResult.Success(totalTracksIndexed = 0)
+            }
+        }
 
     private val prefs by lazy {
         context?.getSharedPreferences(prefsName, Context.MODE_PRIVATE)

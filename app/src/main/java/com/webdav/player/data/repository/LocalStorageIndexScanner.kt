@@ -13,6 +13,7 @@ import com.webdav.player.data.local.MediaTrackIndexEntity
 import com.webdav.player.data.metadata.MediaFilenameParser
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
+import com.webdav.player.domain.model.LibrarySyncState
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -82,6 +83,7 @@ class LocalStorageIndexScanner(
     suspend fun indexFolder(
         treeUri: Uri,
         force: Boolean = false,
+        onProgress: ((LibrarySyncState) -> Unit)? = null,
     ): Int =
         withContext(ioDispatcher) {
             val rootDocId = resolveRootDocId(treeUri)
@@ -95,6 +97,13 @@ class LocalStorageIndexScanner(
 
             while (queue.isNotEmpty()) {
                 val current = queue.removeFirst()
+                onProgress?.invoke(
+                    LibrarySyncState.Scanning(
+                        progress = 0f,
+                        currentPath = current.path,
+                        tracksFound = totalIndexedTracks,
+                    ),
+                )
 
                 if (!force && current.lastModified > 0L) {
                     val checkpoint = checkpointDao.getCheckpoint(LOCAL_STORAGE_ID, current.path)
@@ -158,6 +167,13 @@ class LocalStorageIndexScanner(
                 if (discoveredTracks.isNotEmpty()) {
                     mediaTrackIndexDao.insertAll(discoveredTracks)
                     totalIndexedTracks += discoveredTracks.size
+                    onProgress?.invoke(
+                        LibrarySyncState.Scanning(
+                            progress = 0f,
+                            currentPath = current.path,
+                            tracksFound = totalIndexedTracks,
+                        ),
+                    )
                 }
 
                 checkpointDao.insertOrUpdate(
@@ -174,12 +190,15 @@ class LocalStorageIndexScanner(
             totalIndexedTracks
         }
 
-    suspend fun indexAllMountedFolders(force: Boolean = false): Int =
+    suspend fun indexAllMountedFolders(
+        force: Boolean = false,
+        onProgress: ((LibrarySyncState) -> Unit)? = null,
+    ): Int =
         withContext(ioDispatcher) {
             val folders = localStorageFolderDao?.getAllFoldersFlow()?.first() ?: emptyList()
             var count = 0
             for (folder in folders) {
-                count += indexFolder(Uri.parse(folder.uriString), force)
+                count += indexFolder(Uri.parse(folder.uriString), force, onProgress)
             }
             count
         }

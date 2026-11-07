@@ -3,8 +3,10 @@ package com.webdav.player.data.repository
 import android.content.Context
 import com.webdav.player.data.local.CoverArtStorage
 import com.webdav.player.data.local.DirectoryCacheDao
+import com.webdav.player.data.local.DirectorySyncCheckpointDao
 import com.webdav.player.data.local.LocalStorageFolderDao
 import com.webdav.player.data.local.LocalStorageFolderEntity
+import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.local.TrackMetadataDao
 import com.webdav.player.data.local.WebDavServerDao
 import com.webdav.player.data.local.WebDavServerEntity
@@ -25,6 +27,8 @@ class ServerRepositoryImpl(
     private val directoryCacheDao: DirectoryCacheDao? = null,
     private val trackMetadataDao: TrackMetadataDao? = null,
     private val localStorageFolderDao: LocalStorageFolderDao? = null,
+    private val mediaTrackIndexDao: MediaTrackIndexDao? = null,
+    private val directorySyncCheckpointDao: DirectorySyncCheckpointDao? = null,
     private val context: Context? = null,
 ) : ServerRepository {
     private val prefs = context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -92,6 +96,8 @@ class ServerRepositoryImpl(
         webDavClient?.invalidateServer(id)
         directoryCacheDao?.deleteCacheByServerId(id)
         trackMetadataDao?.deleteMetadataForServer(id)
+        mediaTrackIndexDao?.deleteByServerId(id)
+        directorySyncCheckpointDao?.deleteByServerId(id)
         serverDao.deleteServerById(id)
 
         if (serverToDelete?.isDefault == true) {
@@ -117,7 +123,10 @@ class ServerRepositoryImpl(
             list.map { it.toDomain() }
         } ?: kotlinx.coroutines.flow.flowOf(emptyList())
 
-    override suspend fun addMountedLocalFolder(uriString: String, displayName: String) {
+    override suspend fun addMountedLocalFolder(
+        uriString: String,
+        displayName: String,
+    ) {
         localStorageFolderDao?.insertFolder(
             LocalStorageFolderEntity(
                 uriString = uriString,
@@ -128,6 +137,15 @@ class ServerRepositoryImpl(
     }
 
     override suspend fun removeMountedLocalFolder(uriString: String) {
+        try {
+            val encodedTreeUri = java.net.URLEncoder.encode(uriString, "UTF-8")
+            val prefix = "/local/$encodedTreeUri/"
+            mediaTrackIndexDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, prefix)
+            directorySyncCheckpointDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, prefix)
+        } catch (_: Exception) {
+        }
+        mediaTrackIndexDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, uriString)
+        directorySyncCheckpointDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, uriString)
         localStorageFolderDao?.deleteFolderByUri(uriString)
     }
 

@@ -56,6 +56,16 @@ class DirectoryBrowserViewModel(
             _uiState.update { it.copy(searchHistory = initialHistory) }
         }
 
+        if (librarySearchRepository != null) {
+            viewModelScope.launch {
+                librarySearchRepository
+                    .observeSyncState()
+                    .collect { syncState ->
+                        _uiState.update { it.copy(syncState = syncState) }
+                    }
+            }
+        }
+
         if (musicPlayerAppSession != null) {
             viewModelScope.launch {
                 musicPlayerAppSession.isRestored.first { it }
@@ -119,6 +129,13 @@ class DirectoryBrowserViewModel(
                     }
                 }
             }
+        }
+    }
+
+    fun onSyncLibrary() {
+        val server = _uiState.value.activeServer ?: return
+        viewModelScope.launch {
+            librarySearchRepository?.syncServer(server, force = true)
         }
     }
 

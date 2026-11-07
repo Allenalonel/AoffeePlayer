@@ -5,6 +5,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,11 +24,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -57,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.CueAlbumItem
+import com.webdav.player.domain.model.LibrarySyncState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
@@ -313,9 +321,15 @@ fun DirectoryBrowserScreen(
                             ),
                     )
                 } else {
+                    val subtitleText =
+                        when (val sync = uiState.syncState) {
+                            is LibrarySyncState.Scanning ->
+                                if (sync.tracksFound > 0) "正在索引 ${sync.tracksFound} 首歌曲..." else "正在扫描目录..."
+                            else -> uiState.activeServer?.name?.let { "当前活跃节点: $it" } ?: "未连接服务器"
+                        }
                     FluidTopAppBar(
                         title = uiState.headerTitle,
-                        subtitle = uiState.activeServer?.name?.let { "当前活跃节点: $it" } ?: "未连接服务器",
+                        subtitle = subtitleText,
                         navigationIcon = null,
                         actions = {
                             if (!uiState.isInitializing && uiState.activeServer != null) {
@@ -337,6 +351,47 @@ fun DirectoryBrowserScreen(
                                         contentDescription = "搜索曲库",
                                         modifier = Modifier.size(20.dp),
                                     )
+                                }
+
+                                var showOverflowMenu by remember { mutableStateOf(false) }
+                                Box {
+                                    FilledTonalIconButton(
+                                        onClick = { showOverflowMenu = true },
+                                        modifier =
+                                            Modifier
+                                                .size(38.dp)
+                                                .alpha(if (searchExpansionProgress > 0f) 0f else 1f),
+                                        shape = CircleShape,
+                                        colors =
+                                            IconButtonDefaults.filledTonalIconButtonColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                contentColor = MaterialTheme.colorScheme.onSurface,
+                                            ),
+                                    ) {
+                                        Icon(
+                                            imageVector = AppIcons.MoreVert,
+                                            contentDescription = "更多选项",
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = showOverflowMenu,
+                                        onDismissRequest = { showOverflowMenu = false },
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("同步媒体库") },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = AppIcons.Refresh,
+                                                    contentDescription = null,
+                                                )
+                                            },
+                                            onClick = {
+                                                showOverflowMenu = false
+                                                viewModel.onSyncLibrary()
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         },
@@ -360,6 +415,31 @@ fun DirectoryBrowserScreen(
                         currentPath = uiState.currentPath,
                         onBreadcrumbClicked = { viewModel.onBreadcrumbClicked(it) },
                     )
+                }
+
+                val syncState = uiState.syncState
+                AnimatedVisibility(
+                    visible = syncState is LibrarySyncState.Scanning,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
+                    if (syncState is LibrarySyncState.Scanning) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                        ) {
+                            LinearProgressIndicator(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .height(3.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            )
+                        }
+                    }
                 }
 
                 // Content Area with Hierarchy Drilldown AnimatedContent

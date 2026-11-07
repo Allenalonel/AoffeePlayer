@@ -7,8 +7,14 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RadialGradientShader
+import androidx.compose.ui.graphics.Shader
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.compositeOver
 import androidx.palette.graphics.Palette
 import com.webdav.player.ui.theme.BackgroundDark
@@ -62,9 +68,19 @@ data class ArtworkColors(
                 surfaceColor = surfaceColor,
                 backgroundColor = backgroundColor,
             )
-        return Brush.radialGradient(
-            colors = listOf(stops.topColor, stops.midColor, stops.bottomColor),
-        )
+        return object : ShaderBrush() {
+            override fun createShader(size: Size): Shader {
+                val center = Offset(size.width * 0.5f, size.height * 0.26f)
+                val radius = maxOf(size.width, size.height) * 0.85f
+                return RadialGradientShader(
+                    colors = listOf(stops.topColor, stops.midColor, stops.bottomColor),
+                    colorStops = listOf(0.0f, 0.45f, 1.0f),
+                    center = center,
+                    radius = radius.coerceAtLeast(1f),
+                    tileMode = TileMode.Clamp,
+                )
+            }
+        }
     }
 }
 
@@ -400,18 +416,18 @@ object ArtworkColorExtractor {
      */
     fun computeAmbientGlowStops(
         artworkColors: ArtworkColors,
-        isDarkTheme: Boolean,
+        isDarkTheme: Boolean = true,
         surfaceColor: Color = if (isDarkTheme) artworkColors.backgroundTopColor else Color(0xFFE2E2E9),
         backgroundColor: Color = artworkColors.backgroundBottomColor,
     ): AmbientGlowStops {
-        val topAlpha = if (isDarkTheme) 0.35f else 0.28f
-        val midAlpha = if (isDarkTheme) 0.18f else 0.12f
+        val topAlpha = if (isDarkTheme) 0.50f else 0.28f
+        val midAlpha = if (isDarkTheme) 0.28f else 0.12f
 
         if (artworkColors.isMonochrome) {
             val neutralSurface = if (isDarkTheme) Color(0xFF1E1F25) else Color(0xFFE2E2E9)
             val topStop = artworkColors.mutedColor.copy(alpha = topAlpha).compositeOver(neutralSurface)
             val midStop = artworkColors.mutedColor.copy(alpha = midAlpha).compositeOver(neutralSurface)
-            val bottomStop = if (isDarkTheme) Color(0xFF121318) else Color(0xFFFFFFFF)
+            val bottomStop = if (isDarkTheme) backgroundColor else Color(0xFFFFFFFF)
             return AmbientGlowStops(
                 topColor = topStop,
                 midColor = midStop,
@@ -420,7 +436,7 @@ object ArtworkColorExtractor {
         }
 
         // Chromatic artwork:
-        val dominantTintAlpha = if (isDarkTheme) 0.20f else 0.10f
+        val dominantTintAlpha = if (isDarkTheme) 0.25f else 0.10f
         val baseSurface = artworkColors.dominantColor.copy(alpha = dominantTintAlpha).compositeOver(surfaceColor)
 
         val topStop = artworkColors.vibrantColor.copy(alpha = topAlpha).compositeOver(baseSurface)

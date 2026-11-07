@@ -28,8 +28,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RadialGradientShader
+import androidx.compose.ui.graphics.Shader
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,21 +50,23 @@ import com.webdav.player.ui.player.ArtworkColors
 import com.webdav.player.ui.player.FullPlayerDefaults
 import com.webdav.player.ui.player.rememberArtworkColors
 import com.webdav.player.ui.theme.AppIcons
+import com.webdav.player.ui.theme.BackgroundDark
 import com.webdav.player.ui.theme.FLUID_THEME_DURATION_MS
 import com.webdav.player.ui.theme.FluidThemeAnimationEasing
+import com.webdav.player.ui.theme.SurfaceContainerDark
 
 /**
  * Dynamic atmospheric multi-stop ambient glow gradient sampled from cover art with MD3 fallback.
- * Blends vibrantColor, dominantColor, and mutedColor into a soft luminous halo behind the artwork card
- * and seamlessly melts into background/surface at the bottom.
+ * Anchored to the cover card's center (50%, 26%) with long-axis radial diffusion across the screen.
+ * Operates in all-weather Immersive Stage mode to ensure high-contrast white typography.
  */
 @Composable
 internal fun rememberArtworkBackgroundBrush(
     thumbnailPath: String?,
     artworkColors: ArtworkColors? = null,
-    defaultSurfaceColor: Color = MaterialTheme.colorScheme.surfaceContainer,
-    defaultBackgroundColor: Color = MaterialTheme.colorScheme.surface,
-    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    defaultSurfaceColor: Color = SurfaceContainerDark,
+    defaultBackgroundColor: Color = BackgroundDark,
+    isDarkTheme: Boolean = true,
 ): Brush {
     val activeColors =
         artworkColors
@@ -66,7 +74,7 @@ internal fun rememberArtworkBackgroundBrush(
                 thumbnailPath = thumbnailPath,
                 defaultSurfaceColor = defaultSurfaceColor,
                 defaultBackgroundColor = defaultBackgroundColor,
-                isDarkTheme = isDarkTheme,
+                isDarkTheme = true,
             ).value
 
     val targetStops =
@@ -94,9 +102,19 @@ internal fun rememberArtworkBackgroundBrush(
     )
 
     return remember(animatedTopColor, animatedMidColor, animatedBottomColor) {
-        Brush.radialGradient(
-            colors = listOf(animatedTopColor, animatedMidColor, animatedBottomColor),
-        )
+        object : ShaderBrush() {
+            override fun createShader(size: Size): Shader {
+                val center = Offset(size.width * 0.5f, size.height * 0.26f)
+                val radius = maxOf(size.width, size.height) * 0.85f
+                return RadialGradientShader(
+                    colors = listOf(animatedTopColor, animatedMidColor, animatedBottomColor),
+                    colorStops = listOf(0.0f, 0.45f, 1.0f),
+                    center = center,
+                    radius = radius.coerceAtLeast(1f),
+                    tileMode = TileMode.Clamp,
+                )
+            }
+        }
     }
 }
 

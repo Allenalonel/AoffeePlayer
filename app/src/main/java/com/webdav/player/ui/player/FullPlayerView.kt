@@ -61,6 +61,7 @@ import com.webdav.player.ui.player.components.PlayerVinylArtwork
 import com.webdav.player.ui.player.components.isFullPlayerRetryBannerVisible
 import com.webdav.player.ui.player.components.rememberArtworkBackgroundBrush
 import com.webdav.player.ui.theme.AppIcons
+import com.webdav.player.ui.theme.WebDavPlayerTheme
 import kotlinx.coroutines.launch
 
 object FullPlayerDefaults {
@@ -153,22 +154,26 @@ fun FullPlayerView(
             )
         }
 
-    Surface(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .background(backgroundBrush),
-        color = Color.Transparent,
+    WebDavPlayerTheme(
+        darkTheme = true,
+        artworkColors = artworkColors,
     ) {
-        Column(
+        Surface(
             modifier =
-                Modifier
+                modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                    .background(backgroundBrush),
+            color = Color.Transparent,
         ) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
             // Top lightweight bar: collapse handle / chevron, "正在播放自 WebDAV", album/source, and options
             Row(
                 modifier =
@@ -423,23 +428,24 @@ fun FullPlayerView(
         )
     }
 
-    if (sessionState.isUnsupportedRange) {
-        AlertDialog(
-            onDismissRequest = onDismissUnsupportedRange,
-            text = {
-                Text(text = "当前服务器不支持断点续传，是否从头重新播放此曲？")
-            },
-            confirmButton = {
-                TextButton(onClick = onConfirmUnsupportedRangeReplay) {
-                    Text("重新播放")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismissUnsupportedRange) {
-                    Text("取消")
-                }
-            },
-        )
+        if (sessionState.isUnsupportedRange) {
+            AlertDialog(
+                onDismissRequest = onDismissUnsupportedRange,
+                text = {
+                    Text(text = "当前服务器不支持断点续传，是否从头重新播放此曲？")
+                },
+                confirmButton = {
+                    TextButton(onClick = onConfirmUnsupportedRangeReplay) {
+                        Text("重新播放")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onDismissUnsupportedRange) {
+                        Text("取消")
+                    }
+                },
+            )
+        }
     }
 }
 

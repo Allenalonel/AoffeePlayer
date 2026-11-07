@@ -141,8 +141,8 @@ fun MorphingPlayerContainer(
                 snap()
             } else {
                 tween<Float>(
-                    durationMillis = 480,
-                    easing = CubicBezierEasing(0.18f, 0.94f, 0.28f, 1.05f),
+                    durationMillis = 560,
+                    easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f),
                 )
             }
         }
@@ -241,7 +241,7 @@ fun MorphingPlayerContainer(
                     .graphicsLayer {
                         shape = morphingShape
                         clip = true
-                        shadowElevation = with(density) { lerp(10.dp, 0.dp, expansionProgress).toPx() }
+                        shadowElevation = with(density) { lerp(4.dp, 0.dp, expansionProgress).toPx() }
                     }.drawBehind {
                         // 1. Container base surface
                         drawRect(surfaceColor)

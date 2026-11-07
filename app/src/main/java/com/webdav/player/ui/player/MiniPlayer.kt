@@ -191,8 +191,8 @@ fun MiniPlayer(
         shape = MiniPlayerDefaults.CapsuleShape,
         color = surfaceColor,
         border = borderStroke,
-        tonalElevation = 6.dp,
-        shadowElevation = 10.dp,
+        tonalElevation = 3.dp,
+        shadowElevation = 0.dp,
     ) {
         Box(
             modifier = Modifier.fillMaxWidth().height(MiniPlayerDefaults.CapsuleHeight),

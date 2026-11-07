@@ -14,9 +14,7 @@
 
 ## 活跃任务 (Active)
 
-| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 规范与工单路径 |
-| :--- | :--- | :---: | :---: | :--- |
-| `unified-library-indexing-and-search` | 跨源（本地 SAF + 远程 WebDAV）统一曲库索引与增量即时搜索体系 | 4 | `ready-for-agent` | [`.scratch/unified-library-indexing-and-search/`](unified-library-indexing-and-search/) |
+当前无进行中的活跃任务（全部工单已结项并通过全量验收）。
 
 ---
 
@@ -26,6 +24,7 @@
 
 | 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 归档路径 |
 | :--- | :--- | :---: | :---: | :--- |
+| `unified-library-indexing-and-search` | 跨源（本地 SAF + 远程 WebDAV）统一曲库索引与增量即时搜索体系 (ADR-0033) | 4 | Completed | [`archive/unified-library-indexing-and-search/`](archive/unified-library-indexing-and-search/) |
 | `local-storage-support` | 本地存储集成、SAF 多目录挂载与跨源混编播放 (ADR-0033) | 5 | Completed | [`archive/local-storage-support/`](archive/local-storage-support/) |
 | `dynamic-palette-theming` | AndroidX Palette 官方多色提取、M3E 纯正色调阶梯与音轨驱动零预设全域换肤 (ADR-0032) | 4 | Completed | [`archive/dynamic-palette-theming/`](archive/dynamic-palette-theming/) |
 | `architecture-deepening-and-seam-purification` | v3.3 后续架构深化：清理形变无用数学接缝、内聚媒体库多选、统一音轨行兜底与消除歌单对账重复代码 | 4 | Completed | [`archive/architecture-deepening-and-seam-purification/`](archive/architecture-deepening-and-seam-purification/) |

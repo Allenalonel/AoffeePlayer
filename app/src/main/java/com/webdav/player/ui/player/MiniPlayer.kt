@@ -115,7 +115,6 @@ fun MiniPlayer(
     playbackProgress: PlaybackProgress = PlaybackProgress.ZERO,
     onMiniPlayerClick: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
-    isMorphing: Boolean = false,
 ) {
     val currentTrack = sessionState.currentTrack ?: return
     val density = LocalDensity.current
@@ -251,30 +250,26 @@ fun MiniPlayer(
                             .padding(start = 10.dp, end = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (isMorphing) {
-                        Spacer(modifier = Modifier.size(MiniPlayerDefaults.CoverSize))
-                    } else {
-                        // Circular Album Art Disc (CircleShape matching capsule geometry)
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(MiniPlayerDefaults.CoverSize)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center,
+                    // Circular Album Art Disc (CircleShape matching capsule geometry)
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(MiniPlayerDefaults.CoverSize)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CoverThumbnailImage(
+                            thumbnailPath = currentTrack.coverThumbnailPath,
+                            contentDescription = "封面",
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
                         ) {
-                            CoverThumbnailImage(
-                                thumbnailPath = currentTrack.coverThumbnailPath,
-                                contentDescription = "封面",
-                                modifier = Modifier.fillMaxSize().clip(CircleShape),
-                            ) {
-                                Icon(
-                                    imageVector = AppIcons.Audiotrack,
-                                    contentDescription = "音轨",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(22.dp),
-                                )
-                            }
+                            Icon(
+                                imageVector = AppIcons.Audiotrack,
+                                contentDescription = "音轨",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(22.dp),
+                            )
                         }
                     }
 
@@ -303,20 +298,16 @@ fun MiniPlayer(
                     Spacer(modifier = Modifier.width(MiniPlayerDefaults.ButtonSpacing))
 
                     // Play / Pause / Buffering Toggle Button
-                    if (isMorphing) {
-                        Spacer(modifier = Modifier.size(MiniPlayerDefaults.PlayPauseButtonSize))
-                    } else {
-                        PlayPauseToggleButton(
-                            sessionState = sessionState,
-                            onTogglePlayPause = {
-                                if (sessionState.isSuspendedRetry) {
-                                    playbackActions.retryPlayback()
-                                } else {
-                                    playbackActions.togglePlayPause()
-                                }
-                            },
-                        )
-                    }
+                    PlayPauseToggleButton(
+                        sessionState = sessionState,
+                        onTogglePlayPause = {
+                            if (sessionState.isSuspendedRetry) {
+                                playbackActions.retryPlayback()
+                            } else {
+                                playbackActions.togglePlayPause()
+                            }
+                        },
+                    )
 
                     Spacer(modifier = Modifier.width(MiniPlayerDefaults.ButtonSpacing))
 

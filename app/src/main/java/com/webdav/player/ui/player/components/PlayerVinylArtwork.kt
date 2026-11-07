@@ -129,7 +129,6 @@ internal fun PlayerVinylArtwork(
     sessionState: PlayerSessionState,
     onArtworkClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isMorphing: Boolean = false,
 ) {
     Column(
         modifier =
@@ -139,44 +138,34 @@ internal fun PlayerVinylArtwork(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        // Large Album Artwork Card or Invisible Geometric Placeholder during Morphing (Zero Ghosting!)
-        if (isMorphing) {
-            Spacer(
-                modifier =
-                    Modifier
-                        .fillMaxWidth(0.85f)
-                        .sizeIn(minWidth = 190.dp, minHeight = 190.dp, maxWidth = 280.dp, maxHeight = 280.dp)
-                        .aspectRatio(1f),
-            )
-        } else {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth(0.85f)
-                        .sizeIn(minWidth = 190.dp, minHeight = 190.dp, maxWidth = 280.dp, maxHeight = 280.dp)
-                        .aspectRatio(1f)
-                        .shadow(
-                            elevation = 24.dp,
-                            shape = FullPlayerDefaults.ArtworkSquircleShape,
-                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                        ).clip(FullPlayerDefaults.ArtworkSquircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { onArtworkClick() },
-                contentAlignment = Alignment.Center,
+        // Large Album Artwork Card with 28dp Squircle & Ambient Glow
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth(0.85f)
+                    .sizeIn(minWidth = 190.dp, minHeight = 190.dp, maxWidth = 280.dp, maxHeight = 280.dp)
+                    .aspectRatio(1f)
+                    .shadow(
+                        elevation = 24.dp,
+                        shape = FullPlayerDefaults.ArtworkSquircleShape,
+                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                    ).clip(FullPlayerDefaults.ArtworkSquircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { onArtworkClick() },
+            contentAlignment = Alignment.Center,
+        ) {
+            CoverThumbnailImage(
+                thumbnailPath = currentTrack?.coverThumbnailPath,
+                contentDescription = "专辑封面",
+                modifier = Modifier.fillMaxSize(),
             ) {
-                CoverThumbnailImage(
-                    thumbnailPath = currentTrack?.coverThumbnailPath,
+                Icon(
+                    imageVector = AppIcons.Audiotrack,
                     contentDescription = "专辑封面",
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    Icon(
-                        imageVector = AppIcons.Audiotrack,
-                        contentDescription = "专辑封面",
-                        modifier = Modifier.size(100.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    )
-                }
+                    modifier = Modifier.size(100.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
             }
         }
 

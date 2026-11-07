@@ -125,7 +125,6 @@ internal fun PlayerPlaybackControls(
     onCyclePlaybackMode: () -> Unit,
     onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
-    isMorphing: Boolean = false,
 ) {
     Row(
         modifier =
@@ -162,30 +161,27 @@ internal fun PlayerPlaybackControls(
             )
         }
 
-        // Expressive Prominent Play / Pause Button or Invisible Placeholder during Morphing (Zero Ghosting!)
-        if (isMorphing) {
-            Spacer(modifier = Modifier.size(FullPlayerDefaults.PlayButtonSize))
-        } else {
-            FilledIconButton(
-                onClick = {
-                    if (sessionState.isSuspendedRetry) onRetryPlayback() else onTogglePlayPause()
-                },
-                modifier =
-                    Modifier
-                        .size(FullPlayerDefaults.PlayButtonSize)
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = FullPlayerDefaults.PlayButtonSquircleShape,
-                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                        ),
-                shape = FullPlayerDefaults.PlayButtonSquircleShape,
-                colors =
-                    IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
+        // Expressive Prominent Play / Pause / Buffering Toggle Button: 68dp Squircle (26dp rounded corner)
+        FilledIconButton(
+            onClick = {
+                if (sessionState.isSuspendedRetry) onRetryPlayback() else onTogglePlayPause()
+            },
+            modifier =
+                Modifier
+                    .size(FullPlayerDefaults.PlayButtonSize)
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = FullPlayerDefaults.PlayButtonSquircleShape,
+                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                     ),
-            ) {
+            shape = FullPlayerDefaults.PlayButtonSquircleShape,
+            colors =
+                IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+        ) {
                 AnimatedContent(
                     targetState = sessionState.playbackState,
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -225,7 +221,6 @@ internal fun PlayerPlaybackControls(
                         }
                     }
                 }
-            }
         }
 
         // Next Track Button: FilledTonal Pill Button
@@ -282,7 +277,6 @@ internal fun PlayerTransportControls(
     onCyclePlaybackMode: () -> Unit,
     onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
-    isMorphing: Boolean = false,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         PlayerProgressSlider(
@@ -304,7 +298,6 @@ internal fun PlayerTransportControls(
             onSkipToPrevious = onSkipToPrevious,
             onCyclePlaybackMode = onCyclePlaybackMode,
             onOpenQueue = onOpenQueue,
-            isMorphing = isMorphing,
         )
     }
 }

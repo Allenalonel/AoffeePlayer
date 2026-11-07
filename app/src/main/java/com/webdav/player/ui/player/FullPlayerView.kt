@@ -96,7 +96,6 @@ fun FullPlayerView(
     onDismissUnsupportedRange: () -> Unit = {},
     onAddToPlaylist: (AudioTrack) -> Unit = {},
     artworkColors: ArtworkColors? = null,
-    isMorphing: Boolean = false,
 ) {
     var showQueueSheet by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -271,7 +270,6 @@ fun FullPlayerView(
                             onCyclePlaybackMode = { playbackActions.cyclePlaybackMode() },
                             onOpenQueue = { showQueueSheet = true },
                             modifier = modifier,
-                            isMorphing = isMorphing,
                         )
                     }
 
@@ -301,7 +299,6 @@ fun FullPlayerView(
                                         sessionState = sessionState,
                                         onArtworkClick = {},
                                         modifier = downwardSwipeModifier,
-                                        isMorphing = isMorphing,
                                     )
                                 }
 
@@ -351,7 +348,6 @@ fun FullPlayerView(
                                                 }
                                             },
                                             modifier = downwardSwipeModifier,
-                                            isMorphing = isMorphing,
                                         )
                                     }
 

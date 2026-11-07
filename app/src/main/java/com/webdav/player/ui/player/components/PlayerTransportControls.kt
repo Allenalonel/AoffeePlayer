@@ -46,6 +46,7 @@ import com.webdav.player.ui.theme.AppIcons
 
 /**
  * Audiophile format specification badge capsule (e.g. "96kHz · 24bit · FLAC" or "Hi-Res").
+ * Dynamically harmonized with the active track's primary color theme.
  */
 @Composable
 internal fun AudiophileSpecsBadge(
@@ -53,12 +54,13 @@ internal fun AudiophileSpecsBadge(
     modifier: Modifier = Modifier,
 ) {
     if (specs == null || specs.formatted.isBlank()) return
+    val primaryColor = MaterialTheme.colorScheme.primary
     val isHiRes = specs.isHiRes
     Surface(
         shape = RoundedCornerShape(12.dp),
         color =
             if (isHiRes) {
-                Color(0x26FFB703) // Subtle gold tint for Hi-Res
+                primaryColor.copy(alpha = 0.18f)
             } else {
                 MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f)
             },
@@ -67,7 +69,7 @@ internal fun AudiophileSpecsBadge(
                 width = 1.dp,
                 color =
                     if (isHiRes) {
-                        Color(0x4DFFB703) // Subtle gold border for Hi-Res
+                        primaryColor.copy(alpha = 0.45f)
                     } else {
                         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                     },
@@ -83,7 +85,7 @@ internal fun AudiophileSpecsBadge(
                 ),
             color =
                 if (isHiRes) {
-                    Color(0xFFFFB703)
+                    primaryColor
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },

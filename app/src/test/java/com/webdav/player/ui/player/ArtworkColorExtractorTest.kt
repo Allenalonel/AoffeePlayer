@@ -561,8 +561,9 @@ class ArtworkColorExtractorTest {
         assertTrue("Top stop hue should be in blue family (180..260), got ${topHsl[0]}", topHsl[0] in 180f..260f)
         assertTrue("Top stop should have non-zero saturation, got ${topHsl[1]}", topHsl[1] > 0.15f)
 
-        // Bottom stop should melt into background
-        assertEquals(defaultBackground, darkStops.bottomColor)
+        // Bottom stop should melt into deep background tone
+        val bottomLum = ArtworkColorExtractor.relativeLuminance(darkStops.bottomColor)
+        assertTrue("Bottom stop luminance must be deep dark (< 0.08), got $bottomLum", bottomLum < 0.08)
 
         // Ambient brush can be created without crashing
         val darkBrush = artworkColors.ambientGlowBrush(isDarkTheme = true)

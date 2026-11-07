@@ -74,7 +74,7 @@ data class ArtworkColors(
                 val radius = maxOf(size.width, size.height) * 0.85f
                 return RadialGradientShader(
                     colors = listOf(stops.topColor, stops.midColor, stops.bottomColor),
-                    colorStops = listOf(0.0f, 0.45f, 1.0f),
+                    colorStops = listOf(0.0f, 0.48f, 1.0f),
                     center = center,
                     radius = radius.coerceAtLeast(1f),
                     tileMode = TileMode.Clamp,
@@ -420,8 +420,8 @@ object ArtworkColorExtractor {
         surfaceColor: Color = if (isDarkTheme) artworkColors.backgroundTopColor else Color(0xFFE2E2E9),
         backgroundColor: Color = artworkColors.backgroundBottomColor,
     ): AmbientGlowStops {
-        val topAlpha = if (isDarkTheme) 0.50f else 0.28f
-        val midAlpha = if (isDarkTheme) 0.28f else 0.12f
+        val topAlpha = if (isDarkTheme) 0.58f else 0.28f
+        val midAlpha = if (isDarkTheme) 0.34f else 0.12f
 
         if (artworkColors.isMonochrome) {
             val neutralSurface = if (isDarkTheme) Color(0xFF1E1F25) else Color(0xFFE2E2E9)
@@ -435,13 +435,20 @@ object ArtworkColorExtractor {
             )
         }
 
-        // Chromatic artwork:
-        val dominantTintAlpha = if (isDarkTheme) 0.25f else 0.10f
+        // Chromatic artwork (Tier 0.5 calibrated brightness):
+        val domHsl = colorToHsl(artworkColors.dominantColor)
+        val dominantTintAlpha = if (isDarkTheme) 0.28f else 0.10f
         val baseSurface = artworkColors.dominantColor.copy(alpha = dominantTintAlpha).compositeOver(surfaceColor)
 
         val topStop = artworkColors.vibrantColor.copy(alpha = topAlpha).compositeOver(baseSurface)
         val midStop = artworkColors.mutedColor.copy(alpha = midAlpha).compositeOver(surfaceColor)
-        val bottomStop = backgroundColor
+        // Deep chromatic bottom tone (~Tone 10) instead of dead black #121318 in dark theme:
+        val bottomStop =
+            if (isDarkTheme) {
+                hslToColor(domHsl[0], minOf(0.35f, domHsl[1] * 0.50f), 0.085f)
+            } else {
+                backgroundColor
+            }
 
         return AmbientGlowStops(
             topColor = topStop,

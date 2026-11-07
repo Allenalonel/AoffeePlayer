@@ -108,7 +108,7 @@ internal fun rememberArtworkBackgroundBrush(
                 val radius = maxOf(size.width, size.height) * 0.85f
                 return RadialGradientShader(
                     colors = listOf(animatedTopColor, animatedMidColor, animatedBottomColor),
-                    colorStops = listOf(0.0f, 0.45f, 1.0f),
+                    colorStops = listOf(0.0f, 0.48f, 1.0f),
                     center = center,
                     radius = radius.coerceAtLeast(1f),
                     tileMode = TileMode.Clamp,

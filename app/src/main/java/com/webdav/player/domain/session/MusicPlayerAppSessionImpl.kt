@@ -242,12 +242,25 @@ class MusicPlayerAppSessionImpl(
         }
         coroutineScope.launch {
             val isLocal = targetTrack.isLocal
-            val effectiveServer = when {
-                isLocal -> WebDavServer.createLocalStorage()
-                server != null && server.id == targetTrack.serverId -> server
-                serverRepository != null -> serverRepository.getServerById(targetTrack.serverId) ?: server ?: _sessionState.value.activeServer
-                else -> server ?: _sessionState.value.activeServer
-            }
+            val effectiveServer =
+                when {
+                    isLocal -> {
+                        WebDavServer.createLocalStorage()
+                    }
+
+                    server != null && server.id == targetTrack.serverId -> {
+                        server
+                    }
+
+                    serverRepository != null -> {
+                        serverRepository.getServerById(targetTrack.serverId) ?: server
+                            ?: _sessionState.value.activeServer
+                    }
+
+                    else -> {
+                        server ?: _sessionState.value.activeServer
+                    }
+                }
             val (vt, startMs) = queueManager.resolveVirtualTrackOffset(targetTrack, effectiveServer)
             val parent = if (vt != null) targetTrack.copy(id = targetTrack.id.substringBefore("#cue_")) else null
             val cue = if (vt != null) targetTrack.cuePath ?: (targetTrack.remotePath.substringBeforeLast('.') + ".cue") else null
@@ -288,7 +301,10 @@ class MusicPlayerAppSessionImpl(
         setActiveServer(server, resetPlayback = true)
     }
 
-    override fun setActiveServer(server: WebDavServer?, resetPlayback: Boolean) {
+    override fun setActiveServer(
+        server: WebDavServer?,
+        resetPlayback: Boolean,
+    ) {
         _sessionState.update { current ->
             if (current.activeServer?.id == server?.id) return@update current.copy(activeServer = server)
             val lastPath = if (server != null) getLastDirectoryForServer(server.id) else "/"
@@ -335,7 +351,9 @@ class MusicPlayerAppSessionImpl(
         if (server == null && serverRepository == null) return
         coroutineScope.launch {
             val request = queueManager.buildTrackQueue(track, server)
-            val effectiveServer = server ?: (if (isLocalTrack) WebDavServer.createLocalStorage() else serverRepository?.getServerById(track.serverId)) ?: return@launch
+            val effectiveServer =
+                server ?: (if (isLocalTrack) WebDavServer.createLocalStorage() else serverRepository?.getServerById(track.serverId))
+                    ?: return@launch
             dispatchQueueLoad(effectiveServer, request)
             metadataCoordinator.enrichSingleTrackMetadata(effectiveServer, track)
         }
@@ -485,12 +503,13 @@ class MusicPlayerAppSessionImpl(
             }
             val target = request.targetTrack
             val isLocal = target.isLocal
-            val active = when {
-                isLocal -> WebDavServer.createLocalStorage()
-                _sessionState.value.activeServer?.id == target.serverId -> _sessionState.value.activeServer
-                serverRepository != null -> serverRepository.getServerById(target.serverId) ?: _sessionState.value.activeServer
-                else -> _sessionState.value.activeServer
-            } ?: return@launch
+            val active =
+                when {
+                    isLocal -> WebDavServer.createLocalStorage()
+                    _sessionState.value.activeServer?.id == target.serverId -> _sessionState.value.activeServer
+                    serverRepository != null -> serverRepository.getServerById(target.serverId) ?: _sessionState.value.activeServer
+                    else -> _sessionState.value.activeServer
+                } ?: return@launch
             dispatchQueueLoad(active, request)
         }
     }
@@ -558,12 +577,25 @@ class MusicPlayerAppSessionImpl(
                 _playbackProgress.value = PlaybackProgress(0L, nextTrack.durationMs, 0L)
                 val isLocal = nextTrack.isLocal
                 coroutineScope.launch {
-                    val effectiveServer = when {
-                        isLocal -> WebDavServer.createLocalStorage()
-                        _sessionState.value.activeServer?.id == nextTrack.serverId -> _sessionState.value.activeServer
-                        serverRepository != null -> serverRepository.getServerById(nextTrack.serverId) ?: _sessionState.value.activeServer
-                        else -> _sessionState.value.activeServer
-                    }
+                    val effectiveServer =
+                        when {
+                            isLocal -> {
+                                WebDavServer.createLocalStorage()
+                            }
+
+                            _sessionState.value.activeServer?.id == nextTrack.serverId -> {
+                                _sessionState.value.activeServer
+                            }
+
+                            serverRepository != null -> {
+                                serverRepository.getServerById(nextTrack.serverId)
+                                    ?: _sessionState.value.activeServer
+                            }
+
+                            else -> {
+                                _sessionState.value.activeServer
+                            }
+                        }
                     effectiveServer?.let { loadTrackIntoEngine(it, nextTrack, 0L) }
                 }
             },

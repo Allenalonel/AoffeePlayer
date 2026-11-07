@@ -28,7 +28,10 @@ interface MusicPlayerAppSession {
 
     fun setActiveServer(server: WebDavServer?)
 
-    fun setActiveServer(server: WebDavServer?, resetPlayback: Boolean) = setActiveServer(server)
+    fun setActiveServer(
+        server: WebDavServer?,
+        resetPlayback: Boolean,
+    ) = setActiveServer(server)
 
     fun setCurrentDirectoryPath(path: String)
 

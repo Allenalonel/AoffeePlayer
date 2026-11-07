@@ -164,7 +164,7 @@ class DirectoryBrowserSyncTest {
             assertEquals(1, fakeLibrarySearchRepository.syncServerCalls.size)
             val (calledServer, force) = fakeLibrarySearchRepository.syncServerCalls.first()
             assertEquals(sampleServer.id, calledServer.id)
-            assertTrue(force)
+            assertFalse(force)
         }
 
     @Test

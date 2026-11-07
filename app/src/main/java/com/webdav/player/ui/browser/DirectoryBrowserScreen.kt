@@ -671,6 +671,9 @@ fun DirectoryBrowserScreen(
                             viewModel.toggleSearchTrackSelection(track.id)
                         }
                     },
+                    isGlobalSearch = uiState.isGlobalSearch,
+                    onToggleSearchScope = { viewModel.onToggleSearchScope() },
+                    activeSourceName = uiState.activeServer?.name,
                 )
 
                 FloatingMultiSelectBottomBar(

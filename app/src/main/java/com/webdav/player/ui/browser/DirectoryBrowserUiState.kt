@@ -31,6 +31,7 @@ data class DirectoryBrowserUiState(
     val searchResult: LibrarySearchResult = LibrarySearchResult(),
     val searchHistory: List<String> = emptyList(),
     val isSearching: Boolean = false,
+    val isGlobalSearch: Boolean = false,
     val syncState: LibrarySyncState = LibrarySyncState.Idle,
 ) {
     val isEmpty: Boolean

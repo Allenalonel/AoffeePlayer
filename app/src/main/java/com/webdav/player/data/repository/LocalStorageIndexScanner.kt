@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
+import com.webdav.player.data.cue.CueParser
 import com.webdav.player.data.local.DirectorySyncCheckpointDao
 import com.webdav.player.data.local.DirectorySyncCheckpointEntity
 import com.webdav.player.data.local.LocalStorageFolderDao
@@ -162,6 +163,55 @@ class LocalStorageIndexScanner(
                     }
                 } catch (_: Exception) {
                     // Graceful handling of directory read failures without failing the entire scan
+                }
+
+                // Parse local CUE sheets if present alongside audio files
+                val cueFiles = discoveredTracks.filter { it.isCue && !it.remotePath.contains("#cue_") }
+                val audioFiles = discoveredTracks.filter { !it.isCue }
+                if (cueFiles.isNotEmpty() && audioFiles.isNotEmpty()) {
+                    for (cueFile in cueFiles) {
+                        try {
+                            val cueUri = Uri.parse(cueFile.remotePath)
+                            val cueContent =
+                                contentResolver.openInputStream(cueUri)?.use { stream ->
+                                    stream.bufferedReader().readText()
+                                }
+                            if (!cueContent.isNullOrBlank()) {
+                                val cueBaseName = cueFile.fileName.substringBeforeLast('.')
+                                val matchedAudio =
+                                    audioFiles.firstOrNull {
+                                        it.fileName.substringBeforeLast('.').equals(cueBaseName, ignoreCase = true)
+                                    } ?: audioFiles.firstOrNull()
+
+                                if (matchedAudio != null) {
+                                    val virtualTracks =
+                                        CueParser.parse(
+                                            content = cueContent,
+                                            parentAudioPath = matchedAudio.remotePath,
+                                            allowMissingFileTag = true,
+                                        )
+                                    for (vt in virtualTracks) {
+                                        val vtEntity =
+                                            MediaTrackIndexEntity(
+                                                serverId = LOCAL_STORAGE_ID,
+                                                remotePath = "${matchedAudio.remotePath}#cue_${vt.trackNumber}",
+                                                fileName = vt.title.ifBlank { "${matchedAudio.fileName}#cue_${vt.trackNumber}" },
+                                                fileSize = matchedAudio.fileSize,
+                                                lastModified = matchedAudio.lastModified,
+                                                format = matchedAudio.format,
+                                                isCue = true,
+                                                parentPath = current.path,
+                                                parsedTitle = vt.title,
+                                                parsedArtist = vt.performer ?: matchedAudio.parsedArtist,
+                                            )
+                                        discoveredTracks.add(vtEntity)
+                                    }
+                                }
+                            }
+                        } catch (_: Exception) {
+                            // Non-fatal CUE parse error
+                        }
+                    }
                 }
 
                 if (discoveredTracks.isNotEmpty()) {

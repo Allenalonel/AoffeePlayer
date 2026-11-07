@@ -184,6 +184,19 @@ class WebDavSyncScanner(
                                                             remoteDir.lastModified == checkpoint.lastModified
                                                     if (etagMatches || timestampMatches) {
                                                         directoriesSkipped.incrementAndGet()
+                                                        for (subDir in remoteDir.subDirectories) {
+                                                            if (!isExcludedDirectory(subDir.name)) {
+                                                                totalDiscoveredDirs.incrementAndGet()
+                                                                activeTasks.incrementAndGet()
+                                                                channel.send(
+                                                                    DirectoryWorkItem(
+                                                                        path = RemoteDirectory.normalizePath(subDir.path),
+                                                                        lastModified = subDir.lastModified,
+                                                                        etag = subDir.etag,
+                                                                    ),
+                                                                )
+                                                            }
+                                                        }
                                                         emitProgress(item.path)
                                                         continue
                                                     }

@@ -824,7 +824,8 @@ class LibrarySearchRepositoryTest {
             val track = result.matchedTracks.first()
 
             assertTrue(track.isVirtualTrack)
-            assertEquals("/Music/Album.flac#cue_1", track.remotePath)
+            assertEquals("1:/Music/Album.flac#cue_1", track.id)
+            assertEquals("/Music/Album.flac", track.remotePath)
             assertEquals("Track One", track.title)
             assertEquals("Band Artist", track.artist)
             assertEquals("Masterpiece Album", track.album)
@@ -1010,7 +1011,8 @@ class LibrarySearchRepositoryTest {
             // The raw .cue file must not be in matchedTracks; only the virtual track should appear
             assertEquals(1, result.matchedTracks.size)
             val track = result.matchedTracks.first()
-            assertEquals("/Music/Symphony.flac#cue_1", track.remotePath)
+            assertEquals("1:/Music/Symphony.flac#cue_1", track.id)
+            assertEquals("/Music/Symphony.flac", track.remotePath)
             assertTrue(track.isVirtualTrack)
         }
 }

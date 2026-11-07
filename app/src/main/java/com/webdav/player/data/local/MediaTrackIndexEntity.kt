@@ -37,16 +37,22 @@ data class MediaTrackIndexEntity(
             AudioFormat.fromExtension(format)
                 ?: AudioFormat.fromFileName(fileName)
                 ?: AudioFormat.MP3
+        val physicalRemotePath =
+            if (isCue && remotePath.contains("#cue_")) {
+                remotePath.substringBefore("#cue_")
+            } else {
+                remotePath
+            }
         val resolvedCuePath =
             cuePath ?: if (isCue && remotePath.contains("#cue_")) {
-                remotePath.substringBefore("#cue_").substringBeforeLast('.') + ".cue"
+                physicalRemotePath.substringBeforeLast('.') + ".cue"
             } else {
                 null
             }
         return AudioTrack(
             id = "$serverId:$remotePath",
             serverId = serverId,
-            remotePath = remotePath,
+            remotePath = physicalRemotePath,
             title = metadata?.title?.takeIf { it.isNotBlank() } ?: parsedTitle.ifBlank { fileName },
             artist = metadata?.artist?.takeIf { it.isNotBlank() } ?: parsedArtist,
             album = metadata?.album?.takeIf { it.isNotBlank() } ?: albumFallback,

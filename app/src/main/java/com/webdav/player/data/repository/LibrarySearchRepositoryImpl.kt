@@ -242,12 +242,7 @@ class LibrarySearchRepositoryImpl(
         val checkpointFlow: Flow<List<DirectorySyncCheckpointEntity>> =
             directorySyncCheckpointDao?.searchCheckpoints(cleanQuery, serverId) ?: flowOf(emptyList())
         val dirFlow = directoryCacheDao.searchDirectoryCacheFlow(cleanQuery, serverId)
-        val metaFlow =
-            if (serverId != null) {
-                trackMetadataDao.getAllMetadataForServerFlow(serverId)
-            } else {
-                trackMetadataDao.getAllMetadataFlow()
-            }
+        val metaFlow = trackMetadataDao.searchMetadataFlow(cleanQuery, serverId)
 
         return combine(
             indexFlow,
@@ -332,7 +327,7 @@ class LibrarySearchRepositoryImpl(
                         AudioTrack(
                             id = "${entity.serverId}:${entity.remotePath}",
                             serverId = entity.serverId,
-                            remotePath = entity.remotePath,
+                            remotePath = parentAudioPath,
                             title = entity.parsedTitle.ifBlank { entity.fileName },
                             artist = entity.parsedArtist ?: effectiveMeta?.artist,
                             album = effectiveMeta?.album ?: parentAudioPath.trimEnd('/').substringAfterLast('/').substringBeforeLast('.'),

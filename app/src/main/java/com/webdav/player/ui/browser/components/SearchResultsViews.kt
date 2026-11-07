@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -66,80 +67,119 @@ fun SearchResultsContent(
     isSelectionMode: Boolean = false,
     selectedTrackIds: Set<String> = emptySet(),
     onTrackLongClick: ((AudioTrack) -> Unit)? = null,
+    isGlobalSearch: Boolean = false,
+    onToggleSearchScope: () -> Unit = {},
+    activeSourceName: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val cleanQuery = query.trim()
 
-    Box(modifier = modifier.fillMaxSize()) {
-        when {
-            cleanQuery.isEmpty() -> {
-                SearchHistorySection(
-                    history = searchHistory,
-                    onSelectQuery = onSelectHistoryQuery,
-                    onClearHistory = onClearHistory,
-                    onRemoveHistoryItem = onRemoveHistoryItem,
+    Column(modifier = modifier.fillMaxSize()) {
+        if (cleanQuery.isNotEmpty()) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FilterChip(
+                    selected = !isGlobalSearch,
+                    onClick = { if (isGlobalSearch) onToggleSearchScope() },
+                    label = {
+                        Text(
+                            text = activeSourceName?.let { "当前源 ($it)" } ?: "当前源",
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                )
+                FilterChip(
+                    selected = isGlobalSearch,
+                    onClick = { if (!isGlobalSearch) onToggleSearchScope() },
+                    label = {
+                        Text(
+                            text = "全库搜索",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    },
                 )
             }
+        }
 
-            isSearching -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "正在检索曲库快照...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            when {
+                cleanQuery.isEmpty() -> {
+                    SearchHistorySection(
+                        history = searchHistory,
+                        onSelectQuery = onSelectHistoryQuery,
+                        onClearHistory = onClearHistory,
+                        onRemoveHistoryItem = onRemoveHistoryItem,
+                    )
                 }
-            }
 
-            searchResult.isEmpty -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(24.dp),
+                isSearching -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            imageVector = AppIcons.Search,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "未找到匹配的目录或歌曲",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "仅检索已缓存的目录快照，尝试输入其他关键词",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "正在检索曲库快照...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
-            }
 
-            else -> {
-                SearchResultsList(
-                    searchResult = searchResult,
-                    onDirectoryClick = onDirectoryClick,
-                    onTrackClick = onTrackClick,
-                    onAddToPlaylist = onAddToPlaylist,
-                    isSelectionMode = isSelectionMode,
-                    selectedTrackIds = selectedTrackIds,
-                    onTrackLongClick = onTrackLongClick,
-                )
+                searchResult.isEmpty -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(24.dp),
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.Search,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "未找到匹配的目录或歌曲",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "仅检索已缓存的目录快照，尝试输入其他关键词",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                else -> {
+                    SearchResultsList(
+                        searchResult = searchResult,
+                        onDirectoryClick = onDirectoryClick,
+                        onTrackClick = onTrackClick,
+                        onAddToPlaylist = onAddToPlaylist,
+                        isSelectionMode = isSelectionMode,
+                        selectedTrackIds = selectedTrackIds,
+                        onTrackLongClick = onTrackLongClick,
+                    )
+                }
             }
         }
     }

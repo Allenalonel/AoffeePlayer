@@ -116,12 +116,15 @@ Status: `completed`
 ## Further Notes
 
 - Architecture Decision Record: `docs/adr/0032-androidx-palette-and-m3-expressive-dynamic-theming.md`.
-- Domain Glossary updates: `GLOSSARY.md` (`Global Dynamic Artwork Palette`, `Track-Driven Zero-Preset Principle`, `Zero-Tint Monochrome Safeguard`, `Immersive Stage Player`).
+- Domain Glossary updates: `GLOSSARY.md` (`Global Dynamic Artwork Palette`, `Track-Driven Zero-Preset Principle`, `Zero-Tint Monochrome Safeguard`, `Immersive Stage Player`, `Perceptual Tonal Normalization`).
 - Interactive Visual Prototype: `.tmp/player_color_prototype.html` (validated with 5 real library covers on ADB test device), `.tmp/player_color_prototype_v3.html` (validated multi-variant stage comparison).
 
 ## Decision Addendum: Immersive Stage Glow Refinement (真机实证决策附录)
 
-在真机 ADB 实机联调中，针对浅色模式暴露的“四周白斑截断”与“白底白字反差失效”问题，经交互原型与视觉比对确认，对全屏播放器实施工业级分层演进：
+在真机 ADB 实机联调中，针对浅色模式暴露的“四周白斑截断”、“白底白字反差失效”及“亮度暗沉发泥”问题，经交互原型与视觉比对确认，对全屏播放器实施工业级分层演进与通用模型校准：
 1. **分层换肤体系**：主界面（媒体库/歌单/服务器）保持深浅双模自适应与曲目微光联动；全屏播放器（`FullPlayerView`）升格为全天候沉浸舞台（`Immersive Stage Player`）。
 2. **全天候 100% 动态暗调流光**：全屏大背景无论白天黑夜，统一根据在播音轨 100% 动态提取生成深邃暗调流光（Tone 10~14 暗调彩色底 + 封面后置 Vibrant 活力光晕 + 底部 Muted 上扬流光，黑白封面落入纯正石墨灰阶）。
-3. **全天候高对比度纯白字体**：全屏播放器内部字体与播控图标锁定为高亮纯白（`#FFFFFF`），对比度达到 12.8:1，彻底消除白天浅底发虚与看不清问题。
+3. **通用感知色调归一化模型（Perceptual Tonal Normalization）**：杜绝针对单曲编写特化硬编码，发散源保留真实色相并归一化至 Tone 60~72，中间弥散层定标至 Tone 32~45，底部基底色动态沉降至 Tone 8~9（$L=0.085f$），在任意曲目封面下均能输出温润通透的流光质感。
+4. **全天候高对比度纯白字体**：全屏播放器内部字体与播控图标锁定为高亮纯白（`#FFFFFF`），对比度达到 12.8:1，彻底消除白天浅底发虚与看不清问题。
+5. **格式徽章全格式动态换肤**：废除 `if (isHiRes)` 导致普通 FLAC/MP3 降级为死灰色的缺陷，全格式统一由当前曲目的动态主色 `primary` 驱动（半透底舱 + 细边框 + 高亮文字）。
+6. **顶栏轻量去重**：顶栏精简为单行来源展示（`正在播放自 $serverName`），彻底消除与大封面下方歌名、歌手的双重视觉冗余。

@@ -46,6 +46,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -115,6 +117,12 @@ fun MiniPlayer(
     playbackProgress: PlaybackProgress = PlaybackProgress.ZERO,
     onMiniPlayerClick: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
+    isCoverVisible: Boolean = true,
+    onCoverPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    isPlayButtonVisible: Boolean = true,
+    onPlayButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    isQueueButtonVisible: Boolean = true,
+    onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
 ) {
     val currentTrack = sessionState.currentTrack ?: return
     val density = LocalDensity.current
@@ -255,7 +263,15 @@ fun MiniPlayer(
                         modifier =
                             Modifier
                                 .size(MiniPlayerDefaults.CoverSize)
-                                .clip(CircleShape)
+                                .then(
+                                    if (onCoverPositioned != null) {
+                                        Modifier.onGloballyPositioned(onCoverPositioned)
+                                    } else {
+                                        Modifier
+                                    },
+                                ).graphicsLayer {
+                                    alpha = if (isCoverVisible) 1f else 0f
+                                }.clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -307,6 +323,17 @@ fun MiniPlayer(
                                 playbackActions.togglePlayPause()
                             }
                         },
+                        modifier =
+                            Modifier
+                                .then(
+                                    if (onPlayButtonPositioned != null) {
+                                        Modifier.onGloballyPositioned(onPlayButtonPositioned)
+                                    } else {
+                                        Modifier
+                                    },
+                                ).graphicsLayer {
+                                    alpha = if (isPlayButtonVisible) 1f else 0f
+                                },
                     )
 
                     Spacer(modifier = Modifier.width(MiniPlayerDefaults.ButtonSpacing))
@@ -316,7 +343,16 @@ fun MiniPlayer(
                         onClick = onOpenQueue,
                         modifier =
                             Modifier
-                                .size(MiniPlayerDefaults.QueueMusicButtonSize),
+                                .size(MiniPlayerDefaults.QueueMusicButtonSize)
+                                .then(
+                                    if (onQueueButtonPositioned != null) {
+                                        Modifier.onGloballyPositioned(onQueueButtonPositioned)
+                                    } else {
+                                        Modifier
+                                    },
+                                ).graphicsLayer {
+                                    alpha = if (isQueueButtonVisible) 1f else 0f
+                                },
                         colors =
                             IconButtonDefaults.filledTonalIconButtonColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,

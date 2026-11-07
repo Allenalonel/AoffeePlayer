@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -129,6 +131,8 @@ internal fun PlayerVinylArtwork(
     sessionState: PlayerSessionState,
     onArtworkClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isArtworkVisible: Boolean = true,
+    onArtworkPositioned: ((LayoutCoordinates) -> Unit)? = null,
 ) {
     Column(
         modifier =
@@ -139,20 +143,30 @@ internal fun PlayerVinylArtwork(
         verticalArrangement = Arrangement.Center,
     ) {
         // Large Album Artwork Card with 28dp Squircle & Ambient Glow
+        val artworkModifier =
+            Modifier
+                .fillMaxWidth(0.85f)
+                .sizeIn(minWidth = 190.dp, minHeight = 190.dp, maxWidth = 280.dp, maxHeight = 280.dp)
+                .aspectRatio(1f)
+                .then(
+                    if (onArtworkPositioned != null) {
+                        Modifier.onGloballyPositioned(onArtworkPositioned)
+                    } else {
+                        Modifier
+                    },
+                ).graphicsLayer {
+                    alpha = if (isArtworkVisible) 1f else 0f
+                }.shadow(
+                    elevation = if (isArtworkVisible) 24.dp else 0.dp,
+                    shape = FullPlayerDefaults.ArtworkSquircleShape,
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                ).clip(FullPlayerDefaults.ArtworkSquircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable { onArtworkClick() }
+
         Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth(0.85f)
-                    .sizeIn(minWidth = 190.dp, minHeight = 190.dp, maxWidth = 280.dp, maxHeight = 280.dp)
-                    .aspectRatio(1f)
-                    .shadow(
-                        elevation = 24.dp,
-                        shape = FullPlayerDefaults.ArtworkSquircleShape,
-                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                    ).clip(FullPlayerDefaults.ArtworkSquircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { onArtworkClick() },
+            modifier = artworkModifier,
             contentAlignment = Alignment.Center,
         ) {
             CoverThumbnailImage(

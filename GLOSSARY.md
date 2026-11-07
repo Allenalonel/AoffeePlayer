@@ -300,7 +300,7 @@ _Avoid_: File Info Activity, Song Property Window
 _Avoid_: Bottom Player, Small Player, Playback Bar
 
 **Capsule-to-Fullscreen Morphing**:
-MiniPlayer 药丸胶囊与全屏播放器之间统一由单一真实实体（Single Living View）驱动的连续形态蜕变体系。彻底废除割裂的模态弹窗与过渡期假替身组件（Mock Clone），在容器伸展过程中直接承载真实 `FullPlayerView`，避免动画终点的组件偷换导致排版重算抖动与残影；通过统一全局时钟源（Global Expansion Progress）驱动全套空间视差联动：外层胶囊连续拉伸撑满全屏、底栏 NavigationBar 平滑沉降退出（`translateY`）、主视窗内容区向后微缩至 0.94f 营造纵深景深，实现 100% 物理连贯、零声学卡顿与零视觉跳动的旗舰级形态映射，且 100% 免疫多端机型与平板折叠屏碎片化。
+MiniPlayer 药丸胶囊与全屏播放器之间统一由单一真实实体（Single Living View）驱动的连续形态蜕变体系。彻底废除割裂的模态弹窗与过渡期假替身组件（Mock Clone），在容器伸展过程中直接承载真实 `FullPlayerView`，避免动画终点的组件偷换导致排版重算抖动与残影；通过统一全局时钟源（Global Expansion Progress）驱动全套空间视差联动：外层胶囊连续拉伸撑满全屏、底栏 NavigationBar 平滑沉降退出（`translateY`）、主视窗内容区向后微缩至 0.94f 营造纵深景深。核心组件（42dp 圆形封面、40dp 播放键、38dp 队列键）通过动态测量绝对 Rect（`onGloballyPositioned`）在形变期由顶层唯一的 Shared Element 图层执行平滑矩阵插值，底层真实槽位透明占位杜绝双重重影，且封面的 Y 轴位移严格约束在胶囊边界内防止被切，实现 100% 物理连贯、零声学卡顿与零视觉跳动的旗舰级形态映射，且 100% 免疫多端机型与平板折叠屏碎片化。
 _Avoid_: Bottom Sheet Popup, Pop-up Overlay, Disjointed Expansion, Fake Player Resize, Mock Transition Swap, Coordinate Drifting Bug
 
 **Track Row Height Parity**:

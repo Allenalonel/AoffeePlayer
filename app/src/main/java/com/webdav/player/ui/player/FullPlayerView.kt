@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -96,6 +97,12 @@ fun FullPlayerView(
     onDismissUnsupportedRange: () -> Unit = {},
     onAddToPlaylist: (AudioTrack) -> Unit = {},
     artworkColors: ArtworkColors? = null,
+    isArtworkVisible: Boolean = true,
+    onArtworkPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    isPlayButtonVisible: Boolean = true,
+    onPlayButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    isQueueButtonVisible: Boolean = true,
+    onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
 ) {
     var showQueueSheet by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -270,6 +277,10 @@ fun FullPlayerView(
                             onCyclePlaybackMode = { playbackActions.cyclePlaybackMode() },
                             onOpenQueue = { showQueueSheet = true },
                             modifier = modifier,
+                            isPlayButtonVisible = isPlayButtonVisible,
+                            onPlayButtonPositioned = onPlayButtonPositioned,
+                            isQueueButtonVisible = isQueueButtonVisible,
+                            onQueueButtonPositioned = onQueueButtonPositioned,
                         )
                     }
 
@@ -299,6 +310,8 @@ fun FullPlayerView(
                                         sessionState = sessionState,
                                         onArtworkClick = {},
                                         modifier = downwardSwipeModifier,
+                                        isArtworkVisible = isArtworkVisible,
+                                        onArtworkPositioned = onArtworkPositioned,
                                     )
                                 }
 
@@ -348,6 +361,8 @@ fun FullPlayerView(
                                                 }
                                             },
                                             modifier = downwardSwipeModifier,
+                                            isArtworkVisible = isArtworkVisible,
+                                            onArtworkPositioned = onArtworkPositioned,
                                         )
                                     }
 

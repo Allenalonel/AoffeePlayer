@@ -54,7 +54,12 @@ Accepted
   - **全局时钟源驱动多层空间视差联动（Parallax Space Orchestration）**：
     1. **底栏沉降退场**：底栏 `PrimaryNavigationBar` 随展开进度沿 Y 轴平滑沉降退出（`translationY = 80.dp * progress`, `alpha = 1f - progress * 1.4f`），收起时从容弹回；
     2. **主视窗景深微缩**：媒体库/歌单主界面随展开轻微后退微缩至 `0.94f`（`scale = 1f - 0.06f * progress`）并优雅变暗至 `0.70f`，营造出强烈的“大播放器浮起、主应用退入深层”的电影级空间纵深感；
-    3. **单一实体架构（Single Living View）**：容器采用 Material 3 Emphasized Decelerate 减速曲线 `CubicBezierEasing(0.20f, 0.0f, 0.0f, 1.0f)`，彻底移除虚拟替身（Mock Clone）避免双重重影与坐标误差引发的二次跳动，100% 自适应多端机型与平板折叠屏。
+    3. **单一实体架构（Single Living View）**：容器采用 Material 3 Emphasized Decelerate 减速曲线 `CubicBezierEasing(0.20f, 0.0f, 0.0f, 1.0f)`；
+    4. **动态测量驱动的 1:1 连续形态蜕变（Measured Continuous Shared Element Morphing）**：
+       - **动态物理锚点捕获**：通过 `Modifier.onGloballyPositioned` 实时测量 MiniPlayer 与 FullPlayerView 内部封面、68dp 播放大按键与 48dp 队列键相对于容器的绝对 Rect，彻底告别写死绝对坐标导致的屏幕碎片化与终点跳动；
+       - **形变期双向纯净占位（Zero-Ghosting Invariant）**：在形变阶段（$0.005f < p < 0.995f$），MiniPlayer 和 FullPlayerView 内部真实对应组件的 `alpha` 设为 `0f`（物理保留尺寸与测量锚点），由顶层唯一的 Shared Element 图层绘制封面与按键，物理级消灭双重重影（Ghosting）与直角底板脱落；
+       - **容器相对安全位移（Capsule Boundary Invariant）**：封面的 Y 轴插值严格锚定胶囊容器顶端，通过 `maxOf(rawCenterY, capsuleTop + halfHeight + 6dp)` 确保在任何屏幕与伸展进度下，封面始终优雅处于胶囊内部，彻底根除被容器顶部切割削头的视觉畸变；
+       - **终点零缝隙交接（Seamless Convergence）**：当 $p \ge 0.995f$ 时，Shared Layer 隐去，FullPlayerView 真实组件在微米级重合的同一物理坐标完美接管，实现绝对零跳跃、零抽搐。
   - `CoverThumbnailImage` 命中内存缓存时采用硬绘制，消除多余的 250ms 二次渐变拖尾；
   - `LyricsView` 内边距强制加上 `coerceAtLeast(0.dp)` 兜底，杜绝容器低高度时负数 padding 崩溃；
   - 双按钮连续拓扑映射：左侧 40dp 播放/暂停键（Primary）滑向中央升格为 68dp Squircle 方圆大按键；右侧 38dp 队列键（Tonal）滑向右侧槽位。

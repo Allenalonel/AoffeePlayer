@@ -1738,6 +1738,11 @@ class DirectoryBrowserViewModelTest {
             advanceUntilIdle()
 
             assertEquals("rock", fakeLibrarySearchRepository.lastSearchQuery)
+            assertEquals("Default search filters by active serverId", sampleServer.id, fakeLibrarySearchRepository.lastSearchServerId)
+
+            // Toggling search scope switches to global search
+            viewModel.onToggleSearchScope()
+            advanceUntilIdle()
             assertNull("Global search passes null serverId", fakeLibrarySearchRepository.lastSearchServerId)
 
             val matchedDir = RemoteDirectory(path = "/Music/Rock/", name = "Rock")

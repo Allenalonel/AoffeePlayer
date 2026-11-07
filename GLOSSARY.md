@@ -256,8 +256,12 @@ _Avoid_: Rigid Tap, Static Indicator Jump, Instant Click
 
 
 **Global Dynamic Artwork Palette**:
-全天候全域音轨动态取色系统。在音频回放流转时，由 `ArtworkColorExtractor` 基于 Google 官方 `androidx.palette` 提取多采样色相 Swatch，严格遵循 Material 3 Expressive 的 HCT Tonal Palette 规范，在深色与浅色模式下自适应推导整机大背景、卡片表面容器、底栏药丸指示舱与在播高亮，伴随 450ms 流体呼吸过渡，实现应用全域 100% 随当前在播音轨真实换肤。
+全天候全域音轨动态取色系统。在音频回放流转时，由 `ArtworkColorExtractor` 基于 Google 官方 `androidx.palette` 提取多采样色相 Swatch，严格遵循 Material 3 Expressive 的 HCT Tonal Palette 规范，在深色与浅色模式下自适应推导整机大背景、卡片表面容器、底栏药丸指示舱与在播高亮，伴随 450ms 流体呼吸过渡，实现应用全域 100% 随当前在播音轨真实换肤。在全屏大播放器态升格为 `Immersive Stage Player` 沉浸流光舞台。
 _Avoid_: Static Theme, Dark Only Ambient, Wallpaper Color Only, Hardcoded Brand Fallback
+
+**Immersive Stage Player**:
+沉浸舞台式全屏播放器。针对真机在白天浅色模式下若机械套用浅底会导致“四周白斑截断”与“白底白字反差失效（对比度 < 1.2:1）”的物理缺陷，确立分层法则：主界面（媒体库/歌单/服务器）保持深浅双模自适应，而全屏播放器（FullPlayerView）升格为全天候独立音乐舞台。无论系统处于白天浅色还是夜间深色，全屏大背景均统一展现为由当前在播曲目 100% 动态推导的深邃暗调彩色流体舞台（Tone 10~14 暗调流光 + 封面 Vibrant 活力色光晕 + 封面 Muted 辅色上扬流光，黑白封面落入石墨灰阶），全屏文字和控制按键锁定为高对比度纯白（对比度 12.8:1），彻底终结浅底白字发虚看不清的问题。
+_Avoid_: Shallow Player White Bleed, White-on-White Contrast Loss, Fixed Dark Player, Non-Dynamic Stage
 
 **Track-Driven Zero-Preset Principle**:
 音轨驱动零预设原则。全域动态换肤彻底废除任何硬编码的固定品牌底色（如暗紫 #141022 / #5544B3），当前加载曲目即为界面色彩的唯一驱动源；应用冷启动与运行期严格以在播音轨封面色系为准，无封面时落入中性灰阶，杜绝任何主观预设偏色。

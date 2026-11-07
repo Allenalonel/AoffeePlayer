@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -114,6 +115,7 @@ fun MiniPlayer(
     playbackProgress: PlaybackProgress = PlaybackProgress.ZERO,
     onMiniPlayerClick: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
+    isMorphing: Boolean = false,
 ) {
     val currentTrack = sessionState.currentTrack ?: return
     val density = LocalDensity.current
@@ -249,26 +251,30 @@ fun MiniPlayer(
                             .padding(start = 10.dp, end = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Circular Album Art Disc (CircleShape matching capsule geometry)
-                    Box(
-                        modifier =
-                            Modifier
-                                .size(MiniPlayerDefaults.CoverSize)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CoverThumbnailImage(
-                            thumbnailPath = currentTrack.coverThumbnailPath,
-                            contentDescription = "封面",
-                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    if (isMorphing) {
+                        Spacer(modifier = Modifier.size(MiniPlayerDefaults.CoverSize))
+                    } else {
+                        // Circular Album Art Disc (CircleShape matching capsule geometry)
+                        Box(
+                            modifier =
+                                Modifier
+                                    .size(MiniPlayerDefaults.CoverSize)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Icon(
-                                imageVector = AppIcons.Audiotrack,
-                                contentDescription = "音轨",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(22.dp),
-                            )
+                            CoverThumbnailImage(
+                                thumbnailPath = currentTrack.coverThumbnailPath,
+                                contentDescription = "封面",
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                            ) {
+                                Icon(
+                                    imageVector = AppIcons.Audiotrack,
+                                    contentDescription = "音轨",
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
                         }
                     }
 
@@ -297,16 +303,20 @@ fun MiniPlayer(
                     Spacer(modifier = Modifier.width(MiniPlayerDefaults.ButtonSpacing))
 
                     // Play / Pause / Buffering Toggle Button
-                    PlayPauseToggleButton(
-                        sessionState = sessionState,
-                        onTogglePlayPause = {
-                            if (sessionState.isSuspendedRetry) {
-                                playbackActions.retryPlayback()
-                            } else {
-                                playbackActions.togglePlayPause()
-                            }
-                        },
-                    )
+                    if (isMorphing) {
+                        Spacer(modifier = Modifier.size(MiniPlayerDefaults.PlayPauseButtonSize))
+                    } else {
+                        PlayPauseToggleButton(
+                            sessionState = sessionState,
+                            onTogglePlayPause = {
+                                if (sessionState.isSuspendedRetry) {
+                                    playbackActions.retryPlayback()
+                                } else {
+                                    playbackActions.togglePlayPause()
+                                }
+                            },
+                        )
+                    }
 
                     Spacer(modifier = Modifier.width(MiniPlayerDefaults.ButtonSpacing))
 

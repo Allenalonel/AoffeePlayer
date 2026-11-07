@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -124,6 +125,7 @@ internal fun PlayerPlaybackControls(
     onCyclePlaybackMode: () -> Unit,
     onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
+    isMorphing: Boolean = false,
 ) {
     Row(
         modifier =
@@ -160,63 +162,67 @@ internal fun PlayerPlaybackControls(
             )
         }
 
-        // Expressive Prominent Play / Pause / Buffering Toggle Button: 68dp Squircle (26dp rounded corner)
-        FilledIconButton(
-            onClick = {
-                if (sessionState.isSuspendedRetry) onRetryPlayback() else onTogglePlayPause()
-            },
-            modifier =
-                Modifier
-                    .size(FullPlayerDefaults.PlayButtonSize)
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = FullPlayerDefaults.PlayButtonSquircleShape,
-                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+        // Expressive Prominent Play / Pause Button or Invisible Placeholder during Morphing (Zero Ghosting!)
+        if (isMorphing) {
+            Spacer(modifier = Modifier.size(FullPlayerDefaults.PlayButtonSize))
+        } else {
+            FilledIconButton(
+                onClick = {
+                    if (sessionState.isSuspendedRetry) onRetryPlayback() else onTogglePlayPause()
+                },
+                modifier =
+                    Modifier
+                        .size(FullPlayerDefaults.PlayButtonSize)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = FullPlayerDefaults.PlayButtonSquircleShape,
+                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                        ),
+                shape = FullPlayerDefaults.PlayButtonSquircleShape,
+                colors =
+                    IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                     ),
-            shape = FullPlayerDefaults.PlayButtonSquircleShape,
-            colors =
-                IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-        ) {
-            AnimatedContent(
-                targetState = sessionState.playbackState,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "FullPlayerPlayPause",
-            ) { state ->
-                when (state) {
-                    is PlaybackState.Buffering -> {
-                        if (sessionState.isSuspendedRetry) {
+            ) {
+                AnimatedContent(
+                    targetState = sessionState.playbackState,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "FullPlayerPlayPause",
+                ) { state ->
+                    when (state) {
+                        is PlaybackState.Buffering -> {
+                            if (sessionState.isSuspendedRetry) {
+                                Icon(
+                                    imageVector = AppIcons.Refresh,
+                                    contentDescription = "重试",
+                                    modifier = Modifier.size(32.dp),
+                                )
+                            } else {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(32.dp),
+                                    strokeWidth = 3.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                            }
+                        }
+
+                        is PlaybackState.Playing -> {
                             Icon(
-                                imageVector = AppIcons.Refresh,
-                                contentDescription = "重试",
+                                imageVector = AppIcons.Pause,
+                                contentDescription = "暂停",
                                 modifier = Modifier.size(32.dp),
-                            )
-                        } else {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(32.dp),
-                                strokeWidth = 3.dp,
-                                color = MaterialTheme.colorScheme.onPrimary,
                             )
                         }
-                    }
 
-                    is PlaybackState.Playing -> {
-                        Icon(
-                            imageVector = AppIcons.Pause,
-                            contentDescription = "暂停",
-                            modifier = Modifier.size(32.dp),
-                        )
-                    }
-
-                    else -> {
-                        Icon(
-                            imageVector = AppIcons.PlayArrow,
-                            contentDescription = "播放",
-                            modifier = Modifier.size(32.dp),
-                        )
+                        else -> {
+                            Icon(
+                                imageVector = AppIcons.PlayArrow,
+                                contentDescription = "播放",
+                                modifier = Modifier.size(32.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -276,6 +282,7 @@ internal fun PlayerTransportControls(
     onCyclePlaybackMode: () -> Unit,
     onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
+    isMorphing: Boolean = false,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         PlayerProgressSlider(
@@ -297,6 +304,7 @@ internal fun PlayerTransportControls(
             onSkipToPrevious = onSkipToPrevious,
             onCyclePlaybackMode = onCyclePlaybackMode,
             onOpenQueue = onOpenQueue,
+            isMorphing = isMorphing,
         )
     }
 }

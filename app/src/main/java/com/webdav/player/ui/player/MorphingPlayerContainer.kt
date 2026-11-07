@@ -260,6 +260,8 @@ fun MorphingPlayerContainer(
                 }
             }
 
+        val isMorphing = expansionProgress > 0.001f && expansionProgress < 0.98f
+
         Box(
             modifier =
                 Modifier
@@ -333,6 +335,7 @@ fun MorphingPlayerContainer(
                         onDismissUnsupportedRange = onDismissUnsupportedRange,
                         onAddToPlaylist = onAddToPlaylist,
                         artworkColors = artworkColors,
+                        isMorphing = isMorphing,
                     )
                 }
             }
@@ -369,6 +372,7 @@ fun MorphingPlayerContainer(
                         onMiniPlayerClick = onExpand,
                         onOpenQueue = onOpenQueue,
                         modifier = Modifier.fillMaxWidth(),
+                        isMorphing = isMorphing,
                     )
                 }
             }
@@ -376,7 +380,7 @@ fun MorphingPlayerContainer(
             // 3. Shared Continuous Morphing Elements (Active during transition 0f < p < 1f)
             if (expansionProgress > 0.001f && expansionProgress < 0.999f) {
                 val p = expansionProgress
-                val sharedAlpha = if (p < 0.85f) 1f else ((1f - p) / 0.15f).coerceIn(0f, 1f)
+                val sharedAlpha = if (p < 0.92f) 1f else ((1f - p) / 0.08f).coerceIn(0f, 1f)
                 val hMargin = MorphingPlayerMath.containerHorizontalMargin(p)
                 val bMargin = MorphingPlayerMath.containerBottomMargin(collapsedBottomPadding, p)
 
@@ -389,12 +393,18 @@ fun MorphingPlayerContainer(
                 val currentCornerRadius = lerp(MiniPlayerDefaults.CoverSize / 2, MorphingPlayerDefaults.FullPlayerArtworkRadius, p)
 
                 val miniArtLeft = hMargin + 10.dp
-                val miniArtTop = screenHeight - bMargin - MiniPlayerDefaults.CapsuleHeight + (MiniPlayerDefaults.CapsuleHeight - MiniPlayerDefaults.CoverSize) / 2
+                val miniArtTop =
+                    screenHeight - bMargin - MiniPlayerDefaults.CapsuleHeight +
+                        (MiniPlayerDefaults.CapsuleHeight - MiniPlayerDefaults.CoverSize) / 2
                 val fullArtLeft = (screenWidth - fullArtworkSize) / 2
 
                 val topBarHeight = 56.dp
                 val bottomControlsHeight = 160.dp
-                val availableCenterHeight = (screenHeight - statusBarPadding - topBarHeight - bottomControlsHeight - navBarPadding).coerceAtLeast(fullArtworkSize)
+                val availableCenterHeight =
+                    (screenHeight - statusBarPadding - topBarHeight - bottomControlsHeight - navBarPadding)
+                        .coerceAtLeast(
+                            fullArtworkSize,
+                        )
                 val fullArtTop = statusBarPadding + topBarHeight + (availableCenterHeight - fullArtworkSize) / 2
 
                 val currentArtLeft = lerp(miniArtLeft, fullArtLeft, p)

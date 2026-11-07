@@ -63,7 +63,9 @@ import com.webdav.player.ui.common.CoverThumbnailImage
 import com.webdav.player.ui.motion.isReduceMotionEnabled
 import com.webdav.player.ui.player.components.rememberArtworkBackgroundBrush
 import com.webdav.player.ui.theme.AppIcons
+import com.webdav.player.ui.theme.ExpressiveDarkColorScheme
 import kotlin.math.roundToInt
+import androidx.compose.ui.graphics.lerp as lerpColor
 
 /**
  * Default dimension tokens and transition thresholds for [MorphingPlayerContainer].
@@ -486,6 +488,20 @@ fun MorphingPlayerContainer(
                 val startQueue = miniQueueRect ?: fallbackMiniQueue
                 val endQueue = fullQueueRect ?: fallbackFullQueue
 
+                // Color Morphing: Fluid interpolation between ambient app theme and all-weather dark stage
+                val currentScheme = MaterialTheme.colorScheme
+                val stageScheme = artworkColors?.colorScheme(isDark = true) ?: ExpressiveDarkColorScheme
+
+                val curCoverBgColor = lerpColor(currentScheme.surfaceVariant, stageScheme.surfaceVariant, p)
+                val curCoverIconColor =
+                    lerpColor(
+                        currentScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        stageScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        p,
+                    )
+                val curPlayContainerColor = lerpColor(currentScheme.primary, stageScheme.primary, p)
+                val curPlayContentColor = lerpColor(currentScheme.onPrimary, stageScheme.onPrimary, p)
+
                 // Interpolated Cover Geometry (Guaranteed inside expanding capsule)
                 val curCoverCenterX = lerp(startCover.center.x, endCover.center.x, p)
                 val rawCoverCenterY = lerp(startCover.center.y, endCover.center.y, p)
@@ -511,7 +527,7 @@ fun MorphingPlayerContainer(
                                 spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
                                 ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                             ).clip(RoundedCornerShape(curCoverRadiusPx))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                            .background(curCoverBgColor),
                     contentAlignment = Alignment.Center,
                 ) {
                     CoverThumbnailImage(
@@ -523,7 +539,7 @@ fun MorphingPlayerContainer(
                             imageVector = AppIcons.Audiotrack,
                             contentDescription = "专辑封面",
                             modifier = Modifier.size(with(density) { lerp(22.dp, 100.dp, p) }),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            tint = curCoverIconColor,
                         )
                     }
                 }
@@ -551,7 +567,7 @@ fun MorphingPlayerContainer(
                                 spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
                                 ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                             ).clip(RoundedCornerShape(curPlayRadiusPx))
-                            .background(MaterialTheme.colorScheme.primary)
+                            .background(curPlayContainerColor)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -577,14 +593,14 @@ fun MorphingPlayerContainer(
                                     Icon(
                                         imageVector = AppIcons.Refresh,
                                         contentDescription = "重试",
-                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        tint = curPlayContentColor,
                                         modifier = Modifier.size(iconSize),
                                     )
                                 } else {
                                     CircularProgressIndicator(
                                         modifier = Modifier.size(iconSize),
                                         strokeWidth = with(density) { lerp(2.dp, 3.dp, p) },
-                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        color = curPlayContentColor,
                                     )
                                 }
                             }
@@ -593,7 +609,7 @@ fun MorphingPlayerContainer(
                                 Icon(
                                     imageVector = AppIcons.Pause,
                                     contentDescription = "暂停",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    tint = curPlayContentColor,
                                     modifier = Modifier.size(iconSize),
                                 )
                             }
@@ -602,7 +618,7 @@ fun MorphingPlayerContainer(
                                 Icon(
                                     imageVector = AppIcons.PlayArrow,
                                     contentDescription = "播放",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    tint = curPlayContentColor,
                                     modifier = Modifier.size(iconSize),
                                 )
                             }
@@ -615,6 +631,12 @@ fun MorphingPlayerContainer(
                 val curQueueCenterY = lerp(startQueue.center.y, endQueue.center.y, p)
                 val curQueueWidth = lerp(startQueue.width, endQueue.width, p)
                 val curQueueRadiusPx = lerp(curQueueWidth / 2f, with(density) { 16.dp.toPx() }, p)
+                val curQueueIconColor =
+                    lerpColor(
+                        if (p > 0.35f) currentScheme.onSurfaceVariant else currentScheme.onSurface,
+                        stageScheme.onSurfaceVariant,
+                        p,
+                    )
 
                 // Continuous Morphing Queue Button
                 Box(
@@ -642,7 +664,7 @@ fun MorphingPlayerContainer(
                     Icon(
                         imageVector = AppIcons.QueueMusic,
                         contentDescription = "播放队列",
-                        tint = if (p > 0.35f) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                        tint = curQueueIconColor,
                         modifier = Modifier.size(iconSize),
                     )
                 }

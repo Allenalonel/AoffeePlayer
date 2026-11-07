@@ -272,7 +272,7 @@ fun MiniPlayer(
                                 ).graphicsLayer {
                                     alpha = if (isCoverVisible) 1f else 0f
                                 }.clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer),
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center,
                     ) {
                         CoverThumbnailImage(
@@ -283,7 +283,7 @@ fun MiniPlayer(
                             Icon(
                                 imageVector = AppIcons.Audiotrack,
                                 contentDescription = "音轨",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.size(22.dp),
                             )
                         }

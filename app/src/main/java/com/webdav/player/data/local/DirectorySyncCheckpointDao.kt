@@ -12,6 +12,9 @@ interface DirectorySyncCheckpointDao {
     suspend fun insertOrUpdate(checkpoint: DirectorySyncCheckpointEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCheckpoint(checkpoint: DirectorySyncCheckpointEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(checkpoints: List<DirectorySyncCheckpointEntity>)
 
     @Query("SELECT * FROM directory_sync_checkpoint WHERE serverId = :serverId AND path = :path LIMIT 1")

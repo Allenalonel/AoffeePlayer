@@ -12,6 +12,9 @@ interface MediaTrackIndexDao {
     suspend fun insertAll(tracks: List<MediaTrackIndexEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertTracks(tracks: List<MediaTrackIndexEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdate(track: MediaTrackIndexEntity)
 
     @Query("DELETE FROM media_track_index WHERE serverId = :serverId")
@@ -82,6 +85,18 @@ interface MediaTrackIndexDao {
         serverId: Long,
         remotePath: String,
     ): MediaTrackIndexEntity?
+
+    @Query("SELECT * FROM media_track_index WHERE serverId = :serverId AND parentPath = :parentPath")
+    suspend fun getTracksByParentPath(
+        serverId: Long,
+        parentPath: String,
+    ): List<MediaTrackIndexEntity>
+
+    @Query("DELETE FROM media_track_index WHERE serverId = :serverId AND remotePath IN (:remotePaths)")
+    suspend fun deleteByServerAndPaths(
+        serverId: Long,
+        remotePaths: List<String>,
+    )
 
     @Query("SELECT COUNT(*) FROM media_track_index WHERE serverId = :serverId")
     suspend fun countByServerId(serverId: Long): Int

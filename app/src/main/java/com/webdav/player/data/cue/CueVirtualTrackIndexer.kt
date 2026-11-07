@@ -10,11 +10,11 @@ import com.webdav.player.domain.model.WebDavServer
  * Resolves CUE sheets into virtual track entries in [MediaTrackIndexEntity]
  * so that single-file rips and cues are directly indexed and searchable.
  */
-class CueVirtualTrackIndexer(
+open class CueVirtualTrackIndexer(
     private val cueSheetResolver: CueSheetResolver,
     private val mediaTrackIndexDao: MediaTrackIndexDao,
 ) {
-    suspend fun indexDirectoryCues(
+    open suspend fun indexDirectoryCues(
         server: WebDavServer,
         directory: RemoteDirectory,
         parentDurationsByPath: Map<String, Long> = emptyMap(),

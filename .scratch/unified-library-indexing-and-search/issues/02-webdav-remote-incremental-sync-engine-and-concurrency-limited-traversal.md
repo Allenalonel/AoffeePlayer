@@ -5,11 +5,11 @@ An incremental, rate-limited background synchronization provider for remote WebD
 
 **Blocked by:** 01: Core Media Index Schema & Local SAF Fast Indexing & Search
 
-**Status:** claimed
+**Status:** ready-for-review
 
-- [ ] WebDAV directory synchronization crawls remote directories using BFS traversal guarded by a strict concurrency limiter (max 3 concurrent requests).
-- [ ] Known system and noise directories (e.g., `.@eaDir`, `#recycle`, `.Trash-*`, `LOST.DIR`, `.git`) are automatically excluded from indexing.
-- [ ] Incremental rescan compares server directory modification timestamps and ETags against `directory_sync_checkpoint`, skipping traversal of unchanged subtrees.
-- [ ] Discovered remote audio tracks are batched and upserted into `media_track_index` under the server's unique ID.
-- [ ] Transient network drops during sync do not crash the engine or erase previously indexed tracks.
-- [ ] End-to-end repository tests verify recursive traversal, concurrency safety, incremental skipping of unchanged folders, and search retrieval for remote tracks.
+- [x] WebDAV directory synchronization crawls remote directories using BFS traversal guarded by a strict concurrency limiter (max 3 concurrent requests).
+- [x] Known system and noise directories (e.g., `.@eaDir`, `#recycle`, `.Trash-*`, `LOST.DIR`, `.git`) are automatically excluded from indexing.
+- [x] Incremental rescan compares server directory modification timestamps and ETags against `directory_sync_checkpoint`, skipping traversal of unchanged subtrees.
+- [x] Discovered remote audio tracks are batched and upserted into `media_track_index` under the server's unique ID.
+- [x] Transient network drops during sync do not crash the engine or erase previously indexed tracks.
+- [x] End-to-end repository tests verify recursive traversal, concurrency safety, incremental skipping of unchanged folders, and search retrieval for remote tracks.

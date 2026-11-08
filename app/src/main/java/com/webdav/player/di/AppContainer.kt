@@ -4,7 +4,6 @@ import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.remote.OkHttpWebDavClient
 import com.webdav.player.data.repository.LocalStorageIndexScanner
 import com.webdav.player.data.repository.WebDavSyncScanner
-import com.webdav.player.domain.cue.CueSheetResolver
 import com.webdav.player.domain.network.NetworkConnectivityObserver
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.DirectoryRepository
@@ -25,7 +24,6 @@ interface AppContainer {
     val librarySearchRepository: LibrarySearchRepository
     val playlistRepository: PlaylistRepository
     val trackMetadataRepository: TrackMetadataRepository
-    val cueSheetResolver: CueSheetResolver
     val playerEngine: AudioPlayerEngine
     val musicPlayerAppSession: MusicPlayerAppSession
     val sessionStore: PlaybackSessionStore

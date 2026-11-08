@@ -40,9 +40,6 @@ class DataStorePlaybackSessionStore(
         private val KEY_POSITION_MS = longPreferencesKey("position_ms")
         private val KEY_PLAYBACK_MODE = stringPreferencesKey("playback_mode")
         private val KEY_SERVER_LAST_DIRS_JSON = stringPreferencesKey("server_last_dirs_json")
-        private val KEY_CUE_PATH = stringPreferencesKey("cue_path")
-        private val KEY_VIRTUAL_TRACK_NUMBER = intPreferencesKey("virtual_track_number")
-        private val KEY_VIRTUAL_POSITION_MS = longPreferencesKey("virtual_position_ms")
         private val KEY_CLEAN_EXIT = booleanPreferencesKey("clean_exit")
         private val KEY_QUEUE_ORIGIN = stringPreferencesKey("queue_origin")
         private val KEY_ORIGINAL_TRACKS_JSON = stringPreferencesKey("original_tracks_json")
@@ -66,49 +63,19 @@ class DataStorePlaybackSessionStore(
             prefs[KEY_POSITION_MS] = sessionData.positionMs
             prefs[KEY_PLAYBACK_MODE] = sessionData.playbackMode.name
             prefs[KEY_SERVER_LAST_DIRS_JSON] = serverLastDirsJson
-            if (sessionData.cuePath != null) {
-                prefs[KEY_CUE_PATH] = sessionData.cuePath
-            } else {
-                prefs.remove(KEY_CUE_PATH)
-            }
-            if (sessionData.virtualTrackNumber != null) {
-                prefs[KEY_VIRTUAL_TRACK_NUMBER] = sessionData.virtualTrackNumber
-            } else {
-                prefs.remove(KEY_VIRTUAL_TRACK_NUMBER)
-            }
-            if (sessionData.virtualPositionMs != null) {
-                prefs[KEY_VIRTUAL_POSITION_MS] = sessionData.virtualPositionMs
-            } else {
-                prefs.remove(KEY_VIRTUAL_POSITION_MS)
-            }
             prefs[KEY_CLEAN_EXIT] = sessionData.cleanExit
             prefs[KEY_QUEUE_ORIGIN] = sessionData.queueOrigin.name
         }
     }
 
-    override suspend fun savePosition(positionMs: Long) {
-        savePosition(positionMs, null)
-    }
-
     override suspend fun savePosition(
         positionMs: Long,
-        virtualPositionMs: Long?,
-    ) {
-        savePosition(positionMs, virtualPositionMs, isCleanExit = false)
-    }
-
-    override suspend fun savePosition(
-        positionMs: Long,
-        virtualPositionMs: Long?,
         isCleanExit: Boolean,
     ) {
         val clamped = positionMs.coerceAtLeast(0L)
         dataStore.edit { prefs ->
             testFileProvider?.invoke()?.let { file -> if (file.exists()) file.delete() }
             prefs[KEY_POSITION_MS] = clamped
-            if (virtualPositionMs != null) {
-                prefs[KEY_VIRTUAL_POSITION_MS] = virtualPositionMs.coerceAtLeast(0L)
-            }
             prefs[KEY_CLEAN_EXIT] = isCleanExit
         }
     }
@@ -146,9 +113,6 @@ class DataStorePlaybackSessionStore(
                 }
             } ?: PlaybackMode.LIST_LOOP
         val serverLastDirs = deserializeServerLastDirs(prefs[KEY_SERVER_LAST_DIRS_JSON])
-        val cuePath = prefs[KEY_CUE_PATH]
-        val virtualTrackNumber = prefs[KEY_VIRTUAL_TRACK_NUMBER]
-        val virtualPositionMs = prefs[KEY_VIRTUAL_POSITION_MS]
         val cleanExit = prefs[KEY_CLEAN_EXIT] ?: true
         val queueOriginStr = prefs[KEY_QUEUE_ORIGIN]
         val queueOrigin =
@@ -173,9 +137,6 @@ class DataStorePlaybackSessionStore(
             positionMs = positionMs,
             playbackMode = mode,
             serverLastDirectories = serverLastDirs,
-            cuePath = cuePath,
-            virtualTrackNumber = virtualTrackNumber,
-            virtualPositionMs = virtualPositionMs,
             cleanExit = cleanExit,
             queueOrigin = queueOrigin,
             originalTracks = originalTracks,
@@ -197,9 +158,6 @@ class DataStorePlaybackSessionStore(
         trackIndex: Int,
         posMs: Long,
         mode: String,
-        cuePath: String? = null,
-        virtualTrackNumber: Int? = null,
-        virtualPositionMs: Long? = null,
     ) {
         dataStore.edit { prefs ->
             testFileProvider?.invoke()?.let { file -> if (file.exists()) file.delete() }
@@ -209,9 +167,6 @@ class DataStorePlaybackSessionStore(
             prefs[KEY_CURRENT_TRACK_INDEX] = trackIndex
             prefs[KEY_POSITION_MS] = posMs
             prefs[KEY_PLAYBACK_MODE] = mode
-            if (cuePath != null) prefs[KEY_CUE_PATH] = cuePath else prefs.remove(KEY_CUE_PATH)
-            if (virtualTrackNumber != null) prefs[KEY_VIRTUAL_TRACK_NUMBER] = virtualTrackNumber else prefs.remove(KEY_VIRTUAL_TRACK_NUMBER)
-            if (virtualPositionMs != null) prefs[KEY_VIRTUAL_POSITION_MS] = virtualPositionMs else prefs.remove(KEY_VIRTUAL_POSITION_MS)
         }
     }
 

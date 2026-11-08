@@ -84,15 +84,13 @@ class FakePlaylistRepository : PlaylistRepository {
     override suspend fun addTrackToPlaylist(
         playlistId: Long,
         track: AudioTrack,
-        cuePath: String?,
     ): Long {
         val list = tracksMap.getOrPut(playlistId) { mutableListOf() }
-        val vId = if (track.isVirtualTrack) track.id else null
-        if (list.any { it.serverId == track.serverId && it.remotePath == track.remotePath && it.virtualTrackId == vId }) {
+        if (list.any { it.serverId == track.serverId && it.remotePath == track.remotePath }) {
             return -1L
         }
         val id = nextTrackId++
-        val entry = PlaylistTrackEntry.fromAudioTrack(playlistId, track, list.size, cuePath).copy(id = id)
+        val entry = PlaylistTrackEntry.fromAudioTrack(playlistId, track, list.size).copy(id = id)
         list.add(entry)
         playlistsFlow.update { current ->
             current.map { if (it.id == playlistId) it.copy(trackCount = list.size, updatedAtMs = 3000L) else it }

@@ -23,7 +23,6 @@ data class MediaTrackIndexEntity(
     val fileSize: Long,
     val lastModified: Long,
     val format: String,
-    val isCue: Boolean,
     val parentPath: String,
     val parsedTitle: String,
     val parsedArtist: String?,
@@ -31,28 +30,15 @@ data class MediaTrackIndexEntity(
     fun toAudioTrack(
         metadata: TrackMetadataEntity? = null,
         albumFallback: String? = null,
-        cuePath: String? = null,
     ): AudioTrack {
         val audioFormat =
             AudioFormat.fromExtension(format)
                 ?: AudioFormat.fromFileName(fileName)
                 ?: AudioFormat.MP3
-        val physicalRemotePath =
-            if (isCue && remotePath.contains("#cue_")) {
-                remotePath.substringBefore("#cue_")
-            } else {
-                remotePath
-            }
-        val resolvedCuePath =
-            cuePath ?: if (isCue && remotePath.contains("#cue_")) {
-                physicalRemotePath.substringBeforeLast('.') + ".cue"
-            } else {
-                null
-            }
         return AudioTrack(
             id = "$serverId:$remotePath",
             serverId = serverId,
-            remotePath = physicalRemotePath,
+            remotePath = remotePath,
             title = metadata?.title?.takeIf { it.isNotBlank() } ?: parsedTitle.ifBlank { fileName },
             artist = metadata?.artist?.takeIf { it.isNotBlank() } ?: parsedArtist,
             album = metadata?.album?.takeIf { it.isNotBlank() } ?: albumFallback,
@@ -60,7 +46,6 @@ data class MediaTrackIndexEntity(
             size = fileSize,
             format = audioFormat,
             coverThumbnailPath = metadata?.coverThumbnailPath,
-            cuePath = resolvedCuePath,
         )
     }
 }

@@ -177,105 +177,20 @@ data class PlaybackQueue(
         }
     }
 
-    fun inlineVirtualTracks(
-        parentAudioPath: String,
-        virtualTracks: List<VirtualTrack>,
-    ): PlaybackQueue {
-        if (virtualTracks.isEmpty() || tracks.isEmpty()) return this
-        val targetIndex =
-            tracks.indexOfFirst {
-                it.remotePath == parentAudioPath || it.id.substringBefore("#cue_") == parentAudioPath
-            }
-        if (targetIndex < 0) return this
-
-        val parentTrack = tracks[targetIndex]
-        val inlinedTracks = virtualTracks.map { it.toAudioTrack(parentTrack) }
-        val newTracks =
-            buildList {
-                addAll(tracks.subList(0, targetIndex))
-                addAll(inlinedTracks)
-                if (targetIndex + 1 < tracks.size) {
-                    addAll(tracks.subList(targetIndex + 1, tracks.size))
-                }
-            }
-
-        val addedCount = inlinedTracks.size - 1
-        val newIndex =
-            when {
-                currentIndex < targetIndex -> currentIndex
-                currentIndex == targetIndex -> targetIndex
-                else -> currentIndex + addedCount
-            }
-
-        val newOriginal =
-            if (originalTracks.isNotEmpty()) {
-                val origTarget =
-                    originalTracks.indexOfFirst {
-                        it.remotePath == parentAudioPath || it.id.substringBefore("#cue_") == parentAudioPath
-                    }
-                if (origTarget >= 0) {
-                    val origParent = originalTracks[origTarget]
-                    val origInlined = virtualTracks.map { it.toAudioTrack(origParent) }
-                    buildList {
-                        addAll(originalTracks.subList(0, origTarget))
-                        addAll(origInlined)
-                        if (origTarget + 1 < originalTracks.size) {
-                            addAll(originalTracks.subList(origTarget + 1, originalTracks.size))
-                        }
-                    }
-                } else {
-                    originalTracks
-                }
-            } else {
-                emptyList()
-            }
-
-        return copy(tracks = newTracks, currentIndex = newIndex, originalTracks = newOriginal)
-    }
-
     companion object {
         val EMPTY = PlaybackQueue()
 
         fun fromTracks(
             tracks: List<AudioTrack>,
-            virtualTracksMap: Map<String, List<VirtualTrack>> = emptyMap(),
             selectedIndex: Int = 0,
             originalTracks: List<AudioTrack> = emptyList(),
             origin: QueueOrigin = QueueOrigin.DIRECTORY,
         ): PlaybackQueue {
             if (tracks.isEmpty()) return EMPTY
-            if (virtualTracksMap.isEmpty()) {
-                val validSelectedIndex = selectedIndex.coerceIn(tracks.indices)
-                return PlaybackQueue(
-                    tracks = tracks,
-                    currentIndex = validSelectedIndex,
-                    originalTracks = originalTracks,
-                    origin = origin,
-                )
-            }
-
             val validSelectedIndex = selectedIndex.coerceIn(tracks.indices)
-            val mappedCurrentIndex =
-                tracks.take(validSelectedIndex).sumOf { track ->
-                    val vts = virtualTracksMap[track.remotePath]
-                    if (!vts.isNullOrEmpty()) vts.size else 1
-                }
-
-            val expandedTracks =
-                tracks.flatMap { track ->
-                    val vts = virtualTracksMap[track.remotePath]
-                    if (!vts.isNullOrEmpty()) {
-                        vts.map { it.toAudioTrack(track) }
-                    } else {
-                        listOf(track)
-                    }
-                }
-
-            val targetIndex = mappedCurrentIndex.coerceIn(expandedTracks.indices)
-
             return PlaybackQueue(
-                tracks = expandedTracks,
-                currentIndex = targetIndex,
+                tracks = tracks,
+                currentIndex = validSelectedIndex,
                 originalTracks = originalTracks,
                 origin = origin,
             )

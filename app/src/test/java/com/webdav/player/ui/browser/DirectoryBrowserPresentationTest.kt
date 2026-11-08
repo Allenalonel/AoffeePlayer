@@ -5,13 +5,11 @@ import com.webdav.player.domain.model.AudioQuality
 import com.webdav.player.domain.model.AudioQualityLevel
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.Breadcrumb
-import com.webdav.player.domain.model.CueAlbumItem
 import com.webdav.player.domain.model.LibrarySearchResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.TrackMetadata
-import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -88,15 +86,6 @@ class DirectoryBrowserPresentationTest {
         assertEquals("APE", apeBadge!!.label)
         assertTrue(apeBadge.isLossless)
         assertEquals(AudioQualityLevel.LOSSLESS, apeBadge.qualityLevel)
-    }
-
-    @Test
-    fun audioQualityBadge_cueFile_mapsCueBadge() {
-        val cueFile = RemoteFile(name = "DarkSide.cue", path = "/Music/DarkSide.cue", size = 1024L)
-        assertTrue(cueFile.isCue)
-        val badge = AudioQuality.resolveBadge(cueFile)
-        assertNotNull(badge)
-        assertEquals("CUE", badge!!.label)
     }
 
     @Test
@@ -253,38 +242,26 @@ class DirectoryBrowserPresentationTest {
     }
 
     @Test
-    fun cueAlbumItem_presentationState_and_activeTrackEvaluation() {
+    fun directoryBrowserUiState_flatDirectoryLayout_and_activeTrackEvaluation() {
         val audioFile = RemoteFile(name = "Abbey_Road.flac", path = "/Music/Abbey_Road.flac", size = 300_000_000L)
         val cueFile = RemoteFile(name = "Abbey_Road.cue", path = "/Music/Abbey_Road.cue", size = 2048L)
-        val track1 =
-            VirtualTrack(trackNumber = 1, title = "Come Together", startTimeMs = 0L, endTimeMs = 260000L, parentAudioPath = audioFile.path)
-        val track2 =
-            VirtualTrack(trackNumber = 2, title = "Something", startTimeMs = 260000L, endTimeMs = 440000L, parentAudioPath = audioFile.path)
-
-        val album =
-            CueAlbumItem(
-                cueFile = cueFile,
-                audioFile = audioFile,
-                tracks = listOf(track1, track2),
-            )
-
-        assertEquals("Abbey_Road", album.albumTitle)
-        assertEquals(2, album.totalTracksCount)
+        val dir = RemoteDirectory(path = "/Music/", name = "Music", files = listOf(audioFile, cueFile))
 
         val state =
             DirectoryBrowserUiState(
                 isInitializing = false,
                 activeServer = sampleServer,
                 currentPath = "/Music/",
+                currentDirectory = dir,
                 activeTrackPath = audioFile.path,
-                activeTrackId = "1:${audioFile.path}#cue_2",
+                activeTrackId = "1:${audioFile.path}",
                 isPlaying = true,
-                cueAlbums = listOf(album),
             )
 
-        assertTrue(state.isCueAlbumActive(album))
-        assertFalse(state.isVirtualTrackActive(album, track1))
-        assertTrue(state.isVirtualTrackActive(album, track2))
+        assertEquals(2, state.files.size)
+        assertTrue(state.isTrackActive(audioFile.path))
+        assertFalse(state.isTrackActive(cueFile.path))
+        assertTrue(state.isPlaying)
     }
 
     @Test
@@ -324,7 +301,7 @@ class DirectoryBrowserPresentationTest {
     }
 
     @Test
-    fun searchResultTrack_identifiesVirtualTrack_andResolvesDisplayProperties() {
+    fun searchResultTrack_resolvesDisplayProperties_asStandardPhysicalTrack() {
         val standardTrack =
             AudioTrack(
                 id = "1:/music/track.flac",
@@ -335,9 +312,10 @@ class DirectoryBrowserPresentationTest {
                 album = "Symphony No. 9",
                 format = AudioFormat.FLAC,
             )
-        assertFalse(standardTrack.isVirtualTrack)
+        assertEquals("Whole Symphony", standardTrack.title)
+        assertEquals("Beethoven", standardTrack.artist)
 
-        val virtualTrack =
+        val trackWithCueId =
             AudioTrack(
                 id = "1:/music/track.flac#cue_1",
                 serverId = 1L,
@@ -347,9 +325,8 @@ class DirectoryBrowserPresentationTest {
                 album = "Symphony No. 9",
                 format = AudioFormat.FLAC,
             )
-        assertTrue(virtualTrack.isVirtualTrack)
-        assertEquals("Allegro", virtualTrack.title)
-        assertEquals("Herbert von Karajan", virtualTrack.artist)
+        assertEquals("Allegro", trackWithCueId.title)
+        assertEquals("Herbert von Karajan", trackWithCueId.artist)
     }
 
     @Test

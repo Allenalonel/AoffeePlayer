@@ -98,7 +98,6 @@ class PlaybackFaultToleranceTest {
         override suspend fun addTrackToPlaylist(
             playlistId: Long,
             track: AudioTrack,
-            cuePath: String?,
         ): Long = 1L
 
         override suspend fun addTracksToPlaylist(

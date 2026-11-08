@@ -1,6 +1,5 @@
 package com.webdav.player.domain.session
 
-import com.webdav.player.domain.cue.CueSheetResolver
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackMode
@@ -41,7 +40,6 @@ class PlaybackTimelineCoordinatorTest {
     private val fakeEngine = FakeAudioPlayerEngine()
     private val sessionStateFlow = MutableStateFlow(PlayerSessionState())
     private val playbackProgressFlow = MutableStateFlow(PlaybackProgress.ZERO)
-    private val virtualTimelineEngine = VirtualTimelineEngine()
     private val isPrerollAppended = AtomicBoolean(false)
 
     private val server1 =
@@ -118,24 +116,18 @@ class PlaybackTimelineCoordinatorTest {
 
     @Before
     fun setUp() {
-        queueManager = PlaybackQueueManager(sessionStateFlow, testServerRepo, null) {}
+        queueManager = PlaybackQueueManager(sessionStateFlow, testServerRepo) {}
         faultTolerance = PlaybackFaultTolerance(sessionStateFlow, fakeEngine, null, queueManager, coordinatorScope)
         persistenceCoordinator =
             SessionPersistenceCoordinator(
                 sessionStore = null,
                 serverRepository = testServerRepo,
                 trackMetadataRepository = null,
-                cueSheetResolver = null,
                 playerEngine = fakeEngine,
-                virtualTimelineEngine = virtualTimelineEngine,
                 sessionStateFlow = sessionStateFlow,
                 playbackProgressFlow = playbackProgressFlow,
                 coroutineScope = coordinatorScope,
                 periodicDispatcher = testDispatcher,
-                getActiveParentAudioTrack = { null },
-                getActiveCuePath = { null },
-                onCueSessionRestored = { _, _ -> },
-                onOrdinarySessionRestored = {},
             )
 
         coordinator =
@@ -144,7 +136,6 @@ class PlaybackTimelineCoordinatorTest {
                 serverRepository = testServerRepo,
                 sessionStateFlow = sessionStateFlow,
                 playbackProgressFlow = playbackProgressFlow,
-                virtualTimelineEngine = virtualTimelineEngine,
                 faultTolerance = faultTolerance,
                 queueManager = queueManager,
                 persistenceCoordinator = persistenceCoordinator,

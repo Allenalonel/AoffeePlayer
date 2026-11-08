@@ -13,18 +13,12 @@ data class PlaylistTrackEntry(
     val size: Long = 0L,
     val format: AudioFormat = AudioFormat.MP3,
     val coverThumbnailPath: String? = null,
-    val cuePath: String? = null,
-    val virtualTrackId: String? = null,
     val isInactive: Boolean = false,
     val inactiveReason: InactiveReason? = null,
 ) {
-    val isVirtualTrack: Boolean
-        get() = virtualTrackId != null || remotePath.contains("#cue_")
-
-    fun toAudioTrack(): AudioTrack {
-        val trackId = virtualTrackId ?: "$serverId:$remotePath"
-        return AudioTrack(
-            id = trackId,
+    fun toAudioTrack(): AudioTrack =
+        AudioTrack(
+            id = "$serverId:$remotePath",
             serverId = serverId,
             remotePath = remotePath,
             title = title,
@@ -34,16 +28,13 @@ data class PlaylistTrackEntry(
             size = size,
             format = format,
             coverThumbnailPath = coverThumbnailPath,
-            cuePath = cuePath,
         )
-    }
 
     companion object {
         fun fromAudioTrack(
             playlistId: Long,
             track: AudioTrack,
             sortOrder: Int,
-            cuePath: String? = null,
         ): PlaylistTrackEntry =
             PlaylistTrackEntry(
                 id = 0L,
@@ -58,8 +49,6 @@ data class PlaylistTrackEntry(
                 size = track.size,
                 format = track.format,
                 coverThumbnailPath = track.coverThumbnailPath,
-                cuePath = cuePath ?: track.cuePath,
-                virtualTrackId = if (track.isVirtualTrack) track.id else null,
             )
     }
 }

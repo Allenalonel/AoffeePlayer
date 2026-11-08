@@ -61,14 +61,12 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.webdav.player.domain.model.AudioTrack
-import com.webdav.player.domain.model.CueAlbumItem
 import com.webdav.player.domain.model.LibrarySyncState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.ui.browser.components.AudioTrackItemRow
-import com.webdav.player.ui.browser.components.CueAlbumCard
 import com.webdav.player.ui.browser.components.DirectoryBreadcrumbStrip
 import com.webdav.player.ui.browser.components.DirectoryItemRow
 import com.webdav.player.ui.browser.components.EmptyFolderState
@@ -93,7 +91,6 @@ private data class CachedDirectoryContent(
     val directories: List<RemoteDirectory>,
     val files: List<RemoteFile>,
     val metadataMap: Map<String, TrackMetadata>,
-    val cueAlbums: List<CueAlbumItem>,
     val isEmpty: Boolean,
 )
 
@@ -192,14 +189,13 @@ fun DirectoryBrowserScreen(
     // Directory content cache to guarantee solid double-layer transitions without flashing
     val directoryContentCache = remember { mutableMapOf<String, CachedDirectoryContent>() }
 
-    LaunchedEffect(uiState.currentPath, uiState.subDirectories, uiState.files, uiState.metadataMap, uiState.cueAlbums) {
+    LaunchedEffect(uiState.currentPath, uiState.subDirectories, uiState.files, uiState.metadataMap) {
         if (uiState.currentDirectory != null && uiState.currentDirectory?.path == uiState.currentPath) {
             directoryContentCache[uiState.currentPath] =
                 CachedDirectoryContent(
                     directories = uiState.subDirectories,
                     files = uiState.files,
                     metadataMap = uiState.metadataMap,
-                    cueAlbums = uiState.cueAlbums,
                     isEmpty = uiState.isEmpty,
                 )
         }
@@ -488,8 +484,6 @@ fun DirectoryBrowserScreen(
                                                     files = uiState.files,
                                                     metadataMap = uiState.metadataMap,
                                                     activeTrackPath = uiState.activeTrackPath,
-                                                    activeTrackId = uiState.activeTrackId,
-                                                    cueAlbums = uiState.cueAlbums,
                                                     isPlaying = uiState.isPlaying,
                                                     activeServer = uiState.activeServer,
                                                     onDirectoryClicked = { viewModel.onDirectoryClicked(it) },
@@ -502,14 +496,6 @@ fun DirectoryBrowserScreen(
                                                     },
                                                     onPlayNext = { viewModel.playNext(it) },
                                                     onAddToPlaylist = onAddToPlaylist,
-                                                    onVirtualTrackClick = {
-                                                        album,
-                                                        trackIndex,
-                                                        ->
-                                                        viewModel.playVirtualTrack(album, trackIndex)
-                                                    },
-                                                    onPlayCueAlbum = { album -> viewModel.playCueAlbum(album) },
-                                                    onToggleCueAlbumExpanded = { cuePath -> viewModel.toggleCueAlbumExpanded(cuePath) },
                                                     isSelectionMode = isSelectionMode,
                                                     selectedFilePaths = selectedFilePaths,
                                                     onFileLongClicked = { file ->
@@ -529,22 +515,12 @@ fun DirectoryBrowserScreen(
                                                 files = cached.files,
                                                 metadataMap = cached.metadataMap,
                                                 activeTrackPath = uiState.activeTrackPath,
-                                                activeTrackId = uiState.activeTrackId,
-                                                cueAlbums = cached.cueAlbums,
                                                 isPlaying = uiState.isPlaying,
                                                 activeServer = uiState.activeServer,
                                                 onDirectoryClicked = { viewModel.onDirectoryClicked(it) },
                                                 onFileClicked = { onFileClicked(it) },
                                                 onPlayNext = { viewModel.playNext(it) },
                                                 onAddToPlaylist = onAddToPlaylist,
-                                                onVirtualTrackClick = {
-                                                    album,
-                                                    trackIndex,
-                                                    ->
-                                                    viewModel.playVirtualTrack(album, trackIndex)
-                                                },
-                                                onPlayCueAlbum = { album -> viewModel.playCueAlbum(album) },
-                                                onToggleCueAlbumExpanded = { cuePath -> viewModel.toggleCueAlbumExpanded(cuePath) },
                                                 isSelectionMode = isSelectionMode,
                                                 selectedFilePaths = selectedFilePaths,
                                                 onFileLongClicked = null,
@@ -687,29 +663,17 @@ fun DirectoryContentList(
     files: List<RemoteFile>,
     metadataMap: Map<String, TrackMetadata> = emptyMap(),
     activeTrackPath: String? = null,
-    activeTrackId: String? = null,
-    cueAlbums: List<CueAlbumItem> = emptyList(),
     isPlaying: Boolean = false,
     activeServer: WebDavServer? = null,
     onDirectoryClicked: (RemoteDirectory) -> Unit,
     onFileClicked: (RemoteFile) -> Unit,
     onPlayNext: (RemoteFile) -> Unit = {},
     onAddToPlaylist: (AudioTrack) -> Unit = {},
-    onVirtualTrackClick: (CueAlbumItem, Int) -> Unit = { _, _ -> },
-    onPlayCueAlbum: (CueAlbumItem) -> Unit = {},
-    onToggleCueAlbumExpanded: (String) -> Unit = {},
     isSelectionMode: Boolean = false,
     selectedFilePaths: Set<String> = emptySet(),
     onFileLongClicked: ((RemoteFile) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val cueAudioPaths = remember(cueAlbums) { cueAlbums.mapNotNull { it.audioFile?.path }.toSet() }
-    val cueFilePaths = remember(cueAlbums) { cueAlbums.map { it.cueFile.path }.toSet() }
-    val standaloneFiles =
-        remember(files, cueAudioPaths, cueFilePaths) {
-            files.filter { it.path !in cueAudioPaths && it.path !in cueFilePaths }
-        }
-
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 8.dp, bottom = MiniPlayerDefaults.PenetrativeContentBottomPadding),
@@ -723,31 +687,14 @@ fun DirectoryContentList(
         }
 
         // Space between folders and files if both exist
-        if (directories.isNotEmpty() && (cueAlbums.isNotEmpty() || standaloneFiles.isNotEmpty())) {
+        if (directories.isNotEmpty() && files.isNotEmpty()) {
             item(key = "divider_folder_files") {
                 Spacer(modifier = Modifier.height(8.dp))
             }
         }
 
-        // CUE Albums next (MD3 CueAlbumCard with collapse/expand)
-        items(cueAlbums, key = { "cue_album_${it.cueFile.path}" }) { album ->
-            val metadata = album.audioFile?.let { metadataMap[it.path] }
-            val isAlbumActive = album.isAlbumActive(activeTrackPath)
-            CueAlbumCard(
-                album = album,
-                metadata = metadata,
-                isAlbumActive = isAlbumActive,
-                activeTrackId = activeTrackId,
-                isPlaying = isPlaying,
-                onPlayAlbum = { if (!isSelectionMode) onPlayCueAlbum(album) },
-                onVirtualTrackClick = { trackIndex -> if (!isSelectionMode) onVirtualTrackClick(album, trackIndex) },
-                onToggleExpand = { if (!isSelectionMode) onToggleCueAlbumExpanded(album.cueFile.path) },
-                onPlayAsWholeAudio = { album.audioFile?.let { if (!isSelectionMode) onFileClicked(it) } },
-            )
-        }
-
         // Standalone audio and other files next (MD3 ListItems)
-        items(standaloneFiles, key = { "file_${it.path}" }) { file ->
+        items(files, key = { "file_${it.path}" }) { file ->
             val metadata = metadataMap[file.path]
             val isActive = file.isAudio && file.path == activeTrackPath
             AudioTrackItemRow(

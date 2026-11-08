@@ -37,11 +37,10 @@ data class PlaylistTrackEntity(
     val size: Long = 0L,
     val format: String = "MP3",
     val coverThumbnailPath: String? = null,
-    val cuePath: String? = null,
-    val virtualTrackId: String? = null,
     val isInactive: Boolean = false,
     val inactiveReason: String? = null,
 ) {
+
     fun toDomain(): PlaylistTrackEntry =
         PlaylistTrackEntry(
             id = id,
@@ -59,8 +58,6 @@ data class PlaylistTrackEntity(
                     ?: AudioFormat.fromExtension(format)
                     ?: AudioFormat.MP3,
             coverThumbnailPath = coverThumbnailPath,
-            cuePath = cuePath,
-            virtualTrackId = virtualTrackId,
             isInactive = isInactive,
             inactiveReason =
                 inactiveReason?.let { reasonStr ->
@@ -83,8 +80,6 @@ data class PlaylistTrackEntity(
                 size = domain.size,
                 format = domain.format.name,
                 coverThumbnailPath = domain.coverThumbnailPath,
-                cuePath = domain.cuePath,
-                virtualTrackId = domain.virtualTrackId,
                 isInactive = domain.isInactive,
                 inactiveReason = domain.inactiveReason?.name,
             )

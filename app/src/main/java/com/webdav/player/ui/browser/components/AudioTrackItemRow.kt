@@ -167,11 +167,10 @@ private fun NonAudioFileRow(
     val (icon, label) =
         when {
             file.isLyrics -> AppIcons.Description to "歌词"
-            file.isCue -> AppIcons.QueueMusic to "CUE 分轨"
             else -> AppIcons.InsertDriveFile to "其他文件"
         }
     val (containerColor, contentColor) =
-        if (file.isLyrics || file.isCue) {
+        if (file.isLyrics) {
             MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
         } else {
             MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
@@ -185,7 +184,7 @@ private fun NonAudioFileRow(
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         ListItem(
-            modifier = Modifier.fillMaxWidth().alpha(if (file.isLyrics || file.isCue) 1f else 0.5f),
+            modifier = Modifier.fillMaxWidth().alpha(if (file.isLyrics) 1f else 0.5f),
             leadingContent = {
                 Surface(
                     shape = MaterialTheme.shapes.small,

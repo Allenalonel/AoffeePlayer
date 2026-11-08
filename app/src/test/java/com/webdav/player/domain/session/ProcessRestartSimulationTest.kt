@@ -5,7 +5,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.test.core.app.ApplicationProvider
-import com.webdav.player.data.cue.DefaultCueSheetResolver
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.data.repository.DataStorePlaybackSessionStore
@@ -16,7 +15,6 @@ import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
-import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.player.FakeAudioPlayerEngine
 import com.webdav.player.domain.repository.ServerRepository
@@ -409,67 +407,9 @@ class ProcessRestartSimulationTest {
         }
 
     @Test
-    fun simulatedProcessRestart_withVirtualTrackPlayback_persistsAndRestoresSeamlesslyAcrossProcesses() =
+    fun simulatedProcessRestart_withPhysicalPlayback_persistsAndRestoresSeamlesslyAcrossProcesses() =
         runTest(testDispatcher) {
             val serverRepo = InMemoryServerRepository(mutableListOf(testServer))
-
-            val cueContent =
-                """
-                TITLE "Epic Symphony"
-                PERFORMER "Philharmonic Orchestra"
-                FILE "02-Solo.flac" WAVE
-                  TRACK 01 AUDIO
-                    TITLE "Movement I"
-                    INDEX 01 00:00:00
-                  TRACK 02 AUDIO
-                    TITLE "Movement II"
-                    INDEX 01 01:30:00
-                """.trimIndent()
-
-            val fakeWebDavClient =
-                object : WebDavClient {
-                    val textResponses = mutableMapOf("/Music/Rock/02-Solo.cue" to cueContent)
-
-                    override suspend fun testConnection(server: WebDavServer) = ConnectionResult.Success
-
-                    override suspend fun listDirectory(
-                        server: WebDavServer,
-                        path: String,
-                    ) = ListDirectoryResult.Failure("Not implemented")
-
-                    override suspend fun fetchRange(
-                        server: WebDavServer,
-                        remotePath: String,
-                        startByte: Long,
-                        endByte: Long,
-                    ): ByteArray? = null
-
-                    override suspend fun fetchText(
-                        server: WebDavServer,
-                        remotePath: String,
-                    ): String? = textResponses[remotePath]
-                }
-            val cueResolver = DefaultCueSheetResolver(fakeWebDavClient, testDispatcher)
-
-            val virtualTracks =
-                listOf(
-                    VirtualTrack(
-                        trackNumber = 1,
-                        title = "Movement I",
-                        performer = "Philharmonic Orchestra",
-                        startTimeMs = 0L,
-                        endTimeMs = 90000L,
-                        parentAudioPath = track2.remotePath,
-                    ),
-                    VirtualTrack(
-                        trackNumber = 2,
-                        title = "Movement II",
-                        performer = "Philharmonic Orchestra",
-                        startTimeMs = 90000L,
-                        endTimeMs = 260000L,
-                        parentAudioPath = track2.remotePath,
-                    ),
-                )
 
             // === PROCESS 1 ===
             val process1Scope = kotlinx.coroutines.CoroutineScope(testDispatcher + SupervisorJob())
@@ -479,23 +419,17 @@ class ProcessRestartSimulationTest {
                     playerEngine = engine1,
                     serverRepository = serverRepo,
                     sessionStore = sessionStore,
-                    cueSheetResolver = cueResolver,
                     coroutineScope = process1Scope,
                 )
             session1.setActiveServer(testServer)
 
-            // Start playing Track 2 (Movement II: starts at 90000ms)
-            session1.playVirtualTracks(
-                parentTrack = track2,
-                virtualTracks = virtualTracks,
-                startIndex = 1,
-                cuePath = "/Music/Rock/02-Solo.cue",
-            )
+            // Start playing Track 2
+            session1.playTrack(track2)
             runCurrent()
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Progress reaches 115000ms (25000ms into Track 2)
-            engine1._currentPositionMs.value = 115000L
+            // Seek to 25000ms
+            engine1._currentPositionMs.value = 25000L
             session1.seekTo(25000L)
             runCurrent()
 
@@ -505,9 +439,8 @@ class ProcessRestartSimulationTest {
             // Verify session was saved in real DataStore
             val savedInStore = sessionStore.getSavedSession()
             assertNotNull(savedInStore)
-            assertEquals("/Music/Rock/02-Solo.cue", savedInStore?.cuePath)
-            assertEquals(2, savedInStore?.virtualTrackNumber)
-            assertEquals(25000L, savedInStore?.virtualPositionMs)
+            assertEquals(25000L, savedInStore?.positionMs)
+            assertEquals(0, savedInStore?.currentTrackIndex)
 
             // Simulate process 1 death
             session1.release()
@@ -522,7 +455,6 @@ class ProcessRestartSimulationTest {
                     playerEngine = engine2,
                     serverRepository = serverRepo,
                     sessionStore = sessionStore,
-                    cueSheetResolver = cueResolver,
                     coroutineScope = process2Scope,
                 )
 
@@ -530,21 +462,21 @@ class ProcessRestartSimulationTest {
 
             // Verify cold start state
             val restoredState = session2.sessionState.value
-            assertEquals(2, restoredState.queue.size)
-            assertEquals(1, restoredState.queue.currentIndex)
-            assertEquals("Movement II", restoredState.currentTrack?.title)
+            assertEquals(1, restoredState.queue.size)
+            assertEquals(0, restoredState.queue.currentIndex)
+            assertEquals(track2.title, restoredState.currentTrack?.title)
             assertTrue(restoredState.isPaused)
             assertEquals(25000L, session2.playbackProgress.value.currentPositionMs)
-            assertEquals(170000L, session2.playbackProgress.value.durationMs)
+            assertEquals(track2.durationMs, session2.playbackProgress.value.durationMs)
 
-            // Tapping play starts underlying stream at 90000 + 25000 = 115000ms
+            // Tapping play starts stream at 25000ms
             session2.togglePlayPause()
             runCurrent()
 
             assertEquals(testServer, engine2.lastServer)
             assertEquals(1, engine2.loadTrackCount)
             assertEquals(track2.remotePath, engine2.loadedTrack?.remotePath)
-            assertEquals(115000L, engine2.lastStartPositionMs)
+            assertEquals(25000L, engine2.lastStartPositionMs)
             assertTrue(session2.sessionState.value.isPlaying)
 
             session2.release()

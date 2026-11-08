@@ -8,7 +8,6 @@ import com.webdav.player.domain.model.Playlist
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
-import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
 import kotlinx.coroutines.flow.StateFlow
 
@@ -45,20 +44,12 @@ interface MusicPlayerAppSession {
         directory: RemoteDirectory,
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata> = emptyMap(),
-        virtualTracksByAudioPath: Map<String, List<VirtualTrack>> = emptyMap(),
     )
 
     fun playPlaylist(
         playlist: Playlist,
         startIndex: Int = 0,
     )
-
-    fun playVirtualTracks(
-        parentTrack: AudioTrack,
-        virtualTracks: List<VirtualTrack>,
-        startIndex: Int = 0,
-        cuePath: String? = null,
-    ) {}
 
     fun playTrack(track: AudioTrack)
 

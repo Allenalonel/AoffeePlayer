@@ -3,7 +3,6 @@ package com.webdav.player.data.repository
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import com.webdav.player.data.cue.DefaultCueSheetResolver
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.DirectoryCacheDao
 import com.webdav.player.data.local.DirectoryCacheEntity
@@ -84,15 +83,12 @@ class LibrarySearchRepositoryTest {
         checkpointDao = database.directorySyncCheckpointDao()
         fakeWebDavClient.textResponses.clear()
 
-        val cueSheetResolver = DefaultCueSheetResolver(fakeWebDavClient)
-
         repository =
             LibrarySearchRepositoryImpl(
                 directoryCacheDao = directoryCacheDao,
                 trackMetadataDao = trackMetadataDao,
                 mediaTrackIndexDao = mediaTrackIndexDao,
                 directorySyncCheckpointDao = checkpointDao,
-                cueSheetResolver = cueSheetResolver,
                 context = context,
             )
         repository.clearSearchHistory()
@@ -311,14 +307,13 @@ class LibrarySearchRepositoryTest {
         }
 
     @Test
-    fun search_withCueVirtualTracks_matchesVirtualTrackAndPerformer() =
+    fun search_withDirectoryContainingCueAndAudio_returnsPhysicalAudioTrackDirectly() =
         runTest {
             val cueFile =
                 RemoteFile(
                     name = "Symphony.cue",
                     path = "/Music/Symphony.cue",
                     size = 1024L,
-                    fileType = RemoteFileType.Cue,
                 )
             val flacFile =
                 RemoteFile(
@@ -342,34 +337,12 @@ class LibrarySearchRepositoryTest {
                 ),
             )
 
-            val cueContent =
-                """
-                PERFORMER "Herbert von Karajan"
-                TITLE "Beethoven Symphony No. 9"
-                FILE "Symphony.flac" WAVE
-                  TRACK 01 AUDIO
-                    TITLE "Allegro ma non troppo"
-                    INDEX 01 00:00:00
-                  TRACK 02 AUDIO
-                    TITLE "Molto vivace"
-                    PERFORMER "Berliner Philharmoniker"
-                    INDEX 01 15:30:00
-                """.trimIndent()
-            fakeWebDavClient.textResponses["/Music/Symphony.cue"] = cueContent
-
-            // Search by virtual track title
-            val vivaceResult = repository.search("vivace").first()
-            assertEquals(1, vivaceResult.matchedTracks.size)
-            val vtTrack = vivaceResult.matchedTracks.first()
-            assertEquals("Molto vivace", vtTrack.title)
-            assertEquals("Berliner Philharmoniker", vtTrack.artist)
-            assertTrue(vtTrack.isVirtualTrack)
-            assertTrue(vtTrack.id.endsWith("#cue_2"))
-
-            // Search by performer from CUE
-            val karajanResult = repository.search("karajan").first()
-            // Karajan is album performer, so Track 1 inherits it
-            assertTrue(karajanResult.matchedTracks.any { it.title == "Allegro ma non troppo" })
+            // Search by track filename
+            val symphonyResult = repository.search("Symphony").first()
+            assertEquals(1, symphonyResult.matchedTracks.size)
+            val track = symphonyResult.matchedTracks.first()
+            assertEquals("Symphony.flac", track.title)
+            assertEquals("/Music/Symphony.flac", track.remotePath)
         }
 
     @Test
@@ -634,7 +607,6 @@ class LibrarySearchRepositoryTest {
                 LibrarySearchRepositoryImpl(
                     directoryCacheDao = directoryCacheDao,
                     trackMetadataDao = trackMetadataDao,
-                    cueSheetResolver = null,
                     context = context,
                 )
 
@@ -652,7 +624,6 @@ class LibrarySearchRepositoryTest {
                     fileSize = 52000000L,
                     lastModified = 1700000000L,
                     format = "FLAC",
-                    isCue = false,
                     parentPath = "/local/primary%3AMusic/Rock/PinkFloyd/TheWall/",
                     parsedTitle = "Comfortably Numb",
                     parsedArtist = "Pink Floyd",
@@ -684,7 +655,6 @@ class LibrarySearchRepositoryTest {
                     fileSize = 40000000L,
                     lastModified = 1700000000L,
                     format = "FLAC",
-                    isCue = false,
                     parentPath = "/local/primary%3AMusic/Classical/Beethoven/",
                     parsedTitle = "Symphony 5",
                     parsedArtist = "Beethoven",
@@ -710,7 +680,6 @@ class LibrarySearchRepositoryTest {
                     fileSize = 10000000L,
                     lastModified = 1000L,
                     format = "MP3",
-                    isCue = false,
                     parentPath = "/Music/",
                     parsedTitle = "Song",
                     parsedArtist = "Artist",
@@ -752,7 +721,6 @@ class LibrarySearchRepositoryTest {
                     fileSize = 20000000L,
                     lastModified = 1000L,
                     format = "FLAC",
-                    isCue = false,
                     parentPath = "/local/Music/",
                     parsedTitle = "Acoustic Melody",
                     parsedArtist = "Guitarist",
@@ -765,7 +733,6 @@ class LibrarySearchRepositoryTest {
                     fileSize = 20000000L,
                     lastModified = 1000L,
                     format = "FLAC",
-                    isCue = false,
                     parentPath = "/nas/",
                     parsedTitle = "Acoustic Melody",
                     parsedArtist = "Guitarist",
@@ -788,22 +755,21 @@ class LibrarySearchRepositoryTest {
         }
 
     @Test
-    fun search_withCueVirtualTracksInMediaTrackIndex_returnsVirtualTrackWithMetadataAndCuePath() =
+    fun search_withPhysicalTrackInMediaTrackIndex_returnsAudioTrackWithMetadata() =
         runTest {
-            val virtualTrack =
+            val physicalTrack =
                 MediaTrackIndexEntity(
                     serverId = 1L,
-                    remotePath = "/Music/Album.flac#cue_1",
-                    fileName = "Track One",
+                    remotePath = "/Music/Album.flac",
+                    fileName = "Track One.flac",
                     fileSize = 120000000L,
                     lastModified = 1700000000L,
                     format = "FLAC",
-                    isCue = true,
                     parentPath = "/Music/",
                     parsedTitle = "Track One",
                     parsedArtist = "Band Artist",
                 )
-            mediaTrackIndexDao.insertOrUpdate(virtualTrack)
+            mediaTrackIndexDao.insertOrUpdate(physicalTrack)
 
             // Parent audio metadata cached in TrackMetadataDao
             trackMetadataDao.insertOrUpdate(
@@ -811,7 +777,7 @@ class LibrarySearchRepositoryTest {
                     serverId = 1L,
                     remotePath = "/Music/Album.flac",
                     title = "Album Title",
-                    artist = "Parent Artist",
+                    artist = "Band Artist",
                     album = "Masterpiece Album",
                     trackNumber = 1,
                     durationMs = 2400000L,
@@ -823,14 +789,12 @@ class LibrarySearchRepositoryTest {
             assertEquals(1, result.matchedTracks.size)
             val track = result.matchedTracks.first()
 
-            assertTrue(track.isVirtualTrack)
-            assertEquals("1:/Music/Album.flac#cue_1", track.id)
+            assertEquals("1:/Music/Album.flac", track.id)
             assertEquals("/Music/Album.flac", track.remotePath)
-            assertEquals("Track One", track.title)
+            assertEquals("Album Title", track.title)
             assertEquals("Band Artist", track.artist)
             assertEquals("Masterpiece Album", track.album)
             assertEquals("/thumbnails/masterpiece.jpg", track.coverThumbnailPath)
-            assertEquals("/Music/Album.cue", track.cuePath)
             assertEquals(2400000L, track.durationMs)
         }
 
@@ -845,7 +809,6 @@ class LibrarySearchRepositoryTest {
                     fileSize = 10000000L,
                     lastModified = 1000L,
                     format = "MP3",
-                    isCue = false,
                     parentPath = "/local/Classical/",
                     parsedTitle = "Nocturne in E-flat",
                     parsedArtist = "Chopin",
@@ -858,7 +821,6 @@ class LibrarySearchRepositoryTest {
                     fileSize = 30000000L,
                     lastModified = 2000L,
                     format = "FLAC",
-                    isCue = false,
                     parentPath = "/nas1/Music/",
                     parsedTitle = "Nocturne in C-sharp minor",
                     parsedArtist = "Chopin",
@@ -871,7 +833,6 @@ class LibrarySearchRepositoryTest {
                     fileSize = 50000000L,
                     lastModified = 3000L,
                     format = "WAV",
-                    isCue = false,
                     parentPath = "/nas2/Audio/",
                     parsedTitle = "Nocturne Op. 9",
                     parsedArtist = "Chopin",
@@ -901,7 +862,7 @@ class LibrarySearchRepositoryTest {
         }
 
     @Test
-    fun search_metadataHarmonization_enrichesDurationCoverAlbumForBothRegularAndCueTracks() =
+    fun search_metadataHarmonization_enrichesDurationCoverAlbumForIndexedTracks() =
         runTest {
             val regularTrack =
                 MediaTrackIndexEntity(
@@ -911,25 +872,23 @@ class LibrarySearchRepositoryTest {
                     fileSize = 25000000L,
                     lastModified = 1000L,
                     format = "FLAC",
-                    isCue = false,
                     parentPath = "/Music/",
                     parsedTitle = "Ordinary",
                     parsedArtist = "Indie Band",
                 )
-            val virtualTrack =
+            val concertTrack =
                 MediaTrackIndexEntity(
                     serverId = 1L,
-                    remotePath = "/Music/Concert.flac#cue_1",
-                    fileName = "Concert Intro",
+                    remotePath = "/Music/Concert.flac",
+                    fileName = "Concert.flac",
                     fileSize = 300000000L,
                     lastModified = 1000L,
                     format = "FLAC",
-                    isCue = true,
                     parentPath = "/Music/",
                     parsedTitle = "Concert Intro",
                     parsedArtist = "Live Band",
                 )
-            mediaTrackIndexDao.insertAll(listOf(regularTrack, virtualTrack))
+            mediaTrackIndexDao.insertAll(listOf(regularTrack, concertTrack))
 
             // Enriched ID3 metadata in trackMetadataDao
             trackMetadataDao.insertOrUpdateAll(
@@ -966,54 +925,38 @@ class LibrarySearchRepositoryTest {
             assertEquals(210000L, matchedRegular.durationMs)
             assertEquals("/covers/studio.jpg", matchedRegular.coverThumbnailPath)
 
-            // CUE track harmonization
-            val virtualResult = repository.search("Concert Intro").first()
-            assertEquals(1, virtualResult.matchedTracks.size)
-            val matchedVirtual = virtualResult.matchedTracks.first()
-            assertEquals("Concert Intro", matchedVirtual.title)
-            assertEquals("Live at Wembley", matchedVirtual.album)
-            assertEquals(5400000L, matchedVirtual.durationMs)
-            assertEquals("/covers/wembley.jpg", matchedVirtual.coverThumbnailPath)
+            // Concert track harmonization
+            val concertResult = repository.search("Concert Intro").first()
+            assertEquals(1, concertResult.matchedTracks.size)
+            val matchedConcert = concertResult.matchedTracks.first()
+            assertEquals("Full Concert", matchedConcert.title)
+            assertEquals("Live at Wembley", matchedConcert.album)
+            assertEquals(5400000L, matchedConcert.durationMs)
+            assertEquals("/covers/wembley.jpg", matchedConcert.coverThumbnailPath)
         }
 
     @Test
-    fun search_withRawCueFileInIndex_doesNotReturnCueFileAsAudioTrack() =
+    fun search_withPhysicalAudioTrack_returnsMatchedTrack() =
         runTest {
-            val rawCueFile =
+            val audioTrack =
                 MediaTrackIndexEntity(
                     serverId = 1L,
-                    remotePath = "/Music/Symphony.cue",
-                    fileName = "Symphony.cue",
-                    fileSize = 1024L,
-                    lastModified = 1000L,
-                    format = "CUE",
-                    isCue = true,
-                    parentPath = "/Music/",
-                    parsedTitle = "Symphony",
-                    parsedArtist = null,
-                )
-            val virtualTrack =
-                MediaTrackIndexEntity(
-                    serverId = 1L,
-                    remotePath = "/Music/Symphony.flac#cue_1",
-                    fileName = "Movement I",
+                    remotePath = "/Music/Symphony.flac",
+                    fileName = "Symphony.flac",
                     fileSize = 100000000L,
                     lastModified = 1000L,
                     format = "FLAC",
-                    isCue = true,
                     parentPath = "/Music/",
-                    parsedTitle = "Movement I",
+                    parsedTitle = "Symphony No. 9",
                     parsedArtist = "Beethoven",
                 )
-            mediaTrackIndexDao.insertAll(listOf(rawCueFile, virtualTrack))
+            mediaTrackIndexDao.insertAll(listOf(audioTrack))
 
             val result = repository.search("Symphony").first()
-            // The raw .cue file must not be in matchedTracks; only the virtual track should appear
             assertEquals(1, result.matchedTracks.size)
             val track = result.matchedTracks.first()
-            assertEquals("1:/Music/Symphony.flac#cue_1", track.id)
+            assertEquals("1:/Music/Symphony.flac", track.id)
             assertEquals("/Music/Symphony.flac", track.remotePath)
-            assertTrue(track.isVirtualTrack)
         }
 
     @Test
@@ -1027,7 +970,6 @@ class LibrarySearchRepositoryTest {
                     fileSize = 5000000L,
                     lastModified = 1000L,
                     format = "MP3",
-                    isCue = false,
                     parentPath = "/local/content/",
                     parsedTitle = "Song Title",
                     parsedArtist = "Song Artist",
@@ -1040,7 +982,6 @@ class LibrarySearchRepositoryTest {
                     fileSize = 6000000L,
                     lastModified = 2000L,
                     format = "MP3",
-                    isCue = false,
                     parentPath = "/Music/",
                     parsedTitle = "Song Title",
                     parsedArtist = "Song Artist",
@@ -1081,7 +1022,6 @@ class LibrarySearchRepositoryTest {
                     fileSize = 10000000L,
                     lastModified = 1000L,
                     format = "FLAC",
-                    isCue = false,
                     parentPath = "/local/content/",
                     parsedTitle = "Unique Song",
                     parsedArtist = "Unique Artist",

@@ -14,7 +14,10 @@
 
 ## 活跃任务 (Active)
 
-当前无进行中的活跃任务（全部工单已结项并通过全量验收）。
+| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 规范与工单路径 |
+| :--- | :--- | :---: | :---: | :--- |
+| `purge-cue-support` | 彻底移除 CUE 虚拟分轨支持、平滑升级 Room v8 数据库、净化会话引擎与全链路代码瘦身 | 6 | Ready for Agent | [`purge-cue-support/spec.md`](purge-cue-support/spec.md) |
+
 
 ---
 

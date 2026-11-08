@@ -112,7 +112,7 @@ fun AddToPlaylistDialog(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
-                                imageVector = if (singleTrack.isVirtualTrack) AppIcons.QueueMusic else AppIcons.Audiotrack,
+                                imageVector = AppIcons.Audiotrack,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(22.dp),

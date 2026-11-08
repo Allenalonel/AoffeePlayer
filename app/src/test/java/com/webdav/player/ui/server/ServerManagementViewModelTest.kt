@@ -224,7 +224,6 @@ class ServerManagementViewModelTest {
                     override suspend fun addTrackToPlaylist(
                         playlistId: Long,
                         track: com.webdav.player.domain.model.AudioTrack,
-                        cuePath: String?,
                     ) = 1L
 
                     override suspend fun addTracksToPlaylist(

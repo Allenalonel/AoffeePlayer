@@ -31,8 +31,6 @@ sealed interface RemoteFileType {
 
     data object Lyrics : RemoteFileType
 
-    data object Cue : RemoteFileType
-
     data object Other : RemoteFileType
 
     companion object {
@@ -42,7 +40,6 @@ sealed interface RemoteFileType {
             return when {
                 audioFormat != null -> Audio(audioFormat)
                 ext == "lrc" -> Lyrics
-                ext == "cue" -> Cue
                 else -> Other
             }
         }

@@ -63,31 +63,31 @@ class SearchTrackItemTest {
     }
 
     @Test
-    fun resolveSearchTrackSubtitle_forVirtualTrackWithMissingMetadata_appendsParentFileNameToUnknown() {
+    fun resolveSearchTrackSubtitle_tracksWithoutMetadata_returnsUnknownWithoutCueNesting() {
         val track =
             createTrack(
-                id = "album.cue#cue_1",
+                id = "track_1",
                 title = "Speak to Me",
                 artist = null,
                 album = null,
                 remotePath = "/Music/Pink Floyd/dsotm.flac",
             )
         val subtitle = resolveSearchTrackSubtitle(track)
-        assertEquals("未知 · dsotm.flac", subtitle)
+        assertEquals("未知", subtitle)
     }
 
     @Test
-    fun resolveSearchTrackSubtitle_forVirtualTrack_appendsParentFileName() {
+    fun resolveSearchTrackSubtitle_standardAudioTrack_formatsWithoutCueParentSuffix() {
         val track =
             createTrack(
-                id = "album.cue#cue_1",
+                id = "track_1",
                 title = "Speak to Me",
                 artist = "Pink Floyd",
                 album = "The Dark Side of the Moon",
                 remotePath = "/Music/Pink Floyd/dsotm.flac",
             )
         val subtitle = resolveSearchTrackSubtitle(track)
-        assertEquals("Pink Floyd · The Dark Side of the Moon · dsotm.flac", subtitle)
+        assertEquals("Pink Floyd · The Dark Side of the Moon", subtitle)
     }
 
     @Test

@@ -1,6 +1,5 @@
 package com.webdav.player.data.repository
 
-import com.webdav.player.data.cue.CueVirtualTrackIndexer
 import com.webdav.player.data.local.DirectorySyncCheckpointDao
 import com.webdav.player.data.local.DirectorySyncCheckpointEntity
 import com.webdav.player.data.local.MediaTrackIndexDao
@@ -39,7 +38,6 @@ class WebDavSyncScanner(
     private val webDavClient: WebDavClient,
     private val mediaTrackIndexDao: MediaTrackIndexDao,
     private val directorySyncCheckpointDao: DirectorySyncCheckpointDao,
-    private val cueVirtualTrackIndexer: CueVirtualTrackIndexer? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val maxConcurrency: Int = DEFAULT_MAX_CONCURRENCY,
 ) {
@@ -212,9 +210,9 @@ class WebDavSyncScanner(
                                                 val audioFormat =
                                                     AudioFormat.fromExtension(ext)
                                                         ?: AudioFormat.fromFileName(file.name)
-                                                val isCue = file.isCue || ext == "cue"
 
-                                                if (file.isAudio || audioFormat != null || isCue) {
+                                                if (file.isAudio || audioFormat != null) {
+                                                    val format = audioFormat ?: AudioFormat.MP3
                                                     val parsed = MediaFilenameParser.parse(file.name)
                                                     val lastMod = WebDavXmlParser.parseHttpDate(file.lastModified)
                                                     val entity =
@@ -224,31 +222,12 @@ class WebDavSyncScanner(
                                                             fileName = file.name,
                                                             fileSize = file.size,
                                                             lastModified = lastMod,
-                                                            format =
-                                                                audioFormat?.extension?.uppercase()
-                                                                    ?: if (isCue) "CUE" else "MP3",
-                                                            isCue = isCue,
+                                                            format = format.extension.uppercase(),
                                                             parentPath = item.path,
                                                             parsedTitle = parsed.title,
                                                             parsedArtist = parsed.artist,
                                                         )
                                                     discoveredTracks.add(entity)
-                                                }
-                                            }
-
-                                            // Optional CUE virtual track indexing hook
-                                            if (cueVirtualTrackIndexer != null &&
-                                                remoteDir.files.any { it.isCue || it.name.endsWith(".cue", ignoreCase = true) }
-                                            ) {
-                                                try {
-                                                    val cueTracks = cueVirtualTrackIndexer.indexDirectoryCues(server, remoteDir)
-                                                    if (cueTracks.isNotEmpty()) {
-                                                        discoveredTracks.addAll(cueTracks)
-                                                    }
-                                                } catch (ce: CancellationException) {
-                                                    throw ce
-                                                } catch (_: Exception) {
-                                                    // Continue indexing standalone files
                                                 }
                                             }
 

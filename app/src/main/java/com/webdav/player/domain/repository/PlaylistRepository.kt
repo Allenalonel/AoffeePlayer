@@ -42,7 +42,6 @@ interface PlaylistRepository {
     suspend fun addTrackToPlaylist(
         playlistId: Long,
         track: AudioTrack,
-        cuePath: String? = null,
     ): Long
 
     suspend fun addTracksToPlaylist(

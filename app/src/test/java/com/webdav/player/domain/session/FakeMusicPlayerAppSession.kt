@@ -82,7 +82,6 @@ class FakeMusicPlayerAppSession(
     var lastPlayPlaylist: Playlist? = null
     var lastPlayPlaylistStartIndex: Int? = null
     var lastPlayInitialMetadata: Map<String, TrackMetadata> = emptyMap()
-    var lastPlayVirtualTracksByAudioPath: Map<String, List<com.webdav.player.domain.model.VirtualTrack>> = emptyMap()
 
     var pausedByTransientAudioFocusInternal: Boolean = false
     override val pausedByTransientAudioFocus: Boolean
@@ -96,14 +95,13 @@ class FakeMusicPlayerAppSession(
         directory: RemoteDirectory,
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata>,
-        virtualTracksByAudioPath: Map<String, List<com.webdav.player.domain.model.VirtualTrack>>,
     ) {
         pausedByTransientAudioFocusInternal = false
         lastPlayDirectory = directory
         lastPlaySelectedFile = selectedFile
         lastPlayInitialMetadata = initialMetadata
-        lastPlayVirtualTracksByAudioPath = virtualTracksByAudioPath
     }
+
 
     override fun playPlaylist(
         playlist: Playlist,
@@ -174,46 +172,6 @@ class FakeMusicPlayerAppSession(
         skipPreviousCount++
     }
 
-    var lastPlayVirtualTracksParent: AudioTrack? = null
-    var lastPlayVirtualTracksList: List<com.webdav.player.domain.model.VirtualTrack> = emptyList()
-    var lastPlayVirtualTracksStartIndex: Int? = null
-    var lastPlayVirtualTracksCuePath: String? = null
-
-    override fun playVirtualTracks(
-        parentTrack: AudioTrack,
-        virtualTracks: List<com.webdav.player.domain.model.VirtualTrack>,
-        startIndex: Int,
-        cuePath: String?,
-    ) {
-        lastPlayVirtualTracksParent = parentTrack
-        lastPlayVirtualTracksList = virtualTracks
-        lastPlayVirtualTracksStartIndex = startIndex
-        lastPlayVirtualTracksCuePath = cuePath
-        val mappedTracks =
-            virtualTracks.map { vt ->
-                AudioTrack(
-                    id = "${parentTrack.id}#cue_${vt.trackNumber}",
-                    serverId = parentTrack.serverId,
-                    remotePath = parentTrack.remotePath,
-                    title = vt.title,
-                    artist = vt.performer?.takeIf { it.isNotBlank() } ?: parentTrack.artist,
-                    album = parentTrack.album,
-                    durationMs = vt.durationMs,
-                    size = parentTrack.size,
-                    format = parentTrack.format,
-                    coverThumbnailPath = parentTrack.coverThumbnailPath,
-                )
-            }
-        val safeIndex = startIndex.coerceIn(0, mappedTracks.lastIndex.coerceAtLeast(0))
-        val queue = PlaybackQueue(tracks = mappedTracks, currentIndex = safeIndex)
-        _sessionState.update {
-            it.copy(
-                queue = queue,
-                playbackState = PlaybackState.Playing,
-                durationMs = mappedTracks.getOrNull(safeIndex)?.durationMs ?: 0L,
-            )
-        }
-    }
 
     override fun playQueueIndex(index: Int) {
         lastPlayedQueueIndex = index

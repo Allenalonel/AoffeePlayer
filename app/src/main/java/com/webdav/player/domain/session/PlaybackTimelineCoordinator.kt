@@ -5,13 +5,11 @@ import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
-import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -23,14 +21,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Internal collaborator encapsulating physical ExoPlayer stream observations,
- * high-frequency progress polling, gapless transitions, and CUE virtual timeline arithmetic.
+ * high-frequency progress polling, and gapless transitions.
  */
 internal class PlaybackTimelineCoordinator(
     private val playerEngine: AudioPlayerEngine,
     private val serverRepository: ServerRepository?,
     private val sessionStateFlow: MutableStateFlow<PlayerSessionState>,
     private val playbackProgressFlow: MutableStateFlow<PlaybackProgress>,
-    private val virtualTimelineEngine: VirtualTimelineEngine,
     private val faultTolerance: PlaybackFaultTolerance,
     private val queueManager: PlaybackQueueManager,
     private val persistenceCoordinator: SessionPersistenceCoordinator,
@@ -44,12 +41,6 @@ internal class PlaybackTimelineCoordinator(
     private val onSkipToNext: () -> Unit,
     private val onTransitionToQueueIndex: (WebDavServer?, Int) -> Unit,
 ) {
-    var activeParentAudioTrack: AudioTrack? = null
-    var activeCuePath: String? = null
-
-    val isVirtualTimelineActive: Boolean
-        get() = virtualTimelineEngine.isActive
-
     private val observationJobs = CopyOnWriteArrayList<Job>()
 
     fun startObservations() {
@@ -65,146 +56,13 @@ internal class PlaybackTimelineCoordinator(
         observationJobs.clear()
     }
 
-    fun resetVirtualTimeline() {
-        virtualTimelineEngine.clear()
-        activeParentAudioTrack = null
-        activeCuePath = null
-    }
-
-    fun applyCueContextAndGetStartMs(
-        vt: List<VirtualTrack>?,
-        parent: AudioTrack?,
-        cue: String?,
-        fallbackStartMs: Long = 0L,
-        targetIndex: Int = 0,
-    ): Long =
-        if (vt != null) {
-            activeParentAudioTrack = parent
-            activeCuePath = cue
-            virtualTimelineEngine.loadTracks(vt, targetIndex)
-        } else {
-            resetVirtualTimeline()
-            fallbackStartMs
-        }
-
-    fun calculateSeekTargetMs(positionMs: Long): Long =
-        if (virtualTimelineEngine.isActive) {
-            virtualTimelineEngine.calculateSeekTargetMs(positionMs, playerEngine.durationMs.value)
-        } else {
-            positionMs
-        }
-
-    fun mapToVirtualPosition(positionMs: Long): Long? = if (virtualTimelineEngine.isActive) positionMs else null
-
-    fun trySkipVirtualTrackNext(mode: PlaybackMode): Boolean {
-        if (virtualTimelineEngine.isActive && !sessionStateFlow.value.queue.isPlaylistQueue) {
-            virtualTimelineEngine.getNextTrackSeekPosition(mode)?.let { applyVirtualTrackSeek(it) }
-            return true
-        }
-        return false
-    }
-
-    fun trySkipVirtualTrackPrevious(
-        currentEnginePosMs: Long,
-        mode: PlaybackMode,
-    ): Boolean {
-        if (virtualTimelineEngine.isActive && !sessionStateFlow.value.queue.isPlaylistQueue) {
-            virtualTimelineEngine.getPreviousTrackSeekPosition(currentEnginePosMs, mode)?.let {
-                applyVirtualTrackSeek(it)
-            }
-            return true
-        }
-        return false
-    }
-
-    fun trySeekVirtualTrack(index: Int): Boolean {
-        if (virtualTimelineEngine.isActive && !sessionStateFlow.value.queue.isPlaylistQueue) {
-            virtualTimelineEngine.seekToTrackIndex(index)?.let { applyVirtualTrackSeek(it) }
-            return true
-        }
-        return false
-    }
-
-    fun trySeekActiveVirtualTrack(
-        parentTrack: AudioTrack,
-        validIndex: Int,
-    ): Boolean {
-        val cleanParent = parentTrack.copy(id = parentTrack.id.substringBefore("#cue_"))
-        if (virtualTimelineEngine.isActive &&
-            activeParentAudioTrack?.serverId == cleanParent.serverId &&
-            activeParentAudioTrack?.remotePath == cleanParent.remotePath &&
-            playerEngine.playbackState.value !is PlaybackState.Idle
-        ) {
-            virtualTimelineEngine.seekToTrackIndex(validIndex)?.let {
-                applyVirtualTrackSeek(it)
-                if (!sessionStateFlow.value.isPlaying) playerEngine.play()
-                return true
-            }
-        }
-        return false
-    }
-
-    fun applyVirtualTrackSeek(seekResult: TrackSeekResult) {
-        faultTolerance.cancelWatchdog()
-        sessionStateFlow.update { current ->
-            if (seekResult.trackIndex in current.queue.tracks.indices) {
-                current.copy(
-                    queue = current.queue.copy(currentIndex = seekResult.trackIndex),
-                    durationMs = seekResult.track.durationMs,
-                    isUnsupportedRange = false,
-                    isWeakNetwork = false,
-                    canManualRetry = false,
-                    isReconnecting = false,
-                )
-            } else {
-                current
-            }
-        }
-        sessionStateFlow.value.queue.currentTrack
-            ?.let { playerEngine.updateTrackMetadata(it) }
-        playbackProgressFlow.value = PlaybackProgress(0L, seekResult.track.durationMs, 0L)
-        playerEngine.seekTo(seekResult.targetPositionMs)
-        coroutineScope.launch { persistenceCoordinator.flushSession() }
-    }
-
     fun mapEngineProgress(
         pos: Long,
         dur: Long,
         buf: Long,
     ): PlaybackProgress {
-        if (!virtualTimelineEngine.isActive) {
-            val trackDur = sessionStateFlow.value.currentTrack?.durationMs ?: 0L
-            return PlaybackProgress(pos, if (dur > 0L) dur else trackDur, buf)
-        }
-        if (playerEngine.playbackState.value is PlaybackState.Idle) return playbackProgressFlow.value
-        if (sessionStateFlow.value.queue.isPlaylistQueue) {
-            val vt = virtualTimelineEngine.activeTrack
-            if (vt?.endTimeMs != null && pos >= vt.endTimeMs) handlePlaybackEnded()
-        } else {
-            (virtualTimelineEngine.onPositionUpdate(pos) as? VirtualTimelineEngine.TransitionResult.Transitioned)?.let {
-                handleVirtualTrackTransition(it.newIndex, it.newTrack)
-            }
-        }
-        return virtualTimelineEngine.mapToVirtualProgress(pos, dur, buf)
-    }
-
-    fun handleVirtualTrackTransition(
-        newIndex: Int,
-        newTrack: VirtualTrack,
-    ) {
-        sessionStateFlow.update { current ->
-            if (newIndex in current.queue.tracks.indices) {
-                current.copy(queue = current.queue.copy(currentIndex = newIndex), durationMs = newTrack.durationMs)
-            } else {
-                current
-            }
-        }
-        sessionStateFlow.value.queue.currentTrack?.let { track ->
-            coroutineScope.launch(Dispatchers.Main) {
-                playerEngine.updateTrackMetadata(track)
-                persistenceCoordinator.flushSession()
-            }
-        }
+        val trackDur = sessionStateFlow.value.currentTrack?.durationMs ?: 0L
+        return PlaybackProgress(pos, if (dur > 0L) dur else trackDur, buf)
     }
 
     fun handlePlaybackEnded() {
@@ -220,14 +78,6 @@ internal class PlaybackTimelineCoordinator(
             sessionStateFlow.update { it.copy(playbackState = PlaybackState.Buffering) }
             playerEngine.seekTo(currentPos)
             playerEngine.play()
-            return
-        }
-
-        if (virtualTimelineEngine.isActive && !sessionStateFlow.value.queue.isPlaylistQueue) {
-            virtualTimelineEngine.getNextTrackSeekPosition(sessionStateFlow.value.playbackMode)?.let {
-                applyVirtualTrackSeek(it)
-                playerEngine.play()
-            } ?: sessionStateFlow.update { it.copy(playbackState = PlaybackState.Ended) }
             return
         }
 
@@ -383,7 +233,7 @@ internal class PlaybackTimelineCoordinator(
         observationJobs +=
             coroutineScope.launch {
                 playerEngine.durationMs.collect { dur ->
-                    if (playerEngine.playbackState.value !is PlaybackState.Idle && dur > 0L && !virtualTimelineEngine.isActive) {
+                    if (playerEngine.playbackState.value !is PlaybackState.Idle && dur > 0L) {
                         sessionStateFlow.update { current ->
                             val curIdx = current.queue.currentIndex
                             val updated =

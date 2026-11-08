@@ -113,11 +113,10 @@ class DetailFakePlaylistRepository : PlaylistRepository {
     override suspend fun addTrackToPlaylist(
         playlistId: Long,
         track: AudioTrack,
-        cuePath: String?,
     ): Long {
         val list = tracksMap.getOrPut(playlistId) { mutableListOf() }
         val id = (tracksMap.values.flatten().maxOfOrNull { it.id } ?: 0L) + 1L
-        val entry = PlaylistTrackEntry.fromAudioTrack(playlistId, track, list.size, cuePath).copy(id = id)
+        val entry = PlaylistTrackEntry.fromAudioTrack(playlistId, track, list.size).copy(id = id)
         list.add(entry)
         playlistsFlow.update { current ->
             current.map { if (it.id == playlistId) it.copy(trackCount = list.size, updatedAtMs = 2000L) else it }
@@ -703,36 +702,34 @@ class PlaylistDetailViewModelTest {
         }
 
     @Test
-    fun isTrackActive_virtualTrackMatchingDistinguishesTracksSharingRemotePath() {
-        val virtualEntry1 =
+    fun isTrackActive_matchesActiveTrackByRemotePathAndTrackId() {
+        val trackEntry1 =
             PlaylistTrackEntry(
                 id = 101L,
                 playlistId = playlistId,
                 serverId = 1L,
-                remotePath = "/album.flac",
+                remotePath = "/track1.flac",
                 title = "Track 1",
                 sortOrder = 1,
-                virtualTrackId = "vt_1",
             )
-        val virtualEntry2 =
+        val trackEntry2 =
             PlaylistTrackEntry(
                 id = 102L,
                 playlistId = playlistId,
                 serverId = 1L,
-                remotePath = "/album.flac",
+                remotePath = "/track2.flac",
                 title = "Track 2",
                 sortOrder = 2,
-                virtualTrackId = "vt_2",
             )
 
-        val stateActiveVt1 =
+        val stateActiveTrack1 =
             PlaylistDetailUiState(
-                activeTrackPath = "/album.flac",
-                activeTrackId = "vt_1",
+                activeTrackPath = "/track1.flac",
+                activeTrackId = "1:/track1.flac",
                 isPlaying = true,
             )
 
-        assertTrue(stateActiveVt1.isTrackActive(virtualEntry1))
-        assertFalse(stateActiveVt1.isTrackActive(virtualEntry2))
+        assertTrue(stateActiveTrack1.isTrackActive(trackEntry1))
+        assertFalse(stateActiveTrack1.isTrackActive(trackEntry2))
     }
 }

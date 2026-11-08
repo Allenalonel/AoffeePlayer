@@ -4,8 +4,6 @@ import com.webdav.player.data.local.DirectoryCacheDao
 import com.webdav.player.data.local.DirectoryCacheEntity
 import com.webdav.player.data.local.RemoteDirectoryJsonSerializer
 import com.webdav.player.data.remote.WebDavClient
-import com.webdav.player.domain.cue.CueSheetResolver
-import com.webdav.player.domain.model.CueAlbumItem
 import com.webdav.player.domain.model.DirectoryContent
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.ListDirectoryResult
@@ -23,7 +21,6 @@ import kotlinx.coroutines.flow.flow
 class DirectoryRepositoryImpl(
     private val webDavClient: WebDavClient,
     private val directoryCacheDao: DirectoryCacheDao? = null,
-    private val cueSheetResolver: CueSheetResolver? = null,
     private val trackMetadataRepository: TrackMetadataRepository? = null,
     private val localStorageDirectoryResolver: LocalStorageDirectoryResolver? = null,
 ) : DirectoryRepository {
@@ -81,11 +78,9 @@ class DirectoryRepositoryImpl(
             // 1. Cache hit (0ms)
             if (cachedDir != null) {
                 val initialMeta = getCachedMetadataMap(server.id, cachedDir)
-                val initialCue = getInitialCueAlbums(cachedDir)
                 emit(
                     DirectoryContent(
                         directory = cachedDir,
-                        cueAlbums = initialCue,
                         metadataMap = initialMeta,
                         isEnriching = true,
                     ),
@@ -116,11 +111,9 @@ class DirectoryRepositoryImpl(
                     if (remoteDiffersFromCache) {
                         persistCache(server.id, normalizedPath, remoteDir)
                         val currentMeta = getCachedMetadataMap(server.id, remoteDir)
-                        val currentCue = getInitialCueAlbums(remoteDir)
                         emit(
                             DirectoryContent(
                                 directory = remoteDir,
-                                cueAlbums = currentCue,
                                 metadataMap = currentMeta,
                                 isEnriching = true,
                             ),
@@ -136,11 +129,9 @@ class DirectoryRepositoryImpl(
                     if (cachedDir != null && !forceRefresh) {
                         // Suppress transient network failure and finish enrichment lifecycle cleanly
                         val finalMeta = getCachedMetadataMap(server.id, cachedDir)
-                        val finalCue = getInitialCueAlbums(cachedDir)
                         emit(
                             DirectoryContent(
                                 directory = cachedDir,
-                                cueAlbums = finalCue,
                                 metadataMap = finalMeta,
                                 isEnriching = false,
                             ),
@@ -178,11 +169,9 @@ class DirectoryRepositoryImpl(
             if (remoteDiffersFromCache) {
                 persistCache(server.id, normalizedPath, remoteDir)
                 val currentMeta = getCachedMetadataMap(server.id, remoteDir)
-                val currentCue = localResult.cueAlbums.ifEmpty { getInitialCueAlbums(remoteDir) }
                 emit(
                     DirectoryContent(
                         directory = remoteDir,
-                        cueAlbums = currentCue,
                         metadataMap = if (currentMeta.isNotEmpty()) currentMeta else localResult.metadataMap,
                         isEnriching = true,
                     ),
@@ -196,18 +185,15 @@ class DirectoryRepositoryImpl(
                     server = server,
                     directory = remoteDir,
                     forceRefresh = forceRefresh,
-                    resolvedCueAlbums = localResult.cueAlbums,
                     resolvedMetadataMap = localResult.metadataMap,
                 )
             emit(enriched)
         } else {
             if (cachedDir != null && !forceRefresh) {
                 val finalMeta = getCachedMetadataMap(server.id, cachedDir)
-                val finalCue = getInitialCueAlbums(cachedDir)
                 emit(
                     DirectoryContent(
                         directory = cachedDir,
-                        cueAlbums = finalCue,
                         metadataMap = finalMeta,
                         isEnriching = false,
                     ),
@@ -234,18 +220,13 @@ class DirectoryRepositoryImpl(
         return metaMap
     }
 
-    private fun getInitialCueAlbums(directory: RemoteDirectory): List<CueAlbumItem> =
-        cueSheetResolver?.resolveInitialCueAlbums(directory) ?: emptyList()
-
     private suspend fun enrichDirectoryContent(
         server: WebDavServer,
         directory: RemoteDirectory,
         forceRefresh: Boolean,
-        resolvedCueAlbums: List<CueAlbumItem>? = null,
         resolvedMetadataMap: Map<String, TrackMetadata>? = null,
     ): DirectoryContent {
         val audioFiles = directory.files.filter { it.isAudio }
-        val cueFiles = directory.files.filter { it.isCue }
 
         if (audioFiles.isNotEmpty() && trackMetadataRepository != null) {
             trackMetadataRepository.resolveMetadata(
@@ -266,36 +247,8 @@ class DirectoryRepositoryImpl(
                 cachedMetadata
             }
 
-        val cueAlbums =
-            if (!resolvedCueAlbums.isNullOrEmpty()) {
-                resolvedCueAlbums.map { alb ->
-                    val parentDuration = alb.audioFile?.path?.let { metadataMap[it]?.durationMs }
-                    if (parentDuration != null && parentDuration > 0L && alb.tracks.isNotEmpty()) {
-                        val lastTrack = alb.tracks.last()
-                        if (lastTrack.endTimeMs == null) {
-                            val updatedTracks = alb.tracks.dropLast(1) + lastTrack.copy(endTimeMs = parentDuration)
-                            alb.copy(tracks = updatedTracks)
-                        } else {
-                            alb
-                        }
-                    } else {
-                        alb
-                    }
-                }
-            } else if (cueFiles.isNotEmpty() && cueSheetResolver != null) {
-                val parentDurations = metadataMap.mapValues { it.value.durationMs }
-                cueSheetResolver.resolveDirectoryCueAlbums(
-                    server = server,
-                    directory = directory,
-                    parentDurationsByPath = parentDurations,
-                )
-            } else {
-                getInitialCueAlbums(directory)
-            }
-
         return DirectoryContent(
             directory = directory,
-            cueAlbums = cueAlbums,
             metadataMap = metadataMap,
             isEnriching = false,
         )

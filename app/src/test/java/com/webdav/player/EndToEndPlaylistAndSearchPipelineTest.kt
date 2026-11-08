@@ -3,7 +3,6 @@ package com.webdav.player
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import com.webdav.player.data.cue.DefaultCueSheetResolver
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.DirectoryCacheEntity
 import com.webdav.player.data.local.RemoteDirectoryJsonSerializer
@@ -100,7 +99,7 @@ class EndToEndPlaylistAndSearchPipelineTest {
             name = "Beethoven-Symphony9.cue",
             path = "/Classical/Beethoven-Symphony9.cue",
             size = 2_000L,
-            fileType = RemoteFileType.Cue,
+            fileType = RemoteFileType.Other,
         )
 
     private val server2File =
@@ -111,20 +110,6 @@ class EndToEndPlaylistAndSearchPipelineTest {
             fileType = RemoteFileType.Audio(AudioFormat.MP3),
         )
 
-    private val cueContent =
-        """
-        PERFORMER "Herbert von Karajan"
-        TITLE "Symphony No. 9"
-        FILE "Beethoven-Symphony9.flac" WAVE
-          TRACK 01 AUDIO
-            TITLE "I. Allegro ma non troppo"
-            PERFORMER "Karajan & BPO"
-            INDEX 01 00:00:00
-          TRACK 02 AUDIO
-            TITLE "II. Molto vivace"
-            PERFORMER "Karajan & BPO"
-            INDEX 01 15:30:00
-        """.trimIndent()
 
     private class TestServerRepository(
         initialServers: List<WebDavServer>,
@@ -158,40 +143,11 @@ class EndToEndPlaylistAndSearchPipelineTest {
                 .inMemoryDatabaseBuilder(context, AppDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
-
-        val fakeClient =
-            object : com.webdav.player.data.remote.WebDavClient {
-                val textResponses = mutableMapOf<String, String>()
-
-                override suspend fun testConnection(server: WebDavServer) =
-                    com.webdav.player.data.remote.ConnectionResult.Success
-
-                override suspend fun listDirectory(
-                    server: WebDavServer,
-                    path: String,
-                ) = com.webdav.player.domain.model.ListDirectoryResult.Failure("Not implemented")
-
-                override suspend fun fetchRange(
-                    server: WebDavServer,
-                    remotePath: String,
-                    startByte: Long,
-                    endByte: Long,
-                ): ByteArray? = null
-
-                override suspend fun fetchText(
-                    server: WebDavServer,
-                    remotePath: String,
-                ): String? = textResponses[remotePath]
-            }
-        fakeClient.textResponses[server1CueFile.path] = cueContent
-        val cueResolver = DefaultCueSheetResolver(fakeClient, testDispatcher)
-
         playlistRepository = PlaylistRepositoryImpl(database.playlistDao())
         searchRepository =
             LibrarySearchRepositoryImpl(
                 directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
-                cueSheetResolver = cueResolver,
             )
 
         fakeEngine = FakeAudioPlayerEngine()
@@ -207,7 +163,6 @@ class EndToEndPlaylistAndSearchPipelineTest {
                 serverRepository = fakeServerRepo,
                 sessionStore = fakeStore,
                 playlistRepository = playlistRepository,
-                cueSheetResolver = cueResolver,
                 coroutineScope = sessionScope,
             )
 
@@ -292,41 +247,30 @@ class EndToEndPlaylistAndSearchPipelineTest {
             val searchResult = searchRepository.search("Symphony", serverId = null).first { it.matchedTracks.isNotEmpty() }
             assertTrue("Search matched directories or tracks", searchResult.matchedTracks.isNotEmpty())
 
-            // Should match track from Server 1 (and CUE virtual track)
-            val matchedBeethoven = searchResult.matchedTracks.find { it.serverId == server1.id && !it.isVirtualTrack }
+            // Should match track from Server 1
+            val matchedBeethoven = searchResult.matchedTracks.find { it.serverId == server1.id }
             assertNotNull("Matched parent physical track", matchedBeethoven)
-
-            val matchedVirtualTrack = searchResult.matchedTracks.find { it.serverId == server1.id && it.isVirtualTrack }
-            assertNotNull("Matched CUE virtual track", matchedVirtualTrack)
 
             // 3. Search for "Chopin" on Server 2
             val chopinResult = searchRepository.search("Chopin", serverId = null).first { it.matchedTracks.isNotEmpty() }
             val matchedChopin = chopinResult.matchedTracks.find { it.serverId == server2.id }
             assertNotNull("Matched Chopin track from Server 2", matchedChopin)
 
-            // 4. Add tracks to playlist: track from Server 1, virtual track from Server 1, track from Server 2
+            // 4. Add tracks to playlist: track from Server 1, track from Server 2
             val trackEntry1Id = playlistRepository.addTrackToPlaylist(playlistId, matchedBeethoven!!)
-            val trackEntry2Id = playlistRepository.addTrackToPlaylist(playlistId, matchedVirtualTrack!!, cuePath = server1CueFile.path)
-            val trackEntry3Id = playlistRepository.addTrackToPlaylist(playlistId, matchedChopin!!)
+            val trackEntry2Id = playlistRepository.addTrackToPlaylist(playlistId, matchedChopin!!)
 
             assertTrue(trackEntry1Id > 0L)
             assertTrue(trackEntry2Id > 0L)
-            assertTrue(trackEntry3Id > 0L)
 
             // 5. Verify playlist contents
             val tracks = playlistRepository.getTracksForPlaylist(playlistId)
-            assertEquals(3, tracks.size)
+            assertEquals(2, tracks.size)
             assertEquals("Beethoven: Symphony No. 9 in D minor", tracks[0].title)
             assertEquals(server1.id, tracks[0].serverId)
-            assertFalse(tracks[0].isVirtualTrack)
 
-            assertEquals("I. Allegro ma non troppo", tracks[1].title)
-            assertEquals(server1.id, tracks[1].serverId)
-            assertTrue(tracks[1].isVirtualTrack)
-            assertTrue("Virtual track ID should contain cue_1", tracks[1].virtualTrackId?.endsWith("1") == true)
-
-            assertEquals("Nocturne in E-flat major, Op. 9 No. 2", tracks[2].title)
-            assertEquals(server2.id, tracks[2].serverId)
+            assertEquals("Nocturne in E-flat major, Op. 9 No. 2", tracks[1].title)
+            assertEquals(server2.id, tracks[1].serverId)
         }
 
     @Test

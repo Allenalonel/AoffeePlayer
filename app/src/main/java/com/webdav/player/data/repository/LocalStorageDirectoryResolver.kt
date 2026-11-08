@@ -5,10 +5,8 @@ import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
-import com.webdav.player.data.cue.CueParser
 import com.webdav.player.data.local.CoverArtStorage
 import com.webdav.player.data.metadata.ImageHeaderValidator
-import com.webdav.player.domain.model.CueAlbumItem
 import com.webdav.player.domain.model.DirectoryContent
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LocalStorageFolder
@@ -28,7 +26,7 @@ import java.net.URLEncoder
  *
  * Enumerate tree URIs using DocumentsContract child documents cursor.
  * For root path "/": emits RemoteDirectory of all mounted folders.
- * For "/local/<encodedUri>/...": resolves children into directories, audio files, CUE sheets,
+ * For "/local/<encodedUri>/...": resolves children into directories, audio files,
  * companion lyrics (.lrc), and companion artwork (cover.jpg/png, folder.jpg/png).
  */
 class LocalStorageDirectoryResolver(
@@ -149,9 +147,7 @@ class LocalStorageDirectoryResolver(
                     serverId = LOCAL_STORAGE_ID,
                 )
 
-            val cueFiles = sortedFiles.filter { it.isCue }
             val audioFiles = sortedFiles.filter { it.isAudio }
-            val cueAlbums = resolveCueAlbums(cueFiles, audioFiles)
 
             val imageFiles =
                 sortedFiles.filter { file ->
@@ -204,7 +200,6 @@ class LocalStorageDirectoryResolver(
 
             DirectoryContent(
                 directory = directory,
-                cueAlbums = cueAlbums,
                 metadataMap = metadataMap,
                 isEnriching = false,
             )
@@ -234,7 +229,6 @@ class LocalStorageDirectoryResolver(
             )
         return DirectoryContent(
             directory = rootDir,
-            cueAlbums = emptyList(),
             metadataMap = emptyMap(),
             isEnriching = false,
         )
@@ -282,125 +276,5 @@ class LocalStorageDirectoryResolver(
         } catch (_: Exception) {
             null
         }
-    }
-
-    private fun resolveCueAlbums(
-        cueFiles: List<RemoteFile>,
-        audioFiles: List<RemoteFile>,
-    ): List<CueAlbumItem> {
-        if (cueFiles.isEmpty()) return emptyList()
-
-        return cueFiles.map { cueFile ->
-            val cueContent =
-                try {
-                    contentResolver.openInputStream(Uri.parse(cueFile.path))?.bufferedReader(Charsets.UTF_8)?.use {
-                        it.readText()
-                    }
-                } catch (_: Exception) {
-                    null
-                }
-
-            if (cueContent.isNullOrBlank()) {
-                CueAlbumItem(
-                    cueFile = cueFile,
-                    audioFile = null,
-                    tracks = emptyList(),
-                    isExpanded = false,
-                    isLoading = false,
-                    errorMessage = "无法读取 CUE 文件内容",
-                )
-            } else {
-                val referencedFiles = CueParser.extractReferencedFiles(cueContent)
-                val matchedAudio =
-                    findMatchingAudioFile(
-                        cueFile = cueFile,
-                        audioFiles = audioFiles,
-                        referencedFileNames = referencedFiles,
-                        totalCueFilesCount = cueFiles.size,
-                    )
-
-                if (matchedAudio == null) {
-                    CueAlbumItem(
-                        cueFile = cueFile,
-                        audioFile = null,
-                        tracks = emptyList(),
-                        isExpanded = false,
-                        isLoading = false,
-                        errorMessage = "未找到 CUE 指向的目标音频文件",
-                    )
-                } else {
-                    val tracks =
-                        CueParser.parse(
-                            content = cueContent,
-                            parentAudioPath = matchedAudio.path,
-                            allowMissingFileTag = true,
-                        )
-
-                    if (tracks.isEmpty()) {
-                        CueAlbumItem(
-                            cueFile = cueFile,
-                            audioFile = matchedAudio,
-                            tracks = emptyList(),
-                            isExpanded = false,
-                            isLoading = false,
-                            errorMessage = "CUE 文件未包含有效分轨",
-                        )
-                    } else {
-                        CueAlbumItem(
-                            cueFile = cueFile,
-                            audioFile = matchedAudio,
-                            tracks = tracks,
-                            isExpanded = false,
-                            isLoading = false,
-                            errorMessage = null,
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    private fun findMatchingAudioFile(
-        cueFile: RemoteFile,
-        audioFiles: List<RemoteFile>,
-        referencedFileNames: List<String> = emptyList(),
-        totalCueFilesCount: Int = 1,
-    ): RemoteFile? {
-        if (audioFiles.isEmpty()) return null
-
-        for (ref in referencedFileNames) {
-            val cleanRef = ref.trim().replace('\\', '/').substringAfterLast('/')
-            val exact = audioFiles.firstOrNull { it.name.equals(cleanRef, ignoreCase = true) }
-            if (exact != null) return exact
-
-            val refBase = cleanRef.substringBeforeLast('.')
-            val baseMatch =
-                audioFiles.firstOrNull {
-                    it.name.substringBeforeLast('.').equals(refBase, ignoreCase = true)
-                }
-            if (baseMatch != null) return baseMatch
-        }
-
-        val cueBase = cueFile.name.substringBeforeLast('.')
-        val sameBaseAudio =
-            audioFiles.firstOrNull {
-                it.name.substringBeforeLast('.').equals(cueBase, ignoreCase = true)
-            }
-        if (sameBaseAudio != null) return sameBaseAudio
-
-        if (referencedFileNames.isEmpty() && totalCueFilesCount == 1 && audioFiles.size == 1) {
-            return audioFiles.first()
-        }
-
-        if (referencedFileNames.isEmpty()) {
-            val prefixMatch =
-                audioFiles.firstOrNull {
-                    val audioBase = it.name.substringBeforeLast('.')
-                    cueBase.startsWith(audioBase, ignoreCase = true) || audioBase.startsWith(cueBase, ignoreCase = true)
-                }
-            if (prefixMatch != null) return prefixMatch
-        }
-
-        return null
     }
 }

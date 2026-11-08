@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.Breadcrumb
-import com.webdav.player.domain.model.CueAlbumItem
 import com.webdav.player.domain.model.LibrarySearchResult
 import com.webdav.player.domain.model.LibrarySyncState
 import com.webdav.player.domain.model.RemoteDirectory
@@ -121,7 +120,6 @@ class DirectoryBrowserViewModel(
                             activeTrackPath = activeTrackPath,
                             activeTrackId = activeTrackId,
                             isPlaying = isPlaying,
-                            cueAlbums = emptyList(),
                         )
                     }
 
@@ -238,15 +236,10 @@ class DirectoryBrowserViewModel(
     fun onAudioTrackClicked(file: RemoteFile) {
         if (!file.isAudio) return
         val dir = _uiState.value.currentDirectory ?: return
-        val virtualTracksMap =
-            _uiState.value.cueAlbums
-                .filter { it.audioFile != null && it.tracks.isNotEmpty() }
-                .associate { it.audioFile!!.path to it.tracks }
         musicPlayerAppSession?.playDirectoryTrack(
             directory = dir,
             selectedFile = file,
             initialMetadata = _uiState.value.metadataMap,
-            virtualTracksByAudioPath = virtualTracksMap,
         )
     }
 
@@ -416,7 +409,6 @@ class DirectoryBrowserViewModel(
             current.copy(
                 currentPath = normalizedPath,
                 currentDirectory = if (isNavigatingToNewDirectory) null else current.currentDirectory,
-                cueAlbums = if (isNavigatingToNewDirectory) emptyList() else current.cueAlbums,
                 metadataMap = if (isNavigatingToNewDirectory) emptyMap() else current.metadataMap,
                 breadcrumbs = RemoteDirectory.buildBreadcrumbs(server, normalizedPath),
                 canNavigateUp = normalizedPath != "/",
@@ -463,15 +455,8 @@ class DirectoryBrowserViewModel(
                         musicPlayerAppSession?.setCurrentDirectoryPath(normalizedPath)
                         _uiState.update { current ->
                             if (current.currentPath == normalizedPath) {
-                                val prevMap = current.cueAlbums.associateBy { it.cueFile.path }
-                                val mergedCueAlbums =
-                                    content.cueAlbums.map { alb ->
-                                        val prev = prevMap[alb.cueFile.path]
-                                        if (prev != null) alb.copy(isExpanded = prev.isExpanded) else alb
-                                    }
                                 current.copy(
                                     currentDirectory = content.directory,
-                                    cueAlbums = mergedCueAlbums,
                                     metadataMap = content.metadataMap,
                                     isLoading = false,
                                     isRefreshing = content.isEnriching,
@@ -491,39 +476,6 @@ class DirectoryBrowserViewModel(
                     }
                 }
             }
-    }
-
-    fun toggleCueAlbumExpanded(cuePath: String) {
-        _uiState.update { current ->
-            current.copy(
-                cueAlbums =
-                    current.cueAlbums.map {
-                        if (it.cueFile.path == cuePath) it.copy(isExpanded = !it.isExpanded) else it
-                    },
-            )
-        }
-    }
-
-    fun playVirtualTrack(
-        album: CueAlbumItem,
-        trackIndex: Int,
-    ) {
-        val server = _uiState.value.activeServer ?: return
-        val audioFile = album.audioFile ?: return
-        if (album.tracks.isEmpty()) return
-        val metadata = _uiState.value.metadataMap[audioFile.path]
-        val parentTrack = AudioTrack.fromRemoteFile(server, audioFile, metadata) ?: return
-        musicPlayerAppSession?.playVirtualTracks(
-            parentTrack = parentTrack,
-            virtualTracks = album.tracks,
-            startIndex = trackIndex,
-            cuePath = album.cueFile.path,
-        )
-    }
-
-    fun playCueAlbum(album: CueAlbumItem) {
-        val audioFile = album.audioFile ?: return
-        if (album.tracks.isEmpty()) onAudioTrackClicked(audioFile) else playVirtualTrack(album, 0)
     }
 
     private fun resolveActivePlayback(

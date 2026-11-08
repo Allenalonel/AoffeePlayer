@@ -313,7 +313,6 @@ class PlaylistRepositoryTest {
             assertEquals(35000000L, entry1.size)
             assertEquals(AudioFormat.FLAC, entry1.format)
             assertEquals(0, entry1.sortOrder)
-            assertFalse(entry1.isVirtualTrack)
 
             val entry2 = tracks[1]
             assertEquals(2L, entry2.serverId)
@@ -324,13 +323,13 @@ class PlaylistRepositoryTest {
         }
 
     @Test
-    fun addTrackToPlaylist_virtualTrackPersistedCorrectly() =
+    fun addTrackToPlaylist_physicalAudioTrackPersistedCorrectly() =
         runBlocking {
-            val playlistId = repository.createPlaylist("CUE 分轨精选")
+            val playlistId = repository.createPlaylist("精选歌单")
 
-            val virtualTrack =
+            val audioTrack =
                 AudioTrack(
-                    id = "1:/music/album.wav#cue_3",
+                    id = "1:/music/album.wav",
                     serverId = 1L,
                     remotePath = "/music/album.wav",
                     title = "交响乐第三乐章",
@@ -341,19 +340,18 @@ class PlaylistRepositoryTest {
                     format = AudioFormat.WAV,
                 )
 
-            repository.addTrackToPlaylist(playlistId, virtualTrack, cuePath = "/music/album.cue")
+            repository.addTrackToPlaylist(playlistId, audioTrack)
 
             val tracks = repository.getTracksForPlaylist(playlistId)
             assertEquals(1, tracks.size)
 
             val entry = tracks[0]
-            assertTrue(entry.isVirtualTrack)
-            assertEquals("1:/music/album.wav#cue_3", entry.virtualTrackId)
-            assertEquals("/music/album.cue", entry.cuePath)
+            assertEquals(1L, entry.serverId)
+            assertEquals("/music/album.wav", entry.remotePath)
+            assertEquals("交响乐第三乐章", entry.title)
 
             val reconstructedAudioTrack = entry.toAudioTrack()
-            assertEquals("1:/music/album.wav#cue_3", reconstructedAudioTrack.id)
-            assertTrue(reconstructedAudioTrack.isVirtualTrack)
+            assertEquals("1:/music/album.wav", reconstructedAudioTrack.id)
             assertEquals(1L, reconstructedAudioTrack.serverId)
         }
 
@@ -820,7 +818,7 @@ class PlaylistRepositoryTest {
             val remainingUnreachable = dao.getDistinctServerIdsForInactiveReason(InactiveReason.SERVER_UNREACHABLE.name)
             assertEquals(listOf(20L), remainingUnreachable)
 
-            val track1FromDb = dao.findTrackInPlaylist(playlistId, 10L, "/s1.mp3", null)
+            val track1FromDb = dao.findTrackInPlaylist(playlistId, 10L, "/s1.mp3")
             assertNotNull(track1FromDb)
             assertFalse(track1FromDb!!.isInactive)
             assertNull(track1FromDb.inactiveReason)

@@ -1,12 +1,10 @@
 package com.webdav.player.ui.browser
 
-import com.webdav.player.data.cue.DefaultCueSheetResolver
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.Breadcrumb
-import com.webdav.player.domain.model.CueAlbumItem
 import com.webdav.player.domain.model.DirectoryContent
 import com.webdav.player.domain.model.LibrarySearchResult
 import com.webdav.player.domain.model.ListDirectoryResult
@@ -16,7 +14,6 @@ import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.TrackMetadata
-import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.DirectoryRepository
 import com.webdav.player.domain.repository.LibrarySearchRepository
@@ -53,7 +50,6 @@ class DirectoryBrowserViewModelTest {
     private lateinit var fakeMusicPlayerAppSession: FakeMusicPlayerAppSession
     private lateinit var fakeTrackMetadataRepository: FakeTrackMetadataRepository
     private lateinit var fakeWebDavClient: FakeWebDavClient
-    private lateinit var fakeCueSheetResolver: DefaultCueSheetResolver
     private lateinit var fakeLibrarySearchRepository: FakeLibrarySearchRepository
     private lateinit var viewModel: DirectoryBrowserViewModel
 
@@ -115,8 +111,7 @@ class DirectoryBrowserViewModelTest {
         fakeWebDavClient = FakeWebDavClient()
         fakeServerRepository.setActiveServerSync(sampleServer)
         fakeMusicPlayerAppSession.setActiveServer(sampleServer)
-        fakeCueSheetResolver = DefaultCueSheetResolver(fakeWebDavClient, testDispatcher)
-        fakeDirectoryRepository = FakeDirectoryRepository(fakeCueSheetResolver, fakeTrackMetadataRepository)
+        fakeDirectoryRepository = FakeDirectoryRepository(fakeTrackMetadataRepository)
 
         fakeDirectoryRepository.setResult("/", ListDirectoryResult.Success(rootDir))
         fakeDirectoryRepository.setResult("/Music/", ListDirectoryResult.Success(musicDir))
@@ -1026,21 +1021,8 @@ class DirectoryBrowserViewModelTest {
         }
 
     @Test
-    fun cueAlbum_automaticallyDiscoveredAndParsed() =
+    fun flatDirectoryLayout_withCueAndAudioFiles_exposesAllFilesDirectlyWithoutCueNesting() =
         runTest {
-            val cueContent =
-                """
-                PERFORMER "Pink Floyd"
-                TITLE "The Dark Side of the Moon"
-                FILE "DarkSide.flac" WAVE
-                  TRACK 01 AUDIO
-                    TITLE "Speak to Me"
-                    INDEX 01 00:00:00
-                  TRACK 02 AUDIO
-                    TITLE "Breathe"
-                    INDEX 01 01:07:25
-                """.trimIndent()
-
             val albumDir =
                 RemoteDirectory(
                     path = "/Music/PinkFloyd/",
@@ -1052,358 +1034,58 @@ class DirectoryBrowserViewModelTest {
                         ),
                 )
             fakeDirectoryRepository.setResult("/Music/PinkFloyd/", ListDirectoryResult.Success(albumDir))
-            fakeWebDavClient.textResponses["/Music/PinkFloyd/DarkSide.cue"] = cueContent
 
             viewModel.onDirectoryClicked(albumDir)
             advanceUntilIdle()
 
             val state = viewModel.uiState.value
-            assertEquals(1, state.cueAlbums.size)
-            val cueAlbum = state.cueAlbums.first()
-            assertEquals("DarkSide.cue", cueAlbum.cueFile.name)
-            assertEquals("DarkSide.flac", cueAlbum.audioFile?.name)
-            assertFalse(cueAlbum.isLoading)
-            assertNull(cueAlbum.errorMessage)
-            assertEquals(2, cueAlbum.tracks.size)
-            assertEquals("Speak to Me", cueAlbum.tracks[0].title)
-            assertEquals("Breathe", cueAlbum.tracks[1].title)
+            assertEquals(2, state.files.size)
+            assertTrue(state.files.any { it.name == "DarkSide.flac" })
+            assertTrue(state.files.any { it.name == "DarkSide.cue" })
         }
 
     @Test
-    fun cueAlbum_toggleExpanded_updatesIsExpandedState() =
+    fun onAudioTrackClicked_companionAudioFile_dispatchesStandardPlayback() =
         runTest {
-            val cueContent =
-                """
-                FILE "Album.flac" WAVE
-                  TRACK 01 AUDIO
-                    TITLE "Track 1"
-                    INDEX 01 00:00:00
-                """.trimIndent()
+            val audioFile = RemoteFile(name = "DarkSide.flac", path = "/Music/PinkFloyd/DarkSide.flac", size = 200_000_000L)
+            val cueFile = RemoteFile(name = "DarkSide.cue", path = "/Music/PinkFloyd/DarkSide.cue", size = 1024L)
             val albumDir =
                 RemoteDirectory(
-                    path = "/Music/Album/",
-                    name = "Album",
-                    files =
-                        listOf(
-                            RemoteFile(name = "Album.flac", path = "/Music/Album/Album.flac", size = 100_000_000L),
-                            RemoteFile(name = "Album.cue", path = "/Music/Album/Album.cue", size = 512L),
-                        ),
+                    path = "/Music/PinkFloyd/",
+                    name = "PinkFloyd",
+                    files = listOf(audioFile, cueFile),
                 )
-            fakeDirectoryRepository.setResult("/Music/Album/", ListDirectoryResult.Success(albumDir))
-            fakeWebDavClient.textResponses["/Music/Album/Album.cue"] = cueContent
+            fakeDirectoryRepository.setResult("/Music/PinkFloyd/", ListDirectoryResult.Success(albumDir))
 
             viewModel.onDirectoryClicked(albumDir)
             advanceUntilIdle()
 
-            assertFalse(
-                viewModel.uiState.value.cueAlbums
-                    .first()
-                    .isExpanded,
-            )
+            viewModel.onAudioTrackClicked(audioFile)
+            advanceUntilIdle()
 
-            viewModel.toggleCueAlbumExpanded("/Music/Album/Album.cue")
-            assertTrue(
-                viewModel.uiState.value.cueAlbums
-                    .first()
-                    .isExpanded,
-            )
-
-            viewModel.toggleCueAlbumExpanded("/Music/Album/Album.cue")
-            assertFalse(
-                viewModel.uiState.value.cueAlbums
-                    .first()
-                    .isExpanded,
-            )
+            assertEquals("/Music/PinkFloyd/DarkSide.flac", fakeMusicPlayerAppSession.lastPlaySelectedFile?.path)
+            assertEquals("/Music/PinkFloyd/", fakeMusicPlayerAppSession.lastPlayDirectory?.path)
         }
 
     @Test
-    fun cueAlbum_playVirtualTrack_dispatchesToSessionWithCorrectStartIndex() =
+    fun onAudioTrackClicked_cueFile_isIgnored() =
         runTest {
-            val cueContent =
-                """
-                FILE "Live.flac" WAVE
-                  TRACK 01 AUDIO
-                    TITLE "Intro"
-                    INDEX 01 00:00:00
-                  TRACK 02 AUDIO
-                    TITLE "Main Song"
-                    INDEX 01 02:30:00
-                """.trimIndent()
+            val cueFile = RemoteFile(name = "DarkSide.cue", path = "/Music/PinkFloyd/DarkSide.cue", size = 1024L)
             val albumDir =
                 RemoteDirectory(
-                    path = "/Music/Live/",
-                    name = "Live",
-                    files =
-                        listOf(
-                            RemoteFile(name = "Live.flac", path = "/Music/Live/Live.flac", size = 150_000_000L),
-                            RemoteFile(name = "Live.cue", path = "/Music/Live/Live.cue", size = 512L),
-                        ),
+                    path = "/Music/PinkFloyd/",
+                    name = "PinkFloyd",
+                    files = listOf(cueFile),
                 )
-            fakeDirectoryRepository.setResult("/Music/Live/", ListDirectoryResult.Success(albumDir))
-            fakeWebDavClient.textResponses["/Music/Live/Live.cue"] = cueContent
+            fakeDirectoryRepository.setResult("/Music/PinkFloyd/", ListDirectoryResult.Success(albumDir))
 
             viewModel.onDirectoryClicked(albumDir)
             advanceUntilIdle()
 
-            val album =
-                viewModel.uiState.value.cueAlbums
-                    .first()
-            viewModel.playVirtualTrack(album, trackIndex = 1)
+            viewModel.onAudioTrackClicked(cueFile)
             advanceUntilIdle()
 
-            assertNotNull(fakeMusicPlayerAppSession.lastPlayVirtualTracksParent)
-            assertEquals("/Music/Live/Live.flac", fakeMusicPlayerAppSession.lastPlayVirtualTracksParent?.remotePath)
-            assertEquals(1, fakeMusicPlayerAppSession.lastPlayVirtualTracksStartIndex)
-            assertEquals(2, fakeMusicPlayerAppSession.lastPlayVirtualTracksList.size)
-            assertEquals("Main Song", fakeMusicPlayerAppSession.lastPlayVirtualTracksList[1].title)
-        }
-
-    @Test
-    fun cueAlbum_playCueAlbum_startsFromTrackZero() =
-        runTest {
-            val cueContent =
-                """
-                FILE "Concert.flac" WAVE
-                  TRACK 01 AUDIO
-                    TITLE "Track 1"
-                    INDEX 01 00:00:00
-                  TRACK 02 AUDIO
-                    TITLE "Track 2"
-                    INDEX 01 01:00:00
-                """.trimIndent()
-            val albumDir =
-                RemoteDirectory(
-                    path = "/Music/Concert/",
-                    name = "Concert",
-                    files =
-                        listOf(
-                            RemoteFile(name = "Concert.flac", path = "/Music/Concert/Concert.flac", size = 100_000_000L),
-                            RemoteFile(name = "Concert.cue", path = "/Music/Concert/Concert.cue", size = 512L),
-                        ),
-                )
-            fakeDirectoryRepository.setResult("/Music/Concert/", ListDirectoryResult.Success(albumDir))
-            fakeWebDavClient.textResponses["/Music/Concert/Concert.cue"] = cueContent
-
-            viewModel.onDirectoryClicked(albumDir)
-            advanceUntilIdle()
-
-            val album =
-                viewModel.uiState.value.cueAlbums
-                    .first()
-            viewModel.playCueAlbum(album)
-            advanceUntilIdle()
-
-            assertEquals(0, fakeMusicPlayerAppSession.lastPlayVirtualTracksStartIndex)
-        }
-
-    @Test
-    fun cueAlbum_activeTrackAndVirtualTrackHighlighting() =
-        runTest {
-            val cueContent =
-                """
-                FILE "Sym9.flac" WAVE
-                  TRACK 01 AUDIO
-                    TITLE "Allegro"
-                    INDEX 01 00:00:00
-                  TRACK 02 AUDIO
-                    TITLE "Adagio"
-                    INDEX 01 05:00:00
-                """.trimIndent()
-            val albumDir =
-                RemoteDirectory(
-                    path = "/Music/Beethoven/",
-                    name = "Beethoven",
-                    files =
-                        listOf(
-                            RemoteFile(name = "Sym9.flac", path = "/Music/Beethoven/Sym9.flac", size = 300_000_000L),
-                            RemoteFile(name = "Sym9.cue", path = "/Music/Beethoven/Sym9.cue", size = 512L),
-                        ),
-                )
-            fakeDirectoryRepository.setResult("/Music/Beethoven/", ListDirectoryResult.Success(albumDir))
-            fakeWebDavClient.textResponses["/Music/Beethoven/Sym9.cue"] = cueContent
-
-            viewModel.onDirectoryClicked(albumDir)
-            advanceUntilIdle()
-
-            val album =
-                viewModel.uiState.value.cueAlbums
-                    .first()
-            val track1 = album.tracks[0]
-            val track2 = album.tracks[1]
-
-            // Initially nothing active
-            assertFalse(viewModel.uiState.value.isCueAlbumActive(album))
-            assertFalse(viewModel.uiState.value.isVirtualTrackActive(album, track1))
-            assertFalse(viewModel.uiState.value.isVirtualTrackActive(album, track2))
-
-            // Simulate session playing track 2
-            val playingTrack =
-                AudioTrack(
-                    id = "${sampleServer.id}:/Music/Beethoven/Sym9.flac#cue_2",
-                    serverId = sampleServer.id,
-                    remotePath = "/Music/Beethoven/Sym9.flac",
-                    title = "Adagio",
-                    format = AudioFormat.FLAC,
-                )
-            fakeMusicPlayerAppSession._sessionState.value =
-                fakeMusicPlayerAppSession._sessionState.value.copy(
-                    queue = PlaybackQueue(tracks = listOf(playingTrack), currentIndex = 0),
-                    playbackState = PlaybackState.Playing,
-                )
-            advanceUntilIdle()
-
-            val state = viewModel.uiState.value
-            assertEquals("/Music/Beethoven/Sym9.flac", state.activeTrackPath)
-            assertTrue(state.isPlaying)
-            assertTrue(state.isCueAlbumActive(album))
-            assertFalse(state.isVirtualTrackActive(album, track1))
-            assertTrue(state.isVirtualTrackActive(album, track2))
-        }
-
-    @Test
-    fun cueAlbum_malformedCueOrNetworkFailure_setsErrorMessageWithoutCrashing() =
-        runTest {
-            val albumDir =
-                RemoteDirectory(
-                    path = "/Music/Broken/",
-                    name = "Broken",
-                    files =
-                        listOf(
-                            RemoteFile(name = "Broken.flac", path = "/Music/Broken/Broken.flac", size = 100_000_000L),
-                            RemoteFile(name = "Broken.cue", path = "/Music/Broken/Broken.cue", size = 512L),
-                        ),
-                )
-            fakeDirectoryRepository.setResult("/Music/Broken/", ListDirectoryResult.Success(albumDir))
-            // CUE content is not set in fakeWebDavClient, so fetchText returns null
-
-            viewModel.onDirectoryClicked(albumDir)
-            advanceUntilIdle()
-
-            val state = viewModel.uiState.value
-            assertEquals(1, state.cueAlbums.size)
-            val album = state.cueAlbums.first()
-            assertFalse(album.isLoading)
-            assertNotNull(album.errorMessage)
-            assertTrue(album.tracks.isEmpty())
-        }
-
-    @Test
-    fun cueAlbum_targetAudioFileMissing_presentsMildErrorMessageWithoutCrashing() =
-        runTest {
-            val cueContent =
-                """
-                TITLE "Orphan Album"
-                FILE "NonExistent.flac" WAVE
-                  TRACK 01 AUDIO
-                    TITLE "Intro"
-                    INDEX 01 00:00:00
-                """.trimIndent()
-
-            val albumDir =
-                RemoteDirectory(
-                    path = "/Music/MissingAudio/",
-                    name = "MissingAudio",
-                    files =
-                        listOf(
-                            RemoteFile(name = "Unrelated.mp3", path = "/Music/MissingAudio/Unrelated.mp3", size = 5_000_000L),
-                            RemoteFile(name = "Album.cue", path = "/Music/MissingAudio/Album.cue", size = 512L),
-                        ),
-                )
-            fakeDirectoryRepository.setResult("/Music/MissingAudio/", ListDirectoryResult.Success(albumDir))
-            fakeWebDavClient.textResponses["/Music/MissingAudio/Album.cue"] = cueContent
-
-            viewModel.onDirectoryClicked(albumDir)
-            advanceUntilIdle()
-
-            val state = viewModel.uiState.value
-            assertEquals(1, state.cueAlbums.size)
-            val album = state.cueAlbums.first()
-            assertFalse(album.isLoading)
-            assertNull(album.audioFile)
-            assertNotNull(album.errorMessage)
-            assertTrue(album.tracks.isEmpty())
-
-            // Unrelated audio track can still be played normally
-            viewModel.onAudioTrackClicked(albumDir.files.first { it.isAudio })
-            advanceUntilIdle()
-            assertEquals("Unrelated.mp3", fakeMusicPlayerAppSession.lastPlaySelectedFile?.name)
-        }
-
-    @Test
-    fun cueAlbum_directoryHasNoAudioFilesAtAll_stillDiscoversCueAndReportsMissingAudio() =
-        runTest {
-            val cueContent =
-                """
-                TITLE "No Audio In Folder"
-                FILE "Missing.flac" WAVE
-                  TRACK 01 AUDIO
-                    TITLE "Intro"
-                    INDEX 01 00:00:00
-                """.trimIndent()
-
-            val albumDir =
-                RemoteDirectory(
-                    path = "/Music/OnlyCue/",
-                    name = "OnlyCue",
-                    files =
-                        listOf(
-                            RemoteFile(name = "Only.cue", path = "/Music/OnlyCue/Only.cue", size = 512L),
-                        ),
-                )
-            fakeDirectoryRepository.setResult("/Music/OnlyCue/", ListDirectoryResult.Success(albumDir))
-            fakeWebDavClient.textResponses["/Music/OnlyCue/Only.cue"] = cueContent
-
-            viewModel.onDirectoryClicked(albumDir)
-            advanceUntilIdle()
-
-            val state = viewModel.uiState.value
-            assertEquals(1, state.cueAlbums.size)
-            val album = state.cueAlbums.first()
-            assertFalse(album.isLoading)
-            assertNull(album.audioFile)
-            assertNotNull(album.errorMessage)
-            assertTrue(album.tracks.isEmpty())
-        }
-
-    @Test
-    fun cueAlbum_syntaxErrorOrEmptyTracks_allowsFallbackToPlayAsWholeAudio() =
-        runTest {
-            val cueContent =
-                """
-                TITLE "Broken Album"
-                FILE "Broken.flac" WAVE
-                REM Invalid CUE with no tracks or bad syntax
-                """.trimIndent()
-
-            val albumDir =
-                RemoteDirectory(
-                    path = "/Music/BrokenSyntax/",
-                    name = "BrokenSyntax",
-                    files =
-                        listOf(
-                            RemoteFile(name = "Broken.flac", path = "/Music/BrokenSyntax/Broken.flac", size = 100_000_000L),
-                            RemoteFile(name = "Broken.cue", path = "/Music/BrokenSyntax/Broken.cue", size = 512L),
-                        ),
-                )
-            fakeDirectoryRepository.setResult("/Music/BrokenSyntax/", ListDirectoryResult.Success(albumDir))
-            fakeWebDavClient.textResponses["/Music/BrokenSyntax/Broken.cue"] = cueContent
-
-            viewModel.onDirectoryClicked(albumDir)
-            advanceUntilIdle()
-
-            val state = viewModel.uiState.value
-            assertEquals(1, state.cueAlbums.size)
-            val album = state.cueAlbums.first()
-            assertFalse(album.isLoading)
-            assertNotNull(album.audioFile)
-            assertNotNull(album.errorMessage)
-            assertTrue(album.tracks.isEmpty())
-
-            // Fallback: playing the album directly plays the parent audio file as whole audio
-            viewModel.playCueAlbum(album)
-            advanceUntilIdle()
-
-            assertEquals("Broken.flac", fakeMusicPlayerAppSession.lastPlaySelectedFile?.name)
+            assertNull(fakeMusicPlayerAppSession.lastPlaySelectedFile)
         }
 
     private class FakeServerRepository : ServerRepository {
@@ -1444,7 +1126,6 @@ class DirectoryBrowserViewModelTest {
     }
 
     private class FakeDirectoryRepository(
-        var cueSheetResolver: DefaultCueSheetResolver? = null,
         var trackMetadataRepository: FakeTrackMetadataRepository? = null,
     ) : DirectoryRepository {
         private val results = mutableMapOf<String, ListDirectoryResult>()
@@ -1498,7 +1179,6 @@ class DirectoryBrowserViewModelTest {
                 when (result) {
                     is ListDirectoryResult.Success -> {
                         val dir = result.directory
-                        val cueFiles = dir.files.filter { it.isCue }
 
                         val metaMap =
                             trackMetadataRepository
@@ -1506,21 +1186,12 @@ class DirectoryBrowserViewModelTest {
                                 ?.first()
                                 ?.associateBy { it.remotePath } ?: emptyMap()
 
-                        val resolvedCue =
-                            if (cueFiles.isNotEmpty() && cueSheetResolver != null) {
-                                val parentDurations = metaMap.mapValues { it.value.durationMs }
-                                cueSheetResolver!!.resolveDirectoryCueAlbums(server, dir, parentDurations)
-                            } else {
-                                emptyList()
-                            }
-
                         if (cached == null || dir != cached) {
                             emit(DirectoryContent(directory = dir, isEnriching = true))
                         }
                         emit(
                             DirectoryContent(
                                 directory = dir,
-                                cueAlbums = resolvedCue,
                                 metadataMap = metaMap,
                                 isEnriching = false,
                             ),

@@ -36,10 +36,7 @@ interface TrackMetadataDao {
               OR album LIKE '%' || :query || '%' 
               OR remotePath LIKE '%' || :query || '%'
               OR remotePath IN (
-                  SELECT CASE 
-                      WHEN remotePath LIKE '%#cue_%' THEN SUBSTR(remotePath, 1, INSTR(remotePath, '#cue_') - 1)
-                      ELSE remotePath 
-                  END 
+                  SELECT remotePath 
                   FROM media_track_index 
                   WHERE (:serverId IS NULL OR serverId = :serverId)
                     AND (

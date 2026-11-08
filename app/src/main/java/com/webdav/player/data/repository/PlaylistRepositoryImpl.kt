@@ -273,14 +273,6 @@ class PlaylistRepositoryImpl(
         return insertedId
     }
 
-    @Suppress("UNUSED_PARAMETER")
-    @Deprecated("CUE support is purged; cuePath is ignored")
-    override suspend fun addTrackToPlaylist(
-        playlistId: Long,
-        track: AudioTrack,
-        cuePath: String?,
-    ): Long = addTrackToPlaylist(playlistId, track)
-
     override suspend fun addTracksToPlaylist(
         playlistId: Long,
         tracks: List<AudioTrack>,

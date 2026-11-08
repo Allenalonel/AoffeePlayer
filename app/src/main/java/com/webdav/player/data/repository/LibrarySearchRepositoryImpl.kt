@@ -10,7 +10,6 @@ import com.webdav.player.data.local.MediaTrackIndexEntity
 import com.webdav.player.data.local.RemoteDirectoryJsonSerializer
 import com.webdav.player.data.local.TrackMetadataDao
 import com.webdav.player.data.local.TrackMetadataEntity
-import com.webdav.player.domain.cue.CueSheetResolver
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
@@ -39,28 +38,6 @@ class LibrarySearchRepositoryImpl(
     private val context: Context? = null,
     private val prefsName: String = "webdav_search_history",
 ) : LibrarySearchRepository {
-    @Suppress("UNUSED_PARAMETER")
-    @Deprecated("cueSheetResolver parameter is obsolete and ignored")
-    constructor(
-        directoryCacheDao: DirectoryCacheDao,
-        trackMetadataDao: TrackMetadataDao,
-        mediaTrackIndexDao: MediaTrackIndexDao? = null,
-        directorySyncCheckpointDao: DirectorySyncCheckpointDao? = null,
-        cueSheetResolver: CueSheetResolver? = null,
-        webDavSyncScanner: WebDavSyncScanner? = null,
-        localStorageIndexScanner: LocalStorageIndexScanner? = null,
-        context: Context? = null,
-        prefsName: String = "webdav_search_history",
-    ) : this(
-        directoryCacheDao = directoryCacheDao,
-        trackMetadataDao = trackMetadataDao,
-        mediaTrackIndexDao = mediaTrackIndexDao,
-        directorySyncCheckpointDao = directorySyncCheckpointDao,
-        webDavSyncScanner = webDavSyncScanner,
-        localStorageIndexScanner = localStorageIndexScanner,
-        context = context,
-        prefsName = prefsName,
-    )
     companion object {
         private const val MAX_HISTORY_SIZE = 20
         private const val KEY_HISTORY_JSON = "history_json"

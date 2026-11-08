@@ -42,15 +42,7 @@ interface PlaylistRepository {
     suspend fun addTrackToPlaylist(
         playlistId: Long,
         track: AudioTrack,
-    ): Long = addTrackToPlaylist(playlistId, track, null)
-
-    @Suppress("UNUSED_PARAMETER")
-    @Deprecated("CUE support is purged; cuePath is ignored")
-    suspend fun addTrackToPlaylist(
-        playlistId: Long,
-        track: AudioTrack,
-        cuePath: String?,
-    ): Long = addTrackToPlaylist(playlistId, track)
+    ): Long
 
     suspend fun addTracksToPlaylist(
         playlistId: Long,

@@ -216,7 +216,6 @@ class LocalStorageDirectoryResolverTest {
             val expectedEncoded = URLEncoder.encode(TREE_URI_STRING, "UTF-8")
             assertEquals("/local/$expectedEncoded/", dir.subDirectories[0].path)
             assertTrue(dir.files.isEmpty())
-            assertTrue(result.cueAlbums.isEmpty())
         }
 
     @Test
@@ -337,7 +336,6 @@ class LocalStorageDirectoryResolverTest {
             val encodedTreeUri = URLEncoder.encode(TREE_URI_STRING, "UTF-8")
             val result = resolver.resolve("/local/$encodedTreeUri/")
 
-            assertTrue(result.cueAlbums.isEmpty())
             assertEquals(2, result.directory.files.size)
             val audioFile = result.directory.files.firstOrNull { it.name == "Album.flac" }
             assertNotNull(audioFile)

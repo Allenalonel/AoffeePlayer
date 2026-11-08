@@ -170,12 +170,7 @@ internal fun PlaylistTrackRow(
                         onDragStart = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
                     )
                 },
-                tagContent =
-                    if (track.isVirtualTrack) {
-                        { PlaylistVirtualTrackTag() }
-                    } else {
-                        null
-                    },
+                tagContent = null,
                 actionsMenu = { dismiss ->
                     PlaylistTrackActionsMenu(
                         track = track,
@@ -363,7 +358,7 @@ internal fun PlaylistTrackLeadingContent(
         TrackThumbnailLeading(
             coverThumbnailPath = track.coverThumbnailPath,
             size = PlaylistTrackRowDefaults.ThumbnailSize,
-            fallbackIcon = if (track.isVirtualTrack) AppIcons.QueueMusic else AppIcons.Audiotrack,
+            fallbackIcon = AppIcons.Audiotrack,
             isActive = isActive,
             isPlaying = isPlaying,
         )
@@ -409,13 +404,6 @@ internal fun PlaylistTrackActionsMenu(
         },
     )
 }
-
-@Composable
-internal fun PlaylistVirtualTrackTag(modifier: Modifier = Modifier) =
-    TrackTagPill(
-        text = "分轨",
-        modifier = modifier,
-    )
 
 @Preview(showBackground = true)
 @Composable

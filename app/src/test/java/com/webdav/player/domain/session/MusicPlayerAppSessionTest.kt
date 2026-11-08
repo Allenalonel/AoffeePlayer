@@ -1,6 +1,5 @@
 package com.webdav.player.domain.session
 
-import com.webdav.player.data.cue.DefaultCueSheetResolver
 import com.webdav.player.data.player.StreamingHardwareLockManager
 import com.webdav.player.data.player.UnsupportedRangeReconnectionException
 import com.webdav.player.data.remote.ConnectionResult
@@ -23,7 +22,6 @@ import com.webdav.player.domain.model.QueueOrigin
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
-import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.network.FakeNetworkConnectivityObserver
 import com.webdav.player.domain.player.FakeAudioPlayerEngine
@@ -65,30 +63,6 @@ class MusicPlayerAppSessionTest {
     private lateinit var sessionJob: kotlinx.coroutines.CompletableJob
     private lateinit var sessionScope: kotlinx.coroutines.CoroutineScope
     private lateinit var session: MusicPlayerAppSessionImpl
-    private lateinit var fakeCueClient: FakeCueWebDavClient
-
-    private class FakeCueWebDavClient : WebDavClient {
-        val textResponses = mutableMapOf<String, String>()
-
-        override suspend fun testConnection(server: WebDavServer): ConnectionResult = ConnectionResult.Success
-
-        override suspend fun listDirectory(
-            server: WebDavServer,
-            path: String,
-        ): ListDirectoryResult = ListDirectoryResult.Failure("Not implemented")
-
-        override suspend fun fetchRange(
-            server: WebDavServer,
-            remotePath: String,
-            startByte: Long,
-            endByte: Long,
-        ): ByteArray? = null
-
-        override suspend fun fetchText(
-            server: WebDavServer,
-            remotePath: String,
-        ): String? = textResponses[remotePath]
-    }
 
     private class FakeStreamingHardwareLockManager : StreamingHardwareLockManager {
         override var isWakeLockHeld: Boolean = false
@@ -133,7 +107,6 @@ class MusicPlayerAppSessionTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         fakeEngine = FakeAudioPlayerEngine()
-        fakeCueClient = FakeCueWebDavClient()
         sessionJob = SupervisorJob()
         sessionScope = kotlinx.coroutines.CoroutineScope(testDispatcher + sessionJob)
         session =
@@ -312,62 +285,6 @@ class MusicPlayerAppSessionTest {
 
             assertEquals(testServer, fakeEngine.lastServer)
             assertEquals(AudioFormat.WMA, fakeEngine.loadedTrack?.format)
-        }
-
-    @Test
-    fun playDirectoryTrack_withVirtualTracksByAudioPath_inlinesVirtualTracksIntoDirectoryQueue() =
-        runTest(testDispatcher) {
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
-
-            val track1 = RemoteFile(name = "01 - Intro.mp3", path = "/Music/Album/01 - Intro.mp3", size = 1000)
-            val trackAlbum = RemoteFile(name = "02 - Beethoven.flac", path = "/Music/Album/02 - Beethoven.flac", size = 50000)
-            val track3 = RemoteFile(name = "03 - Outro.wav", path = "/Music/Album/03 - Outro.wav", size = 8000)
-
-            val directory =
-                RemoteDirectory(
-                    path = "/Music/Album/",
-                    name = "Album",
-                    files = listOf(track1, trackAlbum, track3),
-                )
-
-            val vt1 =
-                VirtualTrack(
-                    trackNumber = 1,
-                    title = "Allegro",
-                    performer = "Karajan",
-                    startTimeMs = 0L,
-                    endTimeMs = 180000L,
-                    parentAudioPath = trackAlbum.path,
-                )
-            val vt2 =
-                VirtualTrack(
-                    trackNumber = 2,
-                    title = "Adagio",
-                    performer = "Karajan",
-                    startTimeMs = 180000L,
-                    endTimeMs = 400000L,
-                    parentAudioPath = trackAlbum.path,
-                )
-            val virtualTracksMap = mapOf(trackAlbum.path to listOf(vt1, vt2))
-
-            // Case A: User clicks the CUE parent audio album file -> plays physical track directly, ignoring virtual tracks
-            session.playDirectoryTrack(directory, trackAlbum, virtualTracksByAudioPath = virtualTracksMap)
-            advanceUntilIdle()
-
-            val stateA = session.sessionState.value
-            assertEquals(3, stateA.queue.size)
-            assertEquals(1, stateA.queue.currentIndex)
-            assertEquals("02 - Beethoven.flac", stateA.currentTrack?.title)
-
-            // Case B: User clicks the track AFTER the album (track3)
-            session.playDirectoryTrack(directory, track3, virtualTracksByAudioPath = virtualTracksMap)
-            advanceUntilIdle()
-
-            val stateB = session.sessionState.value
-            assertEquals(3, stateB.queue.size)
-            assertEquals(2, stateB.queue.currentIndex)
-            assertEquals("03 - Outro.wav", stateB.currentTrack?.title)
         }
 
     @Test
@@ -2668,13 +2585,6 @@ class MusicPlayerAppSessionTest {
         override suspend fun addTrackToPlaylist(
             playlistId: Long,
             track: AudioTrack,
-        ): Long = 1L
-
-        @Deprecated("Deprecated in interface")
-        override suspend fun addTrackToPlaylist(
-            playlistId: Long,
-            track: AudioTrack,
-            cuePath: String?,
         ): Long = 1L
 
         override suspend fun addTracksToPlaylist(

@@ -1,6 +1,5 @@
 package com.webdav.player.data.repository
 
-import com.webdav.player.data.cue.CueVirtualTrackIndexer
 import com.webdav.player.data.local.DirectorySyncCheckpointDao
 import com.webdav.player.data.local.DirectorySyncCheckpointEntity
 import com.webdav.player.data.local.MediaTrackIndexDao
@@ -42,22 +41,6 @@ class WebDavSyncScanner(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val maxConcurrency: Int = DEFAULT_MAX_CONCURRENCY,
 ) {
-    @Suppress("UNUSED_PARAMETER")
-    @Deprecated("cueVirtualTrackIndexer is obsolete and ignored")
-    constructor(
-        webDavClient: WebDavClient,
-        mediaTrackIndexDao: MediaTrackIndexDao,
-        directorySyncCheckpointDao: DirectorySyncCheckpointDao,
-        cueVirtualTrackIndexer: CueVirtualTrackIndexer?,
-        ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-        maxConcurrency: Int = DEFAULT_MAX_CONCURRENCY,
-    ) : this(
-        webDavClient = webDavClient,
-        mediaTrackIndexDao = mediaTrackIndexDao,
-        directorySyncCheckpointDao = directorySyncCheckpointDao,
-        ioDispatcher = ioDispatcher,
-        maxConcurrency = maxConcurrency,
-    )
     companion object {
         const val DEFAULT_MAX_CONCURRENCY = 3
         val EXCLUDED_DIR_NAMES =

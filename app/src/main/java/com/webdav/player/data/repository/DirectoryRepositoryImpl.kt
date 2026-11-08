@@ -4,7 +4,6 @@ import com.webdav.player.data.local.DirectoryCacheDao
 import com.webdav.player.data.local.DirectoryCacheEntity
 import com.webdav.player.data.local.RemoteDirectoryJsonSerializer
 import com.webdav.player.data.remote.WebDavClient
-import com.webdav.player.domain.cue.CueSheetResolver
 import com.webdav.player.domain.model.DirectoryContent
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.ListDirectoryResult
@@ -25,20 +24,6 @@ class DirectoryRepositoryImpl(
     private val trackMetadataRepository: TrackMetadataRepository? = null,
     private val localStorageDirectoryResolver: LocalStorageDirectoryResolver? = null,
 ) : DirectoryRepository {
-    @Suppress("UNUSED_PARAMETER")
-    @Deprecated("cueSheetResolver parameter is obsolete and ignored")
-    constructor(
-        webDavClient: WebDavClient,
-        directoryCacheDao: DirectoryCacheDao? = null,
-        cueSheetResolver: CueSheetResolver? = null,
-        trackMetadataRepository: TrackMetadataRepository? = null,
-        localStorageDirectoryResolver: LocalStorageDirectoryResolver? = null,
-    ) : this(
-        webDavClient = webDavClient,
-        directoryCacheDao = directoryCacheDao,
-        trackMetadataRepository = trackMetadataRepository,
-        localStorageDirectoryResolver = localStorageDirectoryResolver,
-    )
     companion object {
         private const val MAX_DIRECTORY_CACHE_SIZE = 50
     }

@@ -1,9 +1,6 @@
 package com.webdav.player.domain.session
 
-import com.webdav.player.data.cue.CueParser
-import com.webdav.player.data.cue.DefaultCueSheetResolver
 import com.webdav.player.data.remote.WebDavClient
-import com.webdav.player.domain.cue.CueSheetResolver
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackMode
@@ -111,17 +108,9 @@ class PlaybackSessionResumptionTest {
         Dispatchers.resetMain()
     }
 
-    private val defaultWebDavClient by lazy {
-        TestWebDavClient(mutableMapOf("/Music/PinkFloyd/dark_side.cue" to cueContentSample))
-    }
-
     private fun createSession(
         store: FakePlaybackSessionStore = fakeStore,
         metadataRepo: TrackMetadataRepository? = null,
-        @Suppress("UNUSED_PARAMETER")
-        client: WebDavClient? = null,
-        @Suppress("UNUSED_PARAMETER")
-        cueResolver: CueSheetResolver? = null,
     ): MusicPlayerAppSessionImpl {
         return MusicPlayerAppSessionImpl(
             playerEngine = fakeEngine,
@@ -144,31 +133,6 @@ class PlaybackSessionResumptionTest {
             size = 350000000L,
             format = AudioFormat.FLAC,
         )
-
-    private val cueContentSample =
-        """
-        REM GENRE Rock
-        REM DATE 1973
-        PERFORMER "Pink Floyd"
-        TITLE "The Dark Side of the Moon"
-        FILE "dark_side.flac" WAVE
-          TRACK 01 AUDIO
-            TITLE "Speak to Me"
-            PERFORMER "Pink Floyd"
-            INDEX 01 00:00:00
-          TRACK 02 AUDIO
-            TITLE "Breathe (In the Air)"
-            PERFORMER "Pink Floyd"
-            INDEX 01 01:13:00
-          TRACK 03 AUDIO
-            TITLE "On the Run"
-            PERFORMER "Pink Floyd"
-            INDEX 01 03:56:00
-          TRACK 04 AUDIO
-            TITLE "Time"
-            PERFORMER "Pink Floyd"
-            INDEX 01 07:31:00
-        """.trimIndent()
 
     @Test
     fun coldStart_restoresStateAndRendersMiniPlayerInPausedStateAtSavedPosition() =

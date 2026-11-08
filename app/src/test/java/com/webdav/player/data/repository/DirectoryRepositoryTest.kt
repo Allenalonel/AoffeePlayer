@@ -409,14 +409,12 @@ class DirectoryRepositoryTest {
             assertEquals(2, emissions.size)
             // First emission: remote list with isEnriching = true
             assertTrue(emissions[0].isEnriching)
-            assertTrue(emissions[0].cueAlbums.isEmpty())
             assertEquals(2, emissions[0].directory.files.size)
             assertTrue(emissions[0].directory.files.any { it.name == "album.flac" })
 
             // Second emission: enriched directory with isEnriching = false
             val finalContent = emissions[1]
             assertFalse(finalContent.isEnriching)
-            assertTrue(finalContent.cueAlbums.isEmpty())
             assertEquals(2, finalContent.directory.files.size)
             assertTrue(finalContent.directory.files.any { it.name == "album.flac" })
         }

@@ -12,7 +12,6 @@ import com.webdav.player.domain.model.Playlist
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
-import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.network.NetworkConnectivityObserver
@@ -315,17 +314,6 @@ class MusicPlayerAppSessionImpl(
         val request = queueManager.buildDirectoryQueue(directory, selectedFile, initialMetadata, server = server) ?: return
         dispatchQueueLoad(server, request, directory.path)
         metadataCoordinator.enrichQueueTracksFromCache(server, request.queue)
-    }
-
-    @Suppress("UNUSED_PARAMETER")
-    @Deprecated("CUE support is purged; virtualTracksByAudioPath is ignored")
-    override fun playDirectoryTrack(
-        directory: RemoteDirectory,
-        selectedFile: RemoteFile,
-        initialMetadata: Map<String, TrackMetadata>,
-        virtualTracksByAudioPath: Map<String, List<VirtualTrack>>,
-    ) {
-        playDirectoryTrack(directory, selectedFile, initialMetadata)
     }
 
     override fun playTrack(track: AudioTrack) {

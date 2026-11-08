@@ -26,7 +26,7 @@ import java.net.URLEncoder
  *
  * Enumerate tree URIs using DocumentsContract child documents cursor.
  * For root path "/": emits RemoteDirectory of all mounted folders.
- * For "/local/<encodedUri>/...": resolves children into directories, audio files, CUE sheets,
+ * For "/local/<encodedUri>/...": resolves children into directories, audio files,
  * companion lyrics (.lrc), and companion artwork (cover.jpg/png, folder.jpg/png).
  */
 class LocalStorageDirectoryResolver(
@@ -229,7 +229,6 @@ class LocalStorageDirectoryResolver(
             )
         return DirectoryContent(
             directory = rootDir,
-            cueAlbums = emptyList(),
             metadataMap = emptyMap(),
             isEnriching = false,
         )

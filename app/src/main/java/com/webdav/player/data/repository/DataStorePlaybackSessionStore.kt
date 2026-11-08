@@ -182,7 +182,6 @@ class DataStorePlaybackSessionStore(
     }
 
     @VisibleForTesting
-    @Suppress("UNUSED_PARAMETER")
     suspend fun saveRawForTesting(
         serverId: Long,
         dirPath: String,
@@ -190,7 +189,6 @@ class DataStorePlaybackSessionStore(
         trackIndex: Int,
         posMs: Long,
         mode: String,
-        cuePath: String? = null,
         virtualTrackNumber: Int? = null,
         virtualPositionMs: Long? = null,
     ) {

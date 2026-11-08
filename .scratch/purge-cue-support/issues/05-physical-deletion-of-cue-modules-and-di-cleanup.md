@@ -4,13 +4,13 @@
 
 **Blocked by:** 02: Playback Engine and Session Stream Consolidation, 03: Repositories and Sync Scanners Purification, 04: Directory Browser and Playlist UI Normalization
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Physically delete all files in `app/src/main/java/com/webdav/player/data/cue/` (`CueParser.kt`, `CueVirtualTrackIndexer.kt`, `DefaultCueSheetResolver.kt`).
-- [ ] Physically delete all files in `app/src/main/java/com/webdav/player/domain/cue/` (`CueSheetResolver.kt`).
-- [ ] Physically delete domain models `CueAlbumItem.kt` and `VirtualTrack.kt` from `app/src/main/java/com/webdav/player/domain/model/`.
-- [ ] Physically delete UI component `CueAlbumCard.kt` from `app/src/main/java/com/webdav/player/ui/browser/components/`.
-- [ ] Unregister `cueSheetResolver` property and factory constructor from `AppContainer`.
-- [ ] Clean `RemoteFileType.kt` and `AudioQuality.kt` of all references to `RemoteFileType.Cue` and CUE badge definitions.
-- [ ] Physically delete obsolete test suites in `app/src/test/java/com/webdav/player/data/cue/` (`CueParserTest.kt`, `CueVirtualTrackIndexerTest.kt`, `DefaultCueSheetResolverTest.kt`).
-- [ ] Verify that the complete project compiles with zero compilation errors.
+- [x] Physically delete all files in `app/src/main/java/com/webdav/player/data/cue/` (`CueParser.kt`, `CueVirtualTrackIndexer.kt`, `DefaultCueSheetResolver.kt`).
+- [x] Physically delete all files in `app/src/main/java/com/webdav/player/domain/cue/` (`CueSheetResolver.kt`).
+- [x] Physically delete domain models `CueAlbumItem.kt` and `VirtualTrack.kt` from `app/src/main/java/com/webdav/player/domain/model/`.
+- [x] Physically delete UI component `CueAlbumCard.kt` from `app/src/main/java/com/webdav/player/ui/browser/components/`.
+- [x] Unregister `cueSheetResolver` property and factory constructor from `AppContainer`.
+- [x] Clean `RemoteFileType.kt` and `AudioQuality.kt` of all references to `RemoteFileType.Cue` and CUE badge definitions.
+- [x] Physically delete obsolete test suites in `app/src/test/java/com/webdav/player/data/cue/` (`CueParserTest.kt`, `CueVirtualTrackIndexerTest.kt`, `DefaultCueSheetResolverTest.kt`).
+- [x] Verify that the complete project compiles with zero compilation errors.

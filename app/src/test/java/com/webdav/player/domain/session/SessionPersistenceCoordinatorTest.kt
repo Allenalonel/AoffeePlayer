@@ -1,7 +1,5 @@
 package com.webdav.player.domain.session
 
-import com.webdav.player.domain.model.CueAlbumItem
-import com.webdav.player.domain.cue.CueSheetResolver
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackMode
@@ -13,7 +11,6 @@ import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
-import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.player.FakeAudioPlayerEngine
 import com.webdav.player.domain.repository.ServerRepository
@@ -118,24 +115,6 @@ class SessionPersistenceCoordinatorTest {
         ): TrackMetadata = cached[server.id to file.path] ?: TrackMetadata(serverId = server.id, remotePath = file.path, title = "Resolved")
     }
 
-    private class TestCueSheetResolver : CueSheetResolver {
-        val virtualTracksMap = mutableMapOf<String, List<VirtualTrack>>()
-
-        override suspend fun resolveDirectoryCueAlbums(
-            server: WebDavServer,
-            directory: RemoteDirectory,
-            parentDurationsByPath: Map<String, Long>,
-        ): List<CueAlbumItem> = emptyList()
-
-        override suspend fun resolveVirtualTracks(
-            server: WebDavServer,
-            cuePath: String,
-            parentAudioPath: String,
-            totalDurationMs: Long?,
-        ): List<VirtualTrack> = virtualTracksMap[cuePath] ?: emptyList()
-
-        override fun clearCache() {}
-    }
 
     @Before
     fun setUp() {

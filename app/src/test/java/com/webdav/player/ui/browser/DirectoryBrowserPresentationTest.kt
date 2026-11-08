@@ -10,7 +10,6 @@ import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.TrackMetadata
-import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -87,15 +86,6 @@ class DirectoryBrowserPresentationTest {
         assertEquals("APE", apeBadge!!.label)
         assertTrue(apeBadge.isLossless)
         assertEquals(AudioQualityLevel.LOSSLESS, apeBadge.qualityLevel)
-    }
-
-    @Test
-    fun audioQualityBadge_cueFile_mapsCueBadge() {
-        val cueFile = RemoteFile(name = "DarkSide.cue", path = "/Music/DarkSide.cue", size = 1024L)
-        assertTrue(cueFile.isCue)
-        val badge = AudioQuality.resolveBadge(cueFile)
-        assertNotNull(badge)
-        assertEquals("CUE", badge!!.label)
     }
 
     @Test
@@ -322,7 +312,6 @@ class DirectoryBrowserPresentationTest {
                 album = "Symphony No. 9",
                 format = AudioFormat.FLAC,
             )
-        assertFalse(standardTrack.isVirtualTrack)
         assertEquals("Whole Symphony", standardTrack.title)
         assertEquals("Beethoven", standardTrack.artist)
 
@@ -336,7 +325,6 @@ class DirectoryBrowserPresentationTest {
                 album = "Symphony No. 9",
                 format = AudioFormat.FLAC,
             )
-        assertFalse(trackWithCueId.isVirtualTrack)
         assertEquals("Allegro", trackWithCueId.title)
         assertEquals("Herbert von Karajan", trackWithCueId.artist)
     }

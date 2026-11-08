@@ -343,7 +343,6 @@ class LibrarySearchRepositoryTest {
             val track = symphonyResult.matchedTracks.first()
             assertEquals("Symphony.flac", track.title)
             assertEquals("/Music/Symphony.flac", track.remotePath)
-            assertFalse(track.isVirtualTrack)
         }
 
     @Test
@@ -790,7 +789,6 @@ class LibrarySearchRepositoryTest {
             assertEquals(1, result.matchedTracks.size)
             val track = result.matchedTracks.first()
 
-            assertFalse(track.isVirtualTrack)
             assertEquals("1:/Music/Album.flac", track.id)
             assertEquals("/Music/Album.flac", track.remotePath)
             assertEquals("Album Title", track.title)
@@ -959,7 +957,6 @@ class LibrarySearchRepositoryTest {
             val track = result.matchedTracks.first()
             assertEquals("1:/Music/Symphony.flac", track.id)
             assertEquals("/Music/Symphony.flac", track.remotePath)
-            assertFalse(track.isVirtualTrack)
         }
 
     @Test

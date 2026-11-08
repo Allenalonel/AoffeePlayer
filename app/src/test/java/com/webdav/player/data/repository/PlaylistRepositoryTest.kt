@@ -313,7 +313,6 @@ class PlaylistRepositoryTest {
             assertEquals(35000000L, entry1.size)
             assertEquals(AudioFormat.FLAC, entry1.format)
             assertEquals(0, entry1.sortOrder)
-            assertFalse(entry1.isVirtualTrack)
 
             val entry2 = tracks[1]
             assertEquals(2L, entry2.serverId)
@@ -347,14 +346,12 @@ class PlaylistRepositoryTest {
             assertEquals(1, tracks.size)
 
             val entry = tracks[0]
-            assertFalse(entry.isVirtualTrack)
             assertEquals(1L, entry.serverId)
             assertEquals("/music/album.wav", entry.remotePath)
             assertEquals("交响乐第三乐章", entry.title)
 
             val reconstructedAudioTrack = entry.toAudioTrack()
             assertEquals("1:/music/album.wav", reconstructedAudioTrack.id)
-            assertFalse(reconstructedAudioTrack.isVirtualTrack)
             assertEquals(1L, reconstructedAudioTrack.serverId)
         }
 
@@ -821,7 +818,7 @@ class PlaylistRepositoryTest {
             val remainingUnreachable = dao.getDistinctServerIdsForInactiveReason(InactiveReason.SERVER_UNREACHABLE.name)
             assertEquals(listOf(20L), remainingUnreachable)
 
-            val track1FromDb = dao.findTrackInPlaylist(playlistId, 10L, "/s1.mp3", null)
+            val track1FromDb = dao.findTrackInPlaylist(playlistId, 10L, "/s1.mp3")
             assertNotNull(track1FromDb)
             assertFalse(track1FromDb!!.isInactive)
             assertNull(track1FromDb.inactiveReason)

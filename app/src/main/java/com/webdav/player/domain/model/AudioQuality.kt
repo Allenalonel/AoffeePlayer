@@ -211,15 +211,6 @@ object AudioQuality {
                 )
             }
 
-            is RemoteFileType.Cue -> {
-                AudioQualityBadge(
-                    label = "CUE",
-                    format = null,
-                    isLossless = false,
-                    qualityLevel = AudioQualityLevel.STANDARD,
-                )
-            }
-
             is RemoteFileType.Other -> {
                 val ext =
                     file.name
@@ -246,11 +237,13 @@ object AudioQuality {
         val bitrateStr = badge.estimatedBitrateKbps?.let { " ($it kbps)" } ?: ""
         return when {
             badge.isLossless -> "${badge.label} 无损音频"
-            badge.qualityLevel == AudioQualityLevel.HIGH_QUALITY -> "${badge.format?.extension?.uppercase() ?: badge.label} 极高品质$bitrateStr"
-            badge.qualityLevel == AudioQualityLevel.STANDARD && badge.format != null -> "${badge.format.extension.uppercase()} 标准音质$bitrateStr"
-            badge.qualityLevel == AudioQualityLevel.COMPRESSED && badge.format != null -> "${badge.format.extension.uppercase()} 压缩音频$bitrateStr"
+            badge.qualityLevel == AudioQualityLevel.HIGH_QUALITY ->
+                "${badge.format?.extension?.uppercase() ?: badge.label} 极高品质$bitrateStr"
+            badge.qualityLevel == AudioQualityLevel.STANDARD && badge.format != null ->
+                "${badge.format.extension.uppercase()} 标准音质$bitrateStr"
+            badge.qualityLevel == AudioQualityLevel.COMPRESSED && badge.format != null ->
+                "${badge.format.extension.uppercase()} 压缩音频$bitrateStr"
             isLyrics -> "LRC 歌词文件"
-            badge.label == "CUE" -> "CUE 分轨索引"
             else -> "${badge.label} 文件"
         }
     }

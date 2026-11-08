@@ -8,7 +8,6 @@ import com.webdav.player.domain.model.Playlist
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
-import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
 import kotlinx.coroutines.flow.StateFlow
 
@@ -47,28 +46,10 @@ interface MusicPlayerAppSession {
         initialMetadata: Map<String, TrackMetadata> = emptyMap(),
     )
 
-    @Suppress("UNUSED_PARAMETER")
-    @Deprecated("CUE support is purged; virtualTracksByAudioPath is ignored")
-    fun playDirectoryTrack(
-        directory: RemoteDirectory,
-        selectedFile: RemoteFile,
-        initialMetadata: Map<String, TrackMetadata> = emptyMap(),
-        virtualTracksByAudioPath: Map<String, List<VirtualTrack>> = emptyMap(),
-    ) = playDirectoryTrack(directory, selectedFile, initialMetadata)
-
     fun playPlaylist(
         playlist: Playlist,
         startIndex: Int = 0,
     )
-
-    @Suppress("UNUSED_PARAMETER")
-    @Deprecated("CUE support is purged; playVirtualTracks is a no-op")
-    fun playVirtualTracks(
-        parentTrack: AudioTrack,
-        virtualTracks: List<VirtualTrack>,
-        startIndex: Int = 0,
-        cuePath: String? = null,
-    ) {}
 
     fun playTrack(track: AudioTrack)
 

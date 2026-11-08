@@ -2,7 +2,6 @@ package com.webdav.player
 
 import android.app.Application
 import android.content.ComponentCallbacks2
-import com.webdav.player.data.cue.DefaultCueSheetResolver
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.CoverArtStorageImpl
 import com.webdav.player.data.local.MediaTrackIndexDao
@@ -21,7 +20,6 @@ import com.webdav.player.data.repository.TrackMetadataRepositoryImpl
 import com.webdav.player.data.repository.WebDavSyncScanner
 import com.webdav.player.data.service.PlaybackSessionHost
 import com.webdav.player.di.AppContainer
-import com.webdav.player.domain.cue.CueSheetResolver
 import com.webdav.player.domain.network.NetworkConnectivityObserver
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.DirectoryRepository
@@ -55,9 +53,6 @@ class WebDavApplication :
         private set
 
     override lateinit var playlistRepository: PlaylistRepository
-        private set
-
-    override lateinit var cueSheetResolver: CueSheetResolver
         private set
 
     override lateinit var playerEngine: AudioPlayerEngine
@@ -126,9 +121,6 @@ class WebDavApplication :
 
         val sessionStore = DataStorePlaybackSessionStore(this)
         this.sessionStore = sessionStore
-
-        val cueSheetResolver = DefaultCueSheetResolver(webDavClient)
-        this.cueSheetResolver = cueSheetResolver
 
         val localStorageDirectoryResolver =
             LocalStorageDirectoryResolver(

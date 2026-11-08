@@ -195,15 +195,5 @@ data class PlaybackQueue(
                 origin = origin,
             )
         }
-
-        @Suppress("UNUSED_PARAMETER")
-        @Deprecated("CUE support is purged; virtualTracksMap is ignored")
-        fun fromTracks(
-            tracks: List<AudioTrack>,
-            virtualTracksMap: Map<String, List<VirtualTrack>>,
-            selectedIndex: Int = 0,
-            originalTracks: List<AudioTrack> = emptyList(),
-            origin: QueueOrigin = QueueOrigin.DIRECTORY,
-        ): PlaybackQueue = fromTracks(tracks, selectedIndex, originalTracks, origin)
     }
 }

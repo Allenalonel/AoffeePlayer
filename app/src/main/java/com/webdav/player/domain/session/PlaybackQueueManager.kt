@@ -10,7 +10,6 @@ import com.webdav.player.domain.model.QueueOrigin
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
-import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -202,8 +201,6 @@ internal class PlaybackQueueManager(
         directory: RemoteDirectory,
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata>,
-        @Suppress("UNUSED_PARAMETER")
-        virtualTracksByAudioPath: Map<String, List<VirtualTrack>> = emptyMap(),
         server: WebDavServer,
     ): QueueLoadRequest? {
         val audioFiles = directory.files.filter { it.isAudio }

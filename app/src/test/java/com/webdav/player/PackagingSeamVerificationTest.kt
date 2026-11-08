@@ -126,22 +126,21 @@ class PackagingSeamVerificationTest {
             uiCommonOffenders.isEmpty(),
         )
 
-        // 2. CueAssociationHelper must remain encapsulated inside data/cue
+        // 2. CUE packages are completely purged and must not be imported
         val cueLeakImport =
             Regex(
-                """^import com\.webdav\.player\.data\.cue\.(CueAssociationHelper|CueTextCache)\b""",
+                """^import com\.webdav\.player\.(data|domain)\.cue\b""",
                 RegexOption.MULTILINE,
             )
-        val cueDirCanonical = File(sourceRoot, "data/cue").canonicalPath
         val cueLeakOffenders =
             sourceRoot
                 .walkTopDown()
-                .filter { it.isFile && it.extension == "kt" && !it.canonicalPath.startsWith(cueDirCanonical) }
+                .filter { it.isFile && it.extension == "kt" }
                 .filter { cueLeakImport.containsMatchIn(it.readText()) }
                 .map { it.name }
                 .toList()
         assertTrue(
-            "Internal CUE helpers must not leak outside data/cue (route through CueSheetResolver): $cueLeakOffenders",
+            "CUE packages are purged; no imports allowed: $cueLeakOffenders",
             cueLeakOffenders.isEmpty(),
         )
 
@@ -153,6 +152,14 @@ class PackagingSeamVerificationTest {
                 "ui/playlist/PlaylistListViewModelFactory.kt",
                 "ui/playlist/PlaylistDetailViewModelFactory.kt",
                 "data/cue/CueTextCache.kt",
+                "data/cue/CueParser.kt",
+                "data/cue/CueVirtualTrackIndexer.kt",
+                "data/cue/DefaultCueSheetResolver.kt",
+                "domain/cue/CueSheetResolver.kt",
+                "domain/model/CueAlbumItem.kt",
+                "domain/model/VirtualTrack.kt",
+                "domain/session/VirtualTimelineEngine.kt",
+                "ui/browser/components/CueAlbumCard.kt",
                 "ui/browser/components/AudioTrackItemRowCompat.kt",
             )
         val existingZombies = bannedZombiePaths.filter { File(sourceRoot, it).exists() }

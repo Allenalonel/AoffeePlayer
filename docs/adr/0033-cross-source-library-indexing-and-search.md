@@ -57,15 +57,26 @@ Accepted
 - **低内存流式元数据融合（Metadata Harmonization）**：
   - 查询时不全量加载 `track_metadata` 表，通过 `searchMetadataFlow(query, serverId)` 仅精确拉取命中关键词的 ID3 缓存；
   - 内存中动态融合专辑封面缩略图路径、高精度持续时长与正式专辑名。
+- **严格源隔离准入与物理复合去重（Strict Source Isolation & Composite Deduplication）**：
+  - 单源搜索（`serverId != null`）时，对曲目索引、目录快照及元数据实施严格防御式过滤：当目标源为 WebDAV 时，坚决剔除任何 `content://` 或本地音轨；当目标源为本地时，坚决剔除远程音轨，杜绝源间穿透；
+  - 全库跨源搜索（`serverId == null`）时，建立规范物理键：本地音轨统一映射为 `local:${remotePath}`，远程音轨映射为 `${serverId}:${remotePath}`，彻底根除跨表重叠导致的单曲重复渲染。
+- **本地存储身份钳制与历史数据自愈（Local ServerId Clamping & Self-Healing）**：
+  - 播放会话（`MusicPlayerAppSessionImpl`）与元数据协调器（`PlaybackMetadataCoordinator`）播放本地曲目时，始终锁定为 `WebDavServer.createLocalStorage()`；
+  - 实体构造（`TrackMetadataEntity.fromDomain`）强制将所有 `content://` 路径的 `serverId` 钳制为 `LOCAL_STORAGE_ID = 0L`，严禁借壳继承当前活跃 WebDAV 节点的 ID；
+  - 应用启动时自动触发 `TrackMetadataDao.cleanupCorruptLocalMetadata()`，物理清除历史遗留的错标数据。
 
-### 5. 响应式 UI 同步状态流与双模范围切换 (`DirectoryBrowserUiState` & Screen)
+### 5. 响应式 UI 同步状态流与一体化分段胶囊 (`DirectoryBrowserUiState` & Screen)
 
 - **非阻塞进度呈现**：
   - 仓储层暴露 `Flow<LibrarySyncState>`（`Idle`、`Scanning`、`Completed`、`Failed`）；
   - 媒体库顶部栏实时展示低侵入的 Material 3 `LinearProgressIndicator` 与已索引曲目计数，完成后平滑淡出，不阻断前台浏览与播放交互；
-- **活跃源优先与一键全库检索（Scoped vs. Global Search）**：
-  - 默认聚焦当前活跃源（本地存储 `serverId = 0L` 或当前活跃 WebDAV 节点），快速降低搜索结果噪音；
-  - 提供 Material 3 `FilterChip` 支持一键切换“当前源”与“全库搜索”；
+- **一体化滑块分段胶囊（Segmented Pill Capsule）**：
+  - 摒弃视觉权重轻、状态反差模糊的传统 `FilterChip`，重构为双槽圆角胶囊滑轨（`SearchScopeSegmentedPill`）；
+  - 选中的栏位由**实体高亮的主题色药丸滑块（配合 2dp 物理阴影与中等弹性物理动效）**覆盖，文字高亮加粗，并配备直观语义图标（当前源展示设备/云端图标，全库展示全局图标）；未选中的栏位为低沉次要文字，彻底解决用户“无法一眼看清当前在哪个栏位”的视觉痛点；
+- **全自动静默索引与手势归口（Zero-Friction Silent Auto-Indexing）**：
+  - 移除顶部栏右上角突兀且违背搜索逻辑的 `⋮` 二级“同步媒体库”按钮，恢复清爽纯粹的单搜索图标；
+  - 索引构建全面转入自动化：添加 WebDAV 服务器、挂载本地 SAF 目录、应用启动切源或进入搜索时，由系统在后台协程静默触发增量同步；
+  - 手动刷新体验自然归口至列表顶部的**下拉刷新（Pull-to-Refresh）**，在刷新目录的同时顺带复检曲库增量快照。
 - **即时回放与面包屑穿梭（Ad-hoc Queue Insertion & Drill-down）**：
   - 点击曲目结果采用 `playNextAndAdvance(track)` 插入至下一首并立即起播，保留用户既有播放队列；
   - 点击目录结果平滑收起搜索并自动定位下钻至目标路径，同步更新面包屑导航。

@@ -87,8 +87,7 @@ fun SearchScopeSegmentedPill(
                 .background(
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     shape = RoundedCornerShape(22.dp),
-                )
-                .padding(4.dp),
+                ).padding(4.dp),
     ) {
         val halfWidth = maxWidth / 2
 
@@ -128,8 +127,7 @@ fun SearchScopeSegmentedPill(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = { if (isGlobalSearch) onToggleSearchScope() },
-                        )
-                        .padding(horizontal = 8.dp),
+                        ).padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
@@ -169,8 +167,7 @@ fun SearchScopeSegmentedPill(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = { if (!isGlobalSearch) onToggleSearchScope() },
-                        )
-                        .padding(horizontal = 8.dp),
+                        ).padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {

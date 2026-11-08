@@ -5,14 +5,11 @@ import com.webdav.player.data.local.DirectoryCacheEntity
 import com.webdav.player.data.local.RemoteDirectoryJsonSerializer
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
-import com.webdav.player.domain.cue.CueSheetResolver
-import com.webdav.player.domain.model.CueAlbumItem
 import com.webdav.player.domain.model.DirectoryContent
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
-import com.webdav.player.domain.model.VirtualTrack
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +31,6 @@ import org.robolectric.RobolectricTestRunner
 class DirectoryRepositoryTest {
     private lateinit var fakeClient: FakeWebDavClient
     private lateinit var fakeDao: FakeDirectoryCacheDao
-    private lateinit var fakeCueSheetResolver: FakeCueSheetResolver
     private lateinit var fakeTrackMetadataRepository: FakeTrackMetadataRepository
     private lateinit var repository: DirectoryRepositoryImpl
 
@@ -45,7 +41,6 @@ class DirectoryRepositoryTest {
             url = "http://localhost",
             port = 8080,
         )
-
     private val secondServer =
         WebDavServer(
             id = 2L,
@@ -58,13 +53,11 @@ class DirectoryRepositoryTest {
     fun setUp() {
         fakeClient = FakeWebDavClient()
         fakeDao = FakeDirectoryCacheDao()
-        fakeCueSheetResolver = FakeCueSheetResolver()
         fakeTrackMetadataRepository = FakeTrackMetadataRepository()
         repository =
             DirectoryRepositoryImpl(
                 webDavClient = fakeClient,
                 directoryCacheDao = fakeDao,
-                cueSheetResolver = fakeCueSheetResolver,
                 trackMetadataRepository = fakeTrackMetadataRepository,
             )
     }
@@ -404,74 +397,28 @@ class DirectoryRepositoryTest {
         }
 
     @Test
-    fun observeDirectoryContent_withCueAlbums_initialEmitsPlaceholders_thenResolvesCueAlbums() =
+    fun observeDirectoryContent_withCueFile_listsCompanionAudioDirectlyAndLeavesCueAlbumsEmpty() =
         runTest {
             val cueFile = RemoteFile(name = "album.cue", path = "/Music/album.cue", size = 100)
             val audioFile = RemoteFile(name = "album.flac", path = "/Music/album.flac", size = 5000)
             val dir = RemoteDirectory(path = "/Music/", name = "Music", files = listOf(cueFile, audioFile))
             fakeClient.results["/Music/"] = ListDirectoryResult.Success(dir)
 
-            val placeholder =
-                CueAlbumItem(
-                    cueFile = cueFile,
-                    audioFile = audioFile,
-                    tracks = emptyList(),
-                    isExpanded = false,
-                    isLoading = true,
-                )
-            fakeCueSheetResolver.initialAlbumsGenerator = { listOf(placeholder) }
-
-            val cueItem =
-                CueAlbumItem(
-                    cueFile = cueFile,
-                    audioFile = audioFile,
-                    tracks =
-                        listOf(
-                            VirtualTrack(
-                                trackNumber = 1,
-                                title = "Track 1",
-                                performer = "Artist",
-                                startTimeMs = 0L,
-                                endTimeMs = 180000L,
-                                parentAudioPath = audioFile.path,
-                            ),
-                        ),
-                    isExpanded = false,
-                    isLoading = false,
-                )
-            fakeCueSheetResolver.resolvedAlbums.add(cueItem)
-
             val emissions = repository.observeDirectoryContent(testServer, "/Music/").toList()
 
             assertEquals(2, emissions.size)
-            // First emission: initial placeholder generated via CueSheetResolver
+            // First emission: remote list with isEnriching = true
             assertTrue(emissions[0].isEnriching)
-            assertEquals(listOf(placeholder), emissions[0].cueAlbums)
+            assertTrue(emissions[0].cueAlbums.isEmpty())
+            assertEquals(2, emissions[0].directory.files.size)
+            assertTrue(emissions[0].directory.files.any { it.name == "album.flac" })
 
-            // Second emission: resolved CUE album
+            // Second emission: enriched directory with isEnriching = false
             val finalContent = emissions[1]
             assertFalse(finalContent.isEnriching)
-            assertEquals(1, finalContent.cueAlbums.size)
-            assertEquals(
-                "album.cue",
-                finalContent.cueAlbums
-                    .first()
-                    .cueFile.name,
-            )
-            assertEquals(
-                1,
-                finalContent.cueAlbums
-                    .first()
-                    .tracks.size,
-            )
-            assertEquals(
-                "Track 1",
-                finalContent.cueAlbums
-                    .first()
-                    .tracks
-                    .first()
-                    .title,
-            )
+            assertTrue(finalContent.cueAlbums.isEmpty())
+            assertEquals(2, finalContent.directory.files.size)
+            assertTrue(finalContent.directory.files.any { it.name == "album.flac" })
         }
 
     private class FakeDirectoryCacheDao : DirectoryCacheDao {
@@ -620,28 +567,5 @@ class DirectoryRepositoryTest {
                 title = file.name,
                 durationMs = 180000L,
             )
-    }
-
-    private class FakeCueSheetResolver : CueSheetResolver {
-        val resolvedAlbums = mutableListOf<CueAlbumItem>()
-        var initialAlbumsGenerator: ((RemoteDirectory) -> List<CueAlbumItem>)? = null
-
-        override fun resolveInitialCueAlbums(directory: RemoteDirectory): List<CueAlbumItem> =
-            initialAlbumsGenerator?.invoke(directory) ?: emptyList()
-
-        override suspend fun resolveDirectoryCueAlbums(
-            server: WebDavServer,
-            directory: RemoteDirectory,
-            parentDurationsByPath: Map<String, Long>,
-        ): List<CueAlbumItem> = resolvedAlbums
-
-        override suspend fun resolveVirtualTracks(
-            server: WebDavServer,
-            cuePath: String,
-            parentAudioPath: String,
-            totalDurationMs: Long?,
-        ): List<VirtualTrack> = emptyList()
-
-        override fun clearCache() {}
     }
 }

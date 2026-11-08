@@ -312,33 +312,19 @@ class LocalStorageDirectoryResolverTest {
         }
 
     @Test
-    fun resolve_cueSheetWithCompanionAudio_parsesVirtualTracks() =
+    fun resolve_cueSheetWithCompanionAudio_emitsCompanionAudioDirectlyAndLeavesCueAlbumsEmpty() =
         runTest {
             val rootDocId = "primary:Music"
             val cueDocId = "primary:Music/Album.cue"
             val audioDocId = "primary:Music/Album.flac"
 
-            val cueContent =
-                """
-                PERFORMER "Pink Floyd"
-                TITLE "The Dark Side of the Moon"
-                FILE "Album.flac" WAVE
-                  TRACK 01 AUDIO
-                    TITLE "Speak to Me"
-                    INDEX 01 00:00:00
-                  TRACK 02 AUDIO
-                    TITLE "Breathe"
-                    INDEX 01 01:13:00
-                """.trimIndent()
-
-            TestDocumentsProvider.fileContents[cueDocId] = cueContent
             TestDocumentsProvider.childrenMap[rootDocId] =
                 listOf(
                     TestDocumentsProvider.DocEntry(
                         docId = cueDocId,
                         displayName = "Album.cue",
                         mimeType = "application/x-cue",
-                        size = cueContent.length.toLong(),
+                        size = 1000L,
                     ),
                     TestDocumentsProvider.DocEntry(
                         docId = audioDocId,
@@ -351,14 +337,12 @@ class LocalStorageDirectoryResolverTest {
             val encodedTreeUri = URLEncoder.encode(TREE_URI_STRING, "UTF-8")
             val result = resolver.resolve("/local/$encodedTreeUri/")
 
-            assertEquals(1, result.cueAlbums.size)
-            val album = result.cueAlbums[0]
-            assertEquals("Album.cue", album.cueFile.name)
-            assertNotNull(album.audioFile)
-            assertEquals("Album.flac", album.audioFile!!.name)
-            assertEquals(2, album.tracks.size)
-            assertEquals("Speak to Me", album.tracks[0].title)
-            assertEquals("Breathe", album.tracks[1].title)
+            assertTrue(result.cueAlbums.isEmpty())
+            assertEquals(2, result.directory.files.size)
+            val audioFile = result.directory.files.firstOrNull { it.name == "Album.flac" }
+            assertNotNull(audioFile)
+            assertTrue(audioFile!!.isAudio)
+            assertTrue(result.metadataMap.containsKey(audioFile.path))
         }
 
     @Test

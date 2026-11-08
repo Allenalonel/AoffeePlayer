@@ -39,10 +39,25 @@ class WebDavSyncScanner(
     private val webDavClient: WebDavClient,
     private val mediaTrackIndexDao: MediaTrackIndexDao,
     private val directorySyncCheckpointDao: DirectorySyncCheckpointDao,
-    private val cueVirtualTrackIndexer: CueVirtualTrackIndexer? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val maxConcurrency: Int = DEFAULT_MAX_CONCURRENCY,
 ) {
+    @Suppress("UNUSED_PARAMETER")
+    @Deprecated("cueVirtualTrackIndexer is obsolete and ignored")
+    constructor(
+        webDavClient: WebDavClient,
+        mediaTrackIndexDao: MediaTrackIndexDao,
+        directorySyncCheckpointDao: DirectorySyncCheckpointDao,
+        cueVirtualTrackIndexer: CueVirtualTrackIndexer?,
+        ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+        maxConcurrency: Int = DEFAULT_MAX_CONCURRENCY,
+    ) : this(
+        webDavClient = webDavClient,
+        mediaTrackIndexDao = mediaTrackIndexDao,
+        directorySyncCheckpointDao = directorySyncCheckpointDao,
+        ioDispatcher = ioDispatcher,
+        maxConcurrency = maxConcurrency,
+    )
     companion object {
         const val DEFAULT_MAX_CONCURRENCY = 3
         val EXCLUDED_DIR_NAMES =
@@ -212,9 +227,9 @@ class WebDavSyncScanner(
                                                 val audioFormat =
                                                     AudioFormat.fromExtension(ext)
                                                         ?: AudioFormat.fromFileName(file.name)
-                                                val isCue = file.isCue || ext == "cue"
 
-                                                if (file.isAudio || audioFormat != null || isCue) {
+                                                if (file.isAudio || audioFormat != null) {
+                                                    val format = audioFormat ?: AudioFormat.MP3
                                                     val parsed = MediaFilenameParser.parse(file.name)
                                                     val lastMod = WebDavXmlParser.parseHttpDate(file.lastModified)
                                                     val entity =
@@ -224,31 +239,12 @@ class WebDavSyncScanner(
                                                             fileName = file.name,
                                                             fileSize = file.size,
                                                             lastModified = lastMod,
-                                                            format =
-                                                                audioFormat?.extension?.uppercase()
-                                                                    ?: if (isCue) "CUE" else "MP3",
-                                                            isCue = isCue,
+                                                            format = format.extension.uppercase(),
                                                             parentPath = item.path,
                                                             parsedTitle = parsed.title,
                                                             parsedArtist = parsed.artist,
                                                         )
                                                     discoveredTracks.add(entity)
-                                                }
-                                            }
-
-                                            // Optional CUE virtual track indexing hook
-                                            if (cueVirtualTrackIndexer != null &&
-                                                remoteDir.files.any { it.isCue || it.name.endsWith(".cue", ignoreCase = true) }
-                                            ) {
-                                                try {
-                                                    val cueTracks = cueVirtualTrackIndexer.indexDirectoryCues(server, remoteDir)
-                                                    if (cueTracks.isNotEmpty()) {
-                                                        discoveredTracks.addAll(cueTracks)
-                                                    }
-                                                } catch (ce: CancellationException) {
-                                                    throw ce
-                                                } catch (_: Exception) {
-                                                    // Continue indexing standalone files
                                                 }
                                             }
 

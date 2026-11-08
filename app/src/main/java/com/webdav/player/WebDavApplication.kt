@@ -2,7 +2,6 @@ package com.webdav.player
 
 import android.app.Application
 import android.content.ComponentCallbacks2
-import com.webdav.player.data.cue.CueVirtualTrackIndexer
 import com.webdav.player.data.cue.DefaultCueSheetResolver
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.CoverArtStorageImpl
@@ -141,7 +140,6 @@ class WebDavApplication :
             DirectoryRepositoryImpl(
                 webDavClient = webDavClient,
                 directoryCacheDao = database.directoryCacheDao(),
-                cueSheetResolver = cueSheetResolver,
                 trackMetadataRepository = trackMetadataRepository,
                 localStorageDirectoryResolver = localStorageDirectoryResolver,
             )
@@ -156,18 +154,11 @@ class WebDavApplication :
             )
         this.localStorageIndexScanner = localStorageIndexScanner
 
-        val cueVirtualTrackIndexer =
-            CueVirtualTrackIndexer(
-                cueSheetResolver = cueSheetResolver,
-                mediaTrackIndexDao = mediaTrackIndexDao,
-            )
-
         val webDavSyncScanner =
             WebDavSyncScanner(
                 webDavClient = webDavClient,
                 mediaTrackIndexDao = mediaTrackIndexDao,
                 directorySyncCheckpointDao = checkpointDao,
-                cueVirtualTrackIndexer = cueVirtualTrackIndexer,
             )
         this.webDavSyncScanner = webDavSyncScanner
 
@@ -177,7 +168,6 @@ class WebDavApplication :
                 trackMetadataDao = database.trackMetadataDao(),
                 mediaTrackIndexDao = mediaTrackIndexDao,
                 directorySyncCheckpointDao = checkpointDao,
-                cueSheetResolver = cueSheetResolver,
                 webDavSyncScanner = webDavSyncScanner,
                 localStorageIndexScanner = localStorageIndexScanner,
                 context = this,

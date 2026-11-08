@@ -100,8 +100,6 @@ data class PlaylistTrackEntity(
                     ?: AudioFormat.fromExtension(format)
                     ?: AudioFormat.MP3,
             coverThumbnailPath = coverThumbnailPath,
-            cuePath = cuePath,
-            virtualTrackId = virtualTrackId,
             isInactive = isInactive,
             inactiveReason =
                 inactiveReason?.let { reasonStr ->

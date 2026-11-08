@@ -178,7 +178,7 @@ class LocalStorageIndexScannerTest {
     }
 
     @Test
-    fun indexFolder_traversesTreeAndIndexesAudioAndCueFiles_skippingNoiseDirectories() =
+    fun indexFolder_traversesTreeAndIndexesGenuineAudioFiles_skippingNoiseDirectoriesAndCueFiles() =
         runTest {
             val rootDocId = "primary:Music"
             ScannerTestDocumentsProvider.childrenMap[rootDocId] =
@@ -233,8 +233,8 @@ class LocalStorageIndexScannerTest {
                 )
 
             val count = scanner.indexFolder(Uri.parse(TREE_URI_STRING))
-            assertEquals(3, count)
-            assertEquals(3, mediaTrackIndexDao.countByServerId(LOCAL_STORAGE_ID))
+            assertEquals(2, count)
+            assertEquals(2, mediaTrackIndexDao.countByServerId(LOCAL_STORAGE_ID))
 
             // Verify Bohemian Rhapsody parsed heuristics
             val tracks = mediaTrackIndexDao.getTracksByServerId(LOCAL_STORAGE_ID)
@@ -243,6 +243,9 @@ class LocalStorageIndexScannerTest {
             assertEquals("Bohemian Rhapsody", queenTrack?.parsedTitle)
             assertEquals("Queen", queenTrack?.parsedArtist)
             assertEquals("FLAC", queenTrack?.format)
+
+            // Verify CUE file is not indexed into media_track_index
+            assertTrue(tracks.none { it.fileName.endsWith(".cue", ignoreCase = true) })
 
             // Verify Hotel California parent path
             val hotelTrack = tracks.firstOrNull { it.fileName.contains("Hotel") }

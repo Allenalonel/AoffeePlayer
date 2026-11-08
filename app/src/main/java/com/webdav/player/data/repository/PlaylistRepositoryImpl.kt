@@ -179,7 +179,7 @@ class PlaylistRepositoryImpl(
         val duplicateIds = mutableListOf<Long>()
         val uniqueEntities = mutableListOf<PlaylistTrackEntity>()
         for (entity in entities) {
-            val key = "${entity.serverId}:${entity.remotePath}:${entity.virtualTrackId ?: ""}"
+            val key = "${entity.serverId}:${entity.remotePath}"
             if (seenKeys.add(key)) {
                 uniqueEntities.add(entity)
             } else {
@@ -250,15 +250,12 @@ class PlaylistRepositoryImpl(
     override suspend fun addTrackToPlaylist(
         playlistId: Long,
         track: AudioTrack,
-        cuePath: String?,
     ): Long {
-        val virtualTrackId = if (track.isVirtualTrack) track.id else null
         val existing =
             playlistDao.findTrackInPlaylist(
                 playlistId = playlistId,
                 serverId = track.serverId,
                 remotePath = track.remotePath,
-                virtualTrackId = virtualTrackId,
             )
         if (existing != null) {
             return -1L
@@ -270,12 +267,19 @@ class PlaylistRepositoryImpl(
                 playlistId = playlistId,
                 track = track,
                 sortOrder = newSortOrder,
-                cuePath = cuePath ?: track.cuePath,
             )
         val insertedId = playlistDao.insertTrack(PlaylistTrackEntity.fromDomain(entry))
         playlistDao.updatePlaylistTimestamp(playlistId, timeProvider())
         return insertedId
     }
+
+    @Suppress("UNUSED_PARAMETER")
+    @Deprecated("CUE support is purged; cuePath is ignored")
+    override suspend fun addTrackToPlaylist(
+        playlistId: Long,
+        track: AudioTrack,
+        cuePath: String?,
+    ): Long = addTrackToPlaylist(playlistId, track)
 
     override suspend fun addTracksToPlaylist(
         playlistId: Long,
@@ -283,11 +287,10 @@ class PlaylistRepositoryImpl(
     ): List<Long> {
         if (tracks.isEmpty()) return emptyList()
         val existing = playlistDao.getTracksForPlaylist(playlistId)
-        val seenKeys = existing.map { "${it.serverId}:${it.remotePath}:${it.virtualTrackId ?: ""}" }.toMutableSet()
+        val seenKeys = existing.map { "${it.serverId}:${it.remotePath}" }.toMutableSet()
         val distinctNewTracks =
             tracks.filter { track ->
-                val virtualTrackId = if (track.isVirtualTrack) track.id else null
-                seenKeys.add("${track.serverId}:${track.remotePath}:${virtualTrackId ?: ""}")
+                seenKeys.add("${track.serverId}:${track.remotePath}")
             }
         if (distinctNewTracks.isEmpty()) return emptyList()
 
@@ -299,7 +302,6 @@ class PlaylistRepositoryImpl(
                         playlistId = playlistId,
                         track = track,
                         sortOrder = startSort + index,
-                        cuePath = track.cuePath,
                     )
                 PlaylistTrackEntity.fromDomain(entry)
             }

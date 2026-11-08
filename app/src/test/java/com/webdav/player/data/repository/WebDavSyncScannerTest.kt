@@ -3,14 +3,12 @@ package com.webdav.player.data.repository
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import com.webdav.player.data.cue.CueVirtualTrackIndexer
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.DirectorySyncCheckpointDao
 import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.local.MediaTrackIndexEntity
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
-import com.webdav.player.domain.cue.CueSheetResolver
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.LibrarySyncResult
 import com.webdav.player.domain.model.LibrarySyncState
@@ -554,61 +552,8 @@ class WebDavSyncScannerTest {
         }
 
     @Test
-    fun sync_integratesWithCueVirtualTrackIndexerWhenPresent() =
+    fun sync_withCueSheet_indexesOnlyGenuineAudioFilesAndIgnoresCueFile() =
         runTest {
-            val dummyResolver =
-                object : CueSheetResolver {
-                    override fun clearCache() {}
-
-                    override suspend fun resolveDirectoryCueAlbums(
-                        server: WebDavServer,
-                        directory: RemoteDirectory,
-                        parentDurationsByPath: Map<String, Long>,
-                    ): List<com.webdav.player.domain.model.CueAlbumItem> = emptyList()
-
-                    override suspend fun resolveVirtualTracks(
-                        server: WebDavServer,
-                        cuePath: String,
-                        parentAudioPath: String,
-                        totalDurationMs: Long?,
-                    ): List<com.webdav.player.domain.model.VirtualTrack> = emptyList()
-                }
-
-            val cueIndexer =
-                object : CueVirtualTrackIndexer(
-                    cueSheetResolver = dummyResolver,
-                    mediaTrackIndexDao = mediaTrackIndexDao,
-                ) {
-                    // In-test override to simulate CUE track discovery
-                    override suspend fun indexDirectoryCues(
-                        server: WebDavServer,
-                        directory: RemoteDirectory,
-                        parentDurationsByPath: Map<String, Long>,
-                    ): List<MediaTrackIndexEntity> =
-                        listOf(
-                            MediaTrackIndexEntity(
-                                serverId = server.id,
-                                remotePath = "/Album/album.flac#cue:01",
-                                fileName = "album.flac",
-                                fileSize = 50000000L,
-                                lastModified = 1000L,
-                                format = "FLAC",
-                                isCue = true,
-                                parentPath = directory.path,
-                                parsedTitle = "CUE Virtual Track 1",
-                                parsedArtist = "Various Artists",
-                            ),
-                        )
-                }
-
-            val customScanner =
-                WebDavSyncScanner(
-                    webDavClient = fakeClient,
-                    mediaTrackIndexDao = mediaTrackIndexDao,
-                    directorySyncCheckpointDao = checkpointDao,
-                    cueVirtualTrackIndexer = cueIndexer,
-                )
-
             val dirWithCue =
                 RemoteDirectory(
                     path = "/Album/",
@@ -619,7 +564,6 @@ class WebDavSyncScannerTest {
                                 name = "album.cue",
                                 path = "/Album/album.cue",
                                 size = 500L,
-                                fileType = RemoteFileType.Cue,
                             ),
                             RemoteFile(
                                 name = "album.flac",
@@ -632,10 +576,12 @@ class WebDavSyncScannerTest {
             fakeClient.directoryTree["/"] = RemoteDirectory(path = "/", name = "/", subDirectories = listOf(dirWithCue))
             fakeClient.directoryTree["/Album/"] = dirWithCue
 
-            val result = customScanner.sync(testServer)
+            val result = scanner.sync(testServer)
             assertTrue(result is LibrarySyncResult.Success)
 
             val tracks = mediaTrackIndexDao.getTracksByServerId(testServer.id)
-            assertTrue(tracks.any { it.isCue && it.parsedTitle == "CUE Virtual Track 1" })
+            assertEquals(1, tracks.size)
+            assertEquals("album.flac", tracks.first().fileName)
+            assertEquals("/Album/album.flac", tracks.first().remotePath)
         }
 }

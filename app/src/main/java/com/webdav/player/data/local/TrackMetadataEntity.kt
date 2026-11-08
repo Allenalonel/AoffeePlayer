@@ -15,7 +15,7 @@ import com.webdav.player.domain.model.TrackMetadata
         Index(value = ["artist"]),
         Index(value = ["album"]),
         Index(value = ["remotePath"]),
-    ]
+    ],
 )
 data class TrackMetadataEntity(
     val serverId: Long,
@@ -26,19 +26,20 @@ data class TrackMetadataEntity(
     val trackNumber: Int?,
     val durationMs: Long,
     val coverThumbnailPath: String?,
-    val lyrics: String? = null
+    val lyrics: String? = null,
 ) {
-    fun toDomain(): TrackMetadata = TrackMetadata(
-        serverId = serverId,
-        remotePath = remotePath,
-        title = title,
-        artist = artist,
-        album = album,
-        trackNumber = trackNumber,
-        durationMs = durationMs,
-        coverThumbnailPath = coverThumbnailPath,
-        lyrics = lyrics
-    )
+    fun toDomain(): TrackMetadata =
+        TrackMetadata(
+            serverId = serverId,
+            remotePath = remotePath,
+            title = title,
+            artist = artist,
+            album = album,
+            trackNumber = trackNumber,
+            durationMs = durationMs,
+            coverThumbnailPath = coverThumbnailPath,
+            lyrics = lyrics,
+        )
 
     companion object {
         fun fromDomain(domain: TrackMetadata): TrackMetadataEntity {

@@ -423,13 +423,15 @@ class LibrarySearchRepositoryImpl(
 
                 if (isMatch(cleanQuery, remoteDir.name, remoteDir.path)) {
                     val dirKey = dirDedupeKey(dirEntity.serverId, remoteDir.path)
-                    matchedDirs[dirKey] = remoteDir.copy(serverId = if (remoteDir.path.startsWith("/local/")) LOCAL_STORAGE_ID else dirEntity.serverId)
+                    matchedDirs[dirKey] =
+                        remoteDir.copy(serverId = if (remoteDir.path.startsWith("/local/")) LOCAL_STORAGE_ID else dirEntity.serverId)
                 }
 
                 for (sub in remoteDir.subDirectories) {
                     if (isAccepted(dirEntity.serverId, sub.path) && isMatch(cleanQuery, sub.name, sub.path)) {
                         val subKey = dirDedupeKey(dirEntity.serverId, sub.path)
-                        matchedDirs[subKey] = sub.copy(serverId = if (sub.path.startsWith("/local/")) LOCAL_STORAGE_ID else dirEntity.serverId)
+                        matchedDirs[subKey] =
+                            sub.copy(serverId = if (sub.path.startsWith("/local/")) LOCAL_STORAGE_ID else dirEntity.serverId)
                     }
                 }
 

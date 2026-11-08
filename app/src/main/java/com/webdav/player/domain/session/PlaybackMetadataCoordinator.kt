@@ -124,7 +124,9 @@ internal class PlaybackMetadataCoordinator(
         track: AudioTrack,
     ) {
         val repo = trackMetadataRepository ?: return
-        val isLocalTrack = track.isLocal || track.serverId == LOCAL_STORAGE_ID || track.remotePath.startsWith("content://") || track.remotePath.startsWith("file://")
+        val isLocalTrack =
+            track.isLocal || track.serverId == LOCAL_STORAGE_ID || track.remotePath.startsWith("content://") ||
+                track.remotePath.startsWith("file://")
         val s = if (isLocalTrack) WebDavServer.createLocalStorage() else (server ?: return)
         val cachedMeta = repo.getCachedMetadata(s.id, track.remotePath)
         val meta =

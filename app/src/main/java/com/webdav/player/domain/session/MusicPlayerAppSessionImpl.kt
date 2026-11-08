@@ -346,7 +346,12 @@ class MusicPlayerAppSessionImpl(
     }
 
     override fun playTrack(track: AudioTrack) {
-        val isLocalTrack = track.isLocal || track.serverId == com.webdav.player.domain.model.LOCAL_STORAGE_ID || track.remotePath.startsWith("content://") || track.remotePath.startsWith("file://")
+        val isLocalTrack =
+            track.isLocal || track.serverId == com.webdav.player.domain.model.LOCAL_STORAGE_ID ||
+                track.remotePath.startsWith(
+                    "content://",
+                ) ||
+                track.remotePath.startsWith("file://")
         coroutineScope.launch {
             val effectiveServer =
                 when {

@@ -16,7 +16,6 @@ import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.TrackMetadataRepository
-import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -31,6 +30,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class TrackMetadataRepositoryImpl internal constructor(
     private val trackMetadataDao: TrackMetadataDao,
@@ -329,12 +329,17 @@ class TrackMetadataRepositoryImpl internal constructor(
                         val lrcText: String? =
                             when {
                                 rawLyrics.startsWith("content://") -> {
-                                    context?.contentResolver?.openInputStream(Uri.parse(rawLyrics))
-                                        ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                                    context
+                                        ?.contentResolver
+                                        ?.openInputStream(Uri.parse(rawLyrics))
+                                        ?.bufferedReader(Charsets.UTF_8)
+                                        ?.use { it.readText() }
                                 }
+
                                 rawLyrics.startsWith("[") -> {
                                     rawLyrics
                                 }
+
                                 else -> {
                                     val cleanLyricsPath =
                                         if (rawLyrics.startsWith("file://")) {
@@ -357,7 +362,9 @@ class TrackMetadataRepositoryImpl internal constructor(
 
                     // If no cached lyrics, look for companion .lrc: do NOT read track.remotePath (audio file) as lyrics!
                     // If track.remotePath is "file://", check companion file. If content://, companion was already in cached metadata.
-                    if (track.remotePath.startsWith("file://") || (!track.remotePath.startsWith("content://") && !track.remotePath.contains("://"))) {
+                    if (track.remotePath.startsWith("file://") ||
+                        (!track.remotePath.startsWith("content://") && !track.remotePath.contains("://"))
+                    ) {
                         val cleanPath = track.remotePath.removePrefix("file://")
                         val lrcPath = cleanPath.substringBeforeLast('.') + ".lrc"
                         val lrcFile = File(lrcPath)

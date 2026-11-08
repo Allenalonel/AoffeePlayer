@@ -1,6 +1,6 @@
 # Purge CUE Sheet Support and Consolidate Stream Playback
 
-Status: ready-for-agent
+Status: completed
 
 ## Problem Statement
 

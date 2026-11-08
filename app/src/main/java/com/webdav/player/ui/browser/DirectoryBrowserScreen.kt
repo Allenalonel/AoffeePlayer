@@ -5,6 +5,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +29,7 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -57,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.CueAlbumItem
+import com.webdav.player.domain.model.LibrarySyncState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
@@ -313,9 +319,19 @@ fun DirectoryBrowserScreen(
                             ),
                     )
                 } else {
+                    val subtitleText =
+                        when (val sync = uiState.syncState) {
+                            is LibrarySyncState.Scanning -> {
+                                if (sync.tracksFound > 0) "正在索引 ${sync.tracksFound} 首歌曲..." else "正在扫描目录..."
+                            }
+
+                            else -> {
+                                uiState.activeServer?.name?.let { "当前活跃节点: $it" } ?: "未连接服务器"
+                            }
+                        }
                     FluidTopAppBar(
                         title = uiState.headerTitle,
-                        subtitle = uiState.activeServer?.name?.let { "当前活跃节点: $it" } ?: "未连接服务器",
+                        subtitle = subtitleText,
                         navigationIcon = null,
                         actions = {
                             if (!uiState.isInitializing && uiState.activeServer != null) {
@@ -360,6 +376,31 @@ fun DirectoryBrowserScreen(
                         currentPath = uiState.currentPath,
                         onBreadcrumbClicked = { viewModel.onBreadcrumbClicked(it) },
                     )
+                }
+
+                val syncState = uiState.syncState
+                AnimatedVisibility(
+                    visible = syncState is LibrarySyncState.Scanning,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
+                    if (syncState is LibrarySyncState.Scanning) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                        ) {
+                            LinearProgressIndicator(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .height(3.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            )
+                        }
+                    }
                 }
 
                 // Content Area with Hierarchy Drilldown AnimatedContent
@@ -591,6 +632,9 @@ fun DirectoryBrowserScreen(
                             viewModel.toggleSearchTrackSelection(track.id)
                         }
                     },
+                    isGlobalSearch = uiState.isGlobalSearch,
+                    onToggleSearchScope = { viewModel.onToggleSearchScope() },
+                    activeSourceName = uiState.activeServer?.name,
                 )
 
                 FloatingMultiSelectBottomBar(

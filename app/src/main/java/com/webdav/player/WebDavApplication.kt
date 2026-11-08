@@ -2,9 +2,11 @@ package com.webdav.player
 
 import android.app.Application
 import android.content.ComponentCallbacks2
+import com.webdav.player.data.cue.CueVirtualTrackIndexer
 import com.webdav.player.data.cue.DefaultCueSheetResolver
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.CoverArtStorageImpl
+import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.network.DefaultNetworkConnectivityObserver
 import com.webdav.player.data.player.Media3AudioPlayerEngine
 import com.webdav.player.data.player.WebDavMediaSourceBuilder
@@ -13,9 +15,11 @@ import com.webdav.player.data.repository.DataStorePlaybackSessionStore
 import com.webdav.player.data.repository.DirectoryRepositoryImpl
 import com.webdav.player.data.repository.LibrarySearchRepositoryImpl
 import com.webdav.player.data.repository.LocalStorageDirectoryResolver
+import com.webdav.player.data.repository.LocalStorageIndexScanner
 import com.webdav.player.data.repository.PlaylistRepositoryImpl
 import com.webdav.player.data.repository.ServerRepositoryImpl
 import com.webdav.player.data.repository.TrackMetadataRepositoryImpl
+import com.webdav.player.data.repository.WebDavSyncScanner
 import com.webdav.player.data.service.PlaybackSessionHost
 import com.webdav.player.di.AppContainer
 import com.webdav.player.domain.cue.CueSheetResolver
@@ -69,6 +73,15 @@ class WebDavApplication :
     override lateinit var networkConnectivityObserver: NetworkConnectivityObserver
         private set
 
+    override lateinit var mediaTrackIndexDao: MediaTrackIndexDao
+        private set
+
+    override lateinit var localStorageIndexScanner: LocalStorageIndexScanner
+        private set
+
+    override lateinit var webDavSyncScanner: WebDavSyncScanner
+        private set
+
     override fun onCreate() {
         super.onCreate()
 
@@ -76,6 +89,11 @@ class WebDavApplication :
         val coverArtStorage = CoverArtStorageImpl(this)
         val webDavClient = OkHttpWebDavClient()
         this.webDavClient = webDavClient
+
+        val mediaTrackIndexDao = database.mediaTrackIndexDao()
+        this.mediaTrackIndexDao = mediaTrackIndexDao
+        val checkpointDao = database.directorySyncCheckpointDao()
+
         serverRepository =
             ServerRepositoryImpl(
                 serverDao = database.webDavServerDao(),
@@ -84,6 +102,8 @@ class WebDavApplication :
                 directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
                 localStorageFolderDao = database.localStorageFolderDao(),
+                mediaTrackIndexDao = mediaTrackIndexDao,
+                directorySyncCheckpointDao = checkpointDao,
                 context = this,
             )
 
@@ -127,11 +147,39 @@ class WebDavApplication :
             )
         this.directoryRepository = directoryRepository
 
+        val localStorageIndexScanner =
+            LocalStorageIndexScanner(
+                context = this,
+                mediaTrackIndexDao = mediaTrackIndexDao,
+                checkpointDao = checkpointDao,
+                localStorageFolderDao = database.localStorageFolderDao(),
+            )
+        this.localStorageIndexScanner = localStorageIndexScanner
+
+        val cueVirtualTrackIndexer =
+            CueVirtualTrackIndexer(
+                cueSheetResolver = cueSheetResolver,
+                mediaTrackIndexDao = mediaTrackIndexDao,
+            )
+
+        val webDavSyncScanner =
+            WebDavSyncScanner(
+                webDavClient = webDavClient,
+                mediaTrackIndexDao = mediaTrackIndexDao,
+                directorySyncCheckpointDao = checkpointDao,
+                cueVirtualTrackIndexer = cueVirtualTrackIndexer,
+            )
+        this.webDavSyncScanner = webDavSyncScanner
+
         librarySearchRepository =
             LibrarySearchRepositoryImpl(
                 directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
+                mediaTrackIndexDao = mediaTrackIndexDao,
+                directorySyncCheckpointDao = checkpointDao,
                 cueSheetResolver = cueSheetResolver,
+                webDavSyncScanner = webDavSyncScanner,
+                localStorageIndexScanner = localStorageIndexScanner,
                 context = this,
             )
 

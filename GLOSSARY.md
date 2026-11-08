@@ -109,8 +109,32 @@ _Avoid_: Manual Refresh, Re-add Song, Fixed Inactive State
 _Avoid_: One-Way State Trap, Write-Only Fault, Zombie Inactive Track
 
 **Library Search Index**:
-基于已访问目录的 SWR 镜像快照（及可选的 Wi-Fi 后台增量遍历）在本地持久层构建的即时全文索引，支持对 Remote File 与 Remote Directory 进行毫秒级多维检索。
-_Avoid_: WebDAV Search, Server Index, Cloud Crawler
+基于 `media_track_index` 专用表与复合 B-Tree 索引矩阵构建的统一跨源即时搜索索引，彻底取代旧版对 `directory_cache` 序列化 JSON 字段的文本模糊扫描，毫秒级召回深层未访问目录、伴生 CUE 虚拟分轨及本地 SAF 曲目。
+_Avoid_: WebDAV Search, Server Index, Cloud Crawler, Legacy Json Search
+
+**Unified Media Track Index**:
+持久化存储在 Room v7 `media_track_index` 中的轻量音轨元数据快照，包含物理/虚拟分轨路径、文件规格、预提取标题与艺术家，充当全库检索的统一权威数据源。
+_Avoid_: Track Mirror, Audio DB, Cache Table
+
+**Directory Sync Checkpoint**:
+持久化在 `directory_sync_checkpoint` 表中的目录级增量同步检查点，记录各层级目录的 ETag 与修改时间戳，为 WebDAV 树状扫描提供毫秒级子树跳过依据。
+_Avoid_: Scan Cache, Folder State, Sync Token
+
+**Library Sync State**:
+仓储层暴露的反应式曲库同步状态模型（`Idle`、`Scanning`、`Completed`、`Failed`），用于在不阻断前台交互的前提下驱动微动效进度指示。
+_Avoid_: Scan Progress, Sync Status, Background State
+
+**Segmented Scope Pill**:
+搜索界面顶部的一体化双槽滑块胶囊控制器（`SearchScopeSegmentedPill`），选中的栏位覆盖实体高对比主题色药丸滑块，并辅以设备/云端/全局语义图标，在“当前源”与“全库搜索”间提供一目了然的强视觉心智。
+_Avoid_: Filter Tab, Scope Toggle, Search Chip
+
+**Strict Source Isolation**:
+单源检索与元数据持久化管线中的隔离契约。单源检索时严格隔离本地 SAF 文件与远程 WebDAV 文件；播放本地曲目时强制将元数据关联 serverId 钳制为 `LOCAL_STORAGE_ID = 0L`，严禁污染远程节点。
+_Avoid_: Source Bleed, Cross Leak, Shared Server ID
+
+**Physical Composite Deduplication**:
+全库跨源检索时基于物理文件路径建立的唯一规范键机制（本地音轨为 `local:${remotePath}`，远程音轨为 `${serverId}:${remotePath}`），彻底消除索引表、目录快照与元数据缓存重叠引发的单曲重复渲染。
+_Avoid_: ID Match, List Distinct, Duplicate Suppression
 
 **Ad-hoc Queue Insertion**:
 在搜索结果中点击可播放音频文件时，将目标曲目即时插队至当前 Playback Queue 的下一曲（Play Next）或单曲起播，不破坏现有队列所属目录或歌单的主体结构。

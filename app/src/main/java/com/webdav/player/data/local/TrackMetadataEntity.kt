@@ -2,6 +2,7 @@ package com.webdav.player.data.local
 
 import androidx.room.Entity
 import androidx.room.Index
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.TrackMetadata
 
 @Entity(
@@ -14,7 +15,7 @@ import com.webdav.player.domain.model.TrackMetadata
         Index(value = ["artist"]),
         Index(value = ["album"]),
         Index(value = ["remotePath"]),
-    ]
+    ],
 )
 data class TrackMetadataEntity(
     val serverId: Long,
@@ -25,31 +26,40 @@ data class TrackMetadataEntity(
     val trackNumber: Int?,
     val durationMs: Long,
     val coverThumbnailPath: String?,
-    val lyrics: String? = null
+    val lyrics: String? = null,
 ) {
-    fun toDomain(): TrackMetadata = TrackMetadata(
-        serverId = serverId,
-        remotePath = remotePath,
-        title = title,
-        artist = artist,
-        album = album,
-        trackNumber = trackNumber,
-        durationMs = durationMs,
-        coverThumbnailPath = coverThumbnailPath,
-        lyrics = lyrics
-    )
+    fun toDomain(): TrackMetadata =
+        TrackMetadata(
+            serverId = serverId,
+            remotePath = remotePath,
+            title = title,
+            artist = artist,
+            album = album,
+            trackNumber = trackNumber,
+            durationMs = durationMs,
+            coverThumbnailPath = coverThumbnailPath,
+            lyrics = lyrics,
+        )
 
     companion object {
-        fun fromDomain(domain: TrackMetadata): TrackMetadataEntity = TrackMetadataEntity(
-            serverId = domain.serverId,
-            remotePath = domain.remotePath,
-            title = domain.title,
-            artist = domain.artist,
-            album = domain.album,
-            trackNumber = domain.trackNumber,
-            durationMs = domain.durationMs,
-            coverThumbnailPath = domain.coverThumbnailPath,
-            lyrics = domain.lyrics
-        )
+        fun fromDomain(domain: TrackMetadata): TrackMetadataEntity {
+            val effectiveServerId =
+                if (domain.remotePath.startsWith("content://") || domain.remotePath.startsWith("file://")) {
+                    LOCAL_STORAGE_ID
+                } else {
+                    domain.serverId
+                }
+            return TrackMetadataEntity(
+                serverId = effectiveServerId,
+                remotePath = domain.remotePath,
+                title = domain.title,
+                artist = domain.artist,
+                album = domain.album,
+                trackNumber = domain.trackNumber,
+                durationMs = domain.durationMs,
+                coverThumbnailPath = domain.coverThumbnailPath,
+                lyrics = domain.lyrics,
+            )
+        }
     }
 }

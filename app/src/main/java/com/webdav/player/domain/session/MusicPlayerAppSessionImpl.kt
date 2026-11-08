@@ -346,14 +346,20 @@ class MusicPlayerAppSessionImpl(
     }
 
     override fun playTrack(track: AudioTrack) {
-        val isLocalTrack = track.isLocal
-        val server = _sessionState.value.activeServer ?: if (isLocalTrack) WebDavServer.createLocalStorage() else null
-        if (server == null && serverRepository == null) return
+        val isLocalTrack =
+            track.isLocal || track.serverId == com.webdav.player.domain.model.LOCAL_STORAGE_ID ||
+                track.remotePath.startsWith(
+                    "content://",
+                ) ||
+                track.remotePath.startsWith("file://")
         coroutineScope.launch {
-            val request = queueManager.buildTrackQueue(track, server)
             val effectiveServer =
-                server ?: (if (isLocalTrack) WebDavServer.createLocalStorage() else serverRepository?.getServerById(track.serverId))
-                    ?: return@launch
+                when {
+                    isLocalTrack -> WebDavServer.createLocalStorage()
+                    serverRepository != null -> serverRepository.getServerById(track.serverId) ?: _sessionState.value.activeServer
+                    else -> _sessionState.value.activeServer
+                } ?: return@launch
+            val request = queueManager.buildTrackQueue(track, effectiveServer)
             dispatchQueueLoad(effectiveServer, request)
             metadataCoordinator.enrichSingleTrackMetadata(effectiveServer, track)
         }

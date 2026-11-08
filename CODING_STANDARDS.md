@@ -80,3 +80,18 @@ These standards are enforced during `/code-review` alongside the Fowler code-sme
 - **Dynamic Theme Purity & Universal Perceptual Normalization (组件色调动态纯净度与通用感知归一化)**:
   严禁在 UI 表现层针对特定业务状态（如 Hi-Res 24-bit 标志、格式徽章、播放按钮）硬编码孤立颜色常量（如 `#FFB703` 或写死 Hex 色值）；所有高亮标签、指示器与边框必须统一绑定到 `MaterialTheme.colorScheme` 的动态语义 Token，由当前曲目封面通过 Google Palette + HCT 规范提取的种子色全自动推导，保障在任意色调（冷青、暖金、玫红、纯黑白）专辑下 100% 动态跟随自适应。
 
+---
+
+## 8. Cross-Source Storage Identity & Search Scope Discipline (跨源存储身份隔离与检索范围契约)
+
+- **Local Storage Identity Clamping (本地存储身份单向隔离法则)**:
+  `LOCAL_STORAGE_ID = 0L` 与远程 WebDAV 节点互为一等公民，但两者的资源寻址体系完全异构（Android SAF `content://` URI vs 相对路径 HTTP/HTTPS URL）。播放管线（`MusicPlayerAppSessionImpl`）、元数据解析与提取协调器（`PlaybackMetadataCoordinator`、`TrackMetadataRepositoryImpl`）以及数据实体构造（`TrackMetadataEntity.fromDomain`）必须执行**严格单向隔离保护**：任何路径以 `content://` 或 `file://` 开头的本地音轨，其持久化关联的 `serverId` 必须无条件强制钳制为 `LOCAL_STORAGE_ID` (`0L`)，**严禁借用、继承或污染当前活跃的远程 WebDAV 服务器 ID**。
+- **Strict Source Isolation & Physical Composite Deduplication (严格源过滤隔离与物理复合去重法则)**:
+  - **单源严格隔离**：单源检索时（`serverId != null`），若目标源为 WebDAV，底层查询与内存映射层必须对所有数据流（曲目索引、目录快照、元数据缓存）实施严格防御式过滤，坚决剔除任何本地文件（`content://`、`isLocal`）；若目标源为本地存储，坚决剔除任何远程文件。
+  - **全库复合去重**：全库跨源检索时（`serverId == null`），由于存在混合持久化表（`media_track_index`、`directory_cache`、`track_metadata`），必须采用**物理唯一标识键**（本地音轨统一映射为 `local:${remotePath}`，远程音轨映射为 `${serverId}:${remotePath}`）进行严格去重，杜绝同一首物理文件在搜索结果中重复渲染。
+- **Mutual Exclusion Scope Controls & Unmistakable Visual Contrast (互斥检索范围控件与强视觉状态法则)**:
+  当搜索或过滤界面提供“当前源”与“全库搜索”等互斥状态切换时，严禁使用视觉权重轻微、未激活/激活状态差异模糊的松散组件（如弱边界的普通 `FilterChip`），必须采用符合平台设计规范的**一体化分段滑块胶囊（Segmented Pill Capsule）**。选中的分段必须具备饱满的高对比实体背景、加粗文本及语义辅助图标，使当前作用域在任何主题下具有一目了然的确定性心智。
+- **Zero-Friction Silent Auto-Indexing (零阻力静默自建索引原则)**:
+  曲目快速索引必须是完全透明的系统基础设施，严禁将“同步媒体库/建立索引”做成独立的手动阻断前置步骤，更严禁在主界面顶部栏增加二级菜单让用户找寻操作。新节点接入（保存服务器/挂载本地目录）、应用启动切换及进入搜索时，必须由系统在后台协程静默发起增量快照索引，并通过自然手势（列表下拉刷新 Pull-to-Refresh）统一归口手动触发。
+
+

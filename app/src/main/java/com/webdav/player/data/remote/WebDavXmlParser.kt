@@ -40,6 +40,8 @@ object WebDavXmlParser {
         }
 
         var dirName: String? = null
+        var dirLastModified: String? = null
+        var dirEtag: String? = null
 
         for (responseEl in responses) {
             val hrefRaw = getChildTextByLocalName(responseEl, "href") ?: continue
@@ -57,15 +59,21 @@ object WebDavXmlParser {
                     if (extractedName.isNotBlank()) {
                         dirName = extractedName
                     }
+                    dirLastModified = getChildTextByLocalName(responseEl, "getlastmodified")
+                    dirEtag = getChildTextByLocalName(responseEl, "getetag")
                     continue
                 }
 
                 val folderName = normalizedPath.trimEnd('/').substringAfterLast('/')
                 if (folderName.isNotBlank()) {
+                    val subLastModified = getChildTextByLocalName(responseEl, "getlastmodified")
+                    val subEtag = getChildTextByLocalName(responseEl, "getetag")
                     subDirectories.add(
                         RemoteDirectory(
                             path = normalizedPath,
-                            name = folderName
+                            name = folderName,
+                            lastModified = parseHttpDate(subLastModified),
+                            etag = subEtag?.trim('"', ' '),
                         )
                     )
                 }
@@ -97,8 +105,27 @@ object WebDavXmlParser {
             path = normalizedRequestedPath,
             name = finalDirName,
             subDirectories = subDirectories.sortedBy { it.name.lowercase() },
-            files = files.sortedBy { it.name.lowercase() }
+            files = files.sortedBy { it.name.lowercase() },
+            lastModified = parseHttpDate(dirLastModified),
+            etag = dirEtag?.trim('"', ' '),
         )
+    }
+
+    fun parseHttpDate(dateStr: String?): Long {
+        if (dateStr.isNullOrBlank()) return 0L
+        val trimmed = dateStr.trim()
+        trimmed.toLongOrNull()?.let { return it }
+        try {
+            return java.time.ZonedDateTime.parse(trimmed, java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli()
+        } catch (_: Exception) {}
+        try {
+            return java.time.Instant.parse(trimmed).toEpochMilli()
+        } catch (_: Exception) {}
+        try {
+            val sdf = java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", java.util.Locale.US)
+            return sdf.parse(trimmed)?.time ?: 0L
+        } catch (_: Exception) {}
+        return 0L
     }
 
     private fun decodeAndExtractPath(href: String): String {

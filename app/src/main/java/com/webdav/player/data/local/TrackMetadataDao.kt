@@ -35,6 +35,21 @@ interface TrackMetadataDao {
               OR artist LIKE '%' || :query || '%' 
               OR album LIKE '%' || :query || '%' 
               OR remotePath LIKE '%' || :query || '%'
+              OR remotePath IN (
+                  SELECT CASE 
+                      WHEN remotePath LIKE '%#cue_%' THEN SUBSTR(remotePath, 1, INSTR(remotePath, '#cue_') - 1)
+                      ELSE remotePath 
+                  END 
+                  FROM media_track_index 
+                  WHERE (:serverId IS NULL OR serverId = :serverId)
+                    AND (
+                      fileName LIKE '%' || :query || '%'
+                      OR parsedTitle LIKE '%' || :query || '%'
+                      OR (parsedArtist IS NOT NULL AND parsedArtist LIKE '%' || :query || '%')
+                      OR parentPath LIKE '%' || :query || '%'
+                      OR remotePath LIKE '%' || :query || '%'
+                    )
+              )
           )
         """,
     )
@@ -75,4 +90,7 @@ interface TrackMetadataDao {
 
     @Query("DELETE FROM track_metadata WHERE serverId = :serverId")
     suspend fun deleteMetadataForServer(serverId: Long): Int
+
+    @Query("DELETE FROM track_metadata WHERE remotePath LIKE 'content://%' AND serverId != 0")
+    suspend fun cleanupCorruptLocalMetadata(): Int
 }

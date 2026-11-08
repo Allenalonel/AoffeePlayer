@@ -6,6 +6,7 @@ import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.Breadcrumb
 import com.webdav.player.domain.model.CueAlbumItem
 import com.webdav.player.domain.model.LibrarySearchResult
+import com.webdav.player.domain.model.LibrarySyncState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.WebDavServer
@@ -54,6 +55,16 @@ class DirectoryBrowserViewModel(
         val initialHistory = librarySearchRepository?.getSearchHistory() ?: emptyList()
         if (initialHistory.isNotEmpty()) {
             _uiState.update { it.copy(searchHistory = initialHistory) }
+        }
+
+        if (librarySearchRepository != null) {
+            viewModelScope.launch {
+                librarySearchRepository
+                    .observeSyncState()
+                    .collect { syncState ->
+                        _uiState.update { it.copy(syncState = syncState) }
+                    }
+            }
         }
 
         if (musicPlayerAppSession != null) {
@@ -116,9 +127,19 @@ class DirectoryBrowserViewModel(
 
                     if (server != null) {
                         loadDirectory(initialPath, forceRefresh = false, fallbackToRoot = true)
+                        viewModelScope.launch {
+                            librarySearchRepository?.syncServer(server, force = false)
+                        }
                     }
                 }
             }
+        }
+    }
+
+    fun onSyncLibrary(force: Boolean = false) {
+        val server = _uiState.value.activeServer ?: return
+        viewModelScope.launch {
+            librarySearchRepository?.syncServer(server, force = force)
         }
     }
 
@@ -246,10 +267,28 @@ class DirectoryBrowserViewModel(
             _uiState.update { it.copy(searchResult = LibrarySearchResult(), isSearching = false) }
             return
         }
+        executeSearch(trimmed, _uiState.value.isGlobalSearch)
+    }
+
+    fun onToggleSearchScope() {
+        val newScope = !_uiState.value.isGlobalSearch
+        _uiState.update { it.copy(isGlobalSearch = newScope) }
+        val query = _uiState.value.searchQuery.trim()
+        if (query.isNotBlank()) {
+            searchJob?.cancel()
+            executeSearch(query, newScope)
+        }
+    }
+
+    private fun executeSearch(
+        query: String,
+        isGlobal: Boolean,
+    ) {
         _uiState.update { it.copy(isSearching = true) }
+        val targetServerId = if (isGlobal) null else _uiState.value.activeServer?.id
         searchJob =
             viewModelScope.launch {
-                librarySearchRepository?.search(trimmed, serverId = null)?.collect { result ->
+                librarySearchRepository?.search(query, serverId = targetServerId)?.collect { result ->
                     _uiState.update { it.copy(searchResult = result, isSearching = false) }
                 } ?: run {
                     _uiState.update { it.copy(isSearching = false) }
@@ -266,6 +305,12 @@ class DirectoryBrowserViewModel(
             }
         } else {
             _uiState.update { it.copy(isSearchActive = true) }
+            val server = _uiState.value.activeServer
+            if (server != null && _uiState.value.syncState is LibrarySyncState.Idle) {
+                viewModelScope.launch {
+                    librarySearchRepository?.syncServer(server, force = false)
+                }
+            }
         }
     }
 
@@ -340,6 +385,12 @@ class DirectoryBrowserViewModel(
 
     fun onRefresh() {
         loadDirectory(_uiState.value.currentPath, forceRefresh = true)
+        val server = _uiState.value.activeServer
+        if (server != null) {
+            viewModelScope.launch {
+                librarySearchRepository?.syncServer(server, force = false)
+            }
+        }
     }
 
     fun onRetry() {

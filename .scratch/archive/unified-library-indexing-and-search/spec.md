@@ -1,6 +1,6 @@
 # Unified Cross-Source Library Indexing and Search
 
-Status: ready-for-agent
+Status: completed
 
 ## Problem Statement
 
@@ -31,8 +31,9 @@ The solution introduces an automated, decoupled, and incremental **Cross-Source 
 
 5. **Smooth Material 3 Expressive UI Integration**:
    - The media library top app bar displays a subtle sync status indicator when background indexing is active (e.g., "Indexing 340 tracks...").
-   - Users can trigger manual library re-synchronization on demand.
+   - Silent, zero-friction indexing automatically triggers upon source mount, server connection, server switch, or list pull-to-refresh without requiring manual overflow menu navigation.
    - Search results display matching audio tracks and directories with instant playback (Ad-hoc Queue Insertion) and direct navigation.
+   - The search interface features a high-contrast Segmented Pill slider for unambiguous switching between the current active source and global library search.
 
 ## User Stories
 

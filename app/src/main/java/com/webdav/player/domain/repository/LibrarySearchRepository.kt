@@ -1,7 +1,11 @@
 package com.webdav.player.domain.repository
 
 import com.webdav.player.domain.model.LibrarySearchResult
+import com.webdav.player.domain.model.LibrarySyncResult
+import com.webdav.player.domain.model.LibrarySyncState
+import com.webdav.player.domain.model.WebDavServer
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 interface LibrarySearchRepository {
     /**
@@ -15,6 +19,19 @@ interface LibrarySearchRepository {
         query: String,
         serverId: Long? = null,
     ): Flow<LibrarySearchResult>
+
+    /**
+     * Observes real-time synchronization state for an active server or all servers.
+     */
+    fun observeSyncState(serverId: Long? = null): Flow<LibrarySyncState> = flowOf(LibrarySyncState.Idle)
+
+    /**
+     * Triggers synchronization for a given server (remote or local).
+     */
+    suspend fun syncServer(
+        server: WebDavServer,
+        force: Boolean = false,
+    ): LibrarySyncResult = LibrarySyncResult.Success(totalTracksIndexed = 0)
 
     /**
      * Retrieves recent search history queries ordered by most recent first.

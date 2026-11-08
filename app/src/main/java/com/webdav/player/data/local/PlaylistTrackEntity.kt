@@ -2,6 +2,7 @@ package com.webdav.player.data.local
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Ignore
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.webdav.player.domain.model.AudioFormat
@@ -37,11 +38,51 @@ data class PlaylistTrackEntity(
     val size: Long = 0L,
     val format: String = "MP3",
     val coverThumbnailPath: String? = null,
-    val cuePath: String? = null,
-    val virtualTrackId: String? = null,
     val isInactive: Boolean = false,
     val inactiveReason: String? = null,
 ) {
+    @Ignore
+    @Suppress("UNUSED_PARAMETER")
+    constructor(
+        id: Long = 0L,
+        playlistId: Long,
+        serverId: Long,
+        remotePath: String,
+        sortOrder: Int,
+        title: String,
+        artist: String? = null,
+        album: String? = null,
+        durationMs: Long = 0L,
+        size: Long = 0L,
+        format: String = "MP3",
+        coverThumbnailPath: String? = null,
+        cuePath: String? = null,
+        virtualTrackId: String? = null,
+        isInactive: Boolean = false,
+        inactiveReason: String? = null,
+    ) : this(
+        id = id,
+        playlistId = playlistId,
+        serverId = serverId,
+        remotePath = remotePath,
+        sortOrder = sortOrder,
+        title = title,
+        artist = artist,
+        album = album,
+        durationMs = durationMs,
+        size = size,
+        format = format,
+        coverThumbnailPath = coverThumbnailPath,
+        isInactive = isInactive,
+        inactiveReason = inactiveReason,
+    )
+
+    val cuePath: String?
+        get() = null
+
+    val virtualTrackId: String?
+        get() = null
+
     fun toDomain(): PlaylistTrackEntry =
         PlaylistTrackEntry(
             id = id,
@@ -83,8 +124,6 @@ data class PlaylistTrackEntity(
                 size = domain.size,
                 format = domain.format.name,
                 coverThumbnailPath = domain.coverThumbnailPath,
-                cuePath = domain.cuePath,
-                virtualTrackId = domain.virtualTrackId,
                 isInactive = domain.isInactive,
                 inactiveReason = domain.inactiveReason?.name,
             )

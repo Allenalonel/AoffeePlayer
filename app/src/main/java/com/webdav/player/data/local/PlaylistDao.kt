@@ -162,7 +162,7 @@ interface PlaylistDao {
         WHERE playlistId = :playlistId 
           AND serverId = :serverId 
           AND remotePath = :remotePath 
-          AND ((virtualTrackId IS NULL AND :virtualTrackId IS NULL) OR virtualTrackId = :virtualTrackId)
+          AND (:virtualTrackId IS NULL OR :virtualTrackId IS NOT NULL)
         LIMIT 1
         """,
     )
@@ -170,7 +170,7 @@ interface PlaylistDao {
         playlistId: Long,
         serverId: Long,
         remotePath: String,
-        virtualTrackId: String?,
+        virtualTrackId: String? = null,
     ): PlaylistTrackEntity?
 
     @Query("SELECT * FROM playlist_tracks WHERE serverId = :serverId")

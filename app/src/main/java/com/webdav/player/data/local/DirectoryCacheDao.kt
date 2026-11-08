@@ -23,8 +23,7 @@ interface DirectoryCacheDao {
         WHERE (:serverId IS NULL OR serverId = :serverId)
           AND (
               path LIKE '%' || :query || '%' 
-              OR dataJson LIKE '%' || :query || '%' 
-              OR dataJson LIKE '%.cue%'
+              OR dataJson LIKE '%' || :query || '%'
           )
         """,
     )

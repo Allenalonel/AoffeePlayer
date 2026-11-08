@@ -1,6 +1,7 @@
 package com.webdav.player.data.local
 
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.Index
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
@@ -23,11 +24,37 @@ data class MediaTrackIndexEntity(
     val fileSize: Long,
     val lastModified: Long,
     val format: String,
-    val isCue: Boolean,
     val parentPath: String,
     val parsedTitle: String,
     val parsedArtist: String?,
 ) {
+    val isCue: Boolean
+        get() = false
+
+    @Ignore
+    constructor(
+        serverId: Long,
+        remotePath: String,
+        fileName: String,
+        fileSize: Long,
+        lastModified: Long,
+        format: String,
+        @Suppress("UNUSED_PARAMETER") isCue: Boolean,
+        parentPath: String,
+        parsedTitle: String,
+        parsedArtist: String?,
+    ) : this(
+        serverId = serverId,
+        remotePath = remotePath,
+        fileName = fileName,
+        fileSize = fileSize,
+        lastModified = lastModified,
+        format = format,
+        parentPath = parentPath,
+        parsedTitle = parsedTitle,
+        parsedArtist = parsedArtist,
+    )
+
     fun toAudioTrack(
         metadata: TrackMetadataEntity? = null,
         albumFallback: String? = null,

@@ -18,7 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MediaTrackIndexEntity::class,
         DirectorySyncCheckpointEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -179,6 +179,95 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        val MIGRATION_7_8 =
+            object : Migration(7, 8) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    // Recreate playlist_tracks without cuePath and virtualTrackId, purging virtual tracks
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `playlist_tracks_new` (
+                            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                            `playlistId` INTEGER NOT NULL,
+                            `serverId` INTEGER NOT NULL,
+                            `remotePath` TEXT NOT NULL,
+                            `sortOrder` INTEGER NOT NULL,
+                            `title` TEXT NOT NULL,
+                            `artist` TEXT,
+                            `album` TEXT,
+                            `durationMs` INTEGER NOT NULL,
+                            `size` INTEGER NOT NULL,
+                            `format` TEXT NOT NULL,
+                            `coverThumbnailPath` TEXT,
+                            `isInactive` INTEGER NOT NULL DEFAULT 0,
+                            `inactiveReason` TEXT,
+                            FOREIGN KEY(`playlistId`) REFERENCES `playlists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                        )
+                        """.trimIndent(),
+                    )
+                    db.execSQL(
+                        """
+                        INSERT INTO `playlist_tracks_new` (
+                            `id`, `playlistId`, `serverId`, `remotePath`, `sortOrder`, `title`, `artist`, `album`, `durationMs`, `size`, `format`, `coverThumbnailPath`, `isInactive`, `inactiveReason`
+                        )
+                        SELECT `id`, `playlistId`, `serverId`, `remotePath`, `sortOrder`, `title`, `artist`, `album`, `durationMs`, `size`, `format`, `coverThumbnailPath`, `isInactive`, `inactiveReason`
+                        FROM `playlist_tracks`
+                        WHERE `remotePath` NOT LIKE '%#cue_%' AND `virtualTrackId` IS NULL
+                        """.trimIndent(),
+                    )
+                    db.execSQL("DROP TABLE `playlist_tracks`")
+                    db.execSQL("ALTER TABLE `playlist_tracks_new` RENAME TO `playlist_tracks`")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId` ON `playlist_tracks` (`playlistId`)")
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId_sortOrder` ON `playlist_tracks` (`playlistId`, `sortOrder`)",
+                    )
+
+                    // Recreate media_track_index without isCue, purging isCue = 1 and #cue_ rows
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `media_track_index_new` (
+                            `serverId` INTEGER NOT NULL,
+                            `remotePath` TEXT NOT NULL,
+                            `fileName` TEXT NOT NULL,
+                            `fileSize` INTEGER NOT NULL,
+                            `lastModified` INTEGER NOT NULL,
+                            `format` TEXT NOT NULL,
+                            `parentPath` TEXT NOT NULL,
+                            `parsedTitle` TEXT NOT NULL,
+                            `parsedArtist` TEXT,
+                            PRIMARY KEY(`serverId`, `remotePath`)
+                        )
+                        """.trimIndent(),
+                    )
+                    db.execSQL(
+                        """
+                        INSERT INTO `media_track_index_new` (
+                            `serverId`, `remotePath`, `fileName`, `fileSize`, `lastModified`, `format`, `parentPath`, `parsedTitle`, `parsedArtist`
+                        )
+                        SELECT `serverId`, `remotePath`, `fileName`, `fileSize`, `lastModified`, `format`, `parentPath`, `parsedTitle`, `parsedArtist`
+                        FROM `media_track_index`
+                        WHERE `isCue` = 0 AND `remotePath` NOT LIKE '%#cue_%'
+                        """.trimIndent(),
+                    )
+                    db.execSQL("DROP TABLE `media_track_index`")
+                    db.execSQL("ALTER TABLE `media_track_index_new` RENAME TO `media_track_index`")
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_fileName` ON `media_track_index` (`serverId`, `fileName`)",
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_fileName` ON `media_track_index` (`fileName`)",
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_remotePath` ON `media_track_index` (`serverId`, `remotePath`)",
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedTitle` ON `media_track_index` (`parsedTitle`)",
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedArtist` ON `media_track_index` (`parsedArtist`)",
+                    )
+                }
+            }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance =
@@ -187,7 +276,7 @@ abstract class AppDatabase : RoomDatabase() {
                             context.applicationContext,
                             AppDatabase::class.java,
                             "webdav_player.db",
-                        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                         .fallbackToDestructiveMigration()
                         .build()
                 INSTANCE = instance

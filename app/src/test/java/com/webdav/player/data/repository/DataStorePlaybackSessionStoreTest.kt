@@ -298,7 +298,7 @@ class DataStorePlaybackSessionStoreTest {
             assertEquals(1, restored?.queueTracks?.size)
             assertEquals(0, restored?.currentTrackIndex)
             assertEquals(185000L, restored?.positionMs)
-            assertEquals("/Music/Rock/album.cue", restored?.cuePath)
+            assertNull(restored?.cuePath)
             assertEquals(3, restored?.virtualTrackNumber)
             assertEquals(25000L, restored?.virtualPositionMs)
 

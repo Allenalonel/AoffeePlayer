@@ -40,7 +40,6 @@ class DataStorePlaybackSessionStore(
         private val KEY_POSITION_MS = longPreferencesKey("position_ms")
         private val KEY_PLAYBACK_MODE = stringPreferencesKey("playback_mode")
         private val KEY_SERVER_LAST_DIRS_JSON = stringPreferencesKey("server_last_dirs_json")
-        private val KEY_CUE_PATH = stringPreferencesKey("cue_path")
         private val KEY_VIRTUAL_TRACK_NUMBER = intPreferencesKey("virtual_track_number")
         private val KEY_VIRTUAL_POSITION_MS = longPreferencesKey("virtual_position_ms")
         private val KEY_CLEAN_EXIT = booleanPreferencesKey("clean_exit")
@@ -66,11 +65,6 @@ class DataStorePlaybackSessionStore(
             prefs[KEY_POSITION_MS] = sessionData.positionMs
             prefs[KEY_PLAYBACK_MODE] = sessionData.playbackMode.name
             prefs[KEY_SERVER_LAST_DIRS_JSON] = serverLastDirsJson
-            if (sessionData.cuePath != null) {
-                prefs[KEY_CUE_PATH] = sessionData.cuePath
-            } else {
-                prefs.remove(KEY_CUE_PATH)
-            }
             if (sessionData.virtualTrackNumber != null) {
                 prefs[KEY_VIRTUAL_TRACK_NUMBER] = sessionData.virtualTrackNumber
             } else {
@@ -146,7 +140,6 @@ class DataStorePlaybackSessionStore(
                 }
             } ?: PlaybackMode.LIST_LOOP
         val serverLastDirs = deserializeServerLastDirs(prefs[KEY_SERVER_LAST_DIRS_JSON])
-        val cuePath = prefs[KEY_CUE_PATH]
         val virtualTrackNumber = prefs[KEY_VIRTUAL_TRACK_NUMBER]
         val virtualPositionMs = prefs[KEY_VIRTUAL_POSITION_MS]
         val cleanExit = prefs[KEY_CLEAN_EXIT] ?: true
@@ -173,7 +166,7 @@ class DataStorePlaybackSessionStore(
             positionMs = positionMs,
             playbackMode = mode,
             serverLastDirectories = serverLastDirs,
-            cuePath = cuePath,
+            cuePath = null,
             virtualTrackNumber = virtualTrackNumber,
             virtualPositionMs = virtualPositionMs,
             cleanExit = cleanExit,
@@ -190,6 +183,7 @@ class DataStorePlaybackSessionStore(
     }
 
     @VisibleForTesting
+    @Suppress("UNUSED_PARAMETER")
     suspend fun saveRawForTesting(
         serverId: Long,
         dirPath: String,
@@ -209,7 +203,6 @@ class DataStorePlaybackSessionStore(
             prefs[KEY_CURRENT_TRACK_INDEX] = trackIndex
             prefs[KEY_POSITION_MS] = posMs
             prefs[KEY_PLAYBACK_MODE] = mode
-            if (cuePath != null) prefs[KEY_CUE_PATH] = cuePath else prefs.remove(KEY_CUE_PATH)
             if (virtualTrackNumber != null) prefs[KEY_VIRTUAL_TRACK_NUMBER] = virtualTrackNumber else prefs.remove(KEY_VIRTUAL_TRACK_NUMBER)
             if (virtualPositionMs != null) prefs[KEY_VIRTUAL_POSITION_MS] = virtualPositionMs else prefs.remove(KEY_VIRTUAL_POSITION_MS)
         }

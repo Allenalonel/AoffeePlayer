@@ -16,21 +16,16 @@ class FakePlaybackSessionStore(
         saveSessionCount++
     }
 
-    override suspend fun savePosition(positionMs: Long) {
-        savePosition(positionMs, null)
-    }
-
-    override suspend fun savePosition(positionMs: Long, virtualPositionMs: Long?) {
-        savePosition(positionMs, virtualPositionMs, isCleanExit = false)
-    }
-
-    override suspend fun savePosition(positionMs: Long, virtualPositionMs: Long?, isCleanExit: Boolean) {
+    override suspend fun savePosition(
+        positionMs: Long,
+        isCleanExit: Boolean,
+    ) {
         saveSessionCount++
-        savedSession = savedSession?.copy(
-            positionMs = positionMs,
-            virtualPositionMs = virtualPositionMs ?: savedSession?.virtualPositionMs,
-            cleanExit = isCleanExit,
-        )
+        savedSession =
+            savedSession?.copy(
+                positionMs = positionMs,
+                cleanExit = isCleanExit,
+            )
     }
 
     override suspend fun getSavedSession(): PlaybackSessionData? {

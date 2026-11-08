@@ -113,7 +113,7 @@ _Avoid_: One-Way State Trap, Write-Only Fault, Zombie Inactive Track
 _Avoid_: WebDAV Search, Server Index, Cloud Crawler, Legacy Json Search
 
 **Unified Media Track Index**:
-持久化存储在 Room v7 `media_track_index` 中的轻量音轨元数据快照，包含物理/虚拟分轨路径、文件规格、预提取标题与艺术家，充当全库检索的统一权威数据源。
+持久化存储在 Room v8 `media_track_index` 中的轻量音轨元数据快照，包含物理音轨路径、文件规格、预提取标题与艺术家，充当全库检索的统一权威数据源。
 _Avoid_: Track Mirror, Audio DB, Cache Table
 
 **Directory Sync Checkpoint**:

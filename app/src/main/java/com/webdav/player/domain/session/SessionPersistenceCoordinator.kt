@@ -107,13 +107,13 @@ internal class SessionPersistenceCoordinator(
                 return
             }
 
-            restoreOrdinarySession(server, savedSession)
+            restoreSessionFromData(server, savedSession)
         } finally {
             _isRestored.value = true
         }
     }
 
-    private suspend fun restoreOrdinarySession(
+    private suspend fun restoreSessionFromData(
         server: WebDavServer?,
         savedSession: PlaybackSessionData,
     ) {

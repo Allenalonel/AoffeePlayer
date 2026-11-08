@@ -1,11 +1,13 @@
 package com.webdav.player.domain.session
 
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import kotlinx.coroutines.CoroutineScope
@@ -122,7 +124,8 @@ internal class PlaybackMetadataCoordinator(
         track: AudioTrack,
     ) {
         val repo = trackMetadataRepository ?: return
-        val s = server ?: return
+        val isLocalTrack = track.isLocal || track.serverId == LOCAL_STORAGE_ID || track.remotePath.startsWith("content://") || track.remotePath.startsWith("file://")
+        val s = if (isLocalTrack) WebDavServer.createLocalStorage() else (server ?: return)
         val cachedMeta = repo.getCachedMetadata(s.id, track.remotePath)
         val meta =
             cachedMeta ?: repo.resolveSingleTrackMetadata(s, RemoteFile(name = track.fileName, path = track.remotePath))

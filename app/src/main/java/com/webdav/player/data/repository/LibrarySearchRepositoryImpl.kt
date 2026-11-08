@@ -259,23 +259,55 @@ class LibrarySearchRepositoryImpl(
             val matchedDirs = mutableMapOf<String, RemoteDirectory>()
             val matchedTracks = mutableMapOf<String, AudioTrack>()
 
+            fun isAccepted(
+                itemServerId: Long,
+                itemPath: String,
+            ): Boolean {
+                val isLocal = itemServerId == LOCAL_STORAGE_ID || itemPath.startsWith("content://") || itemPath.startsWith("/local/")
+                return when {
+                    serverId == null -> true
+                    serverId == LOCAL_STORAGE_ID -> isLocal
+                    else -> !isLocal && itemServerId == serverId
+                }
+            }
+
+            fun trackDedupeKey(
+                itemServerId: Long,
+                itemRemotePath: String,
+            ): String {
+                val isLocal = itemServerId == LOCAL_STORAGE_ID || itemRemotePath.startsWith("content://")
+                return if (isLocal) "local:$itemRemotePath" else "$itemServerId:$itemRemotePath"
+            }
+
+            fun dirDedupeKey(
+                itemServerId: Long,
+                itemDirPath: String,
+            ): String {
+                val isLocal = itemServerId == LOCAL_STORAGE_ID || itemDirPath.startsWith("/local/")
+                return if (isLocal) "local:$itemDirPath" else "$itemServerId:$itemDirPath"
+            }
+
             for (cp in checkpoints) {
+                if (!isAccepted(cp.serverId, cp.path)) continue
                 if (isMatch(cleanQuery, cp.path)) {
                     val dirName = cp.path.trimEnd('/').substringAfterLast('/')
                     if (dirName.isNotBlank()) {
-                        matchedDirs["${cp.serverId}:${cp.path}"] =
+                        val key = dirDedupeKey(cp.serverId, cp.path)
+                        matchedDirs[key] =
                             RemoteDirectory(
                                 path = cp.path,
                                 name = dirName,
                                 subDirectories = emptyList(),
                                 files = emptyList(),
-                                serverId = cp.serverId,
+                                serverId = if (cp.path.startsWith("/local/")) LOCAL_STORAGE_ID else cp.serverId,
                             )
                     }
                 }
             }
 
             for (entity in indexedTracks) {
+                if (!isAccepted(entity.serverId, entity.remotePath)) continue
+
                 if (entity.isCue && !entity.remotePath.contains("#cue_")) {
                     // Raw .cue file row, not a playable audio track. Skip from matchedTracks.
                 } else if (entity.isCue && entity.remotePath.contains("#cue_")) {
@@ -323,10 +355,11 @@ class LibrarySearchRepositoryImpl(
                             else -> 0L
                         }
 
+                    val effectiveServerId = if (entity.remotePath.startsWith("content://")) LOCAL_STORAGE_ID else entity.serverId
                     val track =
                         AudioTrack(
-                            id = "${entity.serverId}:${entity.remotePath}",
-                            serverId = entity.serverId,
+                            id = "$effectiveServerId:${entity.remotePath}",
+                            serverId = effectiveServerId,
                             remotePath = parentAudioPath,
                             title = entity.parsedTitle.ifBlank { entity.fileName },
                             artist = entity.parsedArtist ?: effectiveMeta?.artist,
@@ -337,7 +370,7 @@ class LibrarySearchRepositoryImpl(
                             coverThumbnailPath = effectiveMeta?.coverThumbnailPath,
                             cuePath = cuePath,
                         )
-                    matchedTracks["${entity.serverId}:${entity.remotePath}"] = track
+                    matchedTracks[trackDedupeKey(effectiveServerId, entity.remotePath)] = track
                 } else {
                     val metaKey = "${entity.serverId}:${entity.remotePath}"
                     val meta = metadataMap[metaKey]
@@ -345,9 +378,10 @@ class LibrarySearchRepositoryImpl(
                         AudioFormat.fromExtension(entity.format)
                             ?: AudioFormat.fromFileName(entity.fileName)
                             ?: AudioFormat.MP3
+                    val effectiveServerId = if (entity.remotePath.startsWith("content://")) LOCAL_STORAGE_ID else entity.serverId
                     val track =
                         createAudioTrack(
-                            serverId = entity.serverId,
+                            serverId = effectiveServerId,
                             remotePath = entity.remotePath,
                             fileName = entity.fileName,
                             fileSize = entity.fileSize,
@@ -356,12 +390,12 @@ class LibrarySearchRepositoryImpl(
                             titleFallback = entity.parsedTitle,
                             artistFallback = entity.parsedArtist,
                         )
-                    matchedTracks[metaKey] = track
+                    matchedTracks[trackDedupeKey(effectiveServerId, entity.remotePath)] = track
                 }
 
-                if (entity.parentPath.contains(cleanQuery, ignoreCase = true)) {
+                if (entity.parentPath.contains(cleanQuery, ignoreCase = true) && isAccepted(entity.serverId, entity.parentPath)) {
                     val dirName = entity.parentPath.trimEnd('/').substringAfterLast('/')
-                    val dirKey = "${entity.serverId}:${entity.parentPath}"
+                    val dirKey = dirDedupeKey(entity.serverId, entity.parentPath)
                     if (!matchedDirs.containsKey(dirKey) && dirName.isNotBlank()) {
                         matchedDirs[dirKey] =
                             RemoteDirectory(
@@ -369,13 +403,15 @@ class LibrarySearchRepositoryImpl(
                                 name = dirName,
                                 subDirectories = emptyList(),
                                 files = emptyList(),
-                                serverId = entity.serverId,
+                                serverId = if (entity.parentPath.startsWith("/local/")) LOCAL_STORAGE_ID else entity.serverId,
                             )
                     }
                 }
             }
 
             for (dirEntity in dirEntities) {
+                if (!isAccepted(dirEntity.serverId, dirEntity.path)) continue
+
                 val isCueCandidate = cueSheetResolver != null && dirEntity.dataJson.contains(".cue", ignoreCase = true)
                 val matchesPath = dirEntity.path.contains(cleanQuery, ignoreCase = true)
                 val matchesJson = dirEntity.dataJson.contains(cleanQuery, ignoreCase = true)
@@ -386,12 +422,14 @@ class LibrarySearchRepositoryImpl(
                 val remoteDir = getOrDeserialize(dirEntity) ?: continue
 
                 if (isMatch(cleanQuery, remoteDir.name, remoteDir.path)) {
-                    matchedDirs["${dirEntity.serverId}:${remoteDir.path}"] = remoteDir.copy(serverId = dirEntity.serverId)
+                    val dirKey = dirDedupeKey(dirEntity.serverId, remoteDir.path)
+                    matchedDirs[dirKey] = remoteDir.copy(serverId = if (remoteDir.path.startsWith("/local/")) LOCAL_STORAGE_ID else dirEntity.serverId)
                 }
 
                 for (sub in remoteDir.subDirectories) {
-                    if (isMatch(cleanQuery, sub.name, sub.path)) {
-                        matchedDirs["${dirEntity.serverId}:${sub.path}"] = sub.copy(serverId = dirEntity.serverId)
+                    if (isAccepted(dirEntity.serverId, sub.path) && isMatch(cleanQuery, sub.name, sub.path)) {
+                        val subKey = dirDedupeKey(dirEntity.serverId, sub.path)
+                        matchedDirs[subKey] = sub.copy(serverId = if (sub.path.startsWith("/local/")) LOCAL_STORAGE_ID else dirEntity.serverId)
                     }
                 }
 
@@ -399,13 +437,18 @@ class LibrarySearchRepositoryImpl(
                 val cueFiles = remoteDir.files.filter { it.isCue }
 
                 for (file in audioFiles) {
+                    if (!isAccepted(dirEntity.serverId, file.path)) continue
+                    val dedupeKey = trackDedupeKey(dirEntity.serverId, file.path)
+                    if (matchedTracks.containsKey(dedupeKey)) continue
+
                     val metaKey = "${dirEntity.serverId}:${file.path}"
                     val meta = metadataMap[metaKey]
                     val format = (file.fileType as? RemoteFileType.Audio)?.format ?: AudioFormat.MP3
-                    val track = createAudioTrack(dirEntity.serverId, file.path, file.name, file.size, format, meta)
+                    val effectiveServerId = if (file.path.startsWith("content://")) LOCAL_STORAGE_ID else dirEntity.serverId
+                    val track = createAudioTrack(effectiveServerId, file.path, file.name, file.size, format, meta)
 
                     if (isMatch(cleanQuery, track.title, track.artist, track.album, file.name, file.path)) {
-                        matchedTracks[track.id] = track
+                        matchedTracks[dedupeKey] = track
                     }
                 }
 
@@ -418,13 +461,14 @@ class LibrarySearchRepositoryImpl(
                     val albums = cueSheetResolver.resolveDirectoryCueAlbums(server, remoteDir, parentDurations)
                     for (album in albums) {
                         val matchedAudioFile = album.audioFile ?: continue
-                        if (album.tracks.isEmpty()) continue
+                        if (album.tracks.isEmpty() || !isAccepted(dirEntity.serverId, matchedAudioFile.path)) continue
 
                         val parentMeta = metadataMap["${dirEntity.serverId}:${matchedAudioFile.path}"]
                         val parentFormat = (matchedAudioFile.fileType as? RemoteFileType.Audio)?.format ?: AudioFormat.FLAC
+                        val effectiveServerId = if (matchedAudioFile.path.startsWith("content://")) LOCAL_STORAGE_ID else dirEntity.serverId
                         val parentTrack =
                             createAudioTrack(
-                                serverId = dirEntity.serverId,
+                                serverId = effectiveServerId,
                                 remotePath = matchedAudioFile.path,
                                 fileName = matchedAudioFile.name,
                                 fileSize = matchedAudioFile.size,
@@ -434,9 +478,12 @@ class LibrarySearchRepositoryImpl(
                             )
 
                         for (vt in album.tracks) {
+                            val dedupeKey = trackDedupeKey(effectiveServerId, "${matchedAudioFile.path}#cue_${vt.trackNumber}")
+                            if (matchedTracks.containsKey(dedupeKey)) continue
+
                             val vtTrack = vt.toAudioTrack(parentTrack, cuePath = album.cueFile.path)
                             if (isMatch(cleanQuery, vt.title, vt.performer, vtTrack.album, parentTrack.title)) {
-                                matchedTracks[vtTrack.id] = vtTrack
+                                matchedTracks[dedupeKey] = vtTrack
                             }
                         }
                     }
@@ -444,13 +491,15 @@ class LibrarySearchRepositoryImpl(
             }
 
             for (meta in metaEntities) {
-                val metaKey = "${meta.serverId}:${meta.remotePath}"
-                if (!matchedTracks.containsKey(metaKey) && isMatch(cleanQuery, meta.title, meta.artist, meta.album, meta.remotePath)) {
+                if (!isAccepted(meta.serverId, meta.remotePath)) continue
+                val dedupeKey = trackDedupeKey(meta.serverId, meta.remotePath)
+                if (!matchedTracks.containsKey(dedupeKey) && isMatch(cleanQuery, meta.title, meta.artist, meta.album, meta.remotePath)) {
                     val fileName = meta.remotePath.substringAfterLast('/')
                     val format = (RemoteFileType.fromFileName(fileName) as? RemoteFileType.Audio)?.format ?: AudioFormat.MP3
-                    matchedTracks[metaKey] =
+                    val effectiveServerId = if (meta.remotePath.startsWith("content://")) LOCAL_STORAGE_ID else meta.serverId
+                    matchedTracks[dedupeKey] =
                         createAudioTrack(
-                            serverId = meta.serverId,
+                            serverId = effectiveServerId,
                             remotePath = meta.remotePath,
                             fileName = fileName,
                             fileSize = 0L,

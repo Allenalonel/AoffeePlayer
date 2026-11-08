@@ -131,7 +131,12 @@ class DirectoryBrowserSyncTest {
         runTest {
             advanceUntilIdle()
             assertEquals(1, fakeLibrarySearchRepository.syncServerCalls.size)
-            assertEquals(sampleServer.id, fakeLibrarySearchRepository.syncServerCalls.first().first.id)
+            assertEquals(
+                sampleServer.id,
+                fakeLibrarySearchRepository.syncServerCalls
+                    .first()
+                    .first.id,
+            )
             assertFalse(fakeLibrarySearchRepository.syncServerCalls.first().second)
 
             // Repository transitions to Scanning

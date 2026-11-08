@@ -90,4 +90,7 @@ interface TrackMetadataDao {
 
     @Query("DELETE FROM track_metadata WHERE serverId = :serverId")
     suspend fun deleteMetadataForServer(serverId: Long): Int
+
+    @Query("DELETE FROM track_metadata WHERE remotePath LIKE 'content://%' AND serverId != 0")
+    suspend fun cleanupCorruptLocalMetadata(): Int
 }

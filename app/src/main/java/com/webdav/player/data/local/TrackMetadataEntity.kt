@@ -2,6 +2,7 @@ package com.webdav.player.data.local
 
 import androidx.room.Entity
 import androidx.room.Index
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.TrackMetadata
 
 @Entity(
@@ -40,16 +41,24 @@ data class TrackMetadataEntity(
     )
 
     companion object {
-        fun fromDomain(domain: TrackMetadata): TrackMetadataEntity = TrackMetadataEntity(
-            serverId = domain.serverId,
-            remotePath = domain.remotePath,
-            title = domain.title,
-            artist = domain.artist,
-            album = domain.album,
-            trackNumber = domain.trackNumber,
-            durationMs = domain.durationMs,
-            coverThumbnailPath = domain.coverThumbnailPath,
-            lyrics = domain.lyrics
-        )
+        fun fromDomain(domain: TrackMetadata): TrackMetadataEntity {
+            val effectiveServerId =
+                if (domain.remotePath.startsWith("content://") || domain.remotePath.startsWith("file://")) {
+                    LOCAL_STORAGE_ID
+                } else {
+                    domain.serverId
+                }
+            return TrackMetadataEntity(
+                serverId = effectiveServerId,
+                remotePath = domain.remotePath,
+                title = domain.title,
+                artist = domain.artist,
+                album = domain.album,
+                trackNumber = domain.trackNumber,
+                durationMs = domain.durationMs,
+                coverThumbnailPath = domain.coverThumbnailPath,
+                lyrics = domain.lyrics,
+            )
+        }
     }
 }

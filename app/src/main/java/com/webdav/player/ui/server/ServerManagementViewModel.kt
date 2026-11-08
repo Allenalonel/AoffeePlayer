@@ -38,8 +38,9 @@ data class ServerManagementUiState(
         get() = servers.filter { !it.isLocal }
 
     val localStorageServer: WebDavServer
-        get() = servers.firstOrNull { it.isLocal }
-            ?: WebDavServer.createLocalStorage(isDefault = activeServer?.id == LOCAL_STORAGE_ID)
+        get() =
+            servers.firstOrNull { it.isLocal }
+                ?: WebDavServer.createLocalStorage(isDefault = activeServer?.id == LOCAL_STORAGE_ID)
 }
 
 class ServerManagementViewModel(
@@ -210,7 +211,10 @@ class ServerManagementViewModel(
         _dialogAndActionState.update { it.copy(isManageFoldersSheetVisible = false) }
     }
 
-    fun onAddMountedFolder(uriString: String, displayName: String) {
+    fun onAddMountedFolder(
+        uriString: String,
+        displayName: String,
+    ) {
         viewModelScope.launch {
             repository.addMountedLocalFolder(uriString, displayName)
             librarySearchRepository?.syncServer(WebDavServer.createLocalStorage(), force = false)

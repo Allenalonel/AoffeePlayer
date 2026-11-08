@@ -72,6 +72,15 @@ class TrackMetadataRepositoryImpl internal constructor(
     private val inFlightSelfHealing = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Job>()
     private val resolvedLyricsCache = java.util.concurrent.ConcurrentHashMap<String, Lyrics>()
 
+    init {
+        repositoryScope.launch {
+            try {
+                trackMetadataDao.cleanupCorruptLocalMetadata()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     private suspend fun findServer(serverId: Long): WebDavServer? {
         knownServers[serverId]?.let { return it }
         serverLookup?.invoke(serverId)?.let {

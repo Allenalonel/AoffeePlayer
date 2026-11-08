@@ -1015,4 +1015,122 @@ class LibrarySearchRepositoryTest {
             assertEquals("/Music/Symphony.flac", track.remotePath)
             assertTrue(track.isVirtualTrack)
         }
+
+    @Test
+    fun search_whenServerIdIsWebDav_neverReturnsLocalStorageTracksEvenIfMetadataHasServerId() =
+        runTest {
+            val localTrack =
+                MediaTrackIndexEntity(
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "content://media/external/audio/101",
+                    fileName = "Song.mp3",
+                    fileSize = 5000000L,
+                    lastModified = 1000L,
+                    format = "MP3",
+                    isCue = false,
+                    parentPath = "/local/content/",
+                    parsedTitle = "Song Title",
+                    parsedArtist = "Song Artist",
+                )
+            val webDavTrack =
+                MediaTrackIndexEntity(
+                    serverId = 1L,
+                    remotePath = "/Music/RemoteSong.mp3",
+                    fileName = "RemoteSong.mp3",
+                    fileSize = 6000000L,
+                    lastModified = 2000L,
+                    format = "MP3",
+                    isCue = false,
+                    parentPath = "/Music/",
+                    parsedTitle = "Song Title",
+                    parsedArtist = "Song Artist",
+                )
+            mediaTrackIndexDao.insertAll(listOf(localTrack, webDavTrack))
+
+            // Even if a local content:// URI was mistakenly recorded with serverId = 1 in track_metadata
+            trackMetadataDao.insertOrUpdate(
+                TrackMetadataEntity(
+                    serverId = 1L,
+                    remotePath = "content://media/external/audio/101",
+                    title = "Song Title",
+                    artist = "Song Artist",
+                    album = "Album",
+                    trackNumber = 1,
+                    durationMs = 200000L,
+                    coverThumbnailPath = null,
+                ),
+            )
+
+            // Search with serverId = 1L (WebDAV source)
+            val result = repository.search("Song Title", serverId = 1L).first()
+            assertEquals("Only WebDAV track should match; local track must be strictly excluded", 1, result.matchedTracks.size)
+            val matched = result.matchedTracks.first()
+            assertEquals(1L, matched.serverId)
+            assertEquals("/Music/RemoteSong.mp3", matched.remotePath)
+        }
+
+    @Test
+    fun search_inGlobalMode_deduplicatesTracksAcrossMediaTrackIndexDirectoryCacheAndMetadata() =
+        runTest {
+            val localDocUri = "content://media/external/audio/202"
+            val localTrack =
+                MediaTrackIndexEntity(
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = localDocUri,
+                    fileName = "UniqueSong.flac",
+                    fileSize = 10000000L,
+                    lastModified = 1000L,
+                    format = "FLAC",
+                    isCue = false,
+                    parentPath = "/local/content/",
+                    parsedTitle = "Unique Song",
+                    parsedArtist = "Unique Artist",
+                )
+            mediaTrackIndexDao.insertOrUpdate(localTrack)
+
+            // Same track also cached in directory_cache JSON
+            val dirJson =
+                """
+                {
+                    "path": "/local/content/",
+                    "name": "content",
+                    "subDirectories": [],
+                    "files": [
+                        {
+                            "name": "UniqueSong.flac",
+                            "path": "$localDocUri",
+                            "size": 10000000,
+                            "fileType": {"type": "Audio", "format": "FLAC"}
+                        }
+                    ]
+                }
+                """.trimIndent()
+            directoryCacheDao.insertOrUpdate(
+                DirectoryCacheEntity(
+                    serverId = LOCAL_STORAGE_ID,
+                    path = "/local/content/",
+                    dataJson = dirJson,
+                    lastUpdatedMs = 1000L,
+                ),
+            )
+
+            // And also present in track_metadata
+            trackMetadataDao.insertOrUpdate(
+                TrackMetadataEntity(
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = localDocUri,
+                    title = "Unique Song",
+                    artist = "Unique Artist",
+                    album = "Great Album",
+                    trackNumber = 1,
+                    durationMs = 180000L,
+                    coverThumbnailPath = null,
+                ),
+            )
+
+            // Search in global mode (serverId = null)
+            val result = repository.search("Unique Song", serverId = null).first()
+            assertEquals("Track must appear exactly once despite presence in multiple tables", 1, result.matchedTracks.size)
+            assertEquals(localDocUri, result.matchedTracks.first().remotePath)
+        }
 }

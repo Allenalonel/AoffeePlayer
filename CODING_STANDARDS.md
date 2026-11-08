@@ -2,7 +2,7 @@
 
 These standards are enforced during `/code-review` alongside the Fowler code-smell baseline. Mechanical rules (import directions, ProGuard rules, binary budgets) are enforced deterministically in `PackagingSeamVerificationTest`.
 
-- **规范效力铁律**：`CODING_STANDARDS.md` 高于所有 `docs/adr/`。ADR 仅作为特定技术选型的历史背景参考，严禁援引 ADR 中的历史过时条目对抗或推翻 `CODING_STANDARDS.md`。
+- **规范效力铁律**：`CODING_STANDARDS.md` 高于所有 `docs/adr/`。ADR 仅作为特定技术选型的历史背景参考，绝不构成任何模块的“架构免检金牌”，严禁援引 ADR 历史条目对抗或推翻 `CODING_STANDARDS.md`。随着新特性持续迭代，既有已重构模块极易产生架构漂移（Architecture Drift）与边界侵蚀；架构审查必须面向全工程，凡发现真实退化、隐性缺陷或新引入的摩擦，一律允许并应当提出深化（Deepening）方案。
 
 ---
 
@@ -53,8 +53,10 @@ These standards are enforced during `/code-review` alongside the Fowler code-sme
 - **Problem-Driven with Measurable Engineering Value (问题驱动与实质收益)**:
   Any architectural finding or refactoring proposal must address genuine engineering friction: performance bottlenecks, concurrency/lifecycle hazards, memory leaks, boundary leakage, or real maintenance impediments.
   If an existing design aligns with mainstream framework idioms, is cleanly structured, and reliably passes all quality/performance gates, it is solid engineering. Strictly prohibit inventing make-work, circular refactorings (endless splitting vs. merging), or aesthetic churn that delivers zero practical engineering value.
-- **Review Stopping Discipline (终止准则与收敛边界)**:
-  An architectural review must converge. When an audit identifies that a subsystem adheres to mainstream standards and exhibits no real-world defects, it must definitively conclude that the architecture is production-ready, rather than perpetually digging for artificial issues.
+- **Review Stopping Discipline & Drift Auditing (收敛边界与漂移审查准则)**:
+  An architectural review must converge based on empirical health, not historical immunity.
+  审查的收敛与终止是建立在“经全面实证该模块当前运行健康、无真实边界摩擦与维护障碍”之上，绝非建立在“它曾经写过 ADR 或重构过”的免检假设上。
+  若模块经审计符合主流工程标准且无实质痛点，应确认合格并收敛终止；反之，若后续开发在该模块引入了新的正交职责、循环依赖或状态泄漏，无论其历史 ADR 多么完善，均须将其列为深化候选。
 
 ---
 

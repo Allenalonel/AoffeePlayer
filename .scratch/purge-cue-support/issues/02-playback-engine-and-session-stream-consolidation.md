@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Strip `PlaybackTimelineCoordinator` of `activeCuePath`, `applyCueContextAndGetStartMs()`, and virtual timeline offset translation so ExoPlayer timeline positions and durations reflect native stream values directly.
-- [ ] Simplify `PlaybackQueueManager` to operate exclusively on physical audio tracks, removing `resolveDirectoryCueMap()`, `playVirtualTracks()`, and `#cue_` synthetic track ID parsing.
-- [ ] Refactor `SessionPersistenceCoordinator` so cold-start session recovery operates purely on persisted track metadata without secondary network requests to fetch or parse companion `.cue` files.
-- [ ] Remove `playVirtualTrack()` and `cuePath` arguments from `MusicPlayerAppSession` and `MusicPlayerAppSessionImpl`.
-- [ ] Clean domain model `AudioTrack` by removing `cuePath` and `isVirtualTrack`, and remove `cuePath` from `PlaybackSessionData`.
-- [ ] Update and verify playback session unit tests (`MusicPlayerAppSessionTest`, `PlaybackSessionResumptionTest`, `SessionPersistenceCoordinatorTest`, `PlaybackQueueTest`, `ProcessRestartSimulationTest`) to ensure all assertions validate direct physical streaming.
+- [x] Strip `PlaybackTimelineCoordinator` of `activeCuePath`, `applyCueContextAndGetStartMs()`, and virtual timeline offset translation so ExoPlayer timeline positions and durations reflect native stream values directly.
+- [x] Simplify `PlaybackQueueManager` to operate exclusively on physical audio tracks, removing `resolveDirectoryCueMap()`, `playVirtualTracks()`, and `#cue_` synthetic track ID parsing.
+- [x] Refactor `SessionPersistenceCoordinator` so cold-start session recovery operates purely on persisted track metadata without secondary network requests to fetch or parse companion `.cue` files.
+- [x] Remove `playVirtualTrack()` and `cuePath` arguments from `MusicPlayerAppSession` and `MusicPlayerAppSessionImpl`.
+- [x] Clean domain model `AudioTrack` by removing `cuePath` and `isVirtualTrack`, and remove `cuePath` from `PlaybackSessionData`.
+- [x] Update and verify playback session unit tests (`MusicPlayerAppSessionTest`, `PlaybackSessionResumptionTest`, `SessionPersistenceCoordinatorTest`, `PlaybackQueueTest`, `ProcessRestartSimulationTest`) to ensure all assertions validate direct physical streaming.

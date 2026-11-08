@@ -191,7 +191,6 @@ class WebDavApplication :
                 serverRepository = serverRepository,
                 trackMetadataRepository = trackMetadataRepository,
                 sessionStore = sessionStore,
-                cueSheetResolver = cueSheetResolver,
                 playlistRepository = playlistRepository,
                 networkConnectivityObserver = networkConnectivityObserver,
                 hardwareLockManager = sessionHost.hardwareLockManager,

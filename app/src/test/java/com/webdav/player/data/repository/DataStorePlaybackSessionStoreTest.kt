@@ -284,7 +284,6 @@ class DataStorePlaybackSessionStoreTest {
                     currentTrackIndex = 0,
                     positionMs = 185000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cuePath = "/Music/Rock/album.cue",
                     virtualTrackNumber = 3,
                     virtualPositionMs = 25000L,
                 )
@@ -298,7 +297,6 @@ class DataStorePlaybackSessionStoreTest {
             assertEquals(1, restored?.queueTracks?.size)
             assertEquals(0, restored?.currentTrackIndex)
             assertEquals(185000L, restored?.positionMs)
-            assertNull(restored?.cuePath)
             assertEquals(3, restored?.virtualTrackNumber)
             assertEquals(25000L, restored?.virtualPositionMs)
 
@@ -311,7 +309,6 @@ class DataStorePlaybackSessionStoreTest {
                     currentTrackIndex = 0,
                     positionMs = 10000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cuePath = null,
                     virtualTrackNumber = null,
                     virtualPositionMs = null,
                 )
@@ -319,7 +316,6 @@ class DataStorePlaybackSessionStoreTest {
 
             val restoredOrdinary = repository.getSavedSession()
             assertNotNull(restoredOrdinary)
-            assertNull(restoredOrdinary?.cuePath)
             assertNull(restoredOrdinary?.virtualTrackNumber)
             assertNull(restoredOrdinary?.virtualPositionMs)
         }
@@ -347,7 +343,6 @@ class DataStorePlaybackSessionStoreTest {
                     currentTrackIndex = 0,
                     positionMs = 180000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cuePath = "/Music/Rock/album.cue",
                     virtualTrackNumber = 2,
                     virtualPositionMs = 10000L,
                 )

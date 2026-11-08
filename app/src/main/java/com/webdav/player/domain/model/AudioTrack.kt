@@ -11,8 +11,39 @@ data class AudioTrack(
     val size: Long = 0L,
     val format: AudioFormat,
     val coverThumbnailPath: String? = null,
-    val cuePath: String? = null,
 ) {
+    val cuePath: String?
+        get() = null
+
+    val isVirtualTrack: Boolean
+        get() = false
+
+    @Suppress("UNUSED_PARAMETER")
+    @Deprecated("CUE support is purged; cuePath is ignored")
+    constructor(
+        id: String,
+        serverId: Long,
+        remotePath: String,
+        title: String,
+        artist: String? = null,
+        album: String? = null,
+        durationMs: Long = 0L,
+        size: Long = 0L,
+        format: AudioFormat,
+        coverThumbnailPath: String? = null,
+        cuePath: String? = null,
+    ) : this(
+        id = id,
+        serverId = serverId,
+        remotePath = remotePath,
+        title = title,
+        artist = artist,
+        album = album,
+        durationMs = durationMs,
+        size = size,
+        format = format,
+        coverThumbnailPath = coverThumbnailPath,
+    )
     val fileName: String
         get() = remotePath.substringAfterLast('/').ifEmpty { title }
 
@@ -27,9 +58,6 @@ data class AudioTrack(
 
     val isLossless: Boolean
         get() = qualityBadge.isLossless
-
-    val isVirtualTrack: Boolean
-        get() = id.contains("#cue_")
 
     val estimatedBitrateKbps: Int?
         get() = qualityBadge.estimatedBitrateKbps

@@ -207,7 +207,6 @@ class EndToEndPlaylistAndSearchPipelineTest {
                 serverRepository = fakeServerRepo,
                 sessionStore = fakeStore,
                 playlistRepository = playlistRepository,
-                cueSheetResolver = cueResolver,
                 coroutineScope = sessionScope,
             )
 

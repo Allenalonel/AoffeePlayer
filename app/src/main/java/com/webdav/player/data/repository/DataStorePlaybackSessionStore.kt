@@ -166,7 +166,6 @@ class DataStorePlaybackSessionStore(
             positionMs = positionMs,
             playbackMode = mode,
             serverLastDirectories = serverLastDirs,
-            cuePath = null,
             virtualTrackNumber = virtualTrackNumber,
             virtualPositionMs = virtualPositionMs,
             cleanExit = cleanExit,

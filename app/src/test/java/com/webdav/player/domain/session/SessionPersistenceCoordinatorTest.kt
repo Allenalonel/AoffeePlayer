@@ -45,7 +45,6 @@ class SessionPersistenceCoordinatorTest {
 
     private lateinit var fakeEngine: FakeAudioPlayerEngine
     private lateinit var fakeStore: FakePlaybackSessionStore
-    private lateinit var virtualTimelineEngine: VirtualTimelineEngine
     private val sessionStateFlow = MutableStateFlow(PlayerSessionState())
     private val playbackProgressFlow = MutableStateFlow(PlaybackProgress.ZERO)
 
@@ -142,7 +141,6 @@ class SessionPersistenceCoordinatorTest {
     fun setUp() {
         fakeEngine = FakeAudioPlayerEngine()
         fakeStore = FakePlaybackSessionStore()
-        virtualTimelineEngine = VirtualTimelineEngine()
         sessionStateFlow.value = PlayerSessionState()
         playbackProgressFlow.value = PlaybackProgress.ZERO
     }
@@ -155,27 +153,16 @@ class SessionPersistenceCoordinatorTest {
     private fun createCoordinator(
         serverRepo: ServerRepository? = TestServerRepo(listOf(testServer)),
         metadataRepo: TrackMetadataRepository? = null,
-        cueResolver: CueSheetResolver? = null,
-        activeParentAudioTrack: () -> AudioTrack? = { null },
-        activeCuePath: () -> String? = { null },
-        onCueRestored: (AudioTrack, String) -> Unit = { _, _ -> },
-        onOrdinaryRestored: () -> Unit = {},
     ): SessionPersistenceCoordinator =
         SessionPersistenceCoordinator(
             sessionStore = fakeStore,
             serverRepository = serverRepo,
             trackMetadataRepository = metadataRepo,
-            cueSheetResolver = cueResolver,
             playerEngine = fakeEngine,
-            virtualTimelineEngine = virtualTimelineEngine,
             sessionStateFlow = sessionStateFlow,
             playbackProgressFlow = playbackProgressFlow,
             coroutineScope = testScope,
             periodicDispatcher = testDispatcher,
-            getActiveParentAudioTrack = activeParentAudioTrack,
-            getActiveCuePath = activeCuePath,
-            onCueSessionRestored = onCueRestored,
-            onOrdinarySessionRestored = onOrdinaryRestored,
         )
 
     @Test
@@ -270,13 +257,8 @@ class SessionPersistenceCoordinatorTest {
         }
 
     @Test
-    fun restoreVirtualTrackSession_reconstructsVirtualTimeline() =
+    fun restoreSession_restoresPhysicalStreamDirectlyWithoutCueParsing() =
         testScope.runTest {
-            val cueResolver = TestCueSheetResolver()
-            val vt1 = VirtualTrack(1, "Virtual Intro", "Virtual Artist", 0L, 60_000L, "/album/disc.flac")
-            val vt2 = VirtualTrack(2, "Virtual Main", "Virtual Artist", 60_000L, 180_000L, "/album/disc.flac")
-            cueResolver.virtualTracksMap["/album/disc.cue"] = listOf(vt1, vt2)
-
             val parentTrack =
                 AudioTrack(
                     id = "1:/album/disc.flac",
@@ -292,44 +274,26 @@ class SessionPersistenceCoordinatorTest {
                     activeServerId = testServer.id,
                     currentDirectoryPath = "/album/",
                     queueTracks = listOf(parentTrack),
-                    currentTrackIndex = 1,
+                    currentTrackIndex = 0,
                     positionMs = 75_000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cuePath = "/album/disc.cue",
-                    virtualTrackNumber = 2,
-                    virtualPositionMs = 15_000L,
                     cleanExit = false,
                 )
             fakeStore.savedSession = savedSession
 
-            var restoredParent: AudioTrack? = null
-            var restoredCue: String? = null
-            val coordinator =
-                createCoordinator(
-                    cueResolver = cueResolver,
-                    onCueRestored = { parent, cue ->
-                        restoredParent = parent
-                        restoredCue = cue
-                    },
-                )
-
+            val coordinator = createCoordinator()
             coordinator.restoreSession()
 
-            assertTrue(virtualTimelineEngine.isActive)
-            assertEquals(vt2, virtualTimelineEngine.activeTrack)
-            assertEquals(parentTrack.id, restoredParent?.id)
-            assertEquals("/album/disc.cue", restoredCue)
-
             val state = sessionStateFlow.value
-            assertEquals(2, state.queue.size)
-            assertEquals(1, state.queue.currentIndex)
-            assertEquals("Virtual Main", state.currentTrack?.title)
-            assertEquals(120_000L, state.durationMs)
+            assertEquals(1, state.queue.size)
+            assertEquals(0, state.queue.currentIndex)
+            assertEquals("disc.flac", state.currentTrack?.title)
+            assertEquals(180_000L, state.durationMs)
             assertTrue(state.wasKilledBySystem)
 
             val progress = playbackProgressFlow.value
-            assertEquals(15_000L, progress.currentPositionMs)
-            assertEquals(120_000L, progress.durationMs)
+            assertEquals(75_000L, progress.currentPositionMs)
+            assertEquals(180_000L, progress.durationMs)
         }
 
     @Test

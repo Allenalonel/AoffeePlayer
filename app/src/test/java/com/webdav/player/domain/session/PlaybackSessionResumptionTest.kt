@@ -118,16 +118,16 @@ class PlaybackSessionResumptionTest {
     private fun createSession(
         store: FakePlaybackSessionStore = fakeStore,
         metadataRepo: TrackMetadataRepository? = null,
+        @Suppress("UNUSED_PARAMETER")
         client: WebDavClient? = null,
+        @Suppress("UNUSED_PARAMETER")
         cueResolver: CueSheetResolver? = null,
     ): MusicPlayerAppSessionImpl {
-        val effectiveResolver = cueResolver ?: DefaultCueSheetResolver(client ?: defaultWebDavClient, testDispatcher)
         return MusicPlayerAppSessionImpl(
             playerEngine = fakeEngine,
             serverRepository = fakeServerRepo,
             trackMetadataRepository = metadataRepo,
             sessionStore = store,
-            cueSheetResolver = effectiveResolver,
             coroutineScope = sessionScope,
         )
     }
@@ -973,49 +973,7 @@ class PlaybackSessionResumptionTest {
     }
 
     @Test
-    fun coldStart_withVirtualTrackSession_restoresVirtualQueueAndRelativeProgressInPausedState() =
-        runTest(testDispatcher) {
-            val savedSession =
-                PlaybackSessionData(
-                    activeServerId = 1L,
-                    currentDirectoryPath = "/Music/PinkFloyd/",
-                    queueTracks = listOf(darkSideTrack),
-                    currentTrackIndex = 0,
-                    positionMs = 98000L, // Track 2 starts at 73000ms + 25000ms relative = 98000ms
-                    playbackMode = PlaybackMode.LIST_LOOP,
-                    cuePath = "/Music/PinkFloyd/dark_side.cue",
-                    virtualTrackNumber = 2,
-                    virtualPositionMs = 25000L,
-                )
-            fakeStore.savedSession = savedSession
-
-            session = createSession()
-            advanceUntilIdle()
-
-            val state = session.sessionState.value
-            assertEquals(testServer, state.activeServer)
-            assertEquals(4, state.queue.size)
-            assertEquals(1, state.queue.currentIndex)
-            assertEquals("Breathe (In the Air)", state.currentTrack?.title)
-            assertEquals("Pink Floyd", state.currentTrack?.artist)
-            assertEquals(163000L, state.currentTrack?.durationMs)
-            assertTrue("Restored virtual track mini-player must be in paused state", state.isPaused)
-            assertEquals(163000L, state.durationMs)
-            assertEquals("/Music/PinkFloyd/", state.currentDirectoryPath)
-
-            // Progress should be virtual relative progress (25000ms), NOT global file position (98000ms)
-            assertEquals(25000L, session.playbackProgress.value.currentPositionMs)
-            assertEquals(163000L, session.playbackProgress.value.durationMs)
-
-            // Physical engine should still be idle before user taps play
-            assertTrue(fakeEngine.playbackState.value is PlaybackState.Idle)
-            assertEquals(0, fakeEngine.loadTrackCount)
-            // MediaSession was primed with virtual track metadata non-disruptively
-            assertTrue(fakeEngine.updateTrackMetadataCalls >= 1)
-        }
-
-    @Test
-    fun tappingPlayOnRestoredVirtualTrackMiniPlayer_streamsUnderlyingPhysicalAudioFromCalculatedAbsoluteOffset() =
+    fun coldStart_withSavedPhysicalSession_restoresPhysicalQueueAndNativeProgressInPausedState() =
         runTest(testDispatcher) {
             val savedSession =
                 PlaybackSessionData(
@@ -1025,9 +983,43 @@ class PlaybackSessionResumptionTest {
                     currentTrackIndex = 0,
                     positionMs = 98000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cuePath = "/Music/PinkFloyd/dark_side.cue",
-                    virtualTrackNumber = 2,
-                    virtualPositionMs = 25000L,
+                )
+            fakeStore.savedSession = savedSession
+
+            session = createSession()
+            advanceUntilIdle()
+
+            val state = session.sessionState.value
+            assertEquals(testServer, state.activeServer)
+            assertEquals(1, state.queue.size)
+            assertEquals(0, state.queue.currentIndex)
+            assertEquals(darkSideTrack.title, state.currentTrack?.title)
+            assertEquals(darkSideTrack.artist, state.currentTrack?.artist)
+            assertEquals(darkSideTrack.durationMs, state.currentTrack?.durationMs)
+            assertTrue("Restored physical track must be in paused state", state.isPaused)
+            assertEquals(darkSideTrack.durationMs, state.durationMs)
+            assertEquals("/Music/PinkFloyd/", state.currentDirectoryPath)
+
+            // Progress reflects native media position directly
+            assertEquals(98000L, session.playbackProgress.value.currentPositionMs)
+            assertEquals(darkSideTrack.durationMs, session.playbackProgress.value.durationMs)
+
+            // Physical engine should still be idle before user taps play
+            assertTrue(fakeEngine.playbackState.value is PlaybackState.Idle)
+            assertEquals(0, fakeEngine.loadTrackCount)
+        }
+
+    @Test
+    fun tappingPlayOnRestoredPhysicalTrackMiniPlayer_streamsUnderlyingAudioFromSavedNativeOffset() =
+        runTest(testDispatcher) {
+            val savedSession =
+                PlaybackSessionData(
+                    activeServerId = 1L,
+                    currentDirectoryPath = "/Music/PinkFloyd/",
+                    queueTracks = listOf(darkSideTrack),
+                    currentTrackIndex = 0,
+                    positionMs = 98000L,
+                    playbackMode = PlaybackMode.LIST_LOOP,
                 )
             fakeStore.savedSession = savedSession
 
@@ -1040,101 +1032,20 @@ class PlaybackSessionResumptionTest {
             session.togglePlayPause()
             runCurrent()
 
-            // Underlying physical audio stream starts at absolute ms (73000 + 25000 = 98000ms)
+            // Stream starts directly at native offset (98000ms)
             assertEquals(testServer, fakeEngine.lastServer)
             assertEquals(1, fakeEngine.loadTrackCount)
             assertEquals("/Music/PinkFloyd/dark_side.flac", fakeEngine.loadedTrack?.remotePath)
             assertEquals(98000L, fakeEngine.lastStartPositionMs)
             assertTrue(session.sessionState.value.isPlaying)
-            assertEquals(
-                "Breathe (In the Air)",
-                session.sessionState.value.currentTrack
-                    ?.title,
-            )
+            assertEquals(darkSideTrack.title, session.sessionState.value.currentTrack?.title)
 
             session.pause()
             advanceUntilIdle()
         }
 
     @Test
-    fun coldStart_withVirtualTrackSession_whenCueFileDeletedOrMissing_fallsBackSafelyToOrdinaryBigAudioPlayback() =
-        runTest(testDispatcher) {
-            val fakeClient = TestWebDavClient() // textResponses empty -> returns null for any fetchText
-            val savedSession =
-                PlaybackSessionData(
-                    activeServerId = 1L,
-                    currentDirectoryPath = "/Music/PinkFloyd/",
-                    queueTracks = listOf(darkSideTrack),
-                    currentTrackIndex = 0,
-                    positionMs = 98000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
-                    cuePath = "/Music/PinkFloyd/deleted_dark_side.cue",
-                    virtualTrackNumber = 2,
-                    virtualPositionMs = 25000L,
-                )
-            fakeStore.savedSession = savedSession
-
-            session = createSession(client = fakeClient)
-            advanceUntilIdle()
-
-            val state = session.sessionState.value
-            // Graceful fallback to ordinary big audio playback without crashing
-            assertEquals(1, state.queue.size)
-            assertEquals(0, state.queue.currentIndex)
-            assertEquals(darkSideTrack.remotePath, state.currentTrack?.remotePath)
-            assertEquals(darkSideTrack.durationMs, state.durationMs)
-            assertTrue(state.isPaused)
-            assertNull(state.errorMessage)
-
-            // Absolute position preserved for ordinary playback
-            assertEquals(98000L, session.playbackProgress.value.currentPositionMs)
-            assertEquals(darkSideTrack.durationMs, session.playbackProgress.value.durationMs)
-
-            // Tapping play plays parentTrack at absolute position
-            session.togglePlayPause()
-            runCurrent()
-
-            assertEquals(1, fakeEngine.loadTrackCount)
-            assertEquals("/Music/PinkFloyd/dark_side.flac", fakeEngine.loadedTrack?.remotePath)
-            assertEquals(98000L, fakeEngine.lastStartPositionMs)
-            assertTrue(session.sessionState.value.isPlaying)
-        }
-
-    @Test
-    fun coldStart_withVirtualTrackSession_whenCueMalformed_fallsBackSafelyToOrdinaryBigAudioPlayback() =
-        runTest(testDispatcher) {
-            val fakeClient =
-                TestWebDavClient(
-                    mutableMapOf("/Music/PinkFloyd/corrupted.cue" to "THIS IS JUST BINARY GARBAGE WITH NO TRACKS"),
-                )
-            val savedSession =
-                PlaybackSessionData(
-                    activeServerId = 1L,
-                    currentDirectoryPath = "/Music/PinkFloyd/",
-                    queueTracks = listOf(darkSideTrack),
-                    currentTrackIndex = 0,
-                    positionMs = 98000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
-                    cuePath = "/Music/PinkFloyd/corrupted.cue",
-                    virtualTrackNumber = 2,
-                    virtualPositionMs = 25000L,
-                )
-            fakeStore.savedSession = savedSession
-
-            session = createSession(client = fakeClient)
-            advanceUntilIdle()
-
-            val state = session.sessionState.value
-            assertEquals(1, state.queue.size)
-            assertEquals(0, state.queue.currentIndex)
-            assertEquals(darkSideTrack.remotePath, state.currentTrack?.remotePath)
-            assertEquals(darkSideTrack.durationMs, state.durationMs)
-            assertTrue(state.isPaused)
-            assertNull(state.errorMessage)
-        }
-
-    @Test
-    fun seekingWhileInRestoredVirtualTrackPausedState_updatesRelativePositionAndStreamsCorrectAbsoluteOffsetOnPlay() =
+    fun seekingWhileInRestoredPhysicalTrackPausedState_updatesNativePositionAndStreamsFromNewOffsetOnPlay() =
         runTest(testDispatcher) {
             val savedSession =
                 PlaybackSessionData(
@@ -1144,16 +1055,13 @@ class PlaybackSessionResumptionTest {
                     currentTrackIndex = 0,
                     positionMs = 98000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cuePath = "/Music/PinkFloyd/dark_side.cue",
-                    virtualTrackNumber = 2,
-                    virtualPositionMs = 25000L,
                 )
             fakeStore.savedSession = savedSession
 
             session = createSession()
             advanceUntilIdle()
 
-            // User scrubs relative slider to 50000ms (50s into Track 2)
+            // User scrubs slider to 50000ms
             session.seekTo(50000L)
             advanceUntilIdle()
 
@@ -1164,35 +1072,22 @@ class PlaybackSessionResumptionTest {
             session.play()
             runCurrent()
 
-            // Stream starts at 73000 + 50000 = 123000ms
-            assertEquals(123000L, fakeEngine.lastStartPositionMs)
+            // Stream starts at 50000ms
+            assertEquals(50000L, fakeEngine.lastStartPositionMs)
             assertTrue(session.sessionState.value.isPlaying)
         }
 
     @Test
-    fun flushSession_whilePlayingVirtualTrack_persistsCuePathVirtualTrackNumberAndRelativeOffset() =
+    fun flushSession_whilePlayingPhysicalTrack_persistsDirectNativeOffset() =
         runTest(testDispatcher) {
             session = createSession()
             session.setActiveServer(testServer)
             advanceUntilIdle()
 
-            val parsedTracks =
-                CueParser.parse(
-                    content = cueContentSample,
-                    parentAudioPath = darkSideTrack.remotePath,
-                    totalDurationMs = darkSideTrack.durationMs,
-                )
-
-            // Start playing Track 2 (index 1: starts at 73000L)
-            session.playVirtualTracks(
-                parentTrack = darkSideTrack,
-                virtualTracks = parsedTracks,
-                startIndex = 1,
-                cuePath = "/Music/PinkFloyd/dark_side.cue",
-            )
+            session.playTrack(darkSideTrack)
             runCurrent()
 
-            // Engine reports physical playback position: 95000ms (22000ms into Track 2)
+            // Engine reports physical playback position: 95000ms
             fakeEngine._currentPositionMs.value = 95000L
             session.setPlaybackMode(PlaybackMode.SHUFFLE)
             runCurrent()
@@ -1203,52 +1098,9 @@ class PlaybackSessionResumptionTest {
             val saved = fakeStore.savedSession
             assertNotNull(saved)
             assertEquals(1L, saved?.activeServerId)
-            assertEquals("/Music/PinkFloyd/dark_side.cue", saved?.cuePath)
-            assertEquals(2, saved?.virtualTrackNumber)
-            assertEquals(22000L, saved?.virtualPositionMs)
             assertEquals(95000L, saved?.positionMs)
             assertEquals(1, saved?.queueTracks?.size)
             assertEquals("/Music/PinkFloyd/dark_side.flac", saved?.queueTracks?.get(0)?.remotePath)
             assertEquals(PlaybackMode.SHUFFLE, saved?.playbackMode)
-        }
-
-    @Test
-    fun skipControlsOnRestoredVirtualTrackSession_translatesRelativeToGlobalStream() =
-        runTest(testDispatcher) {
-            val savedSession =
-                PlaybackSessionData(
-                    activeServerId = 1L,
-                    currentDirectoryPath = "/Music/PinkFloyd/",
-                    queueTracks = listOf(darkSideTrack),
-                    currentTrackIndex = 0,
-                    positionMs = 98000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
-                    cuePath = "/Music/PinkFloyd/dark_side.cue",
-                    virtualTrackNumber = 2,
-                    virtualPositionMs = 25000L,
-                )
-            fakeStore.savedSession = savedSession
-
-            session = createSession()
-            advanceUntilIdle()
-
-            // Skip to next virtual track (Track 3: On the Run, starts at 236000ms)
-            session.skipToNext()
-            runCurrent()
-
-            assertEquals(2, session.sessionState.value.queue.currentIndex)
-            assertEquals(
-                "On the Run",
-                session.sessionState.value.currentTrack
-                    ?.title,
-            )
-            assertEquals(0L, session.playbackProgress.value.currentPositionMs)
-
-            // User taps play
-            session.togglePlayPause()
-            runCurrent()
-
-            assertEquals(236000L, fakeEngine.lastStartPositionMs)
-            assertTrue(session.sessionState.value.isPlaying)
         }
 }

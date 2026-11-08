@@ -96,13 +96,23 @@ class FakeMusicPlayerAppSession(
         directory: RemoteDirectory,
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata>,
-        virtualTracksByAudioPath: Map<String, List<com.webdav.player.domain.model.VirtualTrack>>,
     ) {
         pausedByTransientAudioFocusInternal = false
         lastPlayDirectory = directory
         lastPlaySelectedFile = selectedFile
         lastPlayInitialMetadata = initialMetadata
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    @Deprecated("CUE support is purged; virtualTracksByAudioPath is ignored")
+    override fun playDirectoryTrack(
+        directory: RemoteDirectory,
+        selectedFile: RemoteFile,
+        initialMetadata: Map<String, TrackMetadata>,
+        virtualTracksByAudioPath: Map<String, List<com.webdav.player.domain.model.VirtualTrack>>,
+    ) {
         lastPlayVirtualTracksByAudioPath = virtualTracksByAudioPath
+        playDirectoryTrack(directory, selectedFile, initialMetadata)
     }
 
     override fun playPlaylist(

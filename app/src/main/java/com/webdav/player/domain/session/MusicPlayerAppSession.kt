@@ -45,14 +45,24 @@ interface MusicPlayerAppSession {
         directory: RemoteDirectory,
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata> = emptyMap(),
-        virtualTracksByAudioPath: Map<String, List<VirtualTrack>> = emptyMap(),
     )
+
+    @Suppress("UNUSED_PARAMETER")
+    @Deprecated("CUE support is purged; virtualTracksByAudioPath is ignored")
+    fun playDirectoryTrack(
+        directory: RemoteDirectory,
+        selectedFile: RemoteFile,
+        initialMetadata: Map<String, TrackMetadata> = emptyMap(),
+        virtualTracksByAudioPath: Map<String, List<VirtualTrack>> = emptyMap(),
+    ) = playDirectoryTrack(directory, selectedFile, initialMetadata)
 
     fun playPlaylist(
         playlist: Playlist,
         startIndex: Int = 0,
     )
 
+    @Suppress("UNUSED_PARAMETER")
+    @Deprecated("CUE support is purged; playVirtualTracks is a no-op")
     fun playVirtualTracks(
         parentTrack: AudioTrack,
         virtualTracks: List<VirtualTrack>,

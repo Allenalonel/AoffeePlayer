@@ -54,7 +54,6 @@ import com.webdav.player.domain.model.LibrarySearchResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.ui.common.AudioTrackRow
 import com.webdav.player.ui.common.AudioTrackRowDefaults
-import com.webdav.player.ui.common.TrackTagPill
 import com.webdav.player.ui.common.TrackThumbnailLeading
 import com.webdav.player.ui.player.MiniPlayerDefaults
 import com.webdav.player.ui.theme.AppIcons
@@ -531,25 +530,10 @@ internal fun LazyListScope.searchDirectoriesSection(
     }
 }
 
-internal fun resolveSearchTrackSubtitle(track: AudioTrack): String {
-    val extra =
-        if (track.isVirtualTrack) {
-            track.fileName.ifEmpty { track.remotePath.substringAfterLast('/') }.takeIf { it.isNotBlank() }
-        } else {
-            null
-        }
-    return AudioTrackRowDefaults.formatTrackSubtitle(
+internal fun resolveSearchTrackSubtitle(track: AudioTrack): String =
+    AudioTrackRowDefaults.formatTrackSubtitle(
         artist = track.artist,
         album = track.album,
-        extra = extra,
-    )
-}
-
-@Composable
-internal fun CueTagBadge(modifier: Modifier = Modifier) =
-    TrackTagPill(
-        text = "CUE",
-        modifier = modifier,
     )
 
 @Composable
@@ -571,15 +555,9 @@ internal fun SearchTrackItem(
         leadingContent = {
             TrackThumbnailLeading(
                 coverThumbnailPath = track.coverThumbnailPath,
-                fallbackIcon = if (track.isVirtualTrack) AppIcons.QueueMusic else AppIcons.Audiotrack,
+                fallbackIcon = AppIcons.Audiotrack,
             )
         },
-        tagContent =
-            if (track.isVirtualTrack) {
-                { CueTagBadge() }
-            } else {
-                null
-            },
         onClick = onClick,
         onLongClick = onLongClick,
         isSelectionMode = isSelectionMode,

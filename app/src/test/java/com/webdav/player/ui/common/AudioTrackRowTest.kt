@@ -66,9 +66,9 @@ class AudioTrackRowTest {
             AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = "Pink Floyd",
                 album = "Wish You Were Here",
-                extra = "ShineOn.cue",
+                extra = "Disc 1",
             )
-        assertEquals("Pink Floyd · Wish You Were Here · ShineOn.cue", result)
+        assertEquals("Pink Floyd · Wish You Were Here · Disc 1", result)
     }
 
     @Test
@@ -97,9 +97,9 @@ class AudioTrackRowTest {
             AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = null,
                 album = null,
-                extra = "virtual_track.cue",
+                extra = "Bonus Track",
             )
-        assertEquals("未知 · virtual_track.cue", result)
+        assertEquals("未知 · Bonus Track", result)
     }
 
     @Test
@@ -135,7 +135,7 @@ class AudioTrackRowTest {
                 AudioTrackRowDefaults.formatTrackSubtitle(null, "Album"),
                 AudioTrackRowDefaults.formatTrackSubtitle("Artist", null),
                 AudioTrackRowDefaults.formatTrackSubtitle(null, null, durationText = "03:45"),
-                AudioTrackRowDefaults.formatTrackSubtitle(null, null, extra = "cue.flac"),
+                AudioTrackRowDefaults.formatTrackSubtitle(null, null, extra = "FLAC"),
             )
         variations.forEach { subtitle ->
             assertTrue(

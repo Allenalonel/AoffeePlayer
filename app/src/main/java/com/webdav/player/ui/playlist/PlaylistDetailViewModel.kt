@@ -43,7 +43,7 @@ data class PlaylistDetailUiState(
 ) {
     fun isTrackActive(track: PlaylistTrackEntry): Boolean {
         if (activeTrackId != null && track.toAudioTrack().id == activeTrackId) return true
-        if (activeTrackPath != null && !track.isVirtualTrack && track.remotePath == activeTrackPath) return true
+        if (activeTrackPath != null && track.remotePath == activeTrackPath) return true
         return false
     }
 }

@@ -81,12 +81,6 @@ internal fun PlaylistTrackDetailDialog(
                 PlaylistInfoRow(label = "来源目录", value = directoryPath)
                 PlaylistInfoRow(label = "远程完整路径", value = track.remotePath)
                 PlaylistInfoRow(label = "所属服务器 ID", value = "${track.serverId}")
-                if (track.isVirtualTrack) {
-                    PlaylistInfoRow(label = "CUE 分轨标识", value = track.virtualTrackId ?: "分轨")
-                    if (!track.cuePath.isNullOrBlank()) {
-                        PlaylistInfoRow(label = "CUE 文件路径", value = track.cuePath)
-                    }
-                }
             }
         },
         confirmButton = {

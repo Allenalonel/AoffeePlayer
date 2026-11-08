@@ -79,7 +79,6 @@ class PlaylistListViewModel(
     fun createPlaylistAndAddTrack(
         name: String,
         track: AudioTrack,
-        cuePath: String? = null,
         onSuccess: (() -> Unit)? = null,
     ) {
         val trimmed = name.trim()
@@ -95,8 +94,7 @@ class PlaylistListViewModel(
                     return@launch
                 }
                 val newId = playlistRepository.createPlaylist(trimmed)
-                val effectiveCue = cuePath ?: track.cuePath
-                playlistRepository.addTrackToPlaylist(newId, track, cuePath = effectiveCue)
+                playlistRepository.addTrackToPlaylist(newId, track)
                 _uiState.update { it.copy(showCreateDialog = false, errorMessage = null) }
                 onSuccess?.invoke()
             } catch (e: Exception) {
@@ -108,13 +106,11 @@ class PlaylistListViewModel(
     fun addTrackToPlaylist(
         playlistId: Long,
         track: AudioTrack,
-        cuePath: String? = null,
         onResult: ((Boolean) -> Unit)? = null,
     ) {
         viewModelScope.launch {
             try {
-                val effectiveCue = cuePath ?: track.cuePath
-                val insertedId = playlistRepository.addTrackToPlaylist(playlistId, track, cuePath = effectiveCue)
+                val insertedId = playlistRepository.addTrackToPlaylist(playlistId, track)
                 onResult?.invoke(insertedId > 0L)
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = e.message ?: "添加歌曲失败") }

@@ -1,5 +1,9 @@
 # 0021: 深层 CUE 解析器下沉与消除网络客户端泄漏 (Deepen CUE Sheet Resolver and Purge Network Leakage)
 
+## Status
+
+Superseded by ADR 0034
+
 ## Context
 
 在 WebDavPlayer 中，对 CUE 虚拟分轨（ADR-0014）的支持对于纯流式播放多曲目长音频（如整轨 FLAC/WAV）至关重要。然而，在此前的实现中，CUE 相关逻辑碎片化地分散在三个浅层、静态工具模块中：

@@ -1,5 +1,9 @@
 # 0014: CUE Virtual Track In-Stream Mapping and Folder-Bounded Gapless Streaming
 
+## Status
+
+Superseded by ADR 0034
+
 ## Context
 
 在对比同类开源播放器（如 Folder-Player）的功能特性时，发烧友用户群体对 **CUE 整轨无损音频（FLAC/WAV/APE）虚拟分轨播放**与**连贯畅听体验**有着强烈的诉求。

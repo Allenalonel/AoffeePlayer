@@ -21,7 +21,7 @@ _Avoid_: Drive, Source Provider, Media Account
 _Avoid_: Current Server, Selected Source, Default Target
 
 **Local Storage**:
-内置不可删除的本地设备存储源节点，基于 Android Storage Access Framework (SAF) 挂载的用户音乐目录，实现离线、零网络缓冲的即时音频与伴生 CUE/LRC 解析与直放。
+内置不可删除的本地设备存储源节点，基于 Android Storage Access Framework (SAF) 挂载的用户音乐目录，实现离线、零网络缓冲的即时音频与伴生 LRC 解析与直放。
 _Avoid_: Phone Storage, Local File System, Internal Drive
 
 **Mounted Directory**:
@@ -109,7 +109,7 @@ _Avoid_: Manual Refresh, Re-add Song, Fixed Inactive State
 _Avoid_: One-Way State Trap, Write-Only Fault, Zombie Inactive Track
 
 **Library Search Index**:
-基于 `media_track_index` 专用表与复合 B-Tree 索引矩阵构建的统一跨源即时搜索索引，彻底取代旧版对 `directory_cache` 序列化 JSON 字段的文本模糊扫描，毫秒级召回深层未访问目录、伴生 CUE 虚拟分轨及本地 SAF 曲目。
+基于 `media_track_index` 专用表与复合 B-Tree 索引矩阵构建的统一跨源即时搜索索引，彻底取代旧版对 `directory_cache` 序列化 JSON 字段的文本模糊扫描，毫秒级召回深层未访问目录及本地 SAF 曲目。
 _Avoid_: WebDAV Search, Server Index, Cloud Crawler, Legacy Json Search
 
 **Unified Media Track Index**:
@@ -185,12 +185,12 @@ _Avoid_: Timeline Rebuild, Track Reset, Player Reload
 由 `TrackMetadataRepository` 内部自主担保的自愈机制：当本地磁盘缩略图因系统清理缓存而丢失，或播放队列加载未解析音轨时，仓储接缝对外先行返回零破坏的安全元数据，并在后台异步发起受限 Range 元数据提取并反向写回本地持久化数据库与落盘，自动修补缺失的专辑标签、时长与封面缩略图，彻底向所有上层调用者屏蔽底层文件存活性校验。
 _Avoid_: Manual Sync, Cold Cache, Static Database
 
-**Virtual Track**:
-由同目录 `.cue` 文件描述、映射在单一长音频物理文件内部的时间区间切片。在底层播放器内核中不作为独立的物理 `MediaItem` 重复实例化，完全依托于会话层的时间轴换算与内联元数据广播，确保纯流式下的绝对无缝体验。
+**Virtual Track** [Deprecated by ADR 0034]:
+（已废弃）历史实现中由同目录 `.cue` 文件描述、映射在单一长音频物理文件内部的时间区间切片。自 ADR 0034 起已被彻底移除，播放器全面收敛为 1:1 物理真实音频流回放。
 _Avoid_: Split Audio, Cut Track, Clipped MediaItem
 
-**Cue Sheet Resolver**:
-负责统筹远程 WebDAV 目录内 `.cue` 文件的探测提取、内存 LRU 文本缓存、与同级物理音频文件启发式关联以及时间轴分轨解析的深层领域模块。向上层（UI、播放会话与曲库搜索）提供统一确定性的虚拟分轨模型输出，彻底对外部调用方屏蔽底层网络请求、AST 词法解析与缓存调度细节。
+**Cue Sheet Resolver** [Deprecated by ADR 0034]:
+（已废弃）历史实现中负责统筹远程 WebDAV 目录内 `.cue` 文件的探测提取与时间轴分轨解析的深层领域模块。自 ADR 0034 起相关功能与包已物理移除。
 _Avoid_: Cue Helper, Cue Cache, Cue Downloader
 
 **Folder Ring Playback**:
@@ -258,7 +258,7 @@ _Avoid_: Bluetooth Monitor, Device Tracker, Headset Listener
 _Avoid_: Audio Upsampling, System Resample, Driver Convert
 
 **Session Persistence Coordinator**:
-专职负责将运行时回放状态（活跃服务器、播放队列、毫秒级进度、服务器最后访问目录）定时落盘至持久层，并在冷启动或异常查杀后无缝重建普通音轨与 CUE 虚拟时间轴会话的内部私有协调器。对外不设立独立公共接缝，完全内化在会话层内部。
+专职负责将运行时回放状态（活跃服务器、播放队列、毫秒级进度、服务器最后访问目录）定时落盘至持久层，并在冷启动或异常查杀后无缝重建物理音轨会话的内部私有协调器。对外不设立独立公共接缝，完全内化在会话层内部。
 _Avoid_: Session Saver, History Service, State Manager
 
 **Playback Queue Manager**:

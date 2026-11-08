@@ -6,6 +6,7 @@ import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.Breadcrumb
 import com.webdav.player.domain.model.CueAlbumItem
 import com.webdav.player.domain.model.LibrarySearchResult
+import com.webdav.player.domain.model.LibrarySyncState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.WebDavServer
@@ -126,6 +127,9 @@ class DirectoryBrowserViewModel(
 
                     if (server != null) {
                         loadDirectory(initialPath, forceRefresh = false, fallbackToRoot = true)
+                        viewModelScope.launch {
+                            librarySearchRepository?.syncServer(server, force = false)
+                        }
                     }
                 }
             }
@@ -301,6 +305,12 @@ class DirectoryBrowserViewModel(
             }
         } else {
             _uiState.update { it.copy(isSearchActive = true) }
+            val server = _uiState.value.activeServer
+            if (server != null && _uiState.value.syncState is LibrarySyncState.Idle) {
+                viewModelScope.launch {
+                    librarySearchRepository?.syncServer(server, force = false)
+                }
+            }
         }
     }
 
@@ -375,6 +385,12 @@ class DirectoryBrowserViewModel(
 
     fun onRefresh() {
         loadDirectory(_uiState.value.currentPath, forceRefresh = true)
+        val server = _uiState.value.activeServer
+        if (server != null) {
+            viewModelScope.launch {
+                librarySearchRepository?.syncServer(server, force = false)
+            }
+        }
     }
 
     fun onRetry() {

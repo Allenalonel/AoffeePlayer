@@ -127,10 +127,12 @@ class DirectoryBrowserSyncTest {
     }
 
     @Test
-    fun syncState_projectsReactiveStateFromRepository() =
+    fun autoSync_runsOnServerInitialization_andProjectsReactiveState() =
         runTest {
             advanceUntilIdle()
-            assertEquals(LibrarySyncState.Idle, viewModel.uiState.value.syncState)
+            assertEquals(1, fakeLibrarySearchRepository.syncServerCalls.size)
+            assertEquals(sampleServer.id, fakeLibrarySearchRepository.syncServerCalls.first().first.id)
+            assertFalse(fakeLibrarySearchRepository.syncServerCalls.first().second)
 
             // Repository transitions to Scanning
             fakeLibrarySearchRepository.syncStateFlow.value =
@@ -153,16 +155,16 @@ class DirectoryBrowserSyncTest {
         }
 
     @Test
-    fun onSyncLibrary_triggersSyncServerOnActiveServer() =
+    fun onRefresh_triggersDirectoryLoadAndSyncServer() =
         runTest {
             advanceUntilIdle()
-            assertEquals(sampleServer, viewModel.uiState.value.activeServer)
+            assertEquals(1, fakeLibrarySearchRepository.syncServerCalls.size)
 
-            viewModel.onSyncLibrary()
+            viewModel.onRefresh()
             advanceUntilIdle()
 
-            assertEquals(1, fakeLibrarySearchRepository.syncServerCalls.size)
-            val (calledServer, force) = fakeLibrarySearchRepository.syncServerCalls.first()
+            assertEquals(2, fakeLibrarySearchRepository.syncServerCalls.size)
+            val (calledServer, force) = fakeLibrarySearchRepository.syncServerCalls.last()
             assertEquals(sampleServer.id, calledServer.id)
             assertFalse(force)
         }

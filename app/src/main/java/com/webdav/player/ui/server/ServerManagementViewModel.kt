@@ -8,6 +8,7 @@ import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
+import com.webdav.player.domain.repository.LibrarySearchRepository
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +46,7 @@ class ServerManagementViewModel(
     private val repository: ServerRepository,
     private val webDavClient: WebDavClient,
     private val playlistRepository: PlaylistRepository? = null,
+    private val librarySearchRepository: LibrarySearchRepository? = null,
 ) : ViewModel() {
     private val _dialogAndActionState = MutableStateFlow(DialogAndActionState())
 
@@ -182,7 +184,8 @@ class ServerManagementViewModel(
 
     fun onSaveServer(server: WebDavServer) {
         viewModelScope.launch {
-            repository.saveServer(server)
+            val savedId = repository.saveServer(server)
+            librarySearchRepository?.syncServer(server.copy(id = savedId), force = false)
             _dialogAndActionState.update {
                 it.copy(
                     isAddEditDialogVisible = false,
@@ -210,6 +213,7 @@ class ServerManagementViewModel(
     fun onAddMountedFolder(uriString: String, displayName: String) {
         viewModelScope.launch {
             repository.addMountedLocalFolder(uriString, displayName)
+            librarySearchRepository?.syncServer(WebDavServer.createLocalStorage(), force = false)
         }
     }
 

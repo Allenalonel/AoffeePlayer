@@ -11,8 +11,8 @@ import com.webdav.player.data.remote.OkHttpWebDavClient
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
-import com.webdav.player.domain.repository.FakeMediaLibraryRepository
 import com.webdav.player.domain.repository.ServerRepository
+import com.webdav.player.domain.repository.StorageCascadeInvalidator
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -35,6 +35,7 @@ class ServerRepositoryTest {
     private lateinit var context: Context
     private lateinit var database: AppDatabase
     private lateinit var coverArtStorage: CoverArtStorageImpl
+    private lateinit var fakeCascadeInvalidator: FakeStorageCascadeInvalidator
     private lateinit var repository: ServerRepository
 
     @Before
@@ -46,16 +47,7 @@ class ServerRepositoryTest {
                 .allowMainThreadQueries()
                 .build()
         coverArtStorage = CoverArtStorageImpl(context)
-        val mediaLibraryRepository =
-            MediaLibraryRepositoryImpl(
-                webDavClient = OkHttpWebDavClient(),
-                directoryCacheDao = database.directoryCacheDao(),
-                trackMetadataDao = database.trackMetadataDao(),
-                mediaTrackIndexDao = database.mediaTrackIndexDao(),
-                directorySyncCheckpointDao = database.directorySyncCheckpointDao(),
-                localStorageFolderDao = database.localStorageFolderDao(),
-                context = context,
-            )
+        fakeCascadeInvalidator = FakeStorageCascadeInvalidator()
         repository =
             ServerRepositoryImpl(
                 serverDao = database.webDavServerDao(),
@@ -63,7 +55,7 @@ class ServerRepositoryTest {
                 trackMetadataDao = database.trackMetadataDao(),
                 localStorageFolderDao = database.localStorageFolderDao(),
                 context = context,
-                cascadeInvalidator = mediaLibraryRepository,
+                cascadeInvalidator = fakeCascadeInvalidator,
             )
     }
 
@@ -380,9 +372,9 @@ class ServerRepositoryTest {
         }
 
     @Test
-    fun deleteServer_and_removeMountedLocalFolder_delegateToMediaLibraryRepository() =
+    fun deleteServer_and_removeMountedLocalFolder_delegateToStorageCascadeInvalidator() =
         runTest {
-            val fakeMediaLibraryRepo = FakeMediaLibraryRepository()
+            val fakeInvalidator = FakeStorageCascadeInvalidator()
             val repoWithFake =
                 ServerRepositoryImpl(
                     serverDao = database.webDavServerDao(),
@@ -390,18 +382,32 @@ class ServerRepositoryTest {
                     trackMetadataDao = database.trackMetadataDao(),
                     localStorageFolderDao = database.localStorageFolderDao(),
                     context = context,
-                    cascadeInvalidator = fakeMediaLibraryRepo,
+                    cascadeInvalidator = fakeInvalidator,
                 )
 
             val serverId = repoWithFake.saveServer(WebDavServer(name = "Cascade NAS", url = "http://nas"))
             repoWithFake.deleteServer(serverId)
 
-            assertEquals(listOf(serverId), fakeMediaLibraryRepo.clearedStorageServerIds)
+            assertEquals(listOf(serverId), fakeInvalidator.clearedStorageServerIds)
 
             val folderUri = "content://tree/primary%3AMusic"
             repoWithFake.addMountedLocalFolder(folderUri, "Music")
             repoWithFake.removeMountedLocalFolder(folderUri)
 
-            assertEquals(listOf(folderUri), fakeMediaLibraryRepo.clearedLocalFolderUris)
+            assertEquals(listOf(folderUri), fakeInvalidator.clearedLocalFolderUris)
         }
+
+    private inner class FakeStorageCascadeInvalidator : StorageCascadeInvalidator {
+        val clearedStorageServerIds = mutableListOf<Long>()
+        val clearedLocalFolderUris = mutableListOf<String>()
+
+        override suspend fun clearStorageData(serverId: Long) {
+            clearedStorageServerIds.add(serverId)
+            database.directoryCacheDao().deleteCacheByServerId(serverId)
+        }
+
+        override suspend fun clearLocalFolderData(uriString: String) {
+            clearedLocalFolderUris.add(uriString)
+        }
+    }
 }

@@ -45,13 +45,19 @@ interface MediaLibraryRepository : StorageCascadeInvalidator {
 
     // Search History Management
     fun getSearchHistory(): List<String>
+
     fun recordSearchQuery(query: String): List<String>
+
     fun removeSearchHistory(query: String): List<String>
+
     fun clearSearchHistory()
 
     // Unified Storage Deletion Cascade Invalidation
     override suspend fun clearStorageData(serverId: Long)
+
     override suspend fun clearLocalFolderData(uriString: String)
+
     suspend fun clearAllCaches()
+
     fun clearMemoryCache()
 }

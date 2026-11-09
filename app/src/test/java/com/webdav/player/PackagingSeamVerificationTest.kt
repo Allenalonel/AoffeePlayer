@@ -560,7 +560,7 @@ class PackagingSeamVerificationTest {
             mutableRepoProperty.containsMatchIn(serverRepoSource),
         )
 
-        // 3. WebDavApplication must contain zero downcasts to ServerRepositoryImpl
+        // 3. WebDavApplication must contain zero downcasts or late-mutation on repository singletons
         val appSource = source("WebDavApplication.kt")
         assertFalse(
             "WebDavApplication must not contain downcast (as? ServerRepositoryImpl)",
@@ -569,6 +569,10 @@ class PackagingSeamVerificationTest {
         assertFalse(
             "WebDavApplication must not contain downcast (as ServerRepositoryImpl)",
             appSource.contains("as ServerRepositoryImpl"),
+        )
+        assertFalse(
+            "WebDavApplication must not perform late-mutation on serverRepository",
+            appSource.contains("serverRepository.mediaLibraryRepository"),
         )
 
         // 4. LocalStorageDirectoryResolver must not import or depend on ServerRepository

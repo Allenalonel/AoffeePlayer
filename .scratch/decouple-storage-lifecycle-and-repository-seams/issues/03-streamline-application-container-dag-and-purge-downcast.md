@@ -4,7 +4,7 @@
 
 **Blocked by:** 02: Invert Storage Repository Cascade Invalidation and Make Constructor Immutable
 
-**Status:** ready-for-agent
+**Status:** completed
 
 - [x] In `WebDavApplication.onCreate()`, instantiate `LocalStorageDirectoryResolver` using `database.localStorageFolderDao()`.
 - [x] Instantiate `MediaLibraryRepositoryImpl` with the newly created resolver.

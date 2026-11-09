@@ -7,10 +7,7 @@ import com.webdav.player.domain.model.PlaylistTrackEntry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
-data class TrackKey(
-    val serverId: Long,
-    val remotePath: String,
-)
+typealias TrackKey = com.webdav.player.domain.storage.TrackKey
 
 interface PlaylistRepository {
     fun getAllPlaylistsFlow(): Flow<List<Playlist>>

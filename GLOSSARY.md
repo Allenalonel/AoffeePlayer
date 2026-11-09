@@ -56,6 +56,14 @@ _Avoid_: Directory Tree, File Catalog, Music Store, Media Browser
 当远程 WebDAV 服务器被删除或本地目录被解绑时，由存储源生命周期单向触发的多级缓存、同步检查点与音轨检索索引的确定性同步级联清理契约。
 _Avoid_: Cache Flush, Delete Hook, Cleanup Listener, Clear Storage
 
+**Path Presentation**:
+向表现层呈现曲目物理位置时，将底层系统级 Document URI 或转义路径转译为带存储卷标（如内部存储、SD卡）的人类可读规范路径格式。
+_Avoid_: Raw URI, Document ID, Content Link
+
+**Cover Art Liveness Healing**:
+当歌单或持久化缓存中记录的封面文件在磁盘物理丢失或前缀失配时，自动检测并对齐媒体库权威元数据或重新按需提取的存活性自愈机制。
+_Avoid_: Image Fixer, Cover Rescan, Thumbnail Rebind
+
 ### Playback & Queue
 
 **Audio Track**:

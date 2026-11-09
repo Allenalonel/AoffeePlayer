@@ -5,12 +5,12 @@
 
 **Blocked by:** 01: 建立 StorageReachabilityTracker 独立深模块与依赖装配
 
-**Status:** in-progress
+**Status:** completed
 
-- [ ] `PlaybackFaultTolerance` 移除 `playlistRepository` 依赖，引入 `storageReachabilityTracker: StorageReachabilityTracker?`。
-- [ ] 在 `PlaybackFaultTolerance.handle404Failure` 中调用 `storageReachabilityTracker.reportTrackUnavailable(..., FILE_NOT_FOUND)`，移除对歌单仓储的修改。
-- [ ] 在 `PlaybackFaultTolerance.handleAuthFailure` 与 `handleServerUnavailable` 中调用 `storageReachabilityTracker.reportServerUnavailable(...)`。
-- [ ] 在 `PlaybackFaultTolerance.onPlayingStarted` 中调用 `storageReachabilityTracker.reportServerReachable(currentTrack.serverId)`，保留出声反哺闭环。
-- [ ] `ServerManagementViewModel` 移除 `PlaylistRepository` 依赖，引入 `StorageReachabilityTracker`，在测试连接成功时调用 `reportServerReachable(serverId)`。
-- [ ] `MusicPlayerAppSessionImpl` 在监听到底层网络状态恢复为 `NetworkStatus.Available` 时，派发 `storageReachabilityTracker.triggerReachabilitySelfHealing()`。
-- [ ] 更新 `PlaybackFaultToleranceTest`、`ServerManagementViewModelTest` 及相关的播放器集成测试，验证测试全部绿色通过。
+- [x] `PlaybackFaultTolerance` 移除 `playlistRepository` 依赖，引入 `storageReachabilityTracker: StorageReachabilityTracker?`。
+- [x] 在 `PlaybackFaultTolerance.handle404Failure` 中调用 `storageReachabilityTracker.reportTrackUnavailable(..., FILE_NOT_FOUND)`，移除对歌单仓储的修改。
+- [x] 在 `PlaybackFaultTolerance.handleAuthFailure` 与 `handleServerUnavailable` 中调用 `storageReachabilityTracker.reportServerUnavailable(...)`。
+- [x] 在 `PlaybackFaultTolerance.onPlayingStarted` 中调用 `storageReachabilityTracker.reportServerReachable(currentTrack.serverId)`，保留出声反哺闭环。
+- [x] `ServerManagementViewModel` 移除 `PlaylistRepository` 依赖，引入 `StorageReachabilityTracker`，在测试连接成功时调用 `reportServerReachable(serverId)`。
+- [x] `MusicPlayerAppSessionImpl` 在监听到底层网络状态恢复为 `NetworkStatus.Available` 时，派发 `storageReachabilityTracker.triggerReachabilitySelfHealing()`。
+- [x] 更新 `PlaybackFaultToleranceTest`、`ServerManagementViewModelTest` 及相关的播放器集成测试，验证测试全部绿色通过。

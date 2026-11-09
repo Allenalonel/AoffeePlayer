@@ -7,8 +7,8 @@ import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.FakeMediaLibraryRepository
-import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
+import com.webdav.player.domain.storage.FakeStorageReachabilityTracker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -193,75 +193,33 @@ class ServerManagementViewModelTest {
         }
 
     @Test
-    fun testConnection_onSuccess_triggersPlaylistClearServerUnreachable() =
+    fun testConnection_onSuccess_reportsServerReachableToStorageReachabilityTracker() =
         runTest {
             val server1 = WebDavServer(id = 11L, name = "S11", url = "http://s11", port = 80)
-            var clearedServerId: Long? = null
-            val fakePlaylistRepo =
-                object : PlaylistRepository {
-                    override suspend fun getAllPlaylists(): List<com.webdav.player.domain.model.Playlist> = emptyList()
-
-                    override fun getAllPlaylistsFlow(): Flow<List<com.webdav.player.domain.model.Playlist>> =
-                        kotlinx.coroutines.flow.emptyFlow()
-
-                    override fun getPlaylistFlow(playlistId: Long) =
-                        kotlinx.coroutines.flow.emptyFlow<com.webdav.player.domain.model.Playlist?>()
-
-                    override suspend fun getPlaylist(playlistId: Long) = null
-
-                    override suspend fun createPlaylist(name: String): Long = 1L
-
-                    override suspend fun renamePlaylist(
-                        playlistId: Long,
-                        newName: String,
-                    ) {}
-
-                    override suspend fun deletePlaylist(playlistId: Long) {}
-
-                    override suspend fun isPlaylistNameExists(
-                        name: String,
-                        excludePlaylistId: Long?,
-                    ): Boolean = false
-
-                    override fun getTracksForPlaylistFlow(playlistId: Long) =
-                        kotlinx.coroutines.flow.emptyFlow<List<com.webdav.player.domain.model.PlaylistTrackEntry>>()
-
-                    override suspend fun getTracksForPlaylist(playlistId: Long) =
-                        emptyList<com.webdav.player.domain.model.PlaylistTrackEntry>()
-
-                    override suspend fun addTrackToPlaylist(
-                        playlistId: Long,
-                        track: com.webdav.player.domain.model.AudioTrack,
-                    ) = 1L
-
-                    override suspend fun addTracksToPlaylist(
-                        playlistId: Long,
-                        tracks: List<com.webdav.player.domain.model.AudioTrack>,
-                    ) = emptyList<Long>()
-
-                    override suspend fun removeTrackFromPlaylist(trackEntryId: Long) {}
-
-                    override suspend fun removeTracksFromPlaylist(
-                        playlistId: Long,
-                        trackEntryIds: List<Long>,
-                    ) {}
-
-                    override suspend fun updateTrackOrders(
-                        playlistId: Long,
-                        orderedTrackIds: List<Long>,
-                    ) {}
-
-                    override suspend fun clearServerUnreachableStatus(serverId: Long) {
-                        clearedServerId = serverId
-                    }
-                }
-            val vmWithPlaylist = ServerManagementViewModel(fakeRepository, fakeClient, fakePlaylistRepo)
+            fakeRepository.addServerDirectly(server1)
+            val fakeTracker = FakeStorageReachabilityTracker()
+            val vmWithTracker = ServerManagementViewModel(fakeRepository, fakeClient, fakeTracker)
             fakeClient.resultToReturn = ConnectionResult.Success
 
-            vmWithPlaylist.onTestConnection(server1)
+            vmWithTracker.onTestConnection(server1)
             advanceUntilIdle()
 
-            assertEquals(11L, clearedServerId)
+            assertTrue(fakeTracker.reportedReachableServers.contains(11L))
+        }
+
+    @Test
+    fun testConnection_onFailure_doesNotReportServerReachable() =
+        runTest {
+            val server1 = WebDavServer(id = 11L, name = "S11", url = "http://s11", port = 80)
+            fakeRepository.addServerDirectly(server1)
+            val fakeTracker = FakeStorageReachabilityTracker()
+            val vmWithTracker = ServerManagementViewModel(fakeRepository, fakeClient, fakeTracker)
+            fakeClient.resultToReturn = ConnectionResult.Failure("Connection refused")
+
+            vmWithTracker.onTestConnection(server1)
+            advanceUntilIdle()
+
+            assertTrue(fakeTracker.reportedReachableServers.isEmpty())
         }
 
     @Test

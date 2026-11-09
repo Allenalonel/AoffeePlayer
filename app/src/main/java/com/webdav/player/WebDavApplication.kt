@@ -164,6 +164,7 @@ class WebDavApplication :
                 trackMetadataRepository = trackMetadataRepository,
                 sessionStore = sessionStore,
                 playlistRepository = playlistRepository,
+                storageReachabilityTracker = storageReachabilityTracker,
                 networkConnectivityObserver = networkConnectivityObserver,
                 hardwareLockManager = sessionHost.hardwareLockManager,
             )

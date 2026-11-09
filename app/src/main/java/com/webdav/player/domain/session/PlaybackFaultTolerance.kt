@@ -9,7 +9,7 @@ import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.player.AudioPlayerEngine
-import com.webdav.player.domain.repository.PlaylistRepository
+import com.webdav.player.domain.storage.StorageReachabilityTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -40,7 +40,7 @@ fun Throwable?.is404Exception(): Boolean {
 internal class PlaybackFaultTolerance(
     private val sessionStateFlow: MutableStateFlow<PlayerSessionState>,
     private val playerEngine: AudioPlayerEngine,
-    private val playlistRepository: PlaylistRepository?,
+    private val storageReachabilityTracker: StorageReachabilityTracker?,
     private val queueManager: PlaybackQueueManager,
     private val coroutineScope: CoroutineScope,
 ) {
@@ -90,10 +90,8 @@ internal class PlaybackFaultTolerance(
             }
         }
         val currentTrack = current.currentTrack
-        if (currentTrack != null && playlistRepository != null) {
-            coroutineScope.launch {
-                playlistRepository.clearServerUnreachableStatus(currentTrack.serverId)
-            }
+        if (currentTrack != null) {
+            storageReachabilityTracker?.reportServerReachable(currentTrack.serverId)
         }
     }
 
@@ -190,7 +188,7 @@ internal class PlaybackFaultTolerance(
         val queueSize = sessionStateFlow.value.queue.size
         val shouldSkip =
             if (track != null) {
-                playlistRepository?.markTrackInactive(track.serverId, track.remotePath, InactiveReason.FILE_NOT_FOUND)
+                storageReachabilityTracker?.reportTrackUnavailable(track.serverId, track.remotePath, InactiveReason.FILE_NOT_FOUND)
                 queueManager.recordFailedTrack(track.id, queueSize)
             } else {
                 false
@@ -219,8 +217,7 @@ internal class PlaybackFaultTolerance(
         val queueSize = sessionStateFlow.value.queue.size
         val shouldSkip =
             if (track != null) {
-                playlistRepository?.markServerInactive(track.serverId, InactiveReason.SERVER_CREDENTIAL_INVALID)
-                playlistRepository?.markTrackInactive(track.serverId, track.remotePath, InactiveReason.SERVER_CREDENTIAL_INVALID)
+                storageReachabilityTracker?.reportServerUnavailable(track.serverId, InactiveReason.SERVER_CREDENTIAL_INVALID)
                 queueManager.recordFailedTrack(track.id, queueSize)
             } else {
                 false
@@ -245,8 +242,7 @@ internal class PlaybackFaultTolerance(
         onSkipToNext: () -> Unit,
     ) {
         cancelWatchdog()
-        playlistRepository?.markServerInactive(track.serverId, InactiveReason.SERVER_UNREACHABLE)
-        playlistRepository?.markTrackInactive(track.serverId, track.remotePath, InactiveReason.SERVER_UNREACHABLE)
+        storageReachabilityTracker?.reportServerUnavailable(track.serverId, InactiveReason.SERVER_UNREACHABLE)
         val queueSize = sessionStateFlow.value.queue.size
         if (queueManager.recordFailedTrack(track.id, queueSize)) {
             onSkipToNext()

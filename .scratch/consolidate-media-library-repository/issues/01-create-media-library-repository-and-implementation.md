@@ -4,12 +4,12 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] 在 `domain.repository` 包中建立 `MediaLibraryRepository` 接口，定义 SWR 目录浏览、B-Tree 检索、扫描调度、搜索历史与级联清理公共契约。
-- [ ] 在 `data.repository` 包中实现 `MediaLibraryRepositoryImpl`，整合单一权威 L1 LRU 内存缓存（容量 100 目录），在内存警告时响应清理。
-- [ ] 目录浏览在远程或本地差异更新时，原子写穿透 upsert 至 `media_track_index`，并自动清理已删除文件。
-- [ ] 检索管道全面对齐 `media_track_index` 复合 B-Tree 索引与 `directory_sync_checkpoint`，彻底废除对 `directory_cache.dataJson` 的模糊匹配反序列化。
-- [ ] 将 `WebDavSyncScanner` 与 `LocalStorageIndexScanner` 作为内部协作者由实现类内部统筹调度，内化 SharedPreferences 搜索历史存储。
-- [ ] 编写并执行全新的权威测试套件 `MediaLibraryRepositoryTest`，全面覆盖浏览、写穿透、检索、历史与级联清理且 100% 通过。
-- [ ] 临时保留既有 `DirectoryRepository` 与 `LibrarySearchRepository` 接口及实现，确保外部依赖模块编译不受影响。
+- [x] 在 `domain.repository` 包中建立 `MediaLibraryRepository` 接口，定义 SWR 目录浏览、B-Tree 检索、扫描调度、搜索历史与级联清理公共契约。
+- [x] 在 `data.repository` 包中实现 `MediaLibraryRepositoryImpl`，整合单一权威 L1 LRU 内存缓存（容量 100 目录），在内存警告时响应清理。
+- [x] 目录浏览在远程或本地差异更新时，原子写穿透 upsert 至 `media_track_index`，并自动清理已删除文件。
+- [x] 检索管道全面对齐 `media_track_index` 复合 B-Tree 索引与 `directory_sync_checkpoint`，彻底废除对 `directory_cache.dataJson` 的模糊匹配反序列化。
+- [x] 将 `WebDavSyncScanner` 与 `LocalStorageIndexScanner` 作为内部协作者由实现类内部统筹调度，内化 SharedPreferences 搜索历史存储。
+- [x] 编写并执行全新的权威测试套件 `MediaLibraryRepositoryTest`，全面覆盖浏览、写穿透、检索、历史与级联清理且 100% 通过。
+- [x] 临时保留既有 `DirectoryRepository` 与 `LibrarySearchRepository` 接口及实现，确保外部依赖模块编译不受影响。

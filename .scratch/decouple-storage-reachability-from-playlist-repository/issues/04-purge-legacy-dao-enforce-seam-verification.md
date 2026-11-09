@@ -5,7 +5,7 @@
 
 **Blocked by:** 03: 净化歌单仓储并以响应式组合重构歌单详情状态
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] 从 `PlaylistDao` 中物理删除废弃的 8 个 `isInactive` 更新与查询方法（`updateTrackInactiveStatus`、`markServerInactiveStatus`、`clearServerInactiveStatus`、`getDistinctServerIdsForInactiveServers` 等）。
 - [ ] 确保 `PlaylistTrackEntity` 保留现存 `isInactive = false` 与 `inactiveReason = null` 列定义，无需变更 Room 数据库版本。

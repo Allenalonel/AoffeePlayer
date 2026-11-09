@@ -33,6 +33,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import java.io.File
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -1307,5 +1308,60 @@ class PlaylistRepositoryTest {
 
             val healedEntity = dao.getTrackById(entryId)
             assertEquals("/covers/local_healed.jpg", healedEntity?.coverThumbnailPath)
+        }
+
+    @Test
+    fun localTrackInPlaylist_whenCoverThumbnailPathPointsToNonExistentFile_reconcilesToValidCachedMetadata() =
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val metadataRepo = TestTrackMetadataRepository()
+            val localUri = "content://media/external/audio/melody_live"
+
+            val validCoverFile =
+                File(context.cacheDir, "cover_0_valid.jpg").apply {
+                    parentFile?.mkdirs()
+                    writeBytes(byteArrayOf(1, 2, 3))
+                }
+
+            metadataRepo.cachedMap["$LOCAL_STORAGE_ID:$localUri"] =
+                TrackMetadata(
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = localUri,
+                    title = "Melody (Live)",
+                    coverThumbnailPath = validCoverFile.absolutePath,
+                )
+
+            val repo =
+                PlaylistRepositoryImpl(
+                    playlistDao = dao,
+                    trackMetadataRepository = metadataRepo,
+                    timeProvider = { simulatedTime },
+                )
+
+            val playlistId = repo.createPlaylist("本地测试歌单")
+
+            // Track in playlist with a dead cover path (file does not exist on disk)
+            val deadPath = File(context.cacheDir, "cover_1_dead_orphan.jpg").absolutePath
+            val localTrack =
+                AudioTrack(
+                    id = "$LOCAL_STORAGE_ID:$localUri",
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = localUri,
+                    title = "Melody (Live)",
+                    format = AudioFormat.FLAC,
+                    coverThumbnailPath = deadPath,
+                )
+            val entryId = repo.addTrackToPlaylist(playlistId, localTrack)
+
+            // Trigger reconciliation
+            val tracks = repo.getTracksForPlaylistFlow(playlistId).first()
+            val trackEntry = tracks.first { it.id == entryId }
+
+            // Must NOT return the dead non-existent path; must reconcile to valid cover
+            assertEquals(validCoverFile.absolutePath, trackEntry.coverThumbnailPath)
+
+            kotlinx.coroutines.delay(100)
+            val healedEntity = dao.getTrackById(entryId)
+            assertEquals(validCoverFile.absolutePath, healedEntity?.coverThumbnailPath)
         }
 }

@@ -61,10 +61,12 @@ data class AudioTrack(
             metadata: TrackMetadata? = null,
         ): AudioTrack? {
             val format = (file.fileType as? RemoteFileType.Audio)?.format ?: return null
+            val isLocal = server.isLocal || file.path.startsWith("content://") || file.path.startsWith("file://")
+            val effectiveServerId = if (isLocal) LOCAL_STORAGE_ID else server.id
             val baseTrack =
                 AudioTrack(
-                    id = "${server.id}:${file.path}",
-                    serverId = server.id,
+                    id = "$effectiveServerId:${file.path}",
+                    serverId = effectiveServerId,
                     remotePath = file.path,
                     title = metadata?.displayTitle(file.name) ?: file.name,
                     artist = metadata?.displayArtist(),

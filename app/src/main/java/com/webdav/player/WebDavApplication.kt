@@ -65,16 +65,6 @@ class WebDavApplication :
         val mediaTrackIndexDao = database.mediaTrackIndexDao()
         val checkpointDao = database.directorySyncCheckpointDao()
 
-        serverRepository =
-            ServerRepositoryImpl(
-                serverDao = database.webDavServerDao(),
-                coverArtStorage = coverArtStorage,
-                webDavClient = webDavClient,
-                trackMetadataDao = database.trackMetadataDao(),
-                localStorageFolderDao = database.localStorageFolderDao(),
-                context = this,
-            )
-
         trackMetadataRepository =
             TrackMetadataRepositoryImpl(
                 trackMetadataDao = database.trackMetadataDao(),
@@ -98,7 +88,7 @@ class WebDavApplication :
         val localStorageDirectoryResolver =
             LocalStorageDirectoryResolver(
                 context = this,
-                serverRepository = serverRepository,
+                localStorageFolderDao = database.localStorageFolderDao(),
                 coverArtStorage = coverArtStorage,
             )
 
@@ -132,7 +122,17 @@ class WebDavApplication :
                 context = this,
             )
         this.mediaLibraryRepository = mediaLibraryRepository
-        (serverRepository as? ServerRepositoryImpl)?.mediaLibraryRepository = mediaLibraryRepository
+
+        serverRepository =
+            ServerRepositoryImpl(
+                serverDao = database.webDavServerDao(),
+                coverArtStorage = coverArtStorage,
+                webDavClient = webDavClient,
+                trackMetadataDao = database.trackMetadataDao(),
+                localStorageFolderDao = database.localStorageFolderDao(),
+                context = this,
+                cascadeInvalidator = mediaLibraryRepository,
+            )
 
         playlistRepository =
             PlaylistRepositoryImpl(

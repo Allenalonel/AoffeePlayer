@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
 import com.webdav.player.data.local.CoverArtStorage
+import com.webdav.player.data.local.LocalStorageFolderDao
 import com.webdav.player.data.metadata.ImageHeaderValidator
 import com.webdav.player.domain.model.DirectoryContent
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
@@ -13,7 +14,6 @@ import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
-import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -30,7 +30,7 @@ import java.net.URLDecoder
  */
 class LocalStorageDirectoryResolver(
     private val context: Context,
-    private val serverRepository: ServerRepository,
+    private val localStorageFolderDao: LocalStorageFolderDao,
     private val coverArtStorage: CoverArtStorage? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val contentResolver: ContentResolver = context.contentResolver,
@@ -38,7 +38,7 @@ class LocalStorageDirectoryResolver(
     suspend fun resolve(path: String): DirectoryContent =
         withContext(ioDispatcher) {
             val normalizedPath = RemoteDirectory.normalizePath(path)
-            val folders = serverRepository.getMountedLocalFolders().first()
+            val folders = localStorageFolderDao.getAllFoldersFlow().first().map { it.toDomain() }
 
             if (normalizedPath == "/" || normalizedPath == "/local/") {
                 return@withContext resolveRoot(folders)

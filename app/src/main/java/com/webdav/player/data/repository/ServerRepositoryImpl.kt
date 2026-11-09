@@ -11,8 +11,8 @@ import com.webdav.player.data.remote.OkHttpWebDavClient
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.WebDavServer
-import com.webdav.player.domain.repository.MediaLibraryRepository
 import com.webdav.player.domain.repository.ServerRepository
+import com.webdav.player.domain.repository.StorageCascadeInvalidator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -26,7 +26,7 @@ class ServerRepositoryImpl(
     private val trackMetadataDao: TrackMetadataDao? = null,
     private val localStorageFolderDao: LocalStorageFolderDao? = null,
     private val context: Context? = null,
-    var mediaLibraryRepository: MediaLibraryRepository? = null,
+    private val cascadeInvalidator: StorageCascadeInvalidator? = null,
 ) : ServerRepository {
     private val prefs = context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val isLocalStorageActive =
@@ -91,7 +91,7 @@ class ServerRepositoryImpl(
         val serverToDelete = serverDao.getServerById(id)
         coverArtStorage?.deleteServerCovers(id)
         webDavClient?.invalidateServer(id)
-        mediaLibraryRepository?.clearStorageData(id)
+        cascadeInvalidator?.clearStorageData(id)
         trackMetadataDao?.deleteMetadataForServer(id)
         serverDao.deleteServerById(id)
 
@@ -135,7 +135,7 @@ class ServerRepositoryImpl(
     }
 
     override suspend fun removeMountedLocalFolder(uriString: String) {
-        mediaLibraryRepository?.clearLocalFolderData(uriString)
+        cascadeInvalidator?.clearLocalFolderData(uriString)
         localStorageFolderDao?.deleteFolderByUri(uriString)
     }
 

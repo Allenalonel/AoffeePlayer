@@ -64,7 +64,7 @@ class ServerCascadeDeletionTest {
                 trackMetadataDao = database.trackMetadataDao(),
                 localStorageFolderDao = database.localStorageFolderDao(),
                 context = context,
-                mediaLibraryRepository = mediaLibraryRepository,
+                cascadeInvalidator = mediaLibraryRepository,
             )
     }
 

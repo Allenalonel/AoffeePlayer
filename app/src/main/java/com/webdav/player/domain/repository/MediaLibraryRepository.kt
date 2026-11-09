@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
  * pure B-Tree search, incremental synchronization, search history,
  * and cascading storage invalidation.
  */
-interface MediaLibraryRepository {
+interface MediaLibraryRepository : StorageCascadeInvalidator {
     // SWR Directory Browsing
     fun observeDirectoryContent(
         server: WebDavServer,
@@ -45,13 +45,19 @@ interface MediaLibraryRepository {
 
     // Search History Management
     fun getSearchHistory(): List<String>
+
     fun recordSearchQuery(query: String): List<String>
+
     fun removeSearchHistory(query: String): List<String>
+
     fun clearSearchHistory()
 
     // Unified Storage Deletion Cascade Invalidation
-    suspend fun clearStorageData(serverId: Long)
-    suspend fun clearLocalFolderData(uriString: String)
+    override suspend fun clearStorageData(serverId: Long)
+
+    override suspend fun clearLocalFolderData(uriString: String)
+
     suspend fun clearAllCaches()
+
     fun clearMemoryCache()
 }

@@ -14,9 +14,7 @@
 
 ## 活跃任务 (Active)
 
-| 特性 / 优化项 Slug | 描述 / 规范主题 | 状态 | 规范路径 |
-| :--- | :--- | :---: | :--- |
-| `consolidate-media-library-repository` | 折叠媒体库浏览与索引检索为单一深模块，统一 L1 内存缓存与 B-Tree 检索 (ADR-0036) | `ready-for-agent` | [`consolidate-media-library-repository/spec.md`](consolidate-media-library-repository/spec.md) |
+当前无活跃任务。所有功能特性与技术债务重构均已结项并归档至 [`archive/`](archive/)。
 
 ---
 
@@ -26,6 +24,8 @@
 
 | 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 归档路径 |
 | :--- | :--- | :---: | :---: | :--- |
+| `decouple-storage-lifecycle-and-repository-seams` | 解耦存储源生命周期并消除仓储层环形接缝，建立单向不可变装配管道 (ADR-0037) | 4 | Completed | [`archive/decouple-storage-lifecycle-and-repository-seams/`](archive/decouple-storage-lifecycle-and-repository-seams/) |
+| `consolidate-media-library-repository` | 折叠媒体库浏览与索引检索为单一深模块，统一 L1 内存缓存与 B-Tree 检索 (ADR-0036) | 4 | Completed | [`archive/consolidate-media-library-repository/`](archive/consolidate-media-library-repository/) |
 | `cross-source-session-decoupling-and-symmetric-storage-lifecycle` | 跨源会话双轨解耦、冷启动播控门控与对称存储生命周期闭环 (ADR-0035) | 1 | Completed | [`docs/adr/0035-cross-source-session-decoupling-and-symmetric-storage-lifecycle.md`](../docs/adr/0035-cross-source-session-decoupling-and-symmetric-storage-lifecycle.md) |
 | `purge-cue-support` | 彻底移除 CUE 虚拟分轨支持、平滑升级 Room v8 数据库、净化会话引擎与全链路代码瘦身 (ADR-0034) | 6 | Completed | [`archive/purge-cue-support/`](archive/purge-cue-support/) |
 | `unified-library-indexing-and-search` | 跨源（本地 SAF + 远程 WebDAV）统一曲库索引与增量即时搜索体系 (ADR-0033) | 4 | Completed | [`archive/unified-library-indexing-and-search/`](archive/unified-library-indexing-and-search/) |

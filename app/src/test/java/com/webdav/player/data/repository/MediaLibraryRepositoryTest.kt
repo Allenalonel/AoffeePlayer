@@ -20,13 +20,13 @@ import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LibrarySyncState
 import com.webdav.player.domain.model.ListDirectoryResult
-import com.webdav.player.domain.model.LocalStorageFolder
+import com.webdav.player.data.local.LocalStorageFolderEntity
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
-import com.webdav.player.domain.repository.ServerRepository
+import kotlinx.coroutines.runBlocking
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -62,7 +62,6 @@ class MediaLibraryRepositoryTest {
 
     private lateinit var fakeWebDavClient: FakeWebDavClient
     private lateinit var fakeTrackMetadataRepository: FakeTrackMetadataRepository
-    private lateinit var fakeServerRepository: FakeServerRepository
     private lateinit var localResolver: LocalStorageDirectoryResolver
     private lateinit var repository: MediaLibraryRepositoryImpl
 
@@ -99,13 +98,20 @@ class MediaLibraryRepositoryTest {
 
         fakeWebDavClient = FakeWebDavClient()
         fakeTrackMetadataRepository = FakeTrackMetadataRepository()
-        fakeServerRepository = FakeServerRepository(
-            listOf(LocalStorageFolder("content://test.storage/tree/Music", "MusicFolder"))
-        )
-        localResolver = LocalStorageDirectoryResolver(
-            context = context,
-            serverRepository = fakeServerRepository,
-        )
+        runBlocking {
+            localStorageFolderDao.insertFolder(
+                LocalStorageFolderEntity(
+                    uriString = "content://test.storage/tree/Music",
+                    displayName = "MusicFolder",
+                    dateAdded = 1000L,
+                ),
+            )
+        }
+        localResolver =
+            LocalStorageDirectoryResolver(
+                context = context,
+                localStorageFolderDao = localStorageFolderDao,
+            )
 
         repository = MediaLibraryRepositoryImpl(
             webDavClient = fakeWebDavClient,
@@ -1017,19 +1023,5 @@ class MediaLibraryRepositoryTest {
         override fun getAllMetadataFlow(serverId: Long): Flow<List<TrackMetadata>> = flowOf(emptyList())
         override fun getMetadataForPathsFlow(serverId: Long, remotePaths: List<String>): Flow<List<TrackMetadata>> = flowOf(emptyList())
         override fun getMetadataFlow(serverId: Long, remotePath: String): Flow<TrackMetadata?> = flowOf(cachedMetadata["$serverId:$remotePath"])
-    }
-
-    private class FakeServerRepository(
-        private val mountedFolders: List<LocalStorageFolder> = emptyList(),
-    ) : ServerRepository {
-        override fun getAllServers(): Flow<List<WebDavServer>> = flowOf(emptyList())
-        override fun getActiveServer(): Flow<WebDavServer?> = flowOf(null)
-        override suspend fun getServerById(id: Long): WebDavServer? = null
-        override suspend fun saveServer(server: WebDavServer): Long = 1L
-        override suspend fun deleteServer(id: Long) {}
-        override suspend fun setActiveServer(id: Long) {}
-        override fun getMountedLocalFolders(): Flow<List<LocalStorageFolder>> = flowOf(mountedFolders)
-        override suspend fun addMountedLocalFolder(uriString: String, displayName: String) {}
-        override suspend fun removeMountedLocalFolder(uriString: String) {}
     }
 }

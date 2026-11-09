@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Create `StorageCascadeInvalidator` interface in `domain.repository` declaring `suspend fun clearStorageData(serverId: Long)` and `suspend fun clearLocalFolderData(uriString: String)`.
-- [ ] Update `MediaLibraryRepository` interface to extend `StorageCascadeInvalidator` with zero modifications to existing method signatures or binary compatibility.
-- [ ] Refactor `LocalStorageDirectoryResolver` constructor to receive `LocalStorageFolderDao` instead of `ServerRepository`.
-- [ ] Update `LocalStorageDirectoryResolver.resolve()` to read mounted folder entries via `localStorageFolderDao.getAllFoldersFlow().first().map { it.toDomain() }`.
-- [ ] Update `LocalStorageDirectoryResolverTest` and `MediaLibraryRepositoryTest` to pass `LocalStorageFolderDao` to `LocalStorageDirectoryResolver`.
-- [ ] Run `./gradlew test --tests "*LocalStorageDirectoryResolverTest*" --tests "*MediaLibraryRepositoryTest*"` and ensure all tests pass green.
+- [x] Create `StorageCascadeInvalidator` interface in `domain.repository` declaring `suspend fun clearStorageData(serverId: Long)` and `suspend fun clearLocalFolderData(uriString: String)`.
+- [x] Update `MediaLibraryRepository` interface to extend `StorageCascadeInvalidator` with zero modifications to existing method signatures or binary compatibility.
+- [x] Refactor `LocalStorageDirectoryResolver` constructor to receive `LocalStorageFolderDao` instead of `ServerRepository`.
+- [x] Update `LocalStorageDirectoryResolver.resolve()` to read mounted folder entries via `localStorageFolderDao.getAllFoldersFlow().first().map { it.toDomain() }`.
+- [x] Update `LocalStorageDirectoryResolverTest` and `MediaLibraryRepositoryTest` to pass `LocalStorageFolderDao` to `LocalStorageDirectoryResolver`.
+- [x] Run `./gradlew test --tests "*LocalStorageDirectoryResolverTest*" --tests "*MediaLibraryRepositoryTest*"` and ensure all tests pass green.

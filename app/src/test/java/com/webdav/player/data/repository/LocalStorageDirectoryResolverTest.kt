@@ -10,13 +10,12 @@ import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import android.provider.DocumentsProvider
 import androidx.test.core.app.ApplicationProvider
+import com.webdav.player.data.local.LocalStorageFolderDao
+import com.webdav.player.data.local.LocalStorageFolderEntity
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
-import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.RemoteFileType
-import com.webdav.player.domain.model.WebDavServer
-import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -154,36 +153,28 @@ class LocalStorageDirectoryResolverTest {
         }
     }
 
-    private class FakeServerRepository(
-        private val mountedFolders: List<LocalStorageFolder>,
-    ) : ServerRepository {
-        override fun getAllServers(): Flow<List<WebDavServer>> = flowOf(emptyList())
+    private class FakeLocalStorageFolderDao(
+        initialFolders: List<LocalStorageFolderEntity> = emptyList(),
+    ) : LocalStorageFolderDao {
+        private val foldersFlow = MutableStateFlow(initialFolders)
 
-        override fun getActiveServer(): Flow<WebDavServer?> = flowOf(null)
+        override fun getAllFoldersFlow(): Flow<List<LocalStorageFolderEntity>> = foldersFlow
 
-        override suspend fun getServerById(id: Long): WebDavServer? = null
+        override suspend fun insertFolder(entity: LocalStorageFolderEntity) {
+            foldersFlow.value = foldersFlow.value.filterNot { it.uriString == entity.uriString } + entity
+        }
 
-        override suspend fun saveServer(server: WebDavServer): Long = 0L
-
-        override suspend fun deleteServer(id: Long) {}
-
-        override suspend fun setActiveServer(id: Long) {}
-
-        override fun getMountedLocalFolders(): Flow<List<LocalStorageFolder>> = flowOf(mountedFolders)
-
-        override suspend fun addMountedLocalFolder(
-            uriString: String,
-            displayName: String,
-        ) {}
-
-        override suspend fun removeMountedLocalFolder(uriString: String) {}
+        override suspend fun deleteFolderByUri(uriString: String) {
+            foldersFlow.value = foldersFlow.value.filterNot { it.uriString == uriString }
+        }
     }
 
     private lateinit var context: Context
     private lateinit var resolver: LocalStorageDirectoryResolver
-    private val mountedFolders =
+    private lateinit var folderDao: FakeLocalStorageFolderDao
+    private val mountedFolderEntities =
         listOf(
-            LocalStorageFolder(TREE_URI_STRING, "音乐库"),
+            LocalStorageFolderEntity(TREE_URI_STRING, "音乐库", 1000L),
         )
 
     @Before
@@ -200,8 +191,8 @@ class LocalStorageDirectoryResolverTest {
             }
         Robolectric.buildContentProvider(TestDocumentsProvider::class.java).create(providerInfo)
 
-        val serverRepo = FakeServerRepository(mountedFolders)
-        resolver = LocalStorageDirectoryResolver(context, serverRepo)
+        folderDao = FakeLocalStorageFolderDao(mountedFolderEntities)
+        resolver = LocalStorageDirectoryResolver(context, folderDao)
     }
 
     @Test
@@ -355,7 +346,7 @@ class LocalStorageDirectoryResolverTest {
             val resolverWithStorage =
                 LocalStorageDirectoryResolver(
                     context = context,
-                    serverRepository = FakeServerRepository(mountedFolders),
+                    localStorageFolderDao = FakeLocalStorageFolderDao(mountedFolderEntities),
                     coverArtStorage = coverArtStorage,
                 )
 

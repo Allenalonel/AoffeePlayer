@@ -98,7 +98,7 @@ class WebDavApplication :
         val localStorageDirectoryResolver =
             LocalStorageDirectoryResolver(
                 context = this,
-                serverRepository = serverRepository,
+                localStorageFolderDao = database.localStorageFolderDao(),
                 coverArtStorage = coverArtStorage,
             )
 

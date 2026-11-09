@@ -141,8 +141,13 @@ _Avoid_: Track UUID, Composite ID, Track Key
 _Avoid_: Scan Anchor, Cache Timestamp
 
 **Self-Healing**:
-当存储源连通性恢复或底层音频成功解码播放时，自动清除音轨或服务器置灰降级标记的闭环自愈机制。
+当存储源连通性恢复、测试连接成功或底层音频成功解码播放时，由 Storage Reachability Tracker 统一响应式清除音轨或服务器置灰降级标记的闭环自愈机制。
 _Avoid_: Reset Hook, Retry Loop
+
+**Storage Reachability Tracker**:
+统筹管理全域存储源与跨源音轨物理连通状态的专职深模块，负责接收故障上报、维护内存响应式健康状态流，并统一调度四重闭环自愈探活。
+_Avoid_: Playlist Health Checker, Network Probe Service, Ping Manager, Server Status Watcher
+
 
 **Media Track Index**:
 本地维护的跨源轻量音轨全量索引快照，作为即时检索与当前源过滤的统一权威数据源。

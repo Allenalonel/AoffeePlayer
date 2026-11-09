@@ -14,7 +14,10 @@
 
 ## 活跃任务 (Active)
 
-当前无活跃任务。所有功能特性与技术债务重构均已结项并归档至 [`archive/`](archive/)。
+| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 规范路径 |
+| :--- | :--- | :---: | :---: | :--- |
+| `decouple-storage-reachability-from-playlist-repository` | 从歌单仓储解耦存储源连通性追踪器与内存响应式自愈体系 (ADR-0038) | 4 | `ready-for-agent` | [`decouple-storage-reachability-from-playlist-repository/spec.md`](decouple-storage-reachability-from-playlist-repository/spec.md) |
+
 
 ---
 

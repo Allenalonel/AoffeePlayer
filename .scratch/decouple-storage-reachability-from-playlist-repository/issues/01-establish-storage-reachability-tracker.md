@@ -5,7 +5,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] 在 `domain.storage` 包下定义 `StorageReachabilityTracker` 窄接口，暴露 `inactiveTracks: StateFlow<Map<TrackKey, InactiveReason>>`、`serverReachability: StateFlow<Map<Long, Boolean>>`、`reportTrackUnavailable`、`reportServerUnavailable`、`reportServerReachable` 与 `triggerReachabilitySelfHealing`。
 - [ ] 在 `data.storage` 包下实现 `StorageReachabilityTrackerImpl`，内部封装 `WebDavClient` 的 PROPFIND 连接测试、Android SAF Document 游标探针与状态映射。

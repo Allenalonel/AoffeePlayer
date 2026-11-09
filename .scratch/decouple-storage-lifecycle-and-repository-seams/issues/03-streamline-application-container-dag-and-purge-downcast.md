@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] In `WebDavApplication.onCreate()`, instantiate `LocalStorageDirectoryResolver` using `database.localStorageFolderDao()`.
-- [ ] Instantiate `MediaLibraryRepositoryImpl` with the newly created resolver.
-- [ ] Instantiate `ServerRepositoryImpl` passing `mediaLibraryRepository` as the `cascadeInvalidator` constructor argument.
-- [ ] Permanently remove `(serverRepository as? ServerRepositoryImpl)?.mediaLibraryRepository = mediaLibraryRepository` from `WebDavApplication.kt`.
-- [ ] Verify that `WebDavApplication` contains zero downcasts to `ServerRepositoryImpl`.
-- [ ] Verify that application startup and memory trimming (`onTrimMemory`) continue to function without errors.
+- [x] In `WebDavApplication.onCreate()`, instantiate `LocalStorageDirectoryResolver` using `database.localStorageFolderDao()`.
+- [x] Instantiate `MediaLibraryRepositoryImpl` with the newly created resolver.
+- [x] Instantiate `ServerRepositoryImpl` passing `mediaLibraryRepository` as the `cascadeInvalidator` constructor argument.
+- [x] Permanently remove `(serverRepository as? ServerRepositoryImpl)?.mediaLibraryRepository = mediaLibraryRepository` from `WebDavApplication.kt`.
+- [x] Verify that `WebDavApplication` contains zero downcasts to `ServerRepositoryImpl`.
+- [x] Verify that application startup and memory trimming (`onTrimMemory`) continue to function without errors.

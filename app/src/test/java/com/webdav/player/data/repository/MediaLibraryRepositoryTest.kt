@@ -28,6 +28,9 @@ import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -869,12 +872,44 @@ class MediaLibraryRepositoryTest {
         }
 
     // =========================================================================
+    // 8. Coroutine Cancellation Exception Rethrow Tests
+    // =========================================================================
+
+    @Test(expected = CancellationException::class)
+    fun observeDirectoryContent_rethrowsCancellationException() =
+        runTest {
+            fakeWebDavClient.shouldThrowCancellation = true
+            repository.observeDirectoryContent(testServer, "/music/").toList()
+        }
+
+    @Test(expected = CancellationException::class)
+    fun syncServer_rethrowsCancellationException() =
+        runTest {
+            val deferred = async {
+                coroutineContext.cancel(CancellationException("Sync cancelled"))
+                repository.syncServer(testServer)
+            }
+            deferred.await()
+        }
+
+    @Test(expected = CancellationException::class)
+    fun rebuildIndex_rethrowsCancellationException() =
+        runTest {
+            val deferred = async {
+                coroutineContext.cancel(CancellationException("Rebuild cancelled"))
+                repository.rebuildIndex(testServer)
+            }
+            deferred.await()
+        }
+
+    // =========================================================================
     // Test Doubles (Fakes)
     // =========================================================================
 
     private class FakeWebDavClient : WebDavClient {
         val results = mutableMapOf<String, ListDirectoryResult>()
         val callCount = mutableMapOf<String, Int>()
+        var shouldThrowCancellation = false
 
         override suspend fun testConnection(server: WebDavServer): ConnectionResult = ConnectionResult.Success
 
@@ -882,6 +917,7 @@ class MediaLibraryRepositoryTest {
             server: WebDavServer,
             path: String,
         ): ListDirectoryResult {
+            if (shouldThrowCancellation) throw CancellationException("Cancelled")
             callCount[path] = (callCount[path] ?: 0) + 1
             return results[path]
                 ?: ListDirectoryResult.Success(RemoteDirectory(path = path, name = path.trim('/').substringAfterLast('/')))

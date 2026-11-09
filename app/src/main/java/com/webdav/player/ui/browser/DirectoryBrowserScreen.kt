@@ -639,6 +639,7 @@ fun DirectoryBrowserScreen(
             searchQuery = uiState.searchQuery,
             onQueryChange = { viewModel.onSearchQueryChanged(it) },
             onClearQuery = { viewModel.onClearSearchQuery() },
+            onSearch = { viewModel.onSearchSubmitted(it) },
             isSearchSelectionMode = isSearchSelectionMode,
             selectedCount = selectedSearchTrackIds.size,
             isAllSelected =

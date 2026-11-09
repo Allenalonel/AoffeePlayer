@@ -13,6 +13,7 @@ import com.webdav.player.domain.repository.MediaLibraryRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.session.MusicPlayerAppSession
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,6 +48,7 @@ class DirectoryBrowserViewModel(
 
     private var currentLoadJob: Job? = null
     private var searchJob: Job? = null
+    private var recordHistoryJob: Job? = null
 
     init {
         val initialHistory = mediaLibraryRepository.getSearchHistory()
@@ -250,6 +252,7 @@ class DirectoryBrowserViewModel(
     fun onSearchQueryChanged(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
         searchJob?.cancel()
+        recordHistoryJob?.cancel()
         val trimmed = query.trim()
         if (trimmed.isBlank()) {
             clearSearchSelection()
@@ -257,6 +260,11 @@ class DirectoryBrowserViewModel(
             return
         }
         executeSearch(trimmed, _uiState.value.isGlobalSearch)
+        recordHistoryJob =
+            viewModelScope.launch {
+                delay(1500L)
+                onSearchSubmitted(trimmed)
+            }
     }
 
     fun onToggleSearchScope() {
@@ -285,8 +293,13 @@ class DirectoryBrowserViewModel(
 
     fun onSearchActiveChanged(active: Boolean) {
         if (!active) {
+            val trimmed = _uiState.value.searchQuery.trim()
+            if (trimmed.isNotBlank()) {
+                onSearchSubmitted(trimmed)
+            }
             clearSearchSelection()
             searchJob?.cancel()
+            recordHistoryJob?.cancel()
             _uiState.update {
                 it.copy(isSearchActive = false, searchQuery = "", searchResult = LibrarySearchResult(), isSearching = false)
             }
@@ -302,14 +315,20 @@ class DirectoryBrowserViewModel(
     }
 
     fun onClearSearchQuery() {
+        val trimmed = _uiState.value.searchQuery.trim()
+        if (trimmed.isNotBlank()) {
+            onSearchSubmitted(trimmed)
+        }
         clearSearchSelection()
         searchJob?.cancel()
+        recordHistoryJob?.cancel()
         _uiState.update {
             it.copy(searchQuery = "", searchResult = LibrarySearchResult(), isSearching = false)
         }
     }
 
     fun onSearchSubmitted(query: String) {
+        recordHistoryJob?.cancel()
         val trimmed = query.trim()
         if (trimmed.isNotBlank()) {
             val updated = mediaLibraryRepository.recordSearchQuery(trimmed)
@@ -348,6 +367,11 @@ class DirectoryBrowserViewModel(
     }
 
     fun closeSearchBar() {
+        val trimmed = _uiState.value.searchQuery.trim()
+        if (trimmed.isNotBlank()) {
+            onSearchSubmitted(trimmed)
+        }
+        recordHistoryJob?.cancel()
         clearSearchSelection()
         _uiState.update { it.copy(isSearchActive = false, searchQuery = "", isSearching = false) }
     }

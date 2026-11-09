@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -1272,6 +1273,21 @@ class DirectoryBrowserViewModelTest {
             viewModel.onClearSearchQuery()
             assertEquals("", viewModel.uiState.value.searchQuery)
             assertTrue(viewModel.uiState.value.searchResult.isEmpty)
+            assertTrue(viewModel.uiState.value.searchHistory.contains("queen"))
+        }
+
+    @Test
+    fun searchBar_queryChange_autoRecordsToHistoryAfterDelay() =
+        runTest {
+            viewModel.onSearchQueryChanged("Coldplay")
+            // Before delay, not yet auto-recorded
+            assertFalse(viewModel.uiState.value.searchHistory.contains("Coldplay"))
+
+            advanceTimeBy(1600L)
+            advanceUntilIdle()
+
+            // After 1500ms delay, auto-recorded to history!
+            assertTrue(viewModel.uiState.value.searchHistory.contains("Coldplay"))
         }
 
     @Test

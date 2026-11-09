@@ -279,7 +279,7 @@ fun SearchResultsContent(
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "仅检索已缓存的目录快照，尝试输入其他关键词",
+                                text = "请检查输入的关键词，或尝试切换搜索范围",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

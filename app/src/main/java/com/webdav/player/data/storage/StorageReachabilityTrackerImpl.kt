@@ -58,7 +58,7 @@ class StorageReachabilityTrackerImpl(
         }
         _inactiveTracks.update { current ->
             current.mapValues { (key, value) ->
-                if (key.serverId == serverId) reason else value
+                if (key.serverId == serverId && value != InactiveReason.FILE_NOT_FOUND) reason else value
             }
         }
     }
@@ -137,11 +137,18 @@ class StorageReachabilityTrackerImpl(
             withContext(ioDispatcher) {
                 // 1. Probe WebDav servers that are currently marked unreachable
                 if (webDavClient != null && serverRepository != null) {
-                    val unreachableServerIds =
+                    val unreachableServerIdsFromStatus =
                         _serverReachability.value
                             .filter { !it.value && it.key != LOCAL_STORAGE_ID }
                             .keys
-                            .toList()
+                    val unreachableServerIdsFromTracks =
+                        _inactiveTracks.value
+                            .filter {
+                                it.key.serverId != LOCAL_STORAGE_ID &&
+                                    (it.value == InactiveReason.SERVER_UNREACHABLE || it.value == InactiveReason.SERVER_CREDENTIAL_INVALID)
+                            }.keys
+                            .map { it.serverId }
+                    val unreachableServerIds = (unreachableServerIdsFromStatus + unreachableServerIdsFromTracks).distinct()
 
                     if (unreachableServerIds.isNotEmpty()) {
                         coroutineScope {

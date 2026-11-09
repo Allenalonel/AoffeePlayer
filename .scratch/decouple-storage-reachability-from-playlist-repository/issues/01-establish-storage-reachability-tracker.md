@@ -5,10 +5,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** in-progress
+**Status:** completed
 
-- [ ] 在 `domain.storage` 包下定义 `StorageReachabilityTracker` 窄接口，暴露 `inactiveTracks: StateFlow<Map<TrackKey, InactiveReason>>`、`serverReachability: StateFlow<Map<Long, Boolean>>`、`reportTrackUnavailable`、`reportServerUnavailable`、`reportServerReachable` 与 `triggerReachabilitySelfHealing`。
-- [ ] 在 `data.storage` 包下实现 `StorageReachabilityTrackerImpl`，内部封装 `WebDavClient` 的 PROPFIND 连接测试、Android SAF Document 游标探针与状态映射。
-- [ ] 实现针对并发探活请求的防重入机制（`AtomicBoolean`），杜绝重复并发网络探针风暴。
-- [ ] 在 `AppContainer` 与 `WebDavApplication` 中注册并初始化 `storageReachabilityTracker` 单例。
-- [ ] 编写全面的单元测试套件 `StorageReachabilityTrackerTest`，验证单曲与整机故障上报、恢复信道状态流发射以及自愈探针逻辑全部通过。
+- [x] 在 `domain.storage` 包下定义 `StorageReachabilityTracker` 窄接口，暴露 `inactiveTracks: StateFlow<Map<TrackKey, InactiveReason>>`、`serverReachability: StateFlow<Map<Long, Boolean>>`、`reportTrackUnavailable`、`reportServerUnavailable`、`reportServerReachable` 与 `triggerReachabilitySelfHealing`。
+- [x] 在 `data.storage` 包下实现 `StorageReachabilityTrackerImpl`，内部封装 `WebDavClient` 的 PROPFIND 连接测试、Android SAF Document 游标探针与状态映射。
+- [x] 实现针对并发探活请求的防重入机制（`AtomicBoolean`），杜绝重复并发网络探针风暴。
+- [x] 在 `AppContainer` 与 `WebDavApplication` 中注册并初始化 `storageReachabilityTracker` 单例。
+- [x] 编写全面的单元测试套件 `StorageReachabilityTrackerTest`，验证单曲与整机故障上报、恢复信道状态流发射以及自愈探针逻辑全部通过。

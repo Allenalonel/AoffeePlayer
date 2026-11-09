@@ -370,6 +370,40 @@ class MediaLibraryRepositoryTest {
             assertEquals("/music/song2.mp3", indexedAfter[0].remotePath)
         }
 
+    @Test
+    fun observeDirectoryContent_writesThroughCheckpointsForDirectoryAndSubDirectories() =
+        runTest {
+            val sub1 = RemoteDirectory(path = "/music/Rock/", name = "Rock")
+            val sub2 = RemoteDirectory(path = "/music/Pop/", name = "Pop")
+            val dir =
+                RemoteDirectory(
+                    path = "/music/",
+                    name = "music",
+                    subDirectories = listOf(sub1, sub2),
+                    lastModified = 12345L,
+                    etag = "etag-root",
+                )
+            fakeWebDavClient.results["/music/"] = ListDirectoryResult.Success(dir)
+
+            repository.observeDirectoryContent(testServer, "/music/").toList()
+
+            // Verify parent directory checkpoint was written
+            val parentCp = checkpointDao.getCheckpoint(testServer.id, "/music/")
+            assertNotNull(parentCp)
+            assertEquals("etag-root", parentCp?.etag)
+
+            // Verify subdirectories checkpoints were written
+            val rockCp = checkpointDao.getCheckpoint(testServer.id, "/music/Rock/")
+            assertNotNull("Subdirectory Rock must have checkpoint written", rockCp)
+
+            val popCp = checkpointDao.getCheckpoint(testServer.id, "/music/Pop/")
+            assertNotNull("Subdirectory Pop must have checkpoint written", popCp)
+
+            // Verify they are immediately searchable via repository.search
+            val searchResult = repository.search("Rock", testServer.id).first()
+            assertTrue(searchResult.matchedDirectories.any { it.name == "Rock" && it.path == "/music/Rock/" })
+        }
+
     // =========================================================================
     // 3. Local Directory Browsing Tests
     // =========================================================================

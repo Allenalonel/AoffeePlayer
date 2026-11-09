@@ -4,6 +4,7 @@ import android.content.Context
 import com.webdav.player.data.local.DirectoryCacheDao
 import com.webdav.player.data.local.DirectoryCacheEntity
 import com.webdav.player.data.local.DirectorySyncCheckpointDao
+import com.webdav.player.data.local.DirectorySyncCheckpointEntity
 import com.webdav.player.data.local.LocalStorageFolderDao
 import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.local.MediaTrackIndexEntity
@@ -314,6 +315,7 @@ class MediaLibraryRepositoryImpl(
             ),
         )
         syncDirectoryToMediaIndex(serverId, normalizedPath, directory)
+        syncDirectoryToCheckpoints(serverId, normalizedPath, directory)
     }
 
     private suspend fun syncDirectoryToMediaIndex(
@@ -361,6 +363,44 @@ class MediaLibraryRepositoryImpl(
             throw ce
         } catch (_: Exception) {
             // Non-fatal index sync failure
+        }
+    }
+
+    private suspend fun syncDirectoryToCheckpoints(
+        serverId: Long,
+        normalizedPath: String,
+        directory: RemoteDirectory,
+    ) {
+        val cpDao = directorySyncCheckpointDao ?: return
+        val isLocal = serverId == LOCAL_STORAGE_ID || normalizedPath.startsWith("/local/")
+        val effectiveServerId = if (isLocal) LOCAL_STORAGE_ID else serverId
+        val now = System.currentTimeMillis()
+        try {
+            cpDao.upsertCheckpoint(
+                DirectorySyncCheckpointEntity(
+                    serverId = effectiveServerId,
+                    path = normalizedPath,
+                    lastModified = directory.lastModified,
+                    etag = directory.etag,
+                    lastScannedMs = now,
+                ),
+            )
+            for (sub in directory.subDirectories) {
+                val subPath = RemoteDirectory.normalizePath(sub.path)
+                cpDao.upsertCheckpoint(
+                    DirectorySyncCheckpointEntity(
+                        serverId = effectiveServerId,
+                        path = subPath,
+                        lastModified = sub.lastModified,
+                        etag = sub.etag,
+                        lastScannedMs = now,
+                    ),
+                )
+            }
+        } catch (ce: CancellationException) {
+            throw ce
+        } catch (_: Exception) {
+            // Non-fatal checkpoint sync failure
         }
     }
 
@@ -424,10 +464,9 @@ class MediaLibraryRepositoryImpl(
             }
         } else {
             if (webDavSyncScanner != null) {
-                val pathPrefix = server.pathPrefix.ifBlank { "/" }
                 updateSyncState(
                     server.id,
-                    LibrarySyncState.Scanning(progress = 0f, currentPath = pathPrefix, tracksFound = 0),
+                    LibrarySyncState.Scanning(progress = 0f, currentPath = "/", tracksFound = 0),
                 )
                 try {
                     val result = webDavSyncScanner.sync(

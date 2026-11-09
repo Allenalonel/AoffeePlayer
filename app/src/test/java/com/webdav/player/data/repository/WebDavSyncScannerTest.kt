@@ -584,4 +584,30 @@ class WebDavSyncScannerTest {
             assertEquals("album.flac", tracks.first().fileName)
             assertEquals("/Album/album.flac", tracks.first().remotePath)
         }
+
+    @Test
+    fun sync_whenServerHasPathPrefix_scansFromRootAndDoesNotDuplicatePrefix() =
+        runTest {
+            val serverWithPrefix = testServer.copy(pathPrefix = "/dav")
+            val rootDir =
+                RemoteDirectory(
+                    path = "/",
+                    name = "/",
+                    subDirectories = listOf(RemoteDirectory(path = "/Pop/", name = "Pop")),
+                )
+            val popDir =
+                RemoteDirectory(
+                    path = "/Pop/",
+                    name = "Pop",
+                    files = listOf(RemoteFile(name = "Song.mp3", path = "/Pop/Song.mp3", size = 1000L)),
+                )
+            fakeClient.directoryTree["/"] = rootDir
+            fakeClient.directoryTree["/Pop/"] = popDir
+
+            val result = scanner.sync(serverWithPrefix)
+            assertTrue(result is LibrarySyncResult.Success)
+            assertTrue("Must visit '/' as root", fakeClient.visitedPaths.contains("/"))
+            assertTrue("Must visit '/Pop/'", fakeClient.visitedPaths.contains("/Pop/"))
+            assertFalse("Must never visit '/dav/' as root", fakeClient.visitedPaths.contains("/dav/"))
+        }
 }

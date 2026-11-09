@@ -63,7 +63,7 @@ class ServerRepositoryTest {
                 trackMetadataDao = database.trackMetadataDao(),
                 localStorageFolderDao = database.localStorageFolderDao(),
                 context = context,
-                mediaLibraryRepository = mediaLibraryRepository,
+                cascadeInvalidator = mediaLibraryRepository,
             )
     }
 
@@ -390,7 +390,7 @@ class ServerRepositoryTest {
                     trackMetadataDao = database.trackMetadataDao(),
                     localStorageFolderDao = database.localStorageFolderDao(),
                     context = context,
-                    mediaLibraryRepository = fakeMediaLibraryRepo,
+                    cascadeInvalidator = fakeMediaLibraryRepo,
                 )
 
             val serverId = repoWithFake.saveServer(WebDavServer(name = "Cascade NAS", url = "http://nas"))

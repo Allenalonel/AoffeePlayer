@@ -4,12 +4,12 @@
 
 **Blocked by:** 01: Establish StorageCascadeInvalidator Seam and Decouple Local Directory Resolver
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Update `ServerRepositoryImpl` constructor to receive `private val cascadeInvalidator: StorageCascadeInvalidator? = null`.
-- [ ] Permanently remove mutable field `var mediaLibraryRepository: MediaLibraryRepository? = null` from `ServerRepositoryImpl`.
-- [ ] Remove import of `com.webdav.player.domain.repository.MediaLibraryRepository` from `ServerRepositoryImpl.kt`.
-- [ ] Update `ServerRepositoryImpl.deleteServer(id)` to invoke `cascadeInvalidator?.clearStorageData(id)`.
-- [ ] Update `ServerRepositoryImpl.removeMountedLocalFolder(uriString)` to invoke `cascadeInvalidator?.clearLocalFolderData(uriString)`.
-- [ ] Update `ServerRepositoryTest` and `ServerCascadeDeletionTest` to pass `cascadeInvalidator` in constructor (using `FakeMediaLibraryRepository` or `MediaLibraryRepositoryImpl`).
-- [ ] Run `./gradlew test --tests "*ServerRepositoryTest*" --tests "*ServerCascadeDeletionTest*"` and ensure all tests pass green.
+- [x] Update `ServerRepositoryImpl` constructor to receive `private val cascadeInvalidator: StorageCascadeInvalidator? = null`.
+- [x] Permanently remove mutable field `var mediaLibraryRepository: MediaLibraryRepository? = null` from `ServerRepositoryImpl`.
+- [x] Remove import of `com.webdav.player.domain.repository.MediaLibraryRepository` from `ServerRepositoryImpl.kt`.
+- [x] Update `ServerRepositoryImpl.deleteServer(id)` to invoke `cascadeInvalidator?.clearStorageData(id)`.
+- [x] Update `ServerRepositoryImpl.removeMountedLocalFolder(uriString)` to invoke `cascadeInvalidator?.clearLocalFolderData(uriString)`.
+- [x] Update `ServerRepositoryTest` and `ServerCascadeDeletionTest` to pass `cascadeInvalidator` in constructor (using `FakeMediaLibraryRepository` or `MediaLibraryRepositoryImpl`).
+- [x] Run `./gradlew test --tests "*ServerRepositoryTest*" --tests "*ServerCascadeDeletionTest*"` and ensure all tests pass green.

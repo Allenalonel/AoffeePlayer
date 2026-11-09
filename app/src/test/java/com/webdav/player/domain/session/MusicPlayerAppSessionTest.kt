@@ -2596,7 +2596,7 @@ class MusicPlayerAppSessionTest {
             orderedTrackIds: List<Long>,
         ) {}
 
-        override fun markTrackInactive(
+        fun markTrackInactive(
             serverId: Long,
             remotePath: String,
             reason: InactiveReason,

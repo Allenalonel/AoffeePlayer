@@ -6,27 +6,19 @@ import androidx.test.core.app.ApplicationProvider
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.PlaylistDao
 import com.webdav.player.data.local.PlaylistTrackEntity
-import com.webdav.player.data.remote.ConnectionResult
-import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.InactiveReason
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
-import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.PlaylistTrackEntry
-import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
-import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
+import com.webdav.player.domain.storage.FakeStorageReachabilityTracker
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -118,326 +110,180 @@ class PlaylistRepositoryTest {
             assertTrue(repository.isPlaylistNameExists("  摇滚专区  "))
             assertFalse(repository.isPlaylistNameExists("古典"))
 
-            // Exclude current playlist id during rename check
+            // When excludePlaylistId matches, it should return false
             assertFalse(repository.isPlaylistNameExists("摇滚专区", excludePlaylistId = id))
+            // But if checking another playlist with same name, returns true
+            assertTrue(repository.isPlaylistNameExists("摇滚专区", excludePlaylistId = 9999L))
         }
 
     @Test
-    fun renamePlaylist_success_andUpdatesTimestamp() =
+    fun renamePlaylist_success_updatesNameAndTimestamp() =
         runBlocking {
-            val id = repository.createPlaylist("原名称")
+            val id = repository.createPlaylist("旧歌单")
             simulatedTime = 2_000_000L
 
-            repository.renamePlaylist(id, "新名称")
-            val updated = repository.getPlaylist(id)
-            assertNotNull(updated)
-            assertEquals("新名称", updated?.name)
-            assertEquals(2_000_000L, updated?.updatedAtMs)
-            assertEquals(1_000_000L, updated?.createdAtMs)
+            repository.renamePlaylist(id, "新歌单")
+
+            val playlist = repository.getPlaylist(id)
+            assertEquals("新歌单", playlist?.name)
+            assertEquals(1_000_000L, playlist?.createdAtMs)
+            assertEquals(2_000_000L, playlist?.updatedAtMs)
         }
 
     @Test
-    fun renamePlaylist_duplicateName_throwsException() {
+    fun renamePlaylist_duplicateOrSelfName() {
         runBlocking {
-            repository.createPlaylist("歌单A")
-            val id2 = repository.createPlaylist("歌单B")
+            val id1 = repository.createPlaylist("歌单A")
+            repository.createPlaylist("歌单B")
 
+            // Renaming to self should succeed
+            repository.renamePlaylist(id1, "歌单A")
+
+            // Renaming to existing other playlist should fail
             assertThrows(IllegalArgumentException::class.java) {
                 runBlocking {
-                    repository.renamePlaylist(id2, "歌单A")
+                    repository.renamePlaylist(id1, "歌单B")
                 }
             }
         }
     }
 
     @Test
-    fun deletePlaylist_cascadesDeleteToTracks() =
+    fun deletePlaylist_cascadesTrackDeletion() =
         runBlocking {
             val playlistId = repository.createPlaylist("待删除歌单")
-            val track1 =
+            val track =
                 AudioTrack(
-                    id = "1:/track1.flac",
+                    id = "1:/music/a.mp3",
                     serverId = 1L,
-                    remotePath = "/track1.flac",
-                    title = "Track 1",
-                    format = AudioFormat.FLAC,
+                    remotePath = "/music/a.mp3",
+                    title = "Song A",
+                    format = AudioFormat.MP3,
                 )
-            repository.addTrackToPlaylist(playlistId, track1)
+            repository.addTrackToPlaylist(playlistId, track)
 
             val tracksBefore = repository.getTracksForPlaylist(playlistId)
             assertEquals(1, tracksBefore.size)
 
             repository.deletePlaylist(playlistId)
+
             assertNull(repository.getPlaylist(playlistId))
-
             val tracksAfter = repository.getTracksForPlaylist(playlistId)
-            assertTrue(tracksAfter.isEmpty())
+            assertEquals(0, tracksAfter.size)
         }
 
     @Test
-    fun addTrackToPlaylist_duplicateTrackReturnsMinusOneAndDoesNotDuplicate() =
+    fun addTrackToPlaylist_success_andMaintainsSortOrder() =
         runBlocking {
-            val playlistId = repository.createPlaylist("防重测试歌单")
-            val track =
-                AudioTrack(
-                    id = "1:/i_do.mp3",
-                    serverId = 1L,
-                    remotePath = "/i_do.mp3",
-                    title = "I Do",
-                    artist = "911",
-                    format = AudioFormat.MP3,
-                )
-
-            val firstInsertId = repository.addTrackToPlaylist(playlistId, track)
-            assertTrue(firstInsertId > 0L)
-
-            val secondInsertId = repository.addTrackToPlaylist(playlistId, track)
-            assertEquals(-1L, secondInsertId)
-
-            val tracks = repository.getTracksForPlaylist(playlistId)
-            assertEquals(1, tracks.size)
-            assertEquals("I Do", tracks[0].title)
-        }
-
-    @Test
-    fun addTracksToPlaylist_filtersDuplicates() =
-        runBlocking {
-            val playlistId = repository.createPlaylist("批量防重歌单")
+            val playlistId = repository.createPlaylist("排序测试")
             val track1 = AudioTrack(id = "1:/1.mp3", serverId = 1L, remotePath = "/1.mp3", title = "T1", format = AudioFormat.MP3)
             val track2 = AudioTrack(id = "1:/2.mp3", serverId = 1L, remotePath = "/2.mp3", title = "T2", format = AudioFormat.MP3)
 
-            repository.addTrackToPlaylist(playlistId, track1)
+            val id1 = repository.addTrackToPlaylist(playlistId, track1)
+            val id2 = repository.addTrackToPlaylist(playlistId, track2)
 
-            // Batch adding track1 and track2: track1 is duplicate, only track2 should be inserted
-            val insertedIds = repository.addTracksToPlaylist(playlistId, listOf(track1, track2))
-            assertEquals(1, insertedIds.size)
-
-            val tracks = repository.getTracksForPlaylist(playlistId)
-            assertEquals(2, tracks.size)
-        }
-
-    @Test
-    fun getTracksForPlaylist_selfHealsExistingDuplicates() =
-        runBlocking {
-            val playlistId = repository.createPlaylist("自愈重复歌单")
-            val track = AudioTrack(id = "1:/i_do.mp3", serverId = 1L, remotePath = "/i_do.mp3", title = "I Do", format = AudioFormat.MP3)
-
-            // Manually insert duplicate rows directly into DAO to simulate existing legacy duplicates
-            val entity1 =
-                com.webdav.player.data.local.PlaylistTrackEntity(
-                    playlistId = playlistId,
-                    serverId = track.serverId,
-                    remotePath = track.remotePath,
-                    sortOrder = 0,
-                    title = track.title,
-                    format = "MP3",
-                )
-            val entity2 =
-                com.webdav.player.data.local.PlaylistTrackEntity(
-                    playlistId = playlistId,
-                    serverId = track.serverId,
-                    remotePath = track.remotePath,
-                    sortOrder = 1,
-                    title = track.title,
-                    format = "MP3",
-                )
-            database.playlistDao().insertTrack(entity1)
-            database.playlistDao().insertTrack(entity2)
-
-            // Direct DAO count has 2
-            assertEquals(2, database.playlistDao().getTracksForPlaylist(playlistId).size)
-
-            // Flow query self-heals: filters duplicate in return list
-            val flowTracks = repository.getTracksForPlaylistFlow(playlistId).first()
-            assertEquals(1, flowTracks.size)
-            assertEquals("I Do", flowTracks[0].title)
-
-            // Repository query self-heals: filters duplicate in return list and launches background cleanup
-            val tracks = repository.getTracksForPlaylist(playlistId)
-            assertEquals(1, tracks.size)
-            assertEquals("I Do", tracks[0].title)
-            assertEquals(flowTracks, tracks)
-        }
-
-    @Test
-    fun addTrackToPlaylist_crossServerTracksPersistedCorrectly() =
-        runBlocking {
-            val playlistId = repository.createPlaylist("跨服务器歌单")
-
-            // Server 1 track
-            val server1Track =
-                AudioTrack(
-                    id = "1:/music/nas_song.flac",
-                    serverId = 1L,
-                    remotePath = "/music/nas_song.flac",
-                    title = "NAS 歌曲",
-                    artist = "NAS 歌手",
-                    album = "NAS 专辑",
-                    durationMs = 240000L,
-                    size = 35000000L,
-                    format = AudioFormat.FLAC,
-                    coverThumbnailPath = "/covers/1.jpg",
-                )
-
-            // Server 2 track
-            val server2Track =
-                AudioTrack(
-                    id = "2:/cloud/work_song.mp3",
-                    serverId = 2L,
-                    remotePath = "/cloud/work_song.mp3",
-                    title = "办公云盘歌曲",
-                    artist = "云端歌手",
-                    album = "云端专辑",
-                    durationMs = 180000L,
-                    size = 8000000L,
-                    format = AudioFormat.MP3,
-                )
-
-            val id1 = repository.addTrackToPlaylist(playlistId, server1Track)
-            val id2 = repository.addTrackToPlaylist(playlistId, server2Track)
             assertTrue(id1 > 0)
             assertTrue(id2 > 0)
 
+            val tracks = repository.getTracksForPlaylistFlow(playlistId).first()
+            assertEquals(2, tracks.size)
+            assertEquals(0, tracks[0].sortOrder)
+            assertEquals("T1", tracks[0].title)
+            assertEquals(1, tracks[1].sortOrder)
+            assertEquals("T2", tracks[1].title)
+
             val playlist = repository.getPlaylist(playlistId)
             assertEquals(2, playlist?.trackCount)
-
-            val tracks = repository.getTracksForPlaylist(playlistId)
-            assertEquals(2, tracks.size)
-
-            val entry1 = tracks[0]
-            assertEquals(1L, entry1.serverId)
-            assertEquals("/music/nas_song.flac", entry1.remotePath)
-            assertEquals("NAS 歌曲", entry1.title)
-            assertEquals("NAS 歌手", entry1.artist)
-            assertEquals("NAS 专辑", entry1.album)
-            assertEquals(240000L, entry1.durationMs)
-            assertEquals(35000000L, entry1.size)
-            assertEquals(AudioFormat.FLAC, entry1.format)
-            assertEquals(0, entry1.sortOrder)
-
-            val entry2 = tracks[1]
-            assertEquals(2L, entry2.serverId)
-            assertEquals("/cloud/work_song.mp3", entry2.remotePath)
-            assertEquals("办公云盘歌曲", entry2.title)
-            assertEquals(AudioFormat.MP3, entry2.format)
-            assertEquals(1, entry2.sortOrder)
         }
 
     @Test
-    fun addTrackToPlaylist_physicalAudioTrackPersistedCorrectly() =
+    fun addTrackToPlaylist_duplicateRemotePath_returnsNegativeOneAndDoesNotInsert() =
         runBlocking {
-            val playlistId = repository.createPlaylist("精选歌单")
+            val playlistId = repository.createPlaylist("去重测试")
+            val track1 = AudioTrack(id = "1:/same.mp3", serverId = 1L, remotePath = "/same.mp3", title = "T1", format = AudioFormat.MP3)
+            val trackDuplicate =
+                AudioTrack(id = "1:/same.mp3", serverId = 1L, remotePath = "/same.mp3", title = "T1 Dup", format = AudioFormat.MP3)
 
-            val audioTrack =
-                AudioTrack(
-                    id = "1:/music/album.wav",
-                    serverId = 1L,
-                    remotePath = "/music/album.wav",
-                    title = "交响乐第三乐章",
-                    artist = "乐团",
-                    album = "交响曲",
-                    durationMs = 310000L,
-                    size = 450000000L,
-                    format = AudioFormat.WAV,
-                )
+            val id1 = repository.addTrackToPlaylist(playlistId, track1)
+            val id2 = repository.addTrackToPlaylist(playlistId, trackDuplicate)
 
-            repository.addTrackToPlaylist(playlistId, audioTrack)
+            assertTrue(id1 > 0)
+            assertEquals(-1L, id2)
 
             val tracks = repository.getTracksForPlaylist(playlistId)
             assertEquals(1, tracks.size)
-
-            val entry = tracks[0]
-            assertEquals(1L, entry.serverId)
-            assertEquals("/music/album.wav", entry.remotePath)
-            assertEquals("交响乐第三乐章", entry.title)
-
-            val reconstructedAudioTrack = entry.toAudioTrack()
-            assertEquals("1:/music/album.wav", reconstructedAudioTrack.id)
-            assertEquals(1L, reconstructedAudioTrack.serverId)
-        }
-
-    @Test
-    fun addTracksToPlaylist_batchAdditionMaintainsSortOrder() =
-        runBlocking {
-            val playlistId = repository.createPlaylist("批量添加")
-
-            val tracks =
-                (1..5).map { i ->
-                    AudioTrack(
-                        id = "1:/track_$i.mp3",
-                        serverId = 1L,
-                        remotePath = "/track_$i.mp3",
-                        title = "Track $i",
-                        format = AudioFormat.MP3,
-                    )
-                }
-
-            val ids = repository.addTracksToPlaylist(playlistId, tracks)
-            assertEquals(5, ids.size)
-
-            val stored = repository.getTracksForPlaylist(playlistId)
-            assertEquals(5, stored.size)
-            for (i in 0 until 5) {
-                assertEquals(i, stored[i].sortOrder)
-                assertEquals("Track ${i + 1}", stored[i].title)
-            }
-        }
-
-    @Test
-    fun removeTrackFromPlaylist_removesEntryAndUpdateCount() =
-        runBlocking {
-            val playlistId = repository.createPlaylist("测试移除")
-            val track1 = AudioTrack(id = "1:/1.mp3", serverId = 1L, remotePath = "/1.mp3", title = "T1", format = AudioFormat.MP3)
-            val track2 = AudioTrack(id = "1:/2.mp3", serverId = 1L, remotePath = "/2.mp3", title = "T2", format = AudioFormat.MP3)
-
-            val entryId1 = repository.addTrackToPlaylist(playlistId, track1)
-            repository.addTrackToPlaylist(playlistId, track2)
-
-            assertEquals(2, repository.getPlaylist(playlistId)?.trackCount)
-
-            repository.removeTrackFromPlaylist(entryId1)
-
-            val remaining = repository.getTracksForPlaylist(playlistId)
-            assertEquals(1, remaining.size)
-            assertEquals("T2", remaining[0].title)
+            assertEquals("T1", tracks[0].title)
             assertEquals(1, repository.getPlaylist(playlistId)?.trackCount)
         }
 
     @Test
-    fun updateTrackOrder_reordersTracksAtomically() =
+    fun addTracksToPlaylist_batchAddsUniqueTracks_andIgnoresDuplicates() =
         runBlocking {
-            val playlistId = repository.createPlaylist("拖拽排序测试")
-            val trackA = AudioTrack(id = "1:/a.mp3", serverId = 1L, remotePath = "/a.mp3", title = "A", format = AudioFormat.MP3)
-            val trackB = AudioTrack(id = "1:/b.mp3", serverId = 1L, remotePath = "/b.mp3", title = "B", format = AudioFormat.MP3)
-            val trackC = AudioTrack(id = "1:/c.mp3", serverId = 1L, remotePath = "/c.mp3", title = "C", format = AudioFormat.MP3)
+            val playlistId = repository.createPlaylist("批量添加测试")
+            val track1 = AudioTrack(id = "1:/1.mp3", serverId = 1L, remotePath = "/1.mp3", title = "T1", format = AudioFormat.MP3)
+            val track2 = AudioTrack(id = "1:/2.mp3", serverId = 1L, remotePath = "/2.mp3", title = "T2", format = AudioFormat.MP3)
+            val track3 = AudioTrack(id = "1:/3.mp3", serverId = 1L, remotePath = "/3.mp3", title = "T3", format = AudioFormat.MP3)
 
-            repository.addTrackToPlaylist(playlistId, trackA)
-            repository.addTrackToPlaylist(playlistId, trackB)
-            repository.addTrackToPlaylist(playlistId, trackC)
-
-            val initial = repository.getTracksForPlaylist(playlistId)
-            // Reverse order: C, B, A
-            val reversed = listOf(initial[2], initial[1], initial[0])
+            repository.addTrackToPlaylist(playlistId, track1)
 
             simulatedTime = 3_000_000L
-            repository.updateTrackOrders(playlistId, reversed.map { it.id })
+            // Adding batch containing track1 (duplicate) and track2, track3
+            val insertedIds = repository.addTracksToPlaylist(playlistId, listOf(track1, track2, track3))
 
-            val updated = repository.getTracksForPlaylist(playlistId)
-            assertEquals(3, updated.size)
-            assertEquals("C", updated[0].title)
-            assertEquals(0, updated[0].sortOrder)
-            assertEquals("B", updated[1].title)
-            assertEquals(1, updated[1].sortOrder)
-            assertEquals("A", updated[2].title)
-            assertEquals(2, updated[2].sortOrder)
+            assertEquals(2, insertedIds.size)
+            val tracks = repository.getTracksForPlaylist(playlistId)
+            assertEquals(3, tracks.size)
+            assertEquals(listOf(0, 1, 2), tracks.map { it.sortOrder })
+            assertEquals(listOf("T1", "T2", "T3"), tracks.map { it.title })
 
-            assertEquals(3_000_000L, repository.getPlaylist(playlistId)?.updatedAtMs)
+            val playlist = repository.getPlaylist(playlistId)
+            assertEquals(3, playlist?.trackCount)
+            assertEquals(3_000_000L, playlist?.updatedAtMs)
         }
 
     @Test
-    fun updateTrackOrders_reordersUsingIdsList() =
+    fun addTracksToPlaylist_whenDuplicateWithinBatch_deduplicatesFirst() =
         runBlocking {
-            val playlistId = repository.createPlaylist("ID列表排序测试")
+            val playlistId = repository.createPlaylist("批内重复测试")
+            val track1 = AudioTrack(id = "1:/dup.mp3", serverId = 1L, remotePath = "/dup.mp3", title = "Dup 1", format = AudioFormat.MP3)
+            val track1Again =
+                AudioTrack(id = "1:/dup.mp3", serverId = 1L, remotePath = "/dup.mp3", title = "Dup 2", format = AudioFormat.MP3)
+
+            val insertedIds = repository.addTracksToPlaylist(playlistId, listOf(track1, track1Again))
+            assertEquals(1, insertedIds.size)
+
+            val tracks = repository.getTracksForPlaylist(playlistId)
+            assertEquals(1, tracks.size)
+            assertEquals("Dup 1", tracks[0].title)
+        }
+
+    @Test
+    fun removeTrackFromPlaylist_deletesTrack_andUpdatesPlaylistTimestamp() =
+        runBlocking {
+            val playlistId = repository.createPlaylist("单曲删除测试")
+            val track1 = AudioTrack(id = "1:/1.mp3", serverId = 1L, remotePath = "/1.mp3", title = "T1", format = AudioFormat.MP3)
+            val track2 = AudioTrack(id = "1:/2.mp3", serverId = 1L, remotePath = "/2.mp3", title = "T2", format = AudioFormat.MP3)
+
+            val id1 = repository.addTrackToPlaylist(playlistId, track1)
+            val id2 = repository.addTrackToPlaylist(playlistId, track2)
+
+            simulatedTime = 4_000_000L
+            repository.removeTrackFromPlaylist(id1)
+
+            val tracks = repository.getTracksForPlaylist(playlistId)
+            assertEquals(1, tracks.size)
+            assertEquals(id2, tracks[0].id)
+            assertEquals("T2", tracks[0].title)
+
+            val playlist = repository.getPlaylist(playlistId)
+            assertEquals(1, playlist?.trackCount)
+            assertEquals(4_000_000L, playlist?.updatedAtMs)
+        }
+
+    @Test
+    fun updateTrackOrders_persistsNewSortOrdersCorrectly() =
+        runBlocking {
+            val playlistId = repository.createPlaylist("拖拽排序测试")
             val track1 = AudioTrack(id = "1:/1.mp3", serverId = 1L, remotePath = "/1.mp3", title = "T1", format = AudioFormat.MP3)
             val track2 = AudioTrack(id = "1:/2.mp3", serverId = 1L, remotePath = "/2.mp3", title = "T2", format = AudioFormat.MP3)
             val track3 = AudioTrack(id = "1:/3.mp3", serverId = 1L, remotePath = "/3.mp3", title = "T3", format = AudioFormat.MP3)
@@ -446,63 +292,30 @@ class PlaylistRepositoryTest {
             val id2 = repository.addTrackToPlaylist(playlistId, track2)
             val id3 = repository.addTrackToPlaylist(playlistId, track3)
 
-            simulatedTime = 4_000_000L
+            // Reorder to: id3, id1, id2
             repository.updateTrackOrders(playlistId, listOf(id3, id1, id2))
 
-            val updated = repository.getTracksForPlaylist(playlistId)
-            assertEquals(3, updated.size)
-            assertEquals("T3", updated[0].title)
-            assertEquals(0, updated[0].sortOrder)
-            assertEquals("T1", updated[1].title)
-            assertEquals(1, updated[1].sortOrder)
-            assertEquals("T2", updated[2].title)
-            assertEquals(2, updated[2].sortOrder)
-
-            assertEquals(4_000_000L, repository.getPlaylist(playlistId)?.updatedAtMs)
+            val tracks = repository.getTracksForPlaylist(playlistId)
+            assertEquals(3, tracks.size)
+            assertEquals(id3, tracks[0].id)
+            assertEquals(0, tracks[0].sortOrder)
+            assertEquals(id1, tracks[1].id)
+            assertEquals(1, tracks[1].sortOrder)
+            assertEquals(id2, tracks[2].id)
+            assertEquals(2, tracks[2].sortOrder)
         }
 
     @Test
-    fun removeTrackFromPlaylist_byIdOnly_removesEntryAndUpdateCount() =
+    fun updateTrackCover_updatesThumbnailPath() =
         runBlocking {
-            val playlistId = repository.createPlaylist("单ID移除测试")
-            val track1 = AudioTrack(id = "1:/1.mp3", serverId = 1L, remotePath = "/1.mp3", title = "T1", format = AudioFormat.MP3)
-            val track2 = AudioTrack(id = "1:/2.mp3", serverId = 1L, remotePath = "/2.mp3", title = "T2", format = AudioFormat.MP3)
+            val playlistId = repository.createPlaylist("封面更新测试")
+            val track = AudioTrack(id = "1:/1.mp3", serverId = 1L, remotePath = "/1.mp3", title = "T1", format = AudioFormat.MP3)
+            val entryId = repository.addTrackToPlaylist(playlistId, track)
 
-            val entryId1 = repository.addTrackToPlaylist(playlistId, track1)
-            repository.addTrackToPlaylist(playlistId, track2)
-            assertEquals(2, repository.getPlaylist(playlistId)?.trackCount)
+            repository.updateTrackCover(entryId, "/covers/test.jpg")
 
-            simulatedTime = 5_000_000L
-            repository.removeTrackFromPlaylist(entryId1)
-
-            val remaining = repository.getTracksForPlaylist(playlistId)
-            assertEquals(1, remaining.size)
-            assertEquals("T2", remaining[0].title)
-            assertEquals(1, repository.getPlaylist(playlistId)?.trackCount)
-            assertEquals(5_000_000L, repository.getPlaylist(playlistId)?.updatedAtMs)
-        }
-
-    @Test
-    fun markTrackInactive_updatesTracksFlowWithInactiveReason() =
-        runBlocking {
-            val playlistId = repository.createPlaylist("失效标记测试")
-            val track1 = AudioTrack(id = "1:/1.mp3", serverId = 1L, remotePath = "/1.mp3", title = "T1", format = AudioFormat.MP3)
-            val track2 = AudioTrack(id = "1:/2.mp3", serverId = 1L, remotePath = "/2.mp3", title = "T2", format = AudioFormat.MP3)
-
-            repository.addTrackToPlaylist(playlistId, track1)
-            repository.addTrackToPlaylist(playlistId, track2)
-
-            repository.markTrackInactive(1L, "/1.mp3", InactiveReason.FILE_NOT_FOUND)
-
-            val tracks = repository.getTracksForPlaylistFlow(playlistId).first()
-            assertEquals(2, tracks.size)
-            assertTrue(tracks[0].isInactive)
-            assertEquals(InactiveReason.FILE_NOT_FOUND, tracks[0].inactiveReason)
-            assertFalse(tracks[1].isInactive)
-            assertNull(tracks[1].inactiveReason)
-
-            val snapshotTracks = repository.getTracksForPlaylist(playlistId)
-            assertEquals(tracks, snapshotTracks)
+            val tracks = repository.getTracksForPlaylist(playlistId)
+            assertEquals("/covers/test.jpg", tracks[0].coverThumbnailPath)
         }
 
     @Test
@@ -519,50 +332,145 @@ class PlaylistRepositoryTest {
 
             assertEquals(3, repository.getPlaylist(playlistId)?.trackCount)
 
+            simulatedTime = 5_000_000L
             repository.removeTracksFromPlaylist(playlistId, listOf(id1, id3))
 
             val remaining = repository.getTracksForPlaylist(playlistId)
             assertEquals(1, remaining.size)
             assertEquals("T2", remaining[0].title)
             assertEquals(1, repository.getPlaylist(playlistId)?.trackCount)
+            assertEquals(5_000_000L, repository.getPlaylist(playlistId)?.updatedAtMs)
         }
 
     @Test
-    fun markTrackInactive_persistsToDatabaseAndSurvivesRestart() =
+    fun getTracksForPlaylistFlow_combinesWithTracker_whenTrackReportedUnavailable() =
         runBlocking {
-            val playlistId = repository.createPlaylist("持久化失效测试")
+            val tracker = FakeStorageReachabilityTracker()
+            val repo =
+                PlaylistRepositoryImpl(
+                    playlistDao = dao,
+                    storageReachabilityTracker = tracker,
+                    timeProvider = { simulatedTime },
+                )
+            val playlistId = repo.createPlaylist("单曲失效响应流测试")
             val track1 = AudioTrack(id = "1:/1.mp3", serverId = 1L, remotePath = "/1.mp3", title = "T1", format = AudioFormat.MP3)
-            repository.addTrackToPlaylist(playlistId, track1)
+            val track2 = AudioTrack(id = "1:/2.mp3", serverId = 1L, remotePath = "/2.mp3", title = "T2", format = AudioFormat.MP3)
+            repo.addTrackToPlaylist(playlistId, track1)
+            repo.addTrackToPlaylist(playlistId, track2)
 
-            repository.markTrackInactive(1L, "/1.mp3", InactiveReason.FILE_NOT_FOUND)
-            kotlinx.coroutines.delay(100)
+            // Initially both active
+            val initialTracks = repo.getTracksForPlaylistFlow(playlistId).first()
+            assertFalse(initialTracks[0].isInactive)
+            assertFalse(initialTracks[1].isInactive)
 
-            val newRepo = PlaylistRepositoryImpl(database.playlistDao(), timeProvider = { simulatedTime })
-            val tracks = newRepo.getTracksForPlaylist(playlistId)
+            // Report track 1 unavailable
+            tracker.reportTrackUnavailable(1L, "/1.mp3", InactiveReason.FILE_NOT_FOUND)
+
+            val flowTracks = repo.getTracksForPlaylistFlow(playlistId).first()
+            assertEquals(2, flowTracks.size)
+            assertTrue(flowTracks[0].isInactive)
+            assertEquals(InactiveReason.FILE_NOT_FOUND, flowTracks[0].inactiveReason)
+            assertFalse(flowTracks[1].isInactive)
+            assertNull(flowTracks[1].inactiveReason)
+
+            // Suspend getTracksForPlaylist snapshot matches
+            val snapshotTracks = repo.getTracksForPlaylist(playlistId)
+            assertEquals(flowTracks, snapshotTracks)
+        }
+
+    @Test
+    fun getTracksForPlaylistFlow_combinesWithTracker_whenServerReportedUnavailableAndReachable() =
+        runBlocking {
+            val tracker = FakeStorageReachabilityTracker()
+            val repo =
+                PlaylistRepositoryImpl(
+                    playlistDao = dao,
+                    storageReachabilityTracker = tracker,
+                    timeProvider = { simulatedTime },
+                )
+            val playlistId = repo.createPlaylist("服务器失效与恢复响应流测试")
+            val track1 = AudioTrack(id = "10:/s1.mp3", serverId = 10L, remotePath = "/s1.mp3", title = "S1", format = AudioFormat.MP3)
+            val track2 = AudioTrack(id = "20:/s2.mp3", serverId = 20L, remotePath = "/s2.mp3", title = "S2", format = AudioFormat.MP3)
+            val e1 = repo.addTrackToPlaylist(playlistId, track1)
+            val e2 = repo.addTrackToPlaylist(playlistId, track2)
+
+            // Report server 10 unavailable
+            tracker.reportServerUnavailable(10L, InactiveReason.SERVER_UNREACHABLE)
+
+            val flowTracks = repo.getTracksForPlaylistFlow(playlistId).first()
+            val t1 = flowTracks.first { it.id == e1 }
+            val t2 = flowTracks.first { it.id == e2 }
+            assertTrue(t1.isInactive)
+            assertEquals(InactiveReason.SERVER_UNREACHABLE, t1.inactiveReason)
+            assertFalse(t2.isInactive)
+            assertNull(t2.inactiveReason)
+
+            // Report server 10 reachable
+            tracker.reportServerReachable(10L)
+
+            val restoredTracks = repo.getTracksForPlaylistFlow(playlistId).first()
+            val restoredT1 = restoredTracks.first { it.id == e1 }
+            assertFalse(restoredT1.isInactive)
+            assertNull(restoredT1.inactiveReason)
+            assertFalse(restoredTracks.first { it.id == e2 }.isInactive)
+
+            // Parity with snapshot
+            val snapshotTracks = repo.getTracksForPlaylist(playlistId)
+            assertEquals(restoredTracks, snapshotTracks)
+        }
+
+    @Test
+    fun coldStart_eliminatesPersistentDirtyState_whenTrackerDoesNotFlagInactive() =
+        runBlocking {
+            val playlistId = repository.createPlaylist("消除冷启动脏数据测试")
+            val track =
+                AudioTrack(id = "1:/dirty.mp3", serverId = 1L, remotePath = "/dirty.mp3", title = "Dirty Track", format = AudioFormat.MP3)
+            val entryId = repository.addTrackToPlaylist(playlistId, track)
+
+            // Simulate legacy dirty state on disk where entity is stamped inactive
+            dao.updateTrackInactiveStatus(1L, "/dirty.mp3", true, InactiveReason.SERVER_UNREACHABLE.name)
+            val entityOnDisk = dao.getTrackById(entryId)!!
+            assertTrue("Disk entity is stamped inactive", entityOnDisk.isInactive)
+
+            // New repo with fresh tracker (not flagging track or server)
+            val tracker = FakeStorageReachabilityTracker()
+            val newRepo =
+                PlaylistRepositoryImpl(
+                    playlistDao = dao,
+                    storageReachabilityTracker = tracker,
+                    timeProvider = { simulatedTime },
+                )
+
+            // Reactive flow must eliminate persistent dirty state
+            val flowTracks = newRepo.getTracksForPlaylistFlow(playlistId).first()
+            assertEquals(1, flowTracks.size)
+            assertFalse("Track must be active despite dirty disk state", flowTracks[0].isInactive)
+            assertNull("Inactive reason must be cleared", flowTracks[0].inactiveReason)
+
+            // Suspend query also eliminates dirty state
+            val snapshotTracks = newRepo.getTracksForPlaylist(playlistId)
+            assertFalse("Snapshot track must be active", snapshotTracks[0].isInactive)
+            assertNull("Snapshot inactive reason must be cleared", snapshotTracks[0].inactiveReason)
+        }
+
+    @Test
+    fun getTracksForPlaylistFlow_withoutTracker_defaultsToActiveTracks() =
+        runBlocking {
+            val repoWithoutTracker =
+                PlaylistRepositoryImpl(
+                    playlistDao = dao,
+                    storageReachabilityTracker = null,
+                    timeProvider = { simulatedTime },
+                )
+            val playlistId = repoWithoutTracker.createPlaylist("无Tracker默认在线测试")
+            val track = AudioTrack(id = "1:/track.mp3", serverId = 1L, remotePath = "/track.mp3", title = "T", format = AudioFormat.MP3)
+            repoWithoutTracker.addTrackToPlaylist(playlistId, track)
+
+            val tracks = repoWithoutTracker.getTracksForPlaylistFlow(playlistId).first()
             assertEquals(1, tracks.size)
-            assertTrue(tracks[0].isInactive)
-            assertEquals(InactiveReason.FILE_NOT_FOUND, tracks[0].inactiveReason)
+            assertFalse(tracks[0].isInactive)
+            assertNull(tracks[0].inactiveReason)
         }
-
-    private class TestServerRepository(
-        initialServers: List<WebDavServer> = emptyList(),
-    ) : ServerRepository {
-        val serversFlow = MutableStateFlow(initialServers)
-
-        override fun getAllServers(): Flow<List<WebDavServer>> = serversFlow.asStateFlow()
-
-        override fun getActiveServer(): Flow<WebDavServer?> = serversFlow.map { it.firstOrNull() }
-
-        override suspend fun getServerById(id: Long): WebDavServer? = serversFlow.value.firstOrNull { it.id == id }
-
-        override suspend fun saveServer(server: WebDavServer): Long = server.id
-
-        override suspend fun deleteServer(id: Long) {
-            serversFlow.update { list -> list.filterNot { it.id == id } }
-        }
-
-        override suspend fun setActiveServer(id: Long) {}
-    }
 
     private class TestTrackMetadataRepository : TrackMetadataRepository {
         val cachedMap = mutableMapOf<String, TrackMetadata>()
@@ -602,56 +510,8 @@ class PlaylistRepositoryTest {
     }
 
     @Test
-    fun getTracksForPlaylistFlow_withServerRepository_marksUnreachableServersInactive() =
+    fun getTracksForPlaylistFlow_withTrackMetadataRepository_enrichesCachedCover() =
         runBlocking {
-            val server1 = WebDavServer(id = 1L, name = "Active NAS", url = "http://192.168.1.100")
-            val serverRepo = TestServerRepository(listOf(server1))
-
-            val repoWithServer =
-                PlaylistRepositoryImpl(
-                    playlistDao = dao,
-                    serverRepository = serverRepo,
-                    timeProvider = { simulatedTime },
-                )
-
-            val playlistId = repoWithServer.createPlaylist("跨服连通性测试")
-            val track1 =
-                AudioTrack(id = "1:/online.mp3", serverId = 1L, remotePath = "/online.mp3", title = "Online", format = AudioFormat.MP3)
-            val track2 =
-                AudioTrack(
-                    id = "2:/offline.mp3",
-                    serverId = 2L,
-                    remotePath = "/offline.mp3",
-                    title = "Offline Server",
-                    format = AudioFormat.MP3,
-                )
-
-            repoWithServer.addTrackToPlaylist(playlistId, track1)
-            repoWithServer.addTrackToPlaylist(playlistId, track2)
-
-            val tracks = repoWithServer.getTracksForPlaylistFlow(playlistId).first()
-            assertEquals(2, tracks.size)
-
-            val online = tracks.first { it.remotePath == "/online.mp3" }
-            assertFalse(online.isInactive)
-            assertNull(online.inactiveReason)
-
-            val offline = tracks.first { it.remotePath == "/offline.mp3" }
-            assertTrue(offline.isInactive)
-            assertEquals(InactiveReason.SERVER_UNREACHABLE, offline.inactiveReason)
-
-            // Also verify suspend getTracksForPlaylist
-            val snapshotTracks = repoWithServer.getTracksForPlaylist(playlistId)
-            val snapshotOffline = snapshotTracks.first { it.remotePath == "/offline.mp3" }
-            assertTrue(snapshotOffline.isInactive)
-            assertEquals(InactiveReason.SERVER_UNREACHABLE, snapshotOffline.inactiveReason)
-        }
-
-    @Test
-    fun getTracksForPlaylistFlow_withTrackMetadataRepository_enrichesCachedCoverAndTriggersSelfHealing() =
-        runBlocking {
-            val server1 = WebDavServer(id = 1L, name = "Active NAS", url = "http://192.168.1.100")
-            val serverRepo = TestServerRepository(listOf(server1))
             val metadataRepo = TestTrackMetadataRepository()
 
             // /cached.mp3 has cached cover in Room metadata table
@@ -663,31 +523,21 @@ class PlaylistRepositoryTest {
                     coverThumbnailPath = "/covers/cached_thumb.jpg",
                 )
 
-            // /resolve.mp3 needs on-demand resolve
-            metadataRepo.singleResolvedMap["1:/resolve.mp3"] =
-                TrackMetadata(
-                    serverId = 1L,
-                    remotePath = "/resolve.mp3",
-                    title = "Resolved Song",
-                    coverThumbnailPath = "/covers/resolved_thumb.jpg",
-                )
-
             val repo =
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
-                    serverRepository = serverRepo,
                     trackMetadataRepository = metadataRepo,
                     timeProvider = { simulatedTime },
                 )
 
-            val playlistId = repo.createPlaylist("自愈测试")
+            val playlistId = repo.createPlaylist("封面丰富测试")
             val trackCached =
                 AudioTrack(id = "1:/cached.mp3", serverId = 1L, remotePath = "/cached.mp3", title = "Cached", format = AudioFormat.MP3)
-            val trackResolve =
-                AudioTrack(id = "1:/resolve.mp3", serverId = 1L, remotePath = "/resolve.mp3", title = "Resolve", format = AudioFormat.MP3)
+            val trackPlain =
+                AudioTrack(id = "1:/plain.mp3", serverId = 1L, remotePath = "/plain.mp3", title = "Plain", format = AudioFormat.MP3)
 
             val entryCachedId = repo.addTrackToPlaylist(playlistId, trackCached)
-            val entryResolveId = repo.addTrackToPlaylist(playlistId, trackResolve)
+            repo.addTrackToPlaylist(playlistId, trackPlain)
 
             val tracks = repo.getTracksForPlaylistFlow(playlistId).first()
             assertEquals(2, tracks.size)
@@ -695,27 +545,22 @@ class PlaylistRepositoryTest {
             val cachedTrack = tracks.first { it.remotePath == "/cached.mp3" }
             assertEquals("/covers/cached_thumb.jpg", cachedTrack.coverThumbnailPath)
 
-            // Wait for background self-healing coroutine to complete
-            kotlinx.coroutines.delay(200)
+            val plainTrack = tracks.first { it.remotePath == "/plain.mp3" }
+            assertNull(plainTrack.coverThumbnailPath)
 
-            // Verify the resolved track has been healed and saved to DB
-            val updatedResolveEntry = dao.getTrackById(entryResolveId)
-            assertEquals("/covers/resolved_thumb.jpg", updatedResolveEntry?.coverThumbnailPath)
-
+            // Verify the cached track cover has been updated in DB
+            kotlinx.coroutines.delay(100)
             val updatedCachedEntry = dao.getTrackById(entryCachedId)
             assertEquals("/covers/cached_thumb.jpg", updatedCachedEntry?.coverThumbnailPath)
 
-            // Verify snapshot query also observes healed covers
+            // Verify snapshot query also observes enriched cover
             val snapshotTracks = repo.getTracksForPlaylist(playlistId)
             assertEquals("/covers/cached_thumb.jpg", snapshotTracks.first { it.remotePath == "/cached.mp3" }.coverThumbnailPath)
-            assertEquals("/covers/resolved_thumb.jpg", snapshotTracks.first { it.remotePath == "/resolve.mp3" }.coverThumbnailPath)
         }
 
     @Test
-    fun getTracksForPlaylist_withTrackMetadataRepository_enrichesCachedCoverAndTriggersSelfHealing() =
+    fun getTracksForPlaylist_withTrackMetadataRepository_enrichesCachedCover() =
         runBlocking {
-            val server1 = WebDavServer(id = 1L, name = "Active NAS", url = "http://192.168.1.100")
-            val serverRepo = TestServerRepository(listOf(server1))
             val metadataRepo = TestTrackMetadataRepository()
 
             metadataRepo.cachedMap["1:/cached.mp3"] =
@@ -726,247 +571,32 @@ class PlaylistRepositoryTest {
                     coverThumbnailPath = "/covers/cached_thumb.jpg",
                 )
 
-            metadataRepo.singleResolvedMap["1:/resolve.mp3"] =
-                TrackMetadata(
-                    serverId = 1L,
-                    remotePath = "/resolve.mp3",
-                    title = "Resolved Song",
-                    coverThumbnailPath = "/covers/resolved_thumb.jpg",
-                )
-
             val repo =
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
-                    serverRepository = serverRepo,
                     trackMetadataRepository = metadataRepo,
                     timeProvider = { simulatedTime },
                 )
 
-            val playlistId = repo.createPlaylist("快照自愈测试")
+            val playlistId = repo.createPlaylist("快照封面丰富测试")
             val trackCached =
                 AudioTrack(id = "1:/cached.mp3", serverId = 1L, remotePath = "/cached.mp3", title = "Cached", format = AudioFormat.MP3)
-            val trackResolve =
-                AudioTrack(id = "1:/resolve.mp3", serverId = 1L, remotePath = "/resolve.mp3", title = "Resolve", format = AudioFormat.MP3)
 
             val entryCachedId = repo.addTrackToPlaylist(playlistId, trackCached)
-            val entryResolveId = repo.addTrackToPlaylist(playlistId, trackResolve)
 
             val tracks = repo.getTracksForPlaylist(playlistId)
-            assertEquals(2, tracks.size)
+            assertEquals(1, tracks.size)
+            assertEquals("/covers/cached_thumb.jpg", tracks[0].coverThumbnailPath)
 
-            val cachedTrack = tracks.first { it.remotePath == "/cached.mp3" }
-            assertEquals("/covers/cached_thumb.jpg", cachedTrack.coverThumbnailPath)
-
-            // Wait for background self-healing coroutine to complete
-            kotlinx.coroutines.delay(200)
-
-            // Verify the resolved track has been healed and saved to DB
-            val updatedResolveEntry = dao.getTrackById(entryResolveId)
-            assertEquals("/covers/resolved_thumb.jpg", updatedResolveEntry?.coverThumbnailPath)
-
+            kotlinx.coroutines.delay(100)
             val updatedCachedEntry = dao.getTrackById(entryCachedId)
             assertEquals("/covers/cached_thumb.jpg", updatedCachedEntry?.coverThumbnailPath)
-        }
-
-    private class FakeProbeWebDavClient : WebDavClient {
-        val testConnectionResults = mutableMapOf<Long, ConnectionResult>()
-        var testConnectionCalls = 0
-
-        override suspend fun testConnection(server: WebDavServer): ConnectionResult {
-            testConnectionCalls++
-            return testConnectionResults[server.id] ?: ConnectionResult.Success
-        }
-
-        override suspend fun listDirectory(
-            server: WebDavServer,
-            path: String,
-        ): ListDirectoryResult = ListDirectoryResult.Success(RemoteDirectory(path = path, name = "root", files = emptyList()))
-
-        override suspend fun fetchRange(
-            server: WebDavServer,
-            remotePath: String,
-            startByte: Long,
-            endByte: Long,
-        ): ByteArray? = null
-    }
-
-    @Test
-    fun playlistDao_batchQueriesAndUpdates_forUnreachableServerStatus() =
-        runBlocking {
-            val playlistId = repository.createPlaylist("DAO批处理测试")
-            val t1 = AudioTrack(id = "10:/s1.mp3", serverId = 10L, remotePath = "/s1.mp3", title = "S1", format = AudioFormat.MP3)
-            val t2 = AudioTrack(id = "20:/s2.mp3", serverId = 20L, remotePath = "/s2.mp3", title = "S2", format = AudioFormat.MP3)
-            val t3 = AudioTrack(id = "30:/s3.mp3", serverId = 30L, remotePath = "/s3.mp3", title = "S3", format = AudioFormat.MP3)
-
-            repository.addTrackToPlaylist(playlistId, t1)
-            repository.addTrackToPlaylist(playlistId, t2)
-            repository.addTrackToPlaylist(playlistId, t3)
-
-            dao.updateTrackInactiveStatus(10L, "/s1.mp3", true, InactiveReason.SERVER_UNREACHABLE.name)
-            dao.updateTrackInactiveStatus(20L, "/s2.mp3", true, InactiveReason.SERVER_UNREACHABLE.name)
-            dao.updateTrackInactiveStatus(30L, "/s3.mp3", true, InactiveReason.FILE_NOT_FOUND.name)
-
-            val unreachableServerIds = dao.getDistinctServerIdsForInactiveReason(InactiveReason.SERVER_UNREACHABLE.name)
-            assertEquals(2, unreachableServerIds.size)
-            assertTrue(unreachableServerIds.contains(10L))
-            assertTrue(unreachableServerIds.contains(20L))
-            assertFalse(unreachableServerIds.contains(30L))
-
-            // Clear server 10
-            val cleared = dao.clearServerUnreachableStatus(10L, InactiveReason.SERVER_UNREACHABLE.name)
-            assertEquals(1, cleared)
-
-            val remainingUnreachable = dao.getDistinctServerIdsForInactiveReason(InactiveReason.SERVER_UNREACHABLE.name)
-            assertEquals(listOf(20L), remainingUnreachable)
-
-            val track1FromDb = dao.findTrackInPlaylist(playlistId, 10L, "/s1.mp3")
-            assertNotNull(track1FromDb)
-            assertFalse(track1FromDb!!.isInactive)
-            assertNull(track1FromDb.inactiveReason)
-        }
-
-    @Test
-    fun triggerReachabilitySelfHealing_restoresDimmedTracksForSuccessfulServers() =
-        runBlocking {
-            val server1 = WebDavServer(id = 1L, name = "Online NAS", url = "http://192.168.1.100")
-            val server2 = WebDavServer(id = 2L, name = "Offline NAS", url = "http://192.168.1.200")
-            val serverRepo = TestServerRepository(listOf(server1, server2))
-
-            val fakeWebDavClient = FakeProbeWebDavClient()
-            fakeWebDavClient.testConnectionResults[1L] = ConnectionResult.Success
-            fakeWebDavClient.testConnectionResults[2L] = ConnectionResult.Failure("Connection refused")
-
-            val healingRepo =
-                PlaylistRepositoryImpl(
-                    playlistDao = dao,
-                    serverRepository = serverRepo,
-                    webDavClient = fakeWebDavClient,
-                    timeProvider = { simulatedTime },
-                )
-
-            val playlistId = healingRepo.createPlaylist("自愈恢复测试")
-            val track1 =
-                AudioTrack(id = "1:/online.mp3", serverId = 1L, remotePath = "/online.mp3", title = "Online", format = AudioFormat.MP3)
-            val track2 =
-                AudioTrack(id = "2:/offline.mp3", serverId = 2L, remotePath = "/offline.mp3", title = "Offline", format = AudioFormat.MP3)
-
-            val e1 = healingRepo.addTrackToPlaylist(playlistId, track1)
-            val e2 = healingRepo.addTrackToPlaylist(playlistId, track2)
-
-            // Mark both as SERVER_UNREACHABLE
-            healingRepo.markTrackInactive(1L, "/online.mp3", InactiveReason.SERVER_UNREACHABLE)
-            healingRepo.markTrackInactive(2L, "/offline.mp3", InactiveReason.SERVER_UNREACHABLE)
-
-            // Verify both tracks are currently dimmed
-            val beforeTracks = healingRepo.getTracksForPlaylistFlow(playlistId).first()
-            assertTrue(beforeTracks.first { it.id == e1 }.isInactive)
-            assertTrue(beforeTracks.first { it.id == e2 }.isInactive)
-
-            // Trigger self-healing
-            healingRepo.triggerReachabilitySelfHealing()
-
-            // Verify after healing: Server 1 track restored, Server 2 track remains dimmed
-            val afterTracks = healingRepo.getTracksForPlaylistFlow(playlistId).first()
-            val restoredTrack1 = afterTracks.first { it.id == e1 }
-            assertFalse("Track 1 on Online NAS must be restored", restoredTrack1.isInactive)
-            assertNull("Track 1 inactiveReason must be cleared", restoredTrack1.inactiveReason)
-
-            val dimmedTrack2 = afterTracks.first { it.id == e2 }
-            assertTrue("Track 2 on Offline NAS must remain inactive", dimmedTrack2.isInactive)
-            assertEquals(InactiveReason.SERVER_UNREACHABLE, dimmedTrack2.inactiveReason)
-
-            // Verify DB entity state for track 1
-            val dbTrack1 = dao.getTrackById(e1)
-            assertNotNull(dbTrack1)
-            assertFalse(dbTrack1!!.isInactive)
-            assertNull(dbTrack1.inactiveReason)
-        }
-
-    @Test
-    fun markServerInactive_dimsAllTracksUnderGivenServer_andClearServerUnreachableRestoresThem() =
-        runBlocking {
-            val playlistId = repository.createPlaylist("整机不可达与恢复测试")
-            val track1 = AudioTrack(id = "99:/t1.mp3", serverId = 99L, remotePath = "/t1.mp3", title = "T1", format = AudioFormat.MP3)
-            val track2 = AudioTrack(id = "99:/t2.mp3", serverId = 99L, remotePath = "/t2.mp3", title = "T2", format = AudioFormat.MP3)
-            val trackOther =
-                AudioTrack(id = "88:/other.mp3", serverId = 88L, remotePath = "/other.mp3", title = "Other", format = AudioFormat.MP3)
-
-            val e1 = repository.addTrackToPlaylist(playlistId, track1)
-            val e2 = repository.addTrackToPlaylist(playlistId, track2)
-            val eOther = repository.addTrackToPlaylist(playlistId, trackOther)
-
-            // Mark server 99 inactive
-            repository.markServerInactive(99L, InactiveReason.SERVER_UNREACHABLE)
-
-            // Allow async DB write to complete
-            kotlinx.coroutines.delay(100)
-
-            val flowTracks = repository.getTracksForPlaylistFlow(playlistId).first()
-            val snapshotTracks = repository.getTracksForPlaylist(playlistId)
-            assertEquals(flowTracks, snapshotTracks)
-
-            val t1Entry = flowTracks.first { it.id == e1 }
-            val t2Entry = flowTracks.first { it.id == e2 }
-            val otherEntry = flowTracks.first { it.id == eOther }
-
-            assertTrue("Track 1 must be inactive", t1Entry.isInactive)
-            assertEquals(InactiveReason.SERVER_UNREACHABLE, t1Entry.inactiveReason)
-            assertTrue("Track 2 must be inactive", t2Entry.isInactive)
-            assertEquals(InactiveReason.SERVER_UNREACHABLE, t2Entry.inactiveReason)
-            assertFalse("Other server track must not be inactive", otherEntry.isInactive)
-
-            // Now clear server 99
-            repository.clearServerUnreachableStatus(99L)
-
-            val restoredTracks = repository.getTracksForPlaylistFlow(playlistId).first()
-            val restoredSnapshot = repository.getTracksForPlaylist(playlistId)
-            assertEquals(restoredTracks, restoredSnapshot)
-
-            assertFalse("Track 1 must be restored", restoredTracks.first { it.id == e1 }.isInactive)
-            assertFalse("Track 2 must be restored", restoredTracks.first { it.id == e2 }.isInactive)
-        }
-
-    @Test
-    fun triggerReachabilitySelfHealing_restoresServerCredentialInvalidTracks() =
-        runBlocking {
-            val server1 = WebDavServer(id = 1L, name = "Online NAS", url = "http://192.168.1.100")
-            val serverRepo = TestServerRepository(listOf(server1))
-
-            val fakeWebDavClient = FakeProbeWebDavClient()
-            fakeWebDavClient.testConnectionResults[1L] = ConnectionResult.Success
-
-            val healingRepo =
-                PlaylistRepositoryImpl(
-                    playlistDao = dao,
-                    serverRepository = serverRepo,
-                    webDavClient = fakeWebDavClient,
-                    timeProvider = { simulatedTime },
-                )
-
-            val playlistId = healingRepo.createPlaylist("凭据自愈恢复测试")
-            val track1 =
-                AudioTrack(id = "1:/auth.mp3", serverId = 1L, remotePath = "/auth.mp3", title = "Auth Track", format = AudioFormat.MP3)
-            val e1 = healingRepo.addTrackToPlaylist(playlistId, track1)
-
-            healingRepo.markTrackInactive(1L, "/auth.mp3", InactiveReason.SERVER_CREDENTIAL_INVALID)
-
-            val beforeTracks = healingRepo.getTracksForPlaylistFlow(playlistId).first()
-            assertTrue(beforeTracks.first { it.id == e1 }.isInactive)
-            assertEquals(InactiveReason.SERVER_CREDENTIAL_INVALID, beforeTracks.first { it.id == e1 }.inactiveReason)
-
-            healingRepo.triggerReachabilitySelfHealing()
-
-            val afterTracks = healingRepo.getTracksForPlaylistFlow(playlistId).first()
-            val restoredTrack1 = afterTracks.first { it.id == e1 }
-            assertFalse("Track 1 must be restored", restoredTrack1.isInactive)
-            assertNull("Track 1 inactiveReason must be cleared", restoredTrack1.inactiveReason)
         }
 
     @Test
     fun reconcilePlaylistTracks_flowAndSnapshotParity_deduplicationFaultToleranceAndCoverHealing() =
         runBlocking {
-            val server1 = WebDavServer(id = 1L, name = "Active NAS", url = "http://192.168.1.100")
-            val serverRepo = TestServerRepository(listOf(server1))
+            val tracker = FakeStorageReachabilityTracker()
             val metadataRepo = TestTrackMetadataRepository()
 
             metadataRepo.cachedMap["1:/cached.mp3"] =
@@ -980,8 +610,8 @@ class PlaylistRepositoryTest {
             val repo =
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
-                    serverRepository = serverRepo,
                     trackMetadataRepository = metadataRepo,
+                    storageReachabilityTracker = tracker,
                     timeProvider = { simulatedTime },
                 )
 
@@ -1017,7 +647,7 @@ class PlaylistRepositoryTest {
 
             // Manually insert duplicate row into DAO to simulate duplicate database rows
             dao.insertTrack(
-                com.webdav.player.data.local.PlaylistTrackEntity(
+                PlaylistTrackEntity(
                     playlistId = playlistId,
                     serverId = track1Duplicate.serverId,
                     remotePath = track1Duplicate.remotePath,
@@ -1028,6 +658,9 @@ class PlaylistRepositoryTest {
             )
 
             assertEquals(3, dao.getTracksForPlaylist(playlistId).size)
+
+            // Report server 2 unreachable via tracker
+            tracker.reportServerUnavailable(2L, InactiveReason.SERVER_UNREACHABLE)
 
             val flowResult = repo.getTracksForPlaylistFlow(playlistId).first()
             val snapshotResult = repo.getTracksForPlaylist(playlistId)
@@ -1051,13 +684,9 @@ class PlaylistRepositoryTest {
     @Test
     fun storingMixedWebDavAndLocalStorageTracksInSamePlaylist() =
         runBlocking {
-            val server1 = WebDavServer(id = 1L, name = "Cloud Server", url = "http://192.168.1.100")
-            val serverRepo = TestServerRepository(listOf(server1))
-
             val repo =
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
-                    serverRepository = serverRepo,
                     timeProvider = { simulatedTime },
                 )
 
@@ -1118,7 +747,7 @@ class PlaylistRepositoryTest {
     @Test
     fun deduplicationOfLocalTracksInBatchAdditions() =
         runBlocking {
-            val playlistId = repository.createPlaylist("本地去重测试")
+            val playlistId = repository.createPlaylist("本地曲目批量去重测试")
 
             val local1 =
                 AudioTrack(
@@ -1126,7 +755,7 @@ class PlaylistRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = "content://media/audio/1",
                     title = "Local 1",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.FLAC,
                 )
             val local2 =
                 AudioTrack(
@@ -1134,34 +763,20 @@ class PlaylistRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = "content://media/audio/2",
                     title = "Local 2",
-                    format = AudioFormat.MP3,
-                )
-            val local1Dup =
-                AudioTrack(
-                    id = "0:content://media/audio/1",
-                    serverId = LOCAL_STORAGE_ID,
-                    remotePath = "content://media/audio/1",
-                    title = "Local 1 Dup",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.FLAC,
                 )
             val remoteWithSamePath =
                 AudioTrack(
                     id = "1:content://media/audio/1",
                     serverId = 1L,
                     remotePath = "content://media/audio/1",
-                    title = "Remote With Matching Path String",
+                    title = "Remote Track with same path",
                     format = AudioFormat.MP3,
                 )
 
-            // Batch add containing 2 unique local tracks, 1 local duplicate, and 1 remote track with identical remotePath string
-            val insertedIds =
-                repository.addTracksToPlaylist(
-                    playlistId,
-                    listOf(local1, local2, local1Dup, remoteWithSamePath),
-                )
-
-            // Exactly 3 tracks inserted (local1, local2, remoteWithSamePath; local1Dup skipped)
-            assertEquals(3, insertedIds.size)
+            // First batch: add local1, local2, and a remote track with the same path as local1 (different serverId)
+            val firstBatchResult = repository.addTracksToPlaylist(playlistId, listOf(local1, local2, remoteWithSamePath))
+            assertEquals(3, firstBatchResult.size)
 
             val tracks = repository.getTracksForPlaylist(playlistId)
             assertEquals(3, tracks.size)
@@ -1176,99 +791,6 @@ class PlaylistRepositoryTest {
             val secondBatchResult = repository.addTracksToPlaylist(playlistId, listOf(local1, local2))
             assertTrue(secondBatchResult.isEmpty())
             assertEquals(3, repository.getTracksForPlaylist(playlistId).size)
-        }
-
-    @Test
-    fun localTrackReachabilityValidation_marksFileNotFound_whenLocalUriIsInaccessible() =
-        runBlocking {
-            val accessibleUris = mutableSetOf("content://media/audio/present")
-            val testRepo =
-                PlaylistRepositoryImpl(
-                    playlistDao = dao,
-                    localUriReachabilityChecker = { path -> accessibleUris.contains(path) },
-                    timeProvider = { simulatedTime },
-                )
-
-            val playlistId = testRepo.createPlaylist("可达性校验测试")
-            val localMissingTrack =
-                AudioTrack(
-                    id = "0:content://media/audio/deleted",
-                    serverId = LOCAL_STORAGE_ID,
-                    remotePath = "content://media/audio/deleted",
-                    title = "Deleted Song",
-                    format = AudioFormat.MP3,
-                )
-
-            val entryId = testRepo.addTrackToPlaylist(playlistId, localMissingTrack)
-            val entityBefore = dao.getTrackById(entryId)!!
-            assertFalse("Track initially active before reachability probe", entityBefore.isInactive)
-
-            // Validate reachability on inaccessible local track
-            val isReachable = testRepo.checkTrackReachability(entityBefore)
-            assertFalse("Reachability check must report false for inaccessible local URI", isReachable)
-
-            // DB entity and snapshot must reflect inactive state with FILE_NOT_FOUND
-            val entityAfter = dao.getTrackById(entryId)!!
-            assertTrue("Entity in DB must be marked inactive", entityAfter.isInactive)
-            assertEquals("Entity inactiveReason must be FILE_NOT_FOUND", InactiveReason.FILE_NOT_FOUND.name, entityAfter.inactiveReason)
-
-            val tracks = testRepo.getTracksForPlaylist(playlistId)
-            val trackEntry = tracks.first { it.id == entryId }
-            assertTrue("Snapshot track must be inactive", trackEntry.isInactive)
-            assertEquals(InactiveReason.FILE_NOT_FOUND, trackEntry.inactiveReason)
-        }
-
-    @Test
-    fun reachabilitySelfHealing_restoresLocalTrackToActive_whenUriBecomesAccessibleAgain() =
-        runBlocking {
-            val accessibleUris = mutableSetOf<String>() // SD card unmounted: empty
-            val testRepo =
-                PlaylistRepositoryImpl(
-                    playlistDao = dao,
-                    localUriReachabilityChecker = { path -> accessibleUris.contains(path) },
-                    timeProvider = { simulatedTime },
-                )
-
-            val playlistId = testRepo.createPlaylist("自愈恢复测试-本地")
-            val localTrack =
-                AudioTrack(
-                    id = "0:content://sdcard/song.flac",
-                    serverId = LOCAL_STORAGE_ID,
-                    remotePath = "content://sdcard/song.flac",
-                    title = "SD Card Song",
-                    format = AudioFormat.FLAC,
-                )
-
-            val entryId = testRepo.addTrackToPlaylist(playlistId, localTrack)
-
-            // Mark inactive due to SD card being removed
-            testRepo.markTrackInactive(LOCAL_STORAGE_ID, "content://sdcard/song.flac", InactiveReason.FILE_NOT_FOUND)
-            kotlinx.coroutines.delay(100)
-
-            // Ensure DB and repo reflect inactive status
-            val entityDimmed = dao.getTrackById(entryId)!!
-            assertTrue(entityDimmed.isInactive)
-            assertEquals(InactiveReason.FILE_NOT_FOUND.name, entityDimmed.inactiveReason)
-
-            val dimmedTracks = testRepo.getTracksForPlaylistFlow(playlistId).first()
-            assertTrue(dimmedTracks.first { it.id == entryId }.isInactive)
-            assertEquals(InactiveReason.FILE_NOT_FOUND, dimmedTracks.first { it.id == entryId }.inactiveReason)
-
-            // SD card reinserted: URI becomes accessible again
-            accessibleUris.add("content://sdcard/song.flac")
-
-            // Trigger reachability self-healing
-            testRepo.triggerReachabilitySelfHealing()
-
-            // Verify symmetric self-healing: local track restored to active playable state
-            val entityRestored = dao.getTrackById(entryId)!!
-            assertFalse("Local track must be restored to active in DB", entityRestored.isInactive)
-            assertNull("Inactive reason must be cleared in DB", entityRestored.inactiveReason)
-
-            val restoredTracks = testRepo.getTracksForPlaylistFlow(playlistId).first()
-            val restoredTrackEntry = restoredTracks.first { it.id == entryId }
-            assertFalse("Track in flow must be active", restoredTrackEntry.isInactive)
-            assertNull("Inactive reason in flow must be null", restoredTrackEntry.inactiveReason)
         }
 
     @Test
@@ -1348,20 +870,20 @@ class PlaylistRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = localUri,
                     title = "Melody (Live)",
-                    format = AudioFormat.FLAC,
                     coverThumbnailPath = deadPath,
+                    format = AudioFormat.FLAC,
                 )
             val entryId = repo.addTrackToPlaylist(playlistId, localTrack)
 
             // Trigger reconciliation
-            val tracks = repo.getTracksForPlaylistFlow(playlistId).first()
-            val trackEntry = tracks.first { it.id == entryId }
+            val reconciledTracks = repo.getTracksForPlaylist(playlistId)
+            assertEquals(1, reconciledTracks.size)
 
-            // Must NOT return the dead non-existent path; must reconcile to valid cover
-            assertEquals(validCoverFile.absolutePath, trackEntry.coverThumbnailPath)
+            // Should heal to the valid cached metadata path
+            assertEquals(validCoverFile.absolutePath, reconciledTracks[0].coverThumbnailPath)
 
             kotlinx.coroutines.delay(100)
-            val healedEntity = dao.getTrackById(entryId)
-            assertEquals(validCoverFile.absolutePath, healedEntity?.coverThumbnailPath)
+            val updatedInDb = dao.getTrackById(entryId)
+            assertEquals(validCoverFile.absolutePath, updatedInDb?.coverThumbnailPath)
         }
 }

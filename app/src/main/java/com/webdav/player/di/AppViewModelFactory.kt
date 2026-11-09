@@ -47,6 +47,7 @@ class AppViewModelFactory(
                     playlistId = id,
                     playlistRepository = container.playlistRepository,
                     musicPlayerAppSession = container.musicPlayerAppSession,
+                    storageReachabilityTracker = container.storageReachabilityTracker,
                 ) as T
             }
 

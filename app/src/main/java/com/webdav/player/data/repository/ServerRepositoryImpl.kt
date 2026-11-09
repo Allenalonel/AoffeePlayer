@@ -2,11 +2,8 @@ package com.webdav.player.data.repository
 
 import android.content.Context
 import com.webdav.player.data.local.CoverArtStorage
-import com.webdav.player.data.local.DirectoryCacheDao
-import com.webdav.player.data.local.DirectorySyncCheckpointDao
 import com.webdav.player.data.local.LocalStorageFolderDao
 import com.webdav.player.data.local.LocalStorageFolderEntity
-import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.local.TrackMetadataDao
 import com.webdav.player.data.local.WebDavServerDao
 import com.webdav.player.data.local.WebDavServerEntity
@@ -14,6 +11,7 @@ import com.webdav.player.data.remote.OkHttpWebDavClient
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.repository.MediaLibraryRepository
 import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,12 +23,10 @@ class ServerRepositoryImpl(
     private val serverDao: WebDavServerDao,
     private val coverArtStorage: CoverArtStorage? = null,
     private val webDavClient: OkHttpWebDavClient? = null,
-    private val directoryCacheDao: DirectoryCacheDao? = null,
     private val trackMetadataDao: TrackMetadataDao? = null,
     private val localStorageFolderDao: LocalStorageFolderDao? = null,
-    private val mediaTrackIndexDao: MediaTrackIndexDao? = null,
-    private val directorySyncCheckpointDao: DirectorySyncCheckpointDao? = null,
     private val context: Context? = null,
+    var mediaLibraryRepository: MediaLibraryRepository? = null,
 ) : ServerRepository {
     private val prefs = context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val isLocalStorageActive =
@@ -95,10 +91,8 @@ class ServerRepositoryImpl(
         val serverToDelete = serverDao.getServerById(id)
         coverArtStorage?.deleteServerCovers(id)
         webDavClient?.invalidateServer(id)
-        directoryCacheDao?.deleteCacheByServerId(id)
+        mediaLibraryRepository?.clearStorageData(id)
         trackMetadataDao?.deleteMetadataForServer(id)
-        mediaTrackIndexDao?.deleteByServerId(id)
-        directorySyncCheckpointDao?.deleteByServerId(id)
         serverDao.deleteServerById(id)
 
         if (serverToDelete?.isDefault == true) {
@@ -141,15 +135,7 @@ class ServerRepositoryImpl(
     }
 
     override suspend fun removeMountedLocalFolder(uriString: String) {
-        try {
-            val prefix = LocalStorageIndexScanner.buildLocalRootPath(uriString)
-            mediaTrackIndexDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, prefix)
-            directorySyncCheckpointDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, prefix)
-        } catch (_: Exception) {
-        }
-        mediaTrackIndexDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, uriString)
-        directorySyncCheckpointDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, uriString)
-        directoryCacheDao?.deleteCacheByServerId(LOCAL_STORAGE_ID)
+        mediaLibraryRepository?.clearLocalFolderData(uriString)
         localStorageFolderDao?.deleteFolderByUri(uriString)
     }
 

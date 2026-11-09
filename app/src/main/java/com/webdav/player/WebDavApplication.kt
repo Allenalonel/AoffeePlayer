@@ -14,6 +14,7 @@ import com.webdav.player.data.repository.DirectoryRepositoryImpl
 import com.webdav.player.data.repository.LibrarySearchRepositoryImpl
 import com.webdav.player.data.repository.LocalStorageDirectoryResolver
 import com.webdav.player.data.repository.LocalStorageIndexScanner
+import com.webdav.player.data.repository.MediaLibraryRepositoryImpl
 import com.webdav.player.data.repository.PlaylistRepositoryImpl
 import com.webdav.player.data.repository.ServerRepositoryImpl
 import com.webdav.player.data.repository.TrackMetadataRepositoryImpl
@@ -75,11 +76,8 @@ class WebDavApplication :
                 serverDao = database.webDavServerDao(),
                 coverArtStorage = coverArtStorage,
                 webDavClient = webDavClient,
-                directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
                 localStorageFolderDao = database.localStorageFolderDao(),
-                mediaTrackIndexDao = mediaTrackIndexDao,
-                directorySyncCheckpointDao = checkpointDao,
                 context = this,
             )
 
@@ -133,6 +131,22 @@ class WebDavApplication :
                 mediaTrackIndexDao = mediaTrackIndexDao,
                 directorySyncCheckpointDao = checkpointDao,
             )
+
+        val mediaLibraryRepository =
+            MediaLibraryRepositoryImpl(
+                webDavClient = webDavClient,
+                directoryCacheDao = database.directoryCacheDao(),
+                trackMetadataDao = database.trackMetadataDao(),
+                mediaTrackIndexDao = mediaTrackIndexDao,
+                directorySyncCheckpointDao = checkpointDao,
+                trackMetadataRepository = trackMetadataRepository,
+                localStorageDirectoryResolver = localStorageDirectoryResolver,
+                localStorageFolderDao = database.localStorageFolderDao(),
+                webDavSyncScanner = webDavSyncScanner,
+                localStorageIndexScanner = localStorageIndexScanner,
+                context = this,
+            )
+        (serverRepository as? ServerRepositoryImpl)?.mediaLibraryRepository = mediaLibraryRepository
 
         librarySearchRepository =
             LibrarySearchRepositoryImpl(

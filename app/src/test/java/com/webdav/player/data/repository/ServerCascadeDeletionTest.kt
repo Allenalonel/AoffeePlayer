@@ -9,6 +9,8 @@ import com.webdav.player.data.local.DirectorySyncCheckpointDao
 import com.webdav.player.data.local.DirectorySyncCheckpointEntity
 import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.local.MediaTrackIndexEntity
+import com.webdav.player.data.remote.OkHttpWebDavClient
+import com.webdav.player.data.repository.MediaLibraryRepositoryImpl
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.ServerRepository
@@ -44,16 +46,25 @@ class ServerCascadeDeletionTest {
         mediaTrackIndexDao = database.mediaTrackIndexDao()
         checkpointDao = database.directorySyncCheckpointDao()
 
+        val mediaLibraryRepository =
+            MediaLibraryRepositoryImpl(
+                webDavClient = OkHttpWebDavClient(),
+                directoryCacheDao = database.directoryCacheDao(),
+                trackMetadataDao = database.trackMetadataDao(),
+                mediaTrackIndexDao = mediaTrackIndexDao,
+                directorySyncCheckpointDao = checkpointDao,
+                localStorageFolderDao = database.localStorageFolderDao(),
+                context = context,
+            )
+
         repository =
             ServerRepositoryImpl(
                 serverDao = database.webDavServerDao(),
                 coverArtStorage = CoverArtStorageImpl(context),
-                directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
                 localStorageFolderDao = database.localStorageFolderDao(),
-                mediaTrackIndexDao = mediaTrackIndexDao,
-                directorySyncCheckpointDao = checkpointDao,
                 context = context,
+                mediaLibraryRepository = mediaLibraryRepository,
             )
     }
 

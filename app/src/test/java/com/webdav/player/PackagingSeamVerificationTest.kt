@@ -534,4 +534,52 @@ class PackagingSeamVerificationTest {
             legacyRepoOffenders.isEmpty(),
         )
     }
+
+    @Test
+    fun storageLifecycleAndRepositorySeams_enforceUnidirectionalAcyclicInvariants() {
+        val serverRepoSource = source("data/repository/ServerRepositoryImpl.kt")
+
+        // 1. ServerRepositoryImpl must not import MediaLibraryRepository
+        assertFalse(
+            "ServerRepositoryImpl must not import MediaLibraryRepository",
+            serverRepoSource.contains("import com.webdav.player.domain.repository.MediaLibraryRepository"),
+        )
+        assertFalse(
+            "ServerRepositoryImpl must not import MediaLibraryRepositoryImpl",
+            serverRepoSource.contains("MediaLibraryRepositoryImpl"),
+        )
+
+        // 2. ServerRepositoryImpl must contain zero mutable repository dependencies
+        assertFalse(
+            "ServerRepositoryImpl must not contain mutable var repository dependencies",
+            serverRepoSource.contains("var mediaLibraryRepository"),
+        )
+        val mutableRepoProperty = Regex("""^\s*var\s+.*(?:Repository|Invalidator)""", RegexOption.MULTILINE)
+        assertFalse(
+            "ServerRepositoryImpl must not contain mutable repository or invalidator fields",
+            mutableRepoProperty.containsMatchIn(serverRepoSource),
+        )
+
+        // 3. WebDavApplication must contain zero downcasts to ServerRepositoryImpl
+        val appSource = source("WebDavApplication.kt")
+        assertFalse(
+            "WebDavApplication must not contain downcast (as? ServerRepositoryImpl)",
+            appSource.contains("as? ServerRepositoryImpl"),
+        )
+        assertFalse(
+            "WebDavApplication must not contain downcast (as ServerRepositoryImpl)",
+            appSource.contains("as ServerRepositoryImpl"),
+        )
+
+        // 4. LocalStorageDirectoryResolver must not import or depend on ServerRepository
+        val resolverSource = source("data/repository/LocalStorageDirectoryResolver.kt")
+        assertFalse(
+            "LocalStorageDirectoryResolver must not import ServerRepository",
+            resolverSource.contains("import com.webdav.player.domain.repository.ServerRepository"),
+        )
+        assertFalse(
+            "LocalStorageDirectoryResolver must not reference ServerRepository",
+            resolverSource.contains("ServerRepository"),
+        )
+    }
 }

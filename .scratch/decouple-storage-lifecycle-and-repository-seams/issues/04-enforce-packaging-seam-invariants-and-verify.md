@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] In `PackagingSeamVerificationTest`, assert that `ServerRepositoryImpl.kt` does not import `com.webdav.player.domain.repository.MediaLibraryRepository`.
-- [ ] In `PackagingSeamVerificationTest`, assert that `WebDavApplication.kt` contains zero downcasts (`as? ServerRepositoryImpl` or `as ServerRepositoryImpl`).
-- [ ] In `PackagingSeamVerificationTest`, assert that `ServerRepositoryImpl.kt` contains zero mutable `var` repository dependencies.
-- [ ] Execute `./gradlew testDebugUnitTest` and ensure all unit tests pass with zero failures.
-- [ ] Execute `./gradlew PackagingSeamVerificationTest` to verify that all architectural packaging invariants hold.
+- [x] In `PackagingSeamVerificationTest`, assert that `ServerRepositoryImpl.kt` does not import `com.webdav.player.domain.repository.MediaLibraryRepository`.
+- [x] In `PackagingSeamVerificationTest`, assert that `WebDavApplication.kt` contains zero downcasts (`as? ServerRepositoryImpl` or `as ServerRepositoryImpl`).
+- [x] In `PackagingSeamVerificationTest`, assert that `ServerRepositoryImpl.kt` contains zero mutable `var` repository dependencies.
+- [x] Execute `./gradlew testDebugUnitTest` and ensure all unit tests pass with zero failures.
+- [x] Execute `./gradlew PackagingSeamVerificationTest` to verify that all architectural packaging invariants hold.

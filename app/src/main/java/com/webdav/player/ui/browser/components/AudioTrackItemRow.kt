@@ -287,12 +287,10 @@ private fun FileInfoDialog(
                             file.path.startsWith("file://") ||
                             file.path.startsWith("/local/")
                     }
-                if (isLocalFile) {
-                    InfoRow(label = "本地存储目录", value = TrackPathFormatter.formatDirectoryPath(file.path))
-                    InfoRow(label = "本地文件路径", value = TrackPathFormatter.formatDisplayPath(file.path))
-                } else {
-                    InfoRow(label = "远程路径", value = file.path)
-                }
+                InfoRow(
+                    label = if (isLocalFile) "文件存储路径" else "远程文件路径",
+                    value = if (isLocalFile) TrackPathFormatter.formatDisplayPath(file.path) else file.path,
+                )
             }
         },
         confirmButton = {

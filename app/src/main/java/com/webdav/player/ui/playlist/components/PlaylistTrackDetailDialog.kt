@@ -40,16 +40,6 @@ internal fun PlaylistTrackDetailDialog(
                 track.remotePath.startsWith("file://")
         }
 
-    val directoryPath =
-        remember(track.remotePath, isLocal) {
-            if (isLocal) {
-                TrackPathFormatter.formatDirectoryPath(track.remotePath)
-            } else {
-                val slashIdx = track.remotePath.lastIndexOf('/')
-                if (slashIdx > 0) track.remotePath.substring(0, slashIdx + 1) else "/"
-            }
-        }
-
     val displayFilePath =
         remember(track.remotePath, isLocal) {
             if (isLocal) {
@@ -101,11 +91,7 @@ internal fun PlaylistTrackDetailDialog(
                     PlaylistInfoRow(label = "文件大小", value = formatTrackFileSize(track.size))
                 }
                 PlaylistInfoRow(
-                    label = if (isLocal) "本地存储目录" else "来源目录",
-                    value = directoryPath,
-                )
-                PlaylistInfoRow(
-                    label = if (isLocal) "本地文件路径" else "远程完整路径",
+                    label = if (isLocal) "文件存储路径" else "远程文件路径",
                     value = displayFilePath,
                 )
                 if (isLocal) {

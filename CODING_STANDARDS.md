@@ -94,8 +94,8 @@
 - **No Hard SQLite Foreign Keys on Cache Tables**:
   `directory_cache` 与 `track_metadata` 严禁声明指向 `webdav_servers(id)` 的硬外键级联删除，保障跨源歌单与元数据缓存的独立读写弹性。
 - **Symmetric Multi-Tier Cache Invalidation on Storage Deletion (存储注销多级缓存级联清理对称律)**:
-  - 解绑本地目录（`removeMountedLocalFolder`）时，必须同步清理 `media_track_index`、`directory_sync_checkpoint`、Room L2 `directory_cache`（`LOCAL_STORAGE_ID` 快照）及 `DirectoryRepositoryImpl` L1 内存缓存。
-  - 删除 WebDAV 服务器（`deleteServer`）时，除清理数据库表、缩略图文件与连接池外，必须同步失效 `DirectoryRepository` L1 内存缓存；若被删节点为默认源，自动升格剩余远程节点为默认源。
+  - 解绑本地目录（`removeMountedLocalFolder`）时，必须同步清理 `media_track_index`、`directory_sync_checkpoint`、Room L2 `directory_cache`（`LOCAL_STORAGE_ID` 快照）及 `MediaLibraryRepositoryImpl` L1 内存缓存。
+  - 删除 WebDAV 服务器（`deleteServer`）时，除清理数据库表、缩略图文件与连接池外，必须同步失效 `MediaLibraryRepository` L1 内存缓存；若被删节点为默认源，自动升格剩余远程节点为默认源。
 - **Symmetric Fault Lifecycle & Multi-Trigger Self-Healing (故障对称闭环与四重自愈原则)**:
   凡写入置灰或降级标记（`markTrackInactive`、`markServerInactive`）的接缝，必须在同领域内具备四重自动自愈信道（PROPFIND 探活、测试连接成功、播放解码出声反哺、系统网络恢复广播），严禁只写不销。
 - **Diagnostic Aggregation Parity & Granularity Alignment (诊断聚合对等与粒度对齐原则)**:

@@ -6,6 +6,7 @@ import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
+import com.webdav.player.domain.repository.FakeMediaLibraryRepository
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +35,7 @@ class ServerManagementViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeRepository: FakeServerRepository
     private lateinit var fakeClient: FakeWebDavClient
+    private lateinit var fakeMediaLibraryRepository: FakeMediaLibraryRepository
     private lateinit var viewModel: ServerManagementViewModel
 
     @Before
@@ -41,7 +43,13 @@ class ServerManagementViewModelTest {
         Dispatchers.setMain(testDispatcher)
         fakeRepository = FakeServerRepository()
         fakeClient = FakeWebDavClient()
-        viewModel = ServerManagementViewModel(fakeRepository, fakeClient)
+        fakeMediaLibraryRepository = FakeMediaLibraryRepository()
+        viewModel =
+            ServerManagementViewModel(
+                repository = fakeRepository,
+                webDavClient = fakeClient,
+                mediaLibraryRepository = fakeMediaLibraryRepository,
+            )
     }
 
     @After
@@ -323,6 +331,48 @@ class ServerManagementViewModelTest {
             assertEquals(1, state.remoteServers.size)
             assertEquals(1L, state.remoteServers.first().id)
             assertEquals(LOCAL_STORAGE_ID, state.localStorageServer.id)
+        }
+
+    @Test
+    fun saveServer_triggersMediaLibrarySyncServer() =
+        runTest {
+            val server = WebDavServer(name = "Sync NAS", url = "http://nas")
+            viewModel.onSaveServer(server)
+            advanceUntilIdle()
+
+            assertEquals(1, fakeMediaLibraryRepository.syncServerCalls.size)
+            assertEquals("Sync NAS", fakeMediaLibraryRepository.syncServerCalls.first().first.name)
+            assertFalse(fakeMediaLibraryRepository.syncServerCalls.first().second)
+        }
+
+    @Test
+    fun deleteServer_triggersMediaLibraryClearStorageData() =
+        runTest {
+            val server = WebDavServer(id = 88L, name = "Dead NAS", url = "http://dead")
+            fakeRepository.addServerDirectly(server)
+            advanceUntilIdle()
+
+            viewModel.onRequestDeleteServer(server)
+            viewModel.onConfirmDeleteServer()
+            advanceUntilIdle()
+
+            assertEquals(listOf(88L), fakeMediaLibraryRepository.clearedStorageServerIds)
+        }
+
+    @Test
+    fun mountedFolders_triggersMediaLibraryInvalidationAndSync() =
+        runTest {
+            viewModel.onAddMountedFolder("content://tree/music", "Music")
+            advanceUntilIdle()
+
+            assertTrue(fakeMediaLibraryRepository.clearedStorageServerIds.contains(LOCAL_STORAGE_ID))
+            assertEquals(1, fakeMediaLibraryRepository.syncServerCalls.size)
+            assertTrue(fakeMediaLibraryRepository.syncServerCalls.first().first.isLocal)
+
+            viewModel.onRemoveMountedFolder("content://tree/music")
+            advanceUntilIdle()
+
+            assertEquals(2, fakeMediaLibraryRepository.clearedStorageServerIds.count { it == LOCAL_STORAGE_ID })
         }
 }
 

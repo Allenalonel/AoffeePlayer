@@ -15,8 +15,8 @@ import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
-import com.webdav.player.domain.repository.DirectoryRepository
-import com.webdav.player.domain.repository.LibrarySearchRepository
+import com.webdav.player.domain.repository.FakeMediaLibraryRepository
+import com.webdav.player.domain.repository.MediaLibraryRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import com.webdav.player.domain.session.FakeMusicPlayerAppSession
@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -46,11 +47,10 @@ import org.junit.Test
 class DirectoryBrowserViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeServerRepository: FakeServerRepository
-    private lateinit var fakeDirectoryRepository: FakeDirectoryRepository
+    private lateinit var fakeMediaLibraryRepository: FakeMediaLibraryRepository
     private lateinit var fakeMusicPlayerAppSession: FakeMusicPlayerAppSession
     private lateinit var fakeTrackMetadataRepository: FakeTrackMetadataRepository
     private lateinit var fakeWebDavClient: FakeWebDavClient
-    private lateinit var fakeLibrarySearchRepository: FakeLibrarySearchRepository
     private lateinit var viewModel: DirectoryBrowserViewModel
 
     private val sampleServer =
@@ -105,25 +105,22 @@ class DirectoryBrowserViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         fakeServerRepository = FakeServerRepository()
-        fakeDirectoryRepository = FakeDirectoryRepository()
         fakeMusicPlayerAppSession = FakeMusicPlayerAppSession()
         fakeTrackMetadataRepository = FakeTrackMetadataRepository()
         fakeWebDavClient = FakeWebDavClient()
         fakeServerRepository.setActiveServerSync(sampleServer)
         fakeMusicPlayerAppSession.setActiveServer(sampleServer)
-        fakeDirectoryRepository = FakeDirectoryRepository(fakeTrackMetadataRepository)
+        fakeMediaLibraryRepository = FakeMediaLibraryRepository(fakeTrackMetadataRepository)
 
-        fakeDirectoryRepository.setResult("/", ListDirectoryResult.Success(rootDir))
-        fakeDirectoryRepository.setResult("/Music/", ListDirectoryResult.Success(musicDir))
-        fakeDirectoryRepository.setResult("/Music/Rock/", ListDirectoryResult.Success(rockDir))
-        fakeLibrarySearchRepository = FakeLibrarySearchRepository()
+        fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(rootDir))
+        fakeMediaLibraryRepository.setResult("/Music/", ListDirectoryResult.Success(musicDir))
+        fakeMediaLibraryRepository.setResult("/Music/Rock/", ListDirectoryResult.Success(rockDir))
 
         viewModel =
             DirectoryBrowserViewModel(
                 serverRepository = fakeServerRepository,
-                directoryRepository = fakeDirectoryRepository,
+                mediaLibraryRepository = fakeMediaLibraryRepository,
                 musicPlayerAppSession = fakeMusicPlayerAppSession,
-                librarySearchRepository = fakeLibrarySearchRepository,
             )
     }
 
@@ -243,7 +240,7 @@ class DirectoryBrowserViewModelTest {
             viewModel.onRefresh()
             advanceUntilIdle()
 
-            assertEquals(1, fakeDirectoryRepository.forceRefreshCount["/"])
+            assertEquals(1, fakeMediaLibraryRepository.forceRefreshCount["/"])
             val state = viewModel.uiState.value
             assertFalse(state.isRefreshing)
         }
@@ -258,7 +255,7 @@ class DirectoryBrowserViewModelTest {
                     DirectoryContent(directory = rootDir, isEnriching = true),
                     DirectoryContent(directory = rootDir, isEnriching = false),
                 )
-            fakeDirectoryRepository.setDirectoryContentEmissions("/", emissions)
+            fakeMediaLibraryRepository.setDirectoryContentEmissions("/", emissions)
 
             viewModel.onRefresh()
             advanceUntilIdle()
@@ -281,7 +278,7 @@ class DirectoryBrowserViewModelTest {
             advanceUntilIdle()
 
             assertFalse("isRefreshing must turn false after all sequenced refreshes complete", viewModel.uiState.value.isRefreshing)
-            assertEquals(2, fakeDirectoryRepository.forceRefreshCount["/"])
+            assertEquals(2, fakeMediaLibraryRepository.forceRefreshCount["/"])
         }
 
     @Test
@@ -294,7 +291,7 @@ class DirectoryBrowserViewModelTest {
             assertNull(viewModel.uiState.value.errorMessage)
 
             // Simulate transient network failure for next refresh
-            fakeDirectoryRepository.setResult("/", ListDirectoryResult.Failure("Network timeout 504", 504))
+            fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Failure("Network timeout 504", 504))
 
             viewModel.onRefresh()
             advanceUntilIdle()
@@ -319,9 +316,9 @@ class DirectoryBrowserViewModelTest {
                     name = "CachedMusic",
                     files = listOf(RemoteFile(name = "song.mp3", path = "/CachedMusic/song.mp3")),
                 )
-            fakeDirectoryRepository.setCached("/CachedMusic/", cachedDir)
+            fakeMediaLibraryRepository.setCached("/CachedMusic/", cachedDir)
             // Initial network fails with transient timeout
-            fakeDirectoryRepository.setResult("/CachedMusic/", ListDirectoryResult.Failure("Timeout", 504))
+            fakeMediaLibraryRepository.setResult("/CachedMusic/", ListDirectoryResult.Failure("Timeout", 504))
 
             viewModel.onDirectoryClicked(RemoteDirectory(path = "/CachedMusic/", name = "CachedMusic"))
             advanceUntilIdle()
@@ -338,7 +335,7 @@ class DirectoryBrowserViewModelTest {
         runTest {
             advanceUntilIdle()
 
-            fakeDirectoryRepository.setResult("/Unreachable/", ListDirectoryResult.Failure("HTTP 404: Not Found", 404))
+            fakeMediaLibraryRepository.setResult("/Unreachable/", ListDirectoryResult.Failure("HTTP 404: Not Found", 404))
 
             viewModel.onDirectoryClicked(RemoteDirectory(path = "/Unreachable/", name = "Unreachable"))
             advanceUntilIdle()
@@ -349,7 +346,7 @@ class DirectoryBrowserViewModelTest {
 
             // Now fix the result and retry
             val recoveredDir = RemoteDirectory(path = "/Unreachable/", name = "Unreachable")
-            fakeDirectoryRepository.setResult("/Unreachable/", ListDirectoryResult.Success(recoveredDir))
+            fakeMediaLibraryRepository.setResult("/Unreachable/", ListDirectoryResult.Success(recoveredDir))
 
             viewModel.onRetry()
             advanceUntilIdle()
@@ -387,7 +384,7 @@ class DirectoryBrowserViewModelTest {
                     durationMs = 240000L,
                     coverThumbnailPath = "/covers/root_cover.jpg",
                 )
-            fakeDirectoryRepository.setDirectoryContent(
+            fakeMediaLibraryRepository.setDirectoryContent(
                 "/",
                 DirectoryContent(
                     directory = rootDir,
@@ -469,8 +466,8 @@ class DirectoryBrowserViewModelTest {
                         ),
                 )
 
-            fakeDirectoryRepository.setCached("/StreamTest/", cachedDir)
-            fakeDirectoryRepository.setResult("/StreamTest/", ListDirectoryResult.Success(remoteUpdatedDir))
+            fakeMediaLibraryRepository.setCached("/StreamTest/", cachedDir)
+            fakeMediaLibraryRepository.setResult("/StreamTest/", ListDirectoryResult.Success(remoteUpdatedDir))
 
             viewModel.onDirectoryClicked(RemoteDirectory(path = "/StreamTest/", name = "StreamTest"))
             advanceUntilIdle()
@@ -483,7 +480,7 @@ class DirectoryBrowserViewModelTest {
             assertNull(state.errorMessage)
 
             // Verify observeDirectory was called
-            val lastObserve = fakeDirectoryRepository.observeCalls.lastOrNull()
+            val lastObserve = fakeMediaLibraryRepository.observeCalls.lastOrNull()
             assertNotNull(lastObserve)
             assertEquals("/StreamTest/", lastObserve?.second)
             assertEquals(false, lastObserve?.third)
@@ -510,7 +507,7 @@ class DirectoryBrowserViewModelTest {
                     DirectoryContent(directory = rootDir, metadataMap = emptyMap(), isEnriching = true),
                     DirectoryContent(directory = rootDir, metadataMap = mapOf(audioFile.path to richMeta), isEnriching = false),
                 )
-            fakeDirectoryRepository.setDirectoryContentEmissions("/", emissions)
+            fakeMediaLibraryRepository.setDirectoryContentEmissions("/", emissions)
 
             viewModel.loadDirectory("/", forceRefresh = false)
             advanceUntilIdle()
@@ -548,7 +545,7 @@ class DirectoryBrowserViewModelTest {
 
             val server2 = WebDavServer(id = 2L, name = "Server 2", url = "http://server2.local", port = 80)
             val server2RootDir = RemoteDirectory(path = "/", name = "Server 2 Root")
-            fakeDirectoryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
+            fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
 
             // Active server changes in the session
             fakeMusicPlayerAppSession.setActiveServer(server2)
@@ -568,7 +565,7 @@ class DirectoryBrowserViewModelTest {
             val wmaFile = RemoteFile(name = "classic.wma", path = "/Music/classic.wma", size = 5000)
             val mp3File = RemoteFile(name = "song.mp3", path = "/Music/song.mp3", size = 4000)
             val dir = RemoteDirectory(path = "/Music/", name = "Music", files = listOf(wmaFile, mp3File))
-            fakeDirectoryRepository.setResult("/Music/", ListDirectoryResult.Success(dir))
+            fakeMediaLibraryRepository.setResult("/Music/", ListDirectoryResult.Success(dir))
 
             viewModel.onDirectoryClicked(dir)
             advanceUntilIdle()
@@ -592,7 +589,7 @@ class DirectoryBrowserViewModelTest {
                     name = "Jazz",
                     files = listOf(RemoteFile(name = "miles.mp3", path = "/Music/Jazz/miles.mp3")),
                 )
-            fakeDirectoryRepository.setResult("/Music/Jazz/", ListDirectoryResult.Success(jazzDir))
+            fakeMediaLibraryRepository.setResult("/Music/Jazz/", ListDirectoryResult.Success(jazzDir))
 
             val sessionWithDir =
                 FakeMusicPlayerAppSession(
@@ -604,9 +601,8 @@ class DirectoryBrowserViewModelTest {
             val vm =
                 DirectoryBrowserViewModel(
                     serverRepository = fakeServerRepository,
-                    directoryRepository = fakeDirectoryRepository,
+                    mediaLibraryRepository = fakeMediaLibraryRepository,
                     musicPlayerAppSession = sessionWithDir,
-                    librarySearchRepository = fakeLibrarySearchRepository,
                 )
             advanceUntilIdle()
 
@@ -618,11 +614,11 @@ class DirectoryBrowserViewModelTest {
     @Test
     fun init_whenRestoredDirectoryPathFails_gracefullyFallsBackToRoot() =
         runTest(testDispatcher) {
-            fakeDirectoryRepository.setResult(
+            fakeMediaLibraryRepository.setResult(
                 "/DeletedFolder/",
                 ListDirectoryResult.Failure("404 Not Found"),
             )
-            fakeDirectoryRepository.setResult("/", ListDirectoryResult.Success(rootDir))
+            fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(rootDir))
 
             val sessionWithDir =
                 FakeMusicPlayerAppSession(
@@ -634,9 +630,8 @@ class DirectoryBrowserViewModelTest {
             val vm =
                 DirectoryBrowserViewModel(
                     serverRepository = fakeServerRepository,
-                    directoryRepository = fakeDirectoryRepository,
+                    mediaLibraryRepository = fakeMediaLibraryRepository,
                     musicPlayerAppSession = sessionWithDir,
-                    librarySearchRepository = fakeLibrarySearchRepository,
                 )
             advanceUntilIdle()
 
@@ -658,7 +653,7 @@ class DirectoryBrowserViewModelTest {
 
             assertEquals("/Music/Rock/", viewModel.uiState.value.currentPath)
             assertEquals(3, viewModel.uiState.value.breadcrumbs.size)
-            val initialCalls = fakeDirectoryRepository.listCalls
+            val initialCalls = fakeMediaLibraryRepository.listCalls
 
             // User switches tab to Server List and returns to Directory Browser
             val coordinator =
@@ -675,7 +670,7 @@ class DirectoryBrowserViewModelTest {
                 viewModel.uiState.value.currentDirectory
                     ?.name,
             )
-            assertEquals(initialCalls, fakeDirectoryRepository.listCalls)
+            assertEquals(initialCalls, fakeMediaLibraryRepository.listCalls)
         }
 
     @Test
@@ -699,7 +694,7 @@ class DirectoryBrowserViewModelTest {
                     subDirectories = emptyList(),
                     files = emptyList(),
                 )
-            fakeDirectoryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
+            fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
 
             fakeMusicPlayerAppSession.setActiveServer(server2)
             fakeServerRepository.setActiveServerSync(server2)
@@ -756,8 +751,8 @@ class DirectoryBrowserViewModelTest {
                         ),
                 )
 
-            fakeDirectoryRepository.setCached("/CachedDir/", cachedDir)
-            fakeDirectoryRepository.setResult("/CachedDir/", ListDirectoryResult.Success(freshDir))
+            fakeMediaLibraryRepository.setCached("/CachedDir/", cachedDir)
+            fakeMediaLibraryRepository.setResult("/CachedDir/", ListDirectoryResult.Success(freshDir))
 
             viewModel.onDirectoryClicked(RemoteDirectory(path = "/CachedDir/", name = "CachedDir"))
 
@@ -782,8 +777,8 @@ class DirectoryBrowserViewModelTest {
                     name = "OfflineDir",
                     files = listOf(RemoteFile(name = "local.mp3", path = "/OfflineDir/local.mp3")),
                 )
-            fakeDirectoryRepository.setCached("/OfflineDir/", cachedDir)
-            fakeDirectoryRepository.setResult("/OfflineDir/", ListDirectoryResult.Failure("Network timeout", 408))
+            fakeMediaLibraryRepository.setCached("/OfflineDir/", cachedDir)
+            fakeMediaLibraryRepository.setResult("/OfflineDir/", ListDirectoryResult.Failure("Network timeout", 408))
 
             viewModel.onDirectoryClicked(RemoteDirectory(path = "/OfflineDir/", name = "OfflineDir"))
             advanceUntilIdle()
@@ -808,8 +803,8 @@ class DirectoryBrowserViewModelTest {
 
             val server2RootDir = RemoteDirectory(path = "/", name = "Server 2 Root")
             val server2PopDir = RemoteDirectory(path = "/Pop/", name = "Pop")
-            fakeDirectoryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
-            fakeDirectoryRepository.setResult("/Pop/", ListDirectoryResult.Success(server2PopDir))
+            fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
+            fakeMediaLibraryRepository.setResult("/Pop/", ListDirectoryResult.Success(server2PopDir))
 
             // 1. On server 1, navigate to /Music/Rock/
             viewModel.onDirectoryClicked(RemoteDirectory(path = "/Music/", name = "Music"))
@@ -979,7 +974,7 @@ class DirectoryBrowserViewModelTest {
 
             val server2 = WebDavServer(id = 2L, name = "Server 2", url = "http://server2.local", port = 80)
             val server2RootDir = RemoteDirectory(path = "/", name = "Server 2 Root")
-            fakeDirectoryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
+            fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
 
             val server1Track =
                 AudioTrack(
@@ -1033,7 +1028,7 @@ class DirectoryBrowserViewModelTest {
                             RemoteFile(name = "DarkSide.cue", path = "/Music/PinkFloyd/DarkSide.cue", size = 1024L),
                         ),
                 )
-            fakeDirectoryRepository.setResult("/Music/PinkFloyd/", ListDirectoryResult.Success(albumDir))
+            fakeMediaLibraryRepository.setResult("/Music/PinkFloyd/", ListDirectoryResult.Success(albumDir))
 
             viewModel.onDirectoryClicked(albumDir)
             advanceUntilIdle()
@@ -1055,7 +1050,7 @@ class DirectoryBrowserViewModelTest {
                     name = "PinkFloyd",
                     files = listOf(audioFile, cueFile),
                 )
-            fakeDirectoryRepository.setResult("/Music/PinkFloyd/", ListDirectoryResult.Success(albumDir))
+            fakeMediaLibraryRepository.setResult("/Music/PinkFloyd/", ListDirectoryResult.Success(albumDir))
 
             viewModel.onDirectoryClicked(albumDir)
             advanceUntilIdle()
@@ -1077,7 +1072,7 @@ class DirectoryBrowserViewModelTest {
                     name = "PinkFloyd",
                     files = listOf(cueFile),
                 )
-            fakeDirectoryRepository.setResult("/Music/PinkFloyd/", ListDirectoryResult.Success(albumDir))
+            fakeMediaLibraryRepository.setResult("/Music/PinkFloyd/", ListDirectoryResult.Success(albumDir))
 
             viewModel.onDirectoryClicked(albumDir)
             advanceUntilIdle()
@@ -1123,159 +1118,6 @@ class DirectoryBrowserViewModelTest {
             val server = serversFlow.value.firstOrNull { it.id == id }
             activeServerFlow.value = server
         }
-    }
-
-    private class FakeDirectoryRepository(
-        var trackMetadataRepository: FakeTrackMetadataRepository? = null,
-    ) : DirectoryRepository {
-        private val results = mutableMapOf<String, ListDirectoryResult>()
-        private val cachedDirectories = mutableMapOf<String, RemoteDirectory>()
-        val forceRefreshCount = mutableMapOf<String, Int>()
-        val observeCalls = mutableListOf<Triple<WebDavServer, String, Boolean>>()
-        var listCalls = 0
-        val contentResults = mutableMapOf<String, DirectoryContent>()
-        val contentEmissions = mutableMapOf<String, List<DirectoryContent>>()
-
-        fun setDirectoryContent(
-            path: String,
-            content: DirectoryContent,
-        ) {
-            contentResults[path] = content
-        }
-
-        fun setDirectoryContentEmissions(
-            path: String,
-            emissions: List<DirectoryContent>,
-        ) {
-            contentEmissions[path] = emissions
-        }
-
-        override fun observeDirectoryContent(
-            server: WebDavServer,
-            path: String,
-            forceRefresh: Boolean,
-        ): Flow<DirectoryContent> =
-            kotlinx.coroutines.flow.flow {
-                observeCalls.add(Triple(server, path, forceRefresh))
-
-                val custom = contentEmissions[path]
-                if (custom != null) {
-                    for (c in custom) emit(c)
-                    return@flow
-                }
-
-                val explicit = contentResults[path]
-                if (explicit != null) {
-                    emit(explicit)
-                    return@flow
-                }
-
-                val cached = if (!forceRefresh) cachedDirectories[path] else null
-                if (cached != null) {
-                    emit(DirectoryContent(directory = cached, isEnriching = true))
-                }
-
-                val result = listDirectory(path, forceRefresh)
-                when (result) {
-                    is ListDirectoryResult.Success -> {
-                        val dir = result.directory
-
-                        val metaMap =
-                            trackMetadataRepository
-                                ?.getAllMetadataFlow(server.id)
-                                ?.first()
-                                ?.associateBy { it.remotePath } ?: emptyMap()
-
-                        if (cached == null || dir != cached) {
-                            emit(DirectoryContent(directory = dir, isEnriching = true))
-                        }
-                        emit(
-                            DirectoryContent(
-                                directory = dir,
-                                metadataMap = metaMap,
-                                isEnriching = false,
-                            ),
-                        )
-                    }
-
-                    is ListDirectoryResult.Failure -> {
-                        if (cached != null && !forceRefresh) {
-                            val metaMap =
-                                trackMetadataRepository
-                                    ?.getAllMetadataFlow(server.id)
-                                    ?.first()
-                                    ?.associateBy { it.remotePath } ?: emptyMap()
-                            emit(DirectoryContent(directory = cached, metadataMap = metaMap, isEnriching = false))
-                        } else {
-                            throw IllegalStateException(result.message)
-                        }
-                    }
-                }
-            }
-
-        fun setResult(
-            path: String,
-            result: ListDirectoryResult,
-        ) {
-            results[path] = result
-        }
-
-        fun setCached(
-            path: String,
-            directory: RemoteDirectory,
-        ) {
-            cachedDirectories[path] = directory
-        }
-
-        override suspend fun getCachedDirectory(
-            server: WebDavServer,
-            path: String,
-        ): RemoteDirectory? = cachedDirectories[path]
-
-        suspend fun listDirectory(
-            path: String,
-            forceRefresh: Boolean = false,
-        ): ListDirectoryResult {
-            listCalls++
-            if (forceRefresh) {
-                forceRefreshCount[path] = (forceRefreshCount[path] ?: 0) + 1
-            }
-            return results[path] ?: ListDirectoryResult.Failure("Not found")
-        }
-
-        override suspend fun clearCache() {
-            results.clear()
-        }
-
-        fun observeDirectory(
-            server: WebDavServer,
-            path: String,
-            forceRefresh: Boolean,
-        ): Flow<ListDirectoryResult> =
-            kotlinx.coroutines.flow.flow {
-                observeCalls.add(Triple(server, path, forceRefresh))
-                var cached: RemoteDirectory? = null
-                if (!forceRefresh) {
-                    cached = cachedDirectories[path]
-                    if (cached != null) {
-                        emit(ListDirectoryResult.Success(cached))
-                    }
-                }
-                val result = listDirectory(path, forceRefresh)
-                when (result) {
-                    is ListDirectoryResult.Success -> {
-                        if (cached == null || result.directory != cached) {
-                            emit(result)
-                        }
-                    }
-
-                    is ListDirectoryResult.Failure -> {
-                        if (cached == null || forceRefresh) {
-                            emit(result)
-                        }
-                    }
-                }
-            }
     }
 
     private class FakeTrackMetadataRepository : TrackMetadataRepository {
@@ -1342,46 +1184,6 @@ class DirectoryBrowserViewModelTest {
         ): String? = textResponses[remotePath]
     }
 
-    private class FakeLibrarySearchRepository : LibrarySearchRepository {
-        var lastSearchQuery: String? = null
-        var lastSearchServerId: Long? = null
-        val searchResultFlow = MutableStateFlow(LibrarySearchResult())
-        val historyList = mutableListOf<String>()
-
-        fun emitResult(result: LibrarySearchResult) {
-            searchResultFlow.value = result
-        }
-
-        override fun search(
-            query: String,
-            serverId: Long?,
-        ): Flow<LibrarySearchResult> {
-            lastSearchQuery = query
-            lastSearchServerId = serverId
-            return searchResultFlow
-        }
-
-        override fun getSearchHistory(): List<String> = historyList.toList()
-
-        override fun recordSearchQuery(query: String): List<String> {
-            val trimmed = query.trim()
-            if (trimmed.isNotBlank()) {
-                historyList.remove(trimmed)
-                historyList.add(0, trimmed)
-            }
-            return historyList.toList()
-        }
-
-        override fun removeSearchHistory(query: String): List<String> {
-            historyList.remove(query)
-            return historyList.toList()
-        }
-
-        override fun clearSearchHistory() {
-            historyList.clear()
-        }
-    }
-
     @Test
     fun searchBar_activeStateToggle_updatesUiState_andClearsOnClose() =
         runTest {
@@ -1400,7 +1202,7 @@ class DirectoryBrowserViewModelTest {
         }
 
     @Test
-    fun searchBar_queryChange_triggersLibrarySearchRepository_andUpdatesResult() =
+    fun searchBar_queryChange_triggersMediaLibraryRepository_andUpdatesResult() =
         runTest {
             advanceUntilIdle()
 
@@ -1408,13 +1210,13 @@ class DirectoryBrowserViewModelTest {
             viewModel.onSearchQueryChanged("rock")
             advanceUntilIdle()
 
-            assertEquals("rock", fakeLibrarySearchRepository.lastSearchQuery)
-            assertEquals("Default search filters by active serverId", sampleServer.id, fakeLibrarySearchRepository.lastSearchServerId)
+            assertEquals("rock", fakeMediaLibraryRepository.lastSearchQuery)
+            assertEquals("Default search filters by active serverId", sampleServer.id, fakeMediaLibraryRepository.lastSearchServerId)
 
             // Toggling search scope switches to global search
             viewModel.onToggleSearchScope()
             advanceUntilIdle()
-            assertNull("Global search passes null serverId", fakeLibrarySearchRepository.lastSearchServerId)
+            assertNull("Global search passes null serverId", fakeMediaLibraryRepository.lastSearchServerId)
 
             val matchedDir = RemoteDirectory(path = "/Music/Rock/", name = "Rock")
             val matchedTrack =
@@ -1431,7 +1233,7 @@ class DirectoryBrowserViewModelTest {
                     matchedTracks = listOf(matchedTrack),
                 )
 
-            fakeLibrarySearchRepository.emitResult(result)
+            fakeMediaLibraryRepository.emitResult(result)
             advanceUntilIdle()
 
             assertEquals(1, viewModel.uiState.value.searchResult.matchedDirectories.size)
@@ -1458,7 +1260,7 @@ class DirectoryBrowserViewModelTest {
 
             assertTrue(viewModel.uiState.value.searchResult.isEmpty)
             assertFalse(viewModel.uiState.value.isSearching)
-            assertNull(fakeLibrarySearchRepository.lastSearchQuery)
+            assertNull(fakeMediaLibraryRepository.lastSearchQuery)
         }
 
     @Test
@@ -1471,6 +1273,21 @@ class DirectoryBrowserViewModelTest {
             viewModel.onClearSearchQuery()
             assertEquals("", viewModel.uiState.value.searchQuery)
             assertTrue(viewModel.uiState.value.searchResult.isEmpty)
+            assertTrue(viewModel.uiState.value.searchHistory.contains("queen"))
+        }
+
+    @Test
+    fun searchBar_queryChange_autoRecordsToHistoryAfterDelay() =
+        runTest {
+            viewModel.onSearchQueryChanged("Coldplay")
+            // Before delay, not yet auto-recorded
+            assertFalse(viewModel.uiState.value.searchHistory.contains("Coldplay"))
+
+            advanceTimeBy(1600L)
+            advanceUntilIdle()
+
+            // After 1500ms delay, auto-recorded to history!
+            assertTrue(viewModel.uiState.value.searchHistory.contains("Coldplay"))
         }
 
     @Test
@@ -1579,15 +1396,14 @@ class DirectoryBrowserViewModelTest {
         }
 
     @Test
-    fun searchHistory_persistsAcrossViewModelInstances_viaLibrarySearchRepository() =
+    fun searchHistory_persistsAcrossViewModelInstances_viaMediaLibraryRepository() =
         runTest {
-            val sharedRepo = FakeLibrarySearchRepository()
+            val sharedRepo = FakeMediaLibraryRepository()
             val vm1 =
                 DirectoryBrowserViewModel(
                     serverRepository = fakeServerRepository,
-                    directoryRepository = fakeDirectoryRepository,
+                    mediaLibraryRepository = sharedRepo,
                     musicPlayerAppSession = fakeMusicPlayerAppSession,
-                    librarySearchRepository = sharedRepo,
                 )
             vm1.onSearchSubmitted("Beethoven")
             vm1.onSearchSubmitted("Mozart")
@@ -1599,9 +1415,8 @@ class DirectoryBrowserViewModelTest {
             val vm2 =
                 DirectoryBrowserViewModel(
                     serverRepository = fakeServerRepository,
-                    directoryRepository = fakeDirectoryRepository,
+                    mediaLibraryRepository = sharedRepo,
                     musicPlayerAppSession = fakeMusicPlayerAppSession,
-                    librarySearchRepository = sharedRepo,
                 )
             assertEquals(listOf("Mozart", "Beethoven"), vm2.uiState.value.searchHistory)
         }
@@ -1682,7 +1497,7 @@ class DirectoryBrowserViewModelTest {
                     title = "Track 2",
                     format = AudioFormat.FLAC,
                 )
-            fakeLibrarySearchRepository.emitResult(LibrarySearchResult(matchedTracks = listOf(track1, track2)))
+            fakeMediaLibraryRepository.emitResult(LibrarySearchResult(matchedTracks = listOf(track1, track2)))
             viewModel.onSearchActiveChanged(true)
             viewModel.onSearchQueryChanged("Track")
             advanceUntilIdle()
@@ -1739,7 +1554,7 @@ class DirectoryBrowserViewModelTest {
                         format = AudioFormat.FLAC,
                     ),
                 )
-            fakeLibrarySearchRepository.emitResult(LibrarySearchResult(matchedTracks = selectedTracks))
+            fakeMediaLibraryRepository.emitResult(LibrarySearchResult(matchedTracks = selectedTracks))
             viewModel.onSearchActiveChanged(true)
             viewModel.onSearchQueryChanged("track")
             advanceUntilIdle()
@@ -1791,7 +1606,7 @@ class DirectoryBrowserViewModelTest {
                     title = "Track 3",
                     format = AudioFormat.FLAC,
                 )
-            fakeLibrarySearchRepository.emitResult(LibrarySearchResult(matchedTracks = listOf(track1, track2, track3)))
+            fakeMediaLibraryRepository.emitResult(LibrarySearchResult(matchedTracks = listOf(track1, track2, track3)))
             viewModel.onSearchActiveChanged(true)
             viewModel.onSearchQueryChanged("Track")
             advanceUntilIdle()
@@ -1847,7 +1662,7 @@ class DirectoryBrowserViewModelTest {
                             RemoteFile(name = "track3.wav", path = "/Mixed/track3.wav", size = 3000),
                         ),
                 )
-            fakeDirectoryRepository.setResult("/Mixed/", ListDirectoryResult.Success(mixedDir))
+            fakeMediaLibraryRepository.setResult("/Mixed/", ListDirectoryResult.Success(mixedDir))
 
             viewModel.loadDirectory("/Mixed/")
             advanceUntilIdle()
@@ -1887,7 +1702,7 @@ class DirectoryBrowserViewModelTest {
                             RemoteFile(name = "notes.txt", path = "/Empty/notes.txt", size = 100),
                         ),
                 )
-            fakeDirectoryRepository.setResult("/Empty/", ListDirectoryResult.Success(emptyDir))
+            fakeMediaLibraryRepository.setResult("/Empty/", ListDirectoryResult.Success(emptyDir))
 
             viewModel.loadDirectory("/Empty/")
             advanceUntilIdle()
@@ -1927,7 +1742,7 @@ class DirectoryBrowserViewModelTest {
                             RemoteFile(name = "track3.flac", path = "/Batch/track3.flac", size = 3000),
                         ),
                 )
-            fakeDirectoryRepository.setResult("/Batch/", ListDirectoryResult.Success(batchDir))
+            fakeMediaLibraryRepository.setResult("/Batch/", ListDirectoryResult.Success(batchDir))
 
             viewModel.loadDirectory("/Batch/")
             advanceUntilIdle()
@@ -1982,7 +1797,7 @@ class DirectoryBrowserViewModelTest {
                             RemoteFile(name = "track3.flac", path = "/Batch/track3.flac", size = 3000),
                         ),
                 )
-            fakeDirectoryRepository.setResult("/Batch/", ListDirectoryResult.Success(batchDir))
+            fakeMediaLibraryRepository.setResult("/Batch/", ListDirectoryResult.Success(batchDir))
 
             viewModel.loadDirectory("/Batch/")
             advanceUntilIdle()

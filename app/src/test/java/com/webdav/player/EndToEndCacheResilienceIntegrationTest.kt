@@ -18,7 +18,7 @@ import com.webdav.player.data.local.CoverArtStorageImpl
 import com.webdav.player.data.player.Media3AudioPlayerEngine
 import com.webdav.player.data.player.WebDavMediaSourceBuilder
 import com.webdav.player.data.remote.OkHttpWebDavClient
-import com.webdav.player.data.repository.DirectoryRepositoryImpl
+import com.webdav.player.data.repository.MediaLibraryRepositoryImpl
 import com.webdav.player.data.repository.ServerRepositoryImpl
 import com.webdav.player.data.repository.TrackMetadataRepositoryImpl
 import com.webdav.player.data.service.PlaybackSessionHost
@@ -91,7 +91,7 @@ class EndToEndCacheResilienceIntegrationTest {
     private lateinit var coverArtStorage: CoverArtStorageImpl
     private lateinit var webDavClient: OkHttpWebDavClient
     private lateinit var serverRepository: ServerRepositoryImpl
-    private lateinit var directoryRepository: DirectoryRepositoryImpl
+    private lateinit var mediaLibraryRepository: MediaLibraryRepositoryImpl
     private lateinit var mediaSourceBuilder: WebDavMediaSourceBuilder
     private lateinit var trackMetadataRepository: TrackMetadataRepositoryImpl
     private lateinit var sessionStore: FakePlaybackSessionStore
@@ -128,11 +128,16 @@ class EndToEndCacheResilienceIntegrationTest {
                 webDavServerDao = database.webDavServerDao(),
                 ioDispatcher = testDispatcher,
             )
-        directoryRepository =
-            DirectoryRepositoryImpl(
+        mediaLibraryRepository =
+            MediaLibraryRepositoryImpl(
                 webDavClient = webDavClient,
                 directoryCacheDao = database.directoryCacheDao(),
+                trackMetadataDao = database.trackMetadataDao(),
+                mediaTrackIndexDao = database.mediaTrackIndexDao(),
+                directorySyncCheckpointDao = database.directorySyncCheckpointDao(),
                 trackMetadataRepository = trackMetadataRepository,
+                context = context,
+                ioDispatcher = testDispatcher,
             )
 
         testServer =
@@ -288,7 +293,7 @@ class EndToEndCacheResilienceIntegrationTest {
 
             // Step 1: Initial resolution populates Room DB and writes thumbnails to disk
             val initialContent =
-                directoryRepository
+                mediaLibraryRepository
                     .observeDirectoryContent(
                         testServer,
                         "/Music/Classics/",
@@ -368,7 +373,7 @@ class EndToEndCacheResilienceIntegrationTest {
             val viewModel =
                 DirectoryBrowserViewModel(
                     serverRepository = serverRepository,
-                    directoryRepository = directoryRepository,
+                    mediaLibraryRepository = mediaLibraryRepository,
                     musicPlayerAppSession = appSession,
                 )
 
@@ -619,7 +624,7 @@ class EndToEndCacheResilienceIntegrationTest {
             // Step 1: Browse directory initially while remote cover.jpg does not exist.
             // Negative caching stores NO_FOLDER_ARTWORK_SENTINEL.
             val initialContent =
-                directoryRepository
+                mediaLibraryRepository
                     .observeDirectoryContent(
                         testServer,
                         "/Music/Acoustic/",
@@ -663,7 +668,7 @@ class EndToEndCacheResilienceIntegrationTest {
             val viewModel =
                 DirectoryBrowserViewModel(
                     serverRepository = serverRepository,
-                    directoryRepository = directoryRepository,
+                    mediaLibraryRepository = mediaLibraryRepository,
                     musicPlayerAppSession = appSession,
                 )
 

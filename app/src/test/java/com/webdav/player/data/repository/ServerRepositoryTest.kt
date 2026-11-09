@@ -11,6 +11,7 @@ import com.webdav.player.data.remote.OkHttpWebDavClient
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
+import com.webdav.player.domain.repository.FakeMediaLibraryRepository
 import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -45,14 +46,24 @@ class ServerRepositoryTest {
                 .allowMainThreadQueries()
                 .build()
         coverArtStorage = CoverArtStorageImpl(context)
+        val mediaLibraryRepository =
+            MediaLibraryRepositoryImpl(
+                webDavClient = OkHttpWebDavClient(),
+                directoryCacheDao = database.directoryCacheDao(),
+                trackMetadataDao = database.trackMetadataDao(),
+                mediaTrackIndexDao = database.mediaTrackIndexDao(),
+                directorySyncCheckpointDao = database.directorySyncCheckpointDao(),
+                localStorageFolderDao = database.localStorageFolderDao(),
+                context = context,
+            )
         repository =
             ServerRepositoryImpl(
                 serverDao = database.webDavServerDao(),
                 coverArtStorage = coverArtStorage,
-                directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
                 localStorageFolderDao = database.localStorageFolderDao(),
                 context = context,
+                mediaLibraryRepository = mediaLibraryRepository,
             )
     }
 
@@ -328,7 +339,6 @@ class ServerRepositoryTest {
                 ServerRepositoryImpl(
                     serverDao = database.webDavServerDao(),
                     coverArtStorage = coverArtStorage,
-                    directoryCacheDao = database.directoryCacheDao(),
                     trackMetadataDao = database.trackMetadataDao(),
                     localStorageFolderDao = database.localStorageFolderDao(),
                     context = context,
@@ -359,7 +369,6 @@ class ServerRepositoryTest {
                 ServerRepositoryImpl(
                     serverDao = database.webDavServerDao(),
                     coverArtStorage = coverArtStorage,
-                    directoryCacheDao = database.directoryCacheDao(),
                     trackMetadataDao = database.trackMetadataDao(),
                     localStorageFolderDao = database.localStorageFolderDao(),
                     context = context,
@@ -368,5 +377,31 @@ class ServerRepositoryTest {
             val coldStartActive = restartedRepo.getActiveServer().first()
             assertNotNull(coldStartActive)
             assertEquals(id1, coldStartActive?.id)
+        }
+
+    @Test
+    fun deleteServer_and_removeMountedLocalFolder_delegateToMediaLibraryRepository() =
+        runTest {
+            val fakeMediaLibraryRepo = FakeMediaLibraryRepository()
+            val repoWithFake =
+                ServerRepositoryImpl(
+                    serverDao = database.webDavServerDao(),
+                    coverArtStorage = coverArtStorage,
+                    trackMetadataDao = database.trackMetadataDao(),
+                    localStorageFolderDao = database.localStorageFolderDao(),
+                    context = context,
+                    mediaLibraryRepository = fakeMediaLibraryRepo,
+                )
+
+            val serverId = repoWithFake.saveServer(WebDavServer(name = "Cascade NAS", url = "http://nas"))
+            repoWithFake.deleteServer(serverId)
+
+            assertEquals(listOf(serverId), fakeMediaLibraryRepo.clearedStorageServerIds)
+
+            val folderUri = "content://tree/primary%3AMusic"
+            repoWithFake.addMountedLocalFolder(folderUri, "Music")
+            repoWithFake.removeMountedLocalFolder(folderUri)
+
+            assertEquals(listOf(folderUri), fakeMediaLibraryRepo.clearedLocalFolderUris)
         }
 }

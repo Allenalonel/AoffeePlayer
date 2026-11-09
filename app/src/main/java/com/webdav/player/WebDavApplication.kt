@@ -10,10 +10,9 @@ import com.webdav.player.data.player.WebDavMediaSourceBuilder
 import com.webdav.player.data.remote.OkHttpWebDavClient
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.data.repository.DataStorePlaybackSessionStore
-import com.webdav.player.data.repository.DirectoryRepositoryImpl
-import com.webdav.player.data.repository.LibrarySearchRepositoryImpl
 import com.webdav.player.data.repository.LocalStorageDirectoryResolver
 import com.webdav.player.data.repository.LocalStorageIndexScanner
+import com.webdav.player.data.repository.MediaLibraryRepositoryImpl
 import com.webdav.player.data.repository.PlaylistRepositoryImpl
 import com.webdav.player.data.repository.ServerRepositoryImpl
 import com.webdav.player.data.repository.TrackMetadataRepositoryImpl
@@ -21,8 +20,7 @@ import com.webdav.player.data.repository.WebDavSyncScanner
 import com.webdav.player.data.service.PlaybackSessionHost
 import com.webdav.player.di.AppContainer
 import com.webdav.player.domain.player.AudioPlayerEngine
-import com.webdav.player.domain.repository.DirectoryRepository
-import com.webdav.player.domain.repository.LibrarySearchRepository
+import com.webdav.player.domain.repository.MediaLibraryRepository
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
@@ -41,10 +39,7 @@ class WebDavApplication :
     override lateinit var trackMetadataRepository: TrackMetadataRepository
         private set
 
-    override lateinit var directoryRepository: DirectoryRepository
-        private set
-
-    override lateinit var librarySearchRepository: LibrarySearchRepository
+    override lateinit var mediaLibraryRepository: MediaLibraryRepository
         private set
 
     override lateinit var playlistRepository: PlaylistRepository
@@ -75,11 +70,8 @@ class WebDavApplication :
                 serverDao = database.webDavServerDao(),
                 coverArtStorage = coverArtStorage,
                 webDavClient = webDavClient,
-                directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
                 localStorageFolderDao = database.localStorageFolderDao(),
-                mediaTrackIndexDao = mediaTrackIndexDao,
-                directorySyncCheckpointDao = checkpointDao,
                 context = this,
             )
 
@@ -109,15 +101,6 @@ class WebDavApplication :
                 serverRepository = serverRepository,
                 coverArtStorage = coverArtStorage,
             )
-        val directoryRepository =
-            DirectoryRepositoryImpl(
-                webDavClient = webDavClient,
-                directoryCacheDao = database.directoryCacheDao(),
-                trackMetadataRepository = trackMetadataRepository,
-                localStorageDirectoryResolver = localStorageDirectoryResolver,
-                mediaTrackIndexDao = mediaTrackIndexDao,
-            )
-        this.directoryRepository = directoryRepository
 
         val localStorageIndexScanner =
             LocalStorageIndexScanner(
@@ -134,16 +117,22 @@ class WebDavApplication :
                 directorySyncCheckpointDao = checkpointDao,
             )
 
-        librarySearchRepository =
-            LibrarySearchRepositoryImpl(
+        val mediaLibraryRepository =
+            MediaLibraryRepositoryImpl(
+                webDavClient = webDavClient,
                 directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
                 mediaTrackIndexDao = mediaTrackIndexDao,
                 directorySyncCheckpointDao = checkpointDao,
+                trackMetadataRepository = trackMetadataRepository,
+                localStorageDirectoryResolver = localStorageDirectoryResolver,
+                localStorageFolderDao = database.localStorageFolderDao(),
                 webDavSyncScanner = webDavSyncScanner,
                 localStorageIndexScanner = localStorageIndexScanner,
                 context = this,
             )
+        this.mediaLibraryRepository = mediaLibraryRepository
+        (serverRepository as? ServerRepositoryImpl)?.mediaLibraryRepository = mediaLibraryRepository
 
         playlistRepository =
             PlaylistRepositoryImpl(
@@ -176,6 +165,9 @@ class WebDavApplication :
                 .clear()
             com.webdav.player.ui.player.ArtworkColorExtractor
                 .clearCache()
+            if (::mediaLibraryRepository.isInitialized) {
+                mediaLibraryRepository.clearMemoryCache()
+            }
         }
     }
 }

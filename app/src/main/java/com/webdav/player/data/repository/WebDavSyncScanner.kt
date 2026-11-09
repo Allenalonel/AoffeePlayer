@@ -81,7 +81,7 @@ class WebDavSyncScanner(
         server: WebDavServer,
         force: Boolean = false,
         onProgress: ((LibrarySyncState) -> Unit)? = null,
-        rootPath: String = server.pathPrefix.ifBlank { "/" },
+        rootPath: String = "/",
     ): LibrarySyncResult =
         withContext(ioDispatcher) {
             val normalizedRoot = RemoteDirectory.normalizePath(rootPath)

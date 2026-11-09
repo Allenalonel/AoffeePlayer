@@ -28,7 +28,7 @@ import com.webdav.player.data.player.WebDavLoadErrorHandlingPolicy
 import com.webdav.player.data.player.WebDavMediaSourceBuilder
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.OkHttpWebDavClient
-import com.webdav.player.data.repository.DirectoryRepositoryImpl
+import com.webdav.player.data.repository.MediaLibraryRepositoryImpl
 import com.webdav.player.data.repository.ServerRepositoryImpl
 import com.webdav.player.data.repository.TrackMetadataRepositoryImpl
 import com.webdav.player.data.service.PlaybackSessionHost
@@ -103,7 +103,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
     private lateinit var coverArtStorage: CoverArtStorageImpl
     private lateinit var webDavClient: OkHttpWebDavClient
     private lateinit var serverRepository: ServerRepositoryImpl
-    private lateinit var directoryRepository: DirectoryRepositoryImpl
+    private lateinit var mediaLibraryRepository: MediaLibraryRepositoryImpl
     private lateinit var mediaSourceBuilder: WebDavMediaSourceBuilder
     private lateinit var sessionStore: FakePlaybackSessionStore
     private lateinit var testServer: WebDavServer
@@ -129,7 +129,6 @@ class EndToEndPlaybackPipelineIntegrationTest {
         coverArtStorage = CoverArtStorageImpl(context)
         webDavClient = OkHttpWebDavClient()
         serverRepository = ServerRepositoryImpl(database.webDavServerDao(), coverArtStorage, webDavClient)
-        directoryRepository = DirectoryRepositoryImpl(webDavClient, database.directoryCacheDao())
         mediaSourceBuilder = WebDavMediaSourceBuilder(context, webDavClient)
         sessionStore = FakePlaybackSessionStore()
 
@@ -138,6 +137,16 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 trackMetadataDao = database.trackMetadataDao(),
                 webDavClient = webDavClient,
                 coverArtStorage = coverArtStorage,
+                ioDispatcher = testDispatcher,
+            )
+        mediaLibraryRepository =
+            MediaLibraryRepositoryImpl(
+                webDavClient = webDavClient,
+                directoryCacheDao = database.directoryCacheDao(),
+                trackMetadataDao = database.trackMetadataDao(),
+                mediaTrackIndexDao = database.mediaTrackIndexDao(),
+                directorySyncCheckpointDao = database.directorySyncCheckpointDao(),
+                context = context,
                 ioDispatcher = testDispatcher,
             )
 
@@ -205,7 +214,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
             // Save server to repository
             serverRepository.setActiveServer(testServer.id)
 
-            // Step 2: Load directory contents via DirectoryRepository (PROPFIND returning multiple audio formats)
+            // Step 2: Load directory contents via MediaLibraryRepository (PROPFIND returning multiple audio formats)
             val directoryXml =
                 """
                 <?xml version="1.0" encoding="utf-8"?>
@@ -263,7 +272,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     .setBody(directoryXml),
             )
 
-            val contentList = directoryRepository.observeDirectoryContent(testServer, "/Music/").toList()
+            val contentList = mediaLibraryRepository.observeDirectoryContent(testServer, "/Music/").toList()
             val directory = contentList.last().directory
             assertEquals(3, directory.files.size)
 
@@ -275,7 +284,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
             assertEquals("03-Sonata.wma", wmaFile.name)
 
             // Step 2b: Verify WebDAV directory caching persists and returns cached results without additional network calls
-            val cachedDir = directoryRepository.getCachedDirectory(testServer, "/Music/")
+            val cachedDir = mediaLibraryRepository.getCachedDirectory(testServer, "/Music/")
             assertNotNull("Cached directory must succeed without new network calls", cachedDir)
             assertEquals(3, cachedDir!!.files.size)
 

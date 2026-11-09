@@ -2,8 +2,6 @@ package com.webdav.player.di
 
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.player.AudioPlayerEngine
-import com.webdav.player.domain.repository.DirectoryRepository
-import com.webdav.player.domain.repository.LibrarySearchRepository
 import com.webdav.player.domain.repository.MediaLibraryRepository
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
@@ -17,8 +15,6 @@ import com.webdav.player.domain.session.MusicPlayerAppSession
 interface AppContainer {
     val serverRepository: ServerRepository
     val mediaLibraryRepository: MediaLibraryRepository
-    val directoryRepository: DirectoryRepository
-    val librarySearchRepository: LibrarySearchRepository
     val playlistRepository: PlaylistRepository
     val trackMetadataRepository: TrackMetadataRepository
     val playerEngine: AudioPlayerEngine

@@ -1201,7 +1201,7 @@ class DirectoryBrowserViewModelTest {
         }
 
     @Test
-    fun searchBar_queryChange_triggersLibrarySearchRepository_andUpdatesResult() =
+    fun searchBar_queryChange_triggersMediaLibraryRepository_andUpdatesResult() =
         runTest {
             advanceUntilIdle()
 

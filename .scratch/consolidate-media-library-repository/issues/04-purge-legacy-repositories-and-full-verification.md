@@ -4,11 +4,11 @@
 
 **Blocked by:** 03: 表现层接入 MediaLibraryRepository 并精简 ViewModel 依赖
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] 物理删除 `DirectoryRepository.kt`、`DirectoryRepositoryImpl.kt`、`LibrarySearchRepository.kt`、`LibrarySearchRepositoryImpl.kt`。
-- [ ] 物理删除已整合的旧测试文件 `DirectoryRepositoryTest.kt` 与 `LibrarySearchRepositoryTest.kt`。
-- [ ] 从 `AppContainer` 与 `AppViewModelFactory` 中彻底抹除旧接口属性与遗留别名。
-- [ ] 更新 `EndToEndPlaylistAndSearchPipelineTest`、`EndToEndCacheResilienceIntegrationTest` 与 `EndToEndPlaybackPipelineIntegrationTest`，对齐新接缝。
-- [ ] 更新并通过 `PackagingSeamVerificationTest`，确证无僵尸类残留，各包单向接缝合规。
-- [ ] 执行全工程单元测试 `./gradlew testDebugUnitTest`，确保 100% 绿色通行，无构建警告。
+- [x] 物理删除 `DirectoryRepository.kt`、`DirectoryRepositoryImpl.kt`、`LibrarySearchRepository.kt`、`LibrarySearchRepositoryImpl.kt`。
+- [x] 物理删除已整合的旧测试文件 `DirectoryRepositoryTest.kt` 与 `LibrarySearchRepositoryTest.kt`。
+- [x] 从 `AppContainer` 与 `AppViewModelFactory` 中彻底抹除旧接口属性与遗留别名。
+- [x] 更新 `EndToEndPlaylistAndSearchPipelineTest`、`EndToEndCacheResilienceIntegrationTest` 与 `EndToEndPlaybackPipelineIntegrationTest`，对齐新接缝。
+- [x] 更新并通过 `PackagingSeamVerificationTest`，确证无僵尸类残留，各包单向接缝合规。
+- [x] 执行全工程单元测试 `./gradlew testDebugUnitTest`，确保 100% 绿色通行，无构建警告。

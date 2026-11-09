@@ -22,6 +22,7 @@ import java.util.zip.ZipFile
  */
 class PackagingSeamVerificationTest {
     private val sourceRoot = File("src/main/java/com/webdav/player")
+    private val testRoot = File("src/test/java/com/webdav/player")
 
     private fun source(relativePath: String): String {
         val file = File(sourceRoot, relativePath)
@@ -161,11 +162,26 @@ class PackagingSeamVerificationTest {
                 "domain/session/VirtualTimelineEngine.kt",
                 "ui/browser/components/CueAlbumCard.kt",
                 "ui/browser/components/AudioTrackItemRowCompat.kt",
+                "domain/repository/DirectoryRepository.kt",
+                "data/repository/DirectoryRepositoryImpl.kt",
+                "domain/repository/LibrarySearchRepository.kt",
+                "data/repository/LibrarySearchRepositoryImpl.kt",
             )
         val existingZombies = bannedZombiePaths.filter { File(sourceRoot, it).exists() }
         assertTrue(
             "Zombie forwarding shells and deprecated compatibility files must remain deleted: $existingZombies",
             existingZombies.isEmpty(),
+        )
+
+        val bannedZombieTestPaths =
+            listOf(
+                "data/repository/DirectoryRepositoryTest.kt",
+                "data/repository/LibrarySearchRepositoryTest.kt",
+            )
+        val existingZombieTests = bannedZombieTestPaths.filter { File(testRoot, it).exists() }
+        assertTrue(
+            "Legacy repository test suites must remain deleted: $existingZombieTests",
+            existingZombieTests.isEmpty(),
         )
     }
 
@@ -448,5 +464,74 @@ class PackagingSeamVerificationTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun consolidatedMediaLibraryRepository_purgesLegacyRepositoriesAndTests() {
+        // Production legacy repository interfaces and implementations must be eliminated
+        assertFalse(
+            "DirectoryRepository.kt must be eliminated",
+            File(sourceRoot, "domain/repository/DirectoryRepository.kt").exists(),
+        )
+        assertFalse(
+            "DirectoryRepositoryImpl.kt must be eliminated",
+            File(sourceRoot, "data/repository/DirectoryRepositoryImpl.kt").exists(),
+        )
+        assertFalse(
+            "LibrarySearchRepository.kt must be eliminated",
+            File(sourceRoot, "domain/repository/LibrarySearchRepository.kt").exists(),
+        )
+        assertFalse(
+            "LibrarySearchRepositoryImpl.kt must be eliminated",
+            File(sourceRoot, "data/repository/LibrarySearchRepositoryImpl.kt").exists(),
+        )
+
+        // Test legacy repository test files must be eliminated
+        assertFalse(
+            "DirectoryRepositoryTest.kt must be eliminated",
+            File(testRoot, "data/repository/DirectoryRepositoryTest.kt").exists(),
+        )
+        assertFalse(
+            "LibrarySearchRepositoryTest.kt must be eliminated",
+            File(testRoot, "data/repository/LibrarySearchRepositoryTest.kt").exists(),
+        )
+
+        // AppContainer must expose MediaLibraryRepository and zero legacy repositories
+        val appContainer = source("di/AppContainer.kt")
+        assertTrue(
+            "AppContainer must expose mediaLibraryRepository",
+            appContainer.contains("val mediaLibraryRepository: MediaLibraryRepository"),
+        )
+        assertFalse(
+            "AppContainer must not expose directoryRepository",
+            appContainer.contains("directoryRepository"),
+        )
+        assertFalse(
+            "AppContainer must not expose librarySearchRepository",
+            appContainer.contains("librarySearchRepository"),
+        )
+
+        // WebDavApplication must not instantiate or retain legacy repositories
+        val app = source("WebDavApplication.kt")
+        assertFalse("WebDavApplication must not reference DirectoryRepository", app.contains("DirectoryRepository"))
+        assertFalse("WebDavApplication must not reference LibrarySearchRepository", app.contains("LibrarySearchRepository"))
+
+        // No source file in src/main/java may import legacy repositories
+        val legacyRepoImport =
+            Regex(
+                """^import com\.webdav\.player\.(data|domain)\.repository\.(DirectoryRepository|DirectoryRepositoryImpl|LibrarySearchRepository|LibrarySearchRepositoryImpl)\b""",
+                RegexOption.MULTILINE,
+            )
+        val legacyRepoOffenders =
+            sourceRoot
+                .walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .filter { legacyRepoImport.containsMatchIn(it.readText()) }
+                .map { it.name }
+                .toList()
+        assertTrue(
+            "No production source may import legacy repositories: $legacyRepoOffenders",
+            legacyRepoOffenders.isEmpty(),
+        )
     }
 }

@@ -7,7 +7,8 @@ import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.DirectoryCacheEntity
 import com.webdav.player.data.local.RemoteDirectoryJsonSerializer
 import com.webdav.player.data.local.TrackMetadataEntity
-import com.webdav.player.data.repository.LibrarySearchRepositoryImpl
+import com.webdav.player.data.remote.OkHttpWebDavClient
+import com.webdav.player.data.repository.MediaLibraryRepositoryImpl
 import com.webdav.player.data.repository.PlaylistRepositoryImpl
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
@@ -52,7 +53,7 @@ class EndToEndPlaylistAndSearchPipelineTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var database: AppDatabase
     private lateinit var playlistRepository: PlaylistRepositoryImpl
-    private lateinit var searchRepository: LibrarySearchRepositoryImpl
+    private lateinit var mediaLibraryRepository: MediaLibraryRepositoryImpl
     private lateinit var fakeEngine: FakeAudioPlayerEngine
     private lateinit var fakeStore: FakePlaybackSessionStore
     private lateinit var fakeServerRepo: TestServerRepository
@@ -144,10 +145,14 @@ class EndToEndPlaylistAndSearchPipelineTest {
                 .allowMainThreadQueries()
                 .build()
         playlistRepository = PlaylistRepositoryImpl(database.playlistDao())
-        searchRepository =
-            LibrarySearchRepositoryImpl(
+        mediaLibraryRepository =
+            MediaLibraryRepositoryImpl(
+                webDavClient = OkHttpWebDavClient(),
                 directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataDao = database.trackMetadataDao(),
+                mediaTrackIndexDao = database.mediaTrackIndexDao(),
+                directorySyncCheckpointDao = database.directorySyncCheckpointDao(),
+                context = context,
             )
 
         fakeEngine = FakeAudioPlayerEngine()
@@ -244,7 +249,7 @@ class EndToEndPlaylistAndSearchPipelineTest {
             assertTrue("Playlist id should be > 0", playlistId > 0L)
 
             // 2. Search library for "Symphony" across servers
-            val searchResult = searchRepository.search("Symphony", serverId = null).first { it.matchedTracks.isNotEmpty() }
+            val searchResult = mediaLibraryRepository.search("Symphony", serverId = null).first { it.matchedTracks.isNotEmpty() }
             assertTrue("Search matched directories or tracks", searchResult.matchedTracks.isNotEmpty())
 
             // Should match track from Server 1
@@ -252,7 +257,7 @@ class EndToEndPlaylistAndSearchPipelineTest {
             assertNotNull("Matched parent physical track", matchedBeethoven)
 
             // 3. Search for "Chopin" on Server 2
-            val chopinResult = searchRepository.search("Chopin", serverId = null).first { it.matchedTracks.isNotEmpty() }
+            val chopinResult = mediaLibraryRepository.search("Chopin", serverId = null).first { it.matchedTracks.isNotEmpty() }
             val matchedChopin = chopinResult.matchedTracks.find { it.serverId == server2.id }
             assertNotNull("Matched Chopin track from Server 2", matchedChopin)
 

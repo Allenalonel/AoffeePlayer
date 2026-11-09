@@ -19,8 +19,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.webdav.player.domain.model.AudioFormat
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaylistTrackEntry
+import com.webdav.player.ui.common.TrackPathFormatter
 import com.webdav.player.ui.motion.expressiveDialog
 import com.webdav.player.ui.theme.AppIcons
 import java.util.Locale
@@ -31,10 +33,30 @@ internal fun PlaylistTrackDetailDialog(
     onDismiss: () -> Unit,
     onPlay: () -> Unit,
 ) {
+    val isLocal =
+        remember(track) {
+            track.serverId == LOCAL_STORAGE_ID ||
+                track.remotePath.startsWith("content://") ||
+                track.remotePath.startsWith("file://")
+        }
+
     val directoryPath =
-        remember(track.remotePath) {
-            val slashIdx = track.remotePath.lastIndexOf('/')
-            if (slashIdx > 0) track.remotePath.substring(0, slashIdx + 1) else "/"
+        remember(track.remotePath, isLocal) {
+            if (isLocal) {
+                TrackPathFormatter.formatDirectoryPath(track.remotePath)
+            } else {
+                val slashIdx = track.remotePath.lastIndexOf('/')
+                if (slashIdx > 0) track.remotePath.substring(0, slashIdx + 1) else "/"
+            }
+        }
+
+    val displayFilePath =
+        remember(track.remotePath, isLocal) {
+            if (isLocal) {
+                TrackPathFormatter.formatDisplayPath(track.remotePath)
+            } else {
+                track.remotePath
+            }
         }
 
     AlertDialog(
@@ -78,9 +100,19 @@ internal fun PlaylistTrackDetailDialog(
                 if (track.size > 0L) {
                     PlaylistInfoRow(label = "文件大小", value = formatTrackFileSize(track.size))
                 }
-                PlaylistInfoRow(label = "来源目录", value = directoryPath)
-                PlaylistInfoRow(label = "远程完整路径", value = track.remotePath)
-                PlaylistInfoRow(label = "所属服务器 ID", value = "${track.serverId}")
+                PlaylistInfoRow(
+                    label = if (isLocal) "本地存储目录" else "来源目录",
+                    value = directoryPath,
+                )
+                PlaylistInfoRow(
+                    label = if (isLocal) "本地文件路径" else "远程完整路径",
+                    value = displayFilePath,
+                )
+                if (isLocal) {
+                    PlaylistInfoRow(label = "存储来源", value = "本地设备存储 (SAF)")
+                } else {
+                    PlaylistInfoRow(label = "所属服务器 ID", value = "${track.serverId}")
+                }
             }
         },
         confirmButton = {

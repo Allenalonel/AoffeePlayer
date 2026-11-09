@@ -37,6 +37,7 @@ import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.ui.common.AudioQualityBadgePill
 import com.webdav.player.ui.common.AudioTrackRow
 import com.webdav.player.ui.common.AudioTrackRowDefaults
+import com.webdav.player.ui.common.TrackPathFormatter
 import com.webdav.player.ui.theme.AppIcons
 import java.util.Locale
 
@@ -280,7 +281,18 @@ private fun FileInfoDialog(
                     InfoRow(label = "文件大小", value = formatFileSize(file.size))
                 }
                 InfoRow(label = "文件名称", value = file.name)
-                InfoRow(label = "远程路径", value = file.path)
+                val isLocalFile =
+                    remember(file.path) {
+                        file.path.startsWith("content://") ||
+                            file.path.startsWith("file://") ||
+                            file.path.startsWith("/local/")
+                    }
+                if (isLocalFile) {
+                    InfoRow(label = "本地存储目录", value = TrackPathFormatter.formatDirectoryPath(file.path))
+                    InfoRow(label = "本地文件路径", value = TrackPathFormatter.formatDisplayPath(file.path))
+                } else {
+                    InfoRow(label = "远程路径", value = file.path)
+                }
             }
         },
         confirmButton = {

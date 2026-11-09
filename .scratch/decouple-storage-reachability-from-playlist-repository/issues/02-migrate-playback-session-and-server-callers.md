@@ -5,7 +5,7 @@
 
 **Blocked by:** 01: 建立 StorageReachabilityTracker 独立深模块与依赖装配
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] `PlaybackFaultTolerance` 移除 `playlistRepository` 依赖，引入 `storageReachabilityTracker: StorageReachabilityTracker?`。
 - [ ] 在 `PlaybackFaultTolerance.handle404Failure` 中调用 `storageReachabilityTracker.reportTrackUnavailable(..., FILE_NOT_FOUND)`，移除对歌单仓储的修改。

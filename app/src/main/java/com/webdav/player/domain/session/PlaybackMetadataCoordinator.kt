@@ -33,8 +33,14 @@ internal class PlaybackMetadataCoordinator(
         coroutineScope.launch {
             var currentMetadataJob: Job? = null
             sessionStateFlow
-                .map { it.activeServer?.id }
-                .distinctUntilChanged()
+                .map { state ->
+                    val track = state.currentTrack
+                    when {
+                        track != null && track.isLocal -> LOCAL_STORAGE_ID
+                        track != null && track.serverId > 0L -> track.serverId
+                        else -> state.activeServer?.id
+                    }
+                }.distinctUntilChanged()
                 .collect { serverId ->
                     currentMetadataJob?.cancel()
                     if (serverId != null) {
@@ -57,9 +63,14 @@ internal class PlaybackMetadataCoordinator(
             var lyricJob: Job? = null
             sessionStateFlow
                 .map { state ->
-                    val server = state.activeServer
-                    val track = state.currentTrack
-                    if (server != null && track != null) server to track else null
+                    val track = state.currentTrack ?: return@map null
+                    val server =
+                        if (track.isLocal) {
+                            WebDavServer.createLocalStorage()
+                        } else {
+                            state.activeServer
+                        } ?: return@map null
+                    server to track
                 }.distinctUntilChanged()
                 .collect { pair ->
                     lyricJob?.cancel()
@@ -92,7 +103,13 @@ internal class PlaybackMetadataCoordinator(
                     val updated =
                         state.queue.tracks.mapIndexed { index, track ->
                             if (track.coverThumbnailPath == null) {
-                                val meta = repo.getCachedMetadata(server.id, track.remotePath)
+                                val trackServerId =
+                                    when {
+                                        track.isLocal -> LOCAL_STORAGE_ID
+                                        track.serverId > 0L -> track.serverId
+                                        else -> server.id
+                                    }
+                                val meta = repo.getCachedMetadata(trackServerId, track.remotePath)
                                 if (meta != null) {
                                     val enriched = enrichTrack(track, meta, index == state.queue.currentIndex)
                                     if (enriched != track) {
@@ -179,14 +196,18 @@ internal class PlaybackMetadataCoordinator(
     }
 
     private fun applyMetadataListToQueue(metadataList: List<TrackMetadata>) {
-        val metaMap = metadataList.associateBy { it.remotePath }
+        val metaByComposite = metadataList.associateBy { "${it.serverId}:${it.remotePath}" }
+        val metaByPath = metadataList.associateBy { it.remotePath }
         val tracksToUpdate = mutableListOf<Pair<Int, AudioTrack>>()
 
         sessionStateFlow.update { current ->
             var anyChanged = false
             val updatedTracks =
                 current.queue.tracks.mapIndexed { index, track ->
-                    val meta = metaMap[track.remotePath]
+                    val effectiveServerId = if (track.isLocal) LOCAL_STORAGE_ID else track.serverId
+                    val meta =
+                        metaByComposite["$effectiveServerId:${track.remotePath}"]
+                            ?: if (effectiveServerId == 0L && !track.isLocal) metaByPath[track.remotePath] else null
                     if (meta != null) {
                         val enriched =
                             enrichTrack(track, meta, isCurrentActiveTrack = (index == current.queue.currentIndex))

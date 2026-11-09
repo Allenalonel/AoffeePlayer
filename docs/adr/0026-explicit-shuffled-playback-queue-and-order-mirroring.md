@@ -1,5 +1,13 @@
 # 0026: 显式洗牌播放队列与原序镜像 (Explicit Shuffled Playback Queue and Order Mirroring)
 
+## Status
+
+Accepted (Amended by ADR 0034: CUE virtual track references purged)
+
+> ⚠️ **AMENDMENT NOTICE**:
+> - **现行法典**: 技术约束以根目录 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **CUE 废除 (ADR-0034)**: 正文第 3 节中涉及 CUE 虚拟分轨平级洗牌的内容已被 ADR-0034 彻底物理移除。
+
 ## Context
 
 在音乐播放器的随机播放（Shuffle Mode）功能演进中，存在长期困扰的后台切歌脱节缺陷及与主流播放器心智割裂的问题：
@@ -34,7 +42,7 @@
 
 ### 3. 插队与 CUE 虚拟分轨平级支持
 - **临时插队（Play Next）双向同步**：在随机模式下执行“下一首播放”，新曲目不仅插入在 `tracks` 的 `currentIndex + 1`，同时同步插入在 `originalTracks` 当前播放曲目的后一位；中途切回顺序播放，插队歌曲依旧紧随其后；
-- **CUE 虚拟分轨**：虚拟分轨在进入播放队列时平级展开为独立音轨实体，与普通音频完全平级地参与洗牌。
+- **~~CUE 虚拟分轨~~ *(Deprecated & Purged by ADR-0034)*`**: 虚拟分轨机制已在 ADR-0034 中彻底物理移除，洗牌队列仅纳管真实 1:1 物理音频流。
 
 ### 4. 会话持久化与冷启动所见即所得
 - 扩充 `PlaybackSessionData` 与 `DataStorePlaybackSessionStore`，将 `originalTracks` 纳入持久化字段；

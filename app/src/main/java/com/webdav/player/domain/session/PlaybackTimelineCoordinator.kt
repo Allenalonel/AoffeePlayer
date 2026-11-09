@@ -6,6 +6,7 @@ import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.CoroutineDispatcher
@@ -190,13 +191,29 @@ internal class PlaybackTimelineCoordinator(
                         val nextTrack = queue.tracks[nextIndex]
                         val currentServer = sessionStateFlow.value.activeServer
                         val resolvedServer =
-                            if (serverRepository != null && (currentServer == null || nextTrack.serverId != currentServer.id)) {
-                                try {
-                                    serverRepository.getServerById(nextTrack.serverId)?.also {
-                                        playerEngine.setActiveServer(it)
+                            if (currentServer == null || nextTrack.serverId != currentServer.id ||
+                                nextTrack.isLocal != currentServer.isLocal
+                            ) {
+                                val candidate =
+                                    when {
+                                        nextTrack.isLocal -> {
+                                            WebDavServer.createLocalStorage()
+                                        }
+
+                                        serverRepository != null -> {
+                                            try {
+                                                serverRepository.getServerById(nextTrack.serverId)
+                                            } catch (_: Throwable) {
+                                                null
+                                            }
+                                        }
+
+                                        else -> {
+                                            null
+                                        }
                                     }
-                                } catch (_: Throwable) {
-                                    null
+                                candidate?.also {
+                                    playerEngine.setActiveServer(it)
                                 }
                             } else {
                                 null
@@ -207,6 +224,7 @@ internal class PlaybackTimelineCoordinator(
                                 queue = queue.copy(currentIndex = nextIndex),
                                 durationMs = nextTrack.durationMs,
                                 activeServer = resolvedServer ?: it.activeServer,
+                                browsingServer = it.browsingServer ?: resolvedServer ?: it.activeServer,
                             )
                         }
                         persistenceCoordinator.flushSession()
@@ -259,7 +277,6 @@ internal class PlaybackTimelineCoordinator(
             activeServer = sessionStateFlow.value.activeServer,
             currentTrackId = sessionStateFlow.value.currentTrack?.id,
             isPrerollAppended = isPrerollAppended,
-            serverRepository = serverRepository,
             onPreroll = { nextServer, nextTrack -> playerEngine.prerollTrack(nextServer, nextTrack) },
         )
     }

@@ -1,5 +1,9 @@
 # On-Demand Incremental Metadata Extraction via HTTP Range
 
+## Status
+
+Accepted
+
 ## Context
 
 在 WebDAV 远程文件浏览中，若每次进入目录都全量下载音频文件以读取 ID3/标签信息，会产生极大的流量消耗与严重卡顿；若仅显示原始文件名，则无法展示曲目标题、歌手、专辑与内嵌封面，降低播放器体验。

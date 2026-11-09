@@ -63,20 +63,31 @@ class PlaylistRepositoryImpl(
         serverId: Long,
         remotePath: String,
     ) {
-        if (trackMetadataRepository == null || serverRepository == null) return
+        if (trackMetadataRepository == null) return
+        val isLocalTrack =
+            serverId == LOCAL_STORAGE_ID ||
+                remotePath.startsWith("content://") ||
+                remotePath.startsWith("file://")
+        if (!isLocalTrack && serverRepository == null) return
         val activeJob = inFlightCoverHealing[trackEntryId]
         if (activeJob != null && activeJob.isActive) return
 
+        val effectiveServerId = if (isLocalTrack) LOCAL_STORAGE_ID else serverId
         val job =
             coroutineScope.launch {
                 try {
-                    val cached = trackMetadataRepository.getCachedMetadata(serverId, remotePath)
+                    val cached = trackMetadataRepository.getCachedMetadata(effectiveServerId, remotePath)
                     if (cached?.coverThumbnailPath != null) {
                         playlistDao.updateTrackCover(trackEntryId, cached.coverThumbnailPath)
                         return@launch
                     }
-                    val server = serverRepository.getServerById(serverId)
-                    if (server != null && server.url.isNotBlank() && !server.isLocal) {
+                    val server =
+                        if (isLocalTrack) {
+                            WebDavServer.createLocalStorage()
+                        } else {
+                            serverRepository?.getServerById(effectiveServerId)
+                        }
+                    if (server != null && (server.isLocal || server.url.isNotBlank())) {
                         val fileName = remotePath.substringAfterLast('/').ifBlank { "track" }
                         val file = RemoteFile(name = fileName, path = remotePath)
                         val resolved = trackMetadataRepository.resolveSingleTrackMetadata(server, file)
@@ -222,7 +233,13 @@ class PlaylistRepositoryImpl(
         return if (trackMetadataRepository != null) {
             reconciled.map { track ->
                 if (track.coverThumbnailPath.isNullOrBlank()) {
-                    val cachedMeta = trackMetadataRepository.getCachedMetadata(track.serverId, track.remotePath)
+                    val effectiveServerId =
+                        if (track.remotePath.startsWith("content://") || track.remotePath.startsWith("file://")) {
+                            LOCAL_STORAGE_ID
+                        } else {
+                            track.serverId
+                        }
+                    val cachedMeta = trackMetadataRepository.getCachedMetadata(effectiveServerId, track.remotePath)
                     if (cachedMeta?.coverThumbnailPath != null) {
                         coroutineScope.launch {
                             try {
@@ -234,7 +251,7 @@ class PlaylistRepositoryImpl(
                         track.copy(coverThumbnailPath = cachedMeta.coverThumbnailPath)
                     } else {
                         if (!track.isInactive) {
-                            triggerBackgroundCoverHealing(track.id, track.serverId, track.remotePath)
+                            triggerBackgroundCoverHealing(track.id, effectiveServerId, track.remotePath)
                         }
                         track
                     }

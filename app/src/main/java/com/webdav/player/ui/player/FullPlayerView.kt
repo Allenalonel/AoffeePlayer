@@ -103,6 +103,9 @@ fun FullPlayerView(
     onPlayButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
     isQueueButtonVisible: Boolean = true,
     onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    enableBackHandler: Boolean = true,
+    renderBackground: Boolean = true,
+    onOpenQueue: (() -> Unit)? = null,
 ) {
     var showQueueSheet by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -114,8 +117,8 @@ fun FullPlayerView(
             pageCount = { 2 },
         )
 
-    // Intercept back button to close sheet or collapse to mini-player
-    BackHandler {
+    // Intercept back button to close sheet or collapse to mini-player when enabled
+    BackHandler(enabled = enableBackHandler) {
         if (showQueueSheet) {
             showQueueSheet = false
         } else {
@@ -125,12 +128,18 @@ fun FullPlayerView(
 
     val currentTrack = sessionState.currentTrack
 
-    // Dynamic atmospheric gradient sampled from cover art with MD3 fallback
-    val backgroundBrush =
-        rememberArtworkBackgroundBrush(
-            thumbnailPath = currentTrack?.coverThumbnailPath,
-            artworkColors = artworkColors,
-        )
+    // Dynamic atmospheric gradient sampled from cover art with MD3 fallback (skipped when hosted by MorphingPlayerContainer)
+    val backgroundModifier =
+        if (renderBackground) {
+            val backgroundBrush =
+                rememberArtworkBackgroundBrush(
+                    thumbnailPath = currentTrack?.coverThumbnailPath,
+                    artworkColors = artworkColors,
+                )
+            Modifier.background(backgroundBrush)
+        } else {
+            Modifier
+        }
 
     // Interactive scrubbing state
     var isScrubbing by remember { mutableStateOf(false) }
@@ -169,7 +178,7 @@ fun FullPlayerView(
             modifier =
                 modifier
                     .fillMaxSize()
-                    .background(backgroundBrush),
+                    .then(backgroundModifier),
             color = Color.Transparent,
         ) {
             Column(
@@ -275,7 +284,13 @@ fun FullPlayerView(
                             onSkipToNext = { playbackActions.skipToNext() },
                             onSkipToPrevious = { playbackActions.skipToPrevious() },
                             onCyclePlaybackMode = { playbackActions.cyclePlaybackMode() },
-                            onOpenQueue = { showQueueSheet = true },
+                            onOpenQueue = {
+                                if (onOpenQueue != null) {
+                                    onOpenQueue()
+                                } else {
+                                    showQueueSheet = true
+                                }
+                            },
                             modifier = modifier,
                             isPlayButtonVisible = isPlayButtonVisible,
                             onPlayButtonPositioned = onPlayButtonPositioned,

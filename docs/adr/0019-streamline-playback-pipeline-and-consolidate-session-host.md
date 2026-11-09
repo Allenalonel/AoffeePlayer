@@ -1,5 +1,13 @@
 # 0019: Streamline Playback Pipeline and Consolidate Session Host
 
+## Status
+
+Accepted (Amended by ADR 0035: intent restoration gating and server resolution consolidated)
+
+> ⚠️ **AMENDMENT NOTICE**:
+> - **现行法典**: 技术约束以根目录 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **追溯修订**: 在播音轨凭据解析与冷启动意图门控已在 ADR-0035 中统一收拢至会话与队列管理器。
+
 ## Context
 
 在 ADR-0016（确立底层播放引擎为流式渲染管道）与 ADR-0018（收拢系统播控意图至应用会话层）演进后，播放核心的架构边界得到了显著收窄。然而，近期对代码库热点区域（近 40 次提交中 22 次涉及的区域）的架构审查揭示，`PlaybackSessionHost` 与底层 `Media3AudioPlayerEngine` 之间依然存在多处浅显委派、接缝击穿与状态竞争缺陷：

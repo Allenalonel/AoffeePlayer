@@ -1,5 +1,13 @@
 # 0016: Deepen Audio Player Engine to Stream Rendering Pipeline and Unify Session Intent
 
+## Status
+
+Accepted (Amended by ADR 0019 and ADR 0034: CUE virtual track references purged)
+
+> ⚠️ **AMENDMENT NOTICE**:
+> - **现行法典**: 技术约束以根目录 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **CUE 废除 (ADR-0034)**: 正文中涉及 CUE 虚拟时间轴状态机与虚拟分轨的内容已被 ADR-0034 彻底物理清除。
+
 ## Context
 
 在完成会话集中管控切歌权（ADR-0015）与 CUE 虚拟分轨（ADR-0014）的架构演进后，代码库确立了“底层播放内核仅装入单轨或双轨预热、跨曲决策全权收归应用会话层”的设计原则。

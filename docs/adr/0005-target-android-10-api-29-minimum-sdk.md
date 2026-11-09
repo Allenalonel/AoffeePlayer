@@ -1,5 +1,9 @@
 # Target Android 10 (API 29) Minimum SDK
 
+## Status
+
+Accepted
+
 ## Context
 
 设定应用的最低兼容 Android 版本（Min SDK）决定了可用 API 的现代程度、依赖库版本与设备覆盖率。过低的 Min SDK（如 API 21/24）需要大量低版本适配分支、向下兼容库与老旧后台保活代码；而 API 29+ 拥有统一的 Scoped Storage、现代通知权限模型及对 Jetpack Compose 与 Media3 完整的原生支持。

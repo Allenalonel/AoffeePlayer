@@ -4,11 +4,11 @@ import android.app.Application
 import android.content.ComponentCallbacks2
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.CoverArtStorageImpl
-import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.network.DefaultNetworkConnectivityObserver
 import com.webdav.player.data.player.Media3AudioPlayerEngine
 import com.webdav.player.data.player.WebDavMediaSourceBuilder
 import com.webdav.player.data.remote.OkHttpWebDavClient
+import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.data.repository.DataStorePlaybackSessionStore
 import com.webdav.player.data.repository.DirectoryRepositoryImpl
 import com.webdav.player.data.repository.LibrarySearchRepositoryImpl
@@ -20,11 +20,9 @@ import com.webdav.player.data.repository.TrackMetadataRepositoryImpl
 import com.webdav.player.data.repository.WebDavSyncScanner
 import com.webdav.player.data.service.PlaybackSessionHost
 import com.webdav.player.di.AppContainer
-import com.webdav.player.domain.network.NetworkConnectivityObserver
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.DirectoryRepository
 import com.webdav.player.domain.repository.LibrarySearchRepository
-import com.webdav.player.domain.repository.PlaybackSessionStore
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
@@ -37,13 +35,10 @@ class WebDavApplication :
     override lateinit var serverRepository: ServerRepository
         private set
 
-    override lateinit var webDavClient: OkHttpWebDavClient
+    override lateinit var webDavClient: WebDavClient
         private set
 
     override lateinit var trackMetadataRepository: TrackMetadataRepository
-        private set
-
-    override lateinit var sessionStore: PlaybackSessionStore
         private set
 
     override lateinit var directoryRepository: DirectoryRepository
@@ -64,18 +59,6 @@ class WebDavApplication :
     override lateinit var musicPlayerAppSession: MusicPlayerAppSession
         private set
 
-    override lateinit var networkConnectivityObserver: NetworkConnectivityObserver
-        private set
-
-    override lateinit var mediaTrackIndexDao: MediaTrackIndexDao
-        private set
-
-    override lateinit var localStorageIndexScanner: LocalStorageIndexScanner
-        private set
-
-    override lateinit var webDavSyncScanner: WebDavSyncScanner
-        private set
-
     override fun onCreate() {
         super.onCreate()
 
@@ -85,7 +68,6 @@ class WebDavApplication :
         this.webDavClient = webDavClient
 
         val mediaTrackIndexDao = database.mediaTrackIndexDao()
-        this.mediaTrackIndexDao = mediaTrackIndexDao
         val checkpointDao = database.directorySyncCheckpointDao()
 
         serverRepository =
@@ -120,7 +102,6 @@ class WebDavApplication :
         this.sessionHost = sessionHost
 
         val sessionStore = DataStorePlaybackSessionStore(this)
-        this.sessionStore = sessionStore
 
         val localStorageDirectoryResolver =
             LocalStorageDirectoryResolver(
@@ -134,6 +115,7 @@ class WebDavApplication :
                 directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataRepository = trackMetadataRepository,
                 localStorageDirectoryResolver = localStorageDirectoryResolver,
+                mediaTrackIndexDao = mediaTrackIndexDao,
             )
         this.directoryRepository = directoryRepository
 
@@ -144,7 +126,6 @@ class WebDavApplication :
                 checkpointDao = checkpointDao,
                 localStorageFolderDao = database.localStorageFolderDao(),
             )
-        this.localStorageIndexScanner = localStorageIndexScanner
 
         val webDavSyncScanner =
             WebDavSyncScanner(
@@ -152,7 +133,6 @@ class WebDavApplication :
                 mediaTrackIndexDao = mediaTrackIndexDao,
                 directorySyncCheckpointDao = checkpointDao,
             )
-        this.webDavSyncScanner = webDavSyncScanner
 
         librarySearchRepository =
             LibrarySearchRepositoryImpl(
@@ -175,7 +155,6 @@ class WebDavApplication :
             )
 
         val networkConnectivityObserver = DefaultNetworkConnectivityObserver(this)
-        this.networkConnectivityObserver = networkConnectivityObserver
 
         musicPlayerAppSession =
             MusicPlayerAppSessionImpl(
@@ -195,6 +174,8 @@ class WebDavApplication :
         if (level >= ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
             com.webdav.player.ui.common.ThumbnailMemoryCache
                 .clear()
+            com.webdav.player.ui.player.ArtworkColorExtractor
+                .clearCache()
         }
     }
 }

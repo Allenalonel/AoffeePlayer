@@ -1276,16 +1276,6 @@ class MusicPlayerAppSessionTest {
             assertEquals(600_000L, progress.durationMs)
         }
 
-
-
-
-
-
-
-
-
-
-
     @Test
     fun durationGuard_interceptsPrematureEof_andResumesInPlace() =
         runTest(testDispatcher) {
@@ -1964,8 +1954,6 @@ class MusicPlayerAppSessionTest {
             crossServerSession.release()
         }
 
-
-
     @Test
     fun audioFocus_transientLoss_pausesSession_andSetsFlag() =
         runTest(testDispatcher) {
@@ -2144,8 +2132,6 @@ class MusicPlayerAppSessionTest {
                 session.pausedByTransientAudioFocus,
             )
         }
-
-
 
     @Test
     fun audioFocus_gain_resumesPlayback_whenFlagIsSet() =
@@ -2549,8 +2535,6 @@ class MusicPlayerAppSessionTest {
         assertTrue(updated.isAdHocQueue)
     }
 
-
-
     private class TestPlaylistRepository(
         private val tracks: MutableList<PlaylistTrackEntry> = mutableListOf(),
     ) : PlaylistRepository {
@@ -2783,7 +2767,11 @@ class MusicPlayerAppSessionTest {
             // Verify local server synthesized and wakeLock held while wifiLock not held
             assertTrue("WakeLock must be retained for local playback", fakeLockManager.isWakeLockHeld)
             assertFalse("WifiLock must not be held for local playback", fakeLockManager.isWifiLockHeld)
-            assertEquals(LOCAL_STORAGE_ID, localSession.sessionState.value.activeServer?.id)
+            assertEquals(
+                LOCAL_STORAGE_ID,
+                localSession.sessionState.value.activeServer
+                    ?.id,
+            )
 
             // Simulate buffering state on local track
             localEngine._playbackState.value = PlaybackState.Buffering
@@ -2796,7 +2784,11 @@ class MusicPlayerAppSessionTest {
             // Watchdog must NOT fire for local tracks
             assertFalse("Local track buffering must not trigger weak network", localSession.sessionState.value.isWeakNetwork)
             assertFalse("Local track buffering must not enable manual retry", localSession.sessionState.value.canManualRetry)
-            assertNotEquals("Local track must not be auto-paused by watchdog", PlaybackState.Paused, localSession.sessionState.value.playbackState)
+            assertNotEquals(
+                "Local track must not be auto-paused by watchdog",
+                PlaybackState.Paused,
+                localSession.sessionState.value.playbackState,
+            )
 
             localSession.release()
         }
@@ -2865,7 +2857,11 @@ class MusicPlayerAppSessionTest {
 
             advanceTimeBy(16_000L)
             runCurrent()
-            assertEquals("Watchdog must auto-pause WebDAV track after 30s buffering", PlaybackState.Paused, mixedSession.sessionState.value.playbackState)
+            assertEquals(
+                "Watchdog must auto-pause WebDAV track after 30s buffering",
+                PlaybackState.Paused,
+                mixedSession.sessionState.value.playbackState,
+            )
 
             mixedSession.release()
         }
@@ -2922,7 +2918,11 @@ class MusicPlayerAppSessionTest {
             mixedSession.playPlaylist(playlist, startIndex = 0)
             advanceUntilIdle()
 
-            assertEquals(testServer.id, mixedSession.sessionState.value.activeServer?.id)
+            assertEquals(
+                testServer.id,
+                mixedSession.sessionState.value.activeServer
+                    ?.id,
+            )
             assertEquals(testServer.id, fakeEngine.loadedTrack?.serverId)
             assertEquals("/cloud1.mp3", fakeEngine.loadedTrack?.remotePath)
             assertEquals(0, mixedSession.sessionState.value.queue.currentIndex)
@@ -2931,7 +2931,11 @@ class MusicPlayerAppSessionTest {
             mixedSession.skipToNext()
             advanceUntilIdle()
 
-            assertEquals(LOCAL_STORAGE_ID, mixedSession.sessionState.value.activeServer?.id)
+            assertEquals(
+                LOCAL_STORAGE_ID,
+                mixedSession.sessionState.value.activeServer
+                    ?.id,
+            )
             assertEquals(LOCAL_STORAGE_ID, fakeEngine.loadedTrack?.serverId)
             assertEquals("content://media/external/audio/local2", fakeEngine.loadedTrack?.remotePath)
             assertEquals(1, mixedSession.sessionState.value.queue.currentIndex)
@@ -2940,7 +2944,11 @@ class MusicPlayerAppSessionTest {
             mixedSession.skipToNext()
             advanceUntilIdle()
 
-            assertEquals(testServer.id, mixedSession.sessionState.value.activeServer?.id)
+            assertEquals(
+                testServer.id,
+                mixedSession.sessionState.value.activeServer
+                    ?.id,
+            )
             assertEquals(testServer.id, fakeEngine.loadedTrack?.serverId)
             assertEquals("/cloud3.mp3", fakeEngine.loadedTrack?.remotePath)
             assertEquals(2, mixedSession.sessionState.value.queue.currentIndex)
@@ -2950,7 +2958,11 @@ class MusicPlayerAppSessionTest {
             mixedSession.skipToPrevious()
             advanceUntilIdle()
 
-            assertEquals(LOCAL_STORAGE_ID, mixedSession.sessionState.value.activeServer?.id)
+            assertEquals(
+                LOCAL_STORAGE_ID,
+                mixedSession.sessionState.value.activeServer
+                    ?.id,
+            )
             assertEquals(LOCAL_STORAGE_ID, fakeEngine.loadedTrack?.serverId)
             assertEquals("content://media/external/audio/local2", fakeEngine.loadedTrack?.remotePath)
             assertEquals(1, mixedSession.sessionState.value.queue.currentIndex)

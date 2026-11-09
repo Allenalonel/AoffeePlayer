@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import org.json.JSONArray
 
 class LibrarySearchRepositoryImpl(
@@ -46,8 +48,22 @@ class LibrarySearchRepositoryImpl(
 
     private val inMemoryHistory = mutableListOf<String>()
     private val _syncState = MutableStateFlow<LibrarySyncState>(LibrarySyncState.Idle)
+    private val _syncStatesByServer = MutableStateFlow<Map<Long, LibrarySyncState>>(emptyMap())
+
+    private fun updateSyncState(
+        serverId: Long,
+        state: LibrarySyncState,
+    ) {
+        _syncState.value = state
+        _syncStatesByServer.update { it + (serverId to state) }
+    }
 
     override fun observeSyncState(serverId: Long?): Flow<LibrarySyncState> {
+        if (serverId != null) {
+            return _syncStatesByServer
+                .map { it[serverId] ?: LibrarySyncState.Idle }
+                .distinctUntilChanged()
+        }
         val scannerFlow = webDavSyncScanner?.syncState ?: flowOf(LibrarySyncState.Idle)
         return combine(_syncState, scannerFlow) { internalState, webDavState ->
             when {
@@ -67,57 +83,61 @@ class LibrarySearchRepositoryImpl(
         force: Boolean,
     ): LibrarySyncResult =
         if (server.isLocal || server.id == LOCAL_STORAGE_ID) {
-            _syncState.value =
+            updateSyncState(
+                LOCAL_STORAGE_ID,
                 LibrarySyncState.Scanning(
                     progress = 0f,
                     currentPath = "local",
                     tracksFound = 0,
-                )
+                ),
+            )
             try {
                 val count =
                     localStorageIndexScanner?.indexAllMountedFolders(
                         force = force,
-                        onProgress = { _syncState.value = it },
+                        onProgress = { updateSyncState(LOCAL_STORAGE_ID, it) },
                     ) ?: 0
                 val total = mediaTrackIndexDao?.countByServerId(LOCAL_STORAGE_ID) ?: count
                 val state = LibrarySyncState.Completed(totalTracks = total)
-                _syncState.value = state
+                updateSyncState(LOCAL_STORAGE_ID, state)
                 LibrarySyncResult.Success(totalTracksIndexed = count)
             } catch (e: Exception) {
                 val errorMsg = e.message ?: "Local storage scan failed"
                 val state = LibrarySyncState.Failed(errorMsg)
-                _syncState.value = state
+                updateSyncState(LOCAL_STORAGE_ID, state)
                 LibrarySyncResult.Error(errorMsg, e)
             }
         } else {
             if (webDavSyncScanner != null) {
-                _syncState.value =
+                updateSyncState(
+                    server.id,
                     LibrarySyncState.Scanning(
                         progress = 0f,
                         currentPath = server.pathPrefix.ifBlank { "/" },
                         tracksFound = 0,
-                    )
+                    ),
+                )
                 try {
                     val result =
                         webDavSyncScanner.sync(
                             server = server,
                             force = force,
-                            onProgress = { _syncState.value = it },
+                            onProgress = { updateSyncState(server.id, it) },
                         )
                     when (result) {
                         is LibrarySyncResult.Success -> {
                             val total = mediaTrackIndexDao?.countByServerId(server.id) ?: result.totalTracksIndexed
-                            _syncState.value = LibrarySyncState.Completed(totalTracks = total)
+                            updateSyncState(server.id, LibrarySyncState.Completed(totalTracks = total))
                         }
 
                         is LibrarySyncResult.Error -> {
-                            _syncState.value = LibrarySyncState.Failed(result.message)
+                            updateSyncState(server.id, LibrarySyncState.Failed(result.message))
                         }
                     }
                     result
                 } catch (e: Exception) {
                     val errorMsg = e.message ?: "WebDAV sync failed"
-                    _syncState.value = LibrarySyncState.Failed(errorMsg)
+                    updateSyncState(server.id, LibrarySyncState.Failed(errorMsg))
                     LibrarySyncResult.Error(errorMsg, e)
                 }
             } else {

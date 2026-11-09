@@ -370,6 +370,9 @@ fun MorphingPlayerContainer(
                         onQueueButtonPositioned = { coords ->
                             coords.boundsIn(containerCoordinates)?.let { fullQueueRect = it }
                         },
+                        enableBackHandler = isExpanded,
+                        renderBackground = false,
+                        onOpenQueue = onOpenQueue,
                     )
                 }
             }

@@ -1,5 +1,13 @@
 # 0017: Resilient Background Playback, Deferred Demotion, Dual Hardware Locks, and OEM Battery Whitelist
 
+## Status
+
+Accepted (Amended by ADR 0034: CUE virtual timeline reference purged)
+
+> ⚠️ **AMENDMENT NOTICE**:
+> - **现行法典**: 技术约束以根目录 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **CUE 废除 (ADR-0034)**: 正文中涉及 CUE 虚拟时间轴的内容已被 ADR-0034 彻底物理清除。
+
 ## Context
 
 在 WebDavPlayer 的日常高频使用与真实设备排查中，发现了一个严重影响后台与锁屏播放体验的核心痛点：**应用在锁屏数分钟后播放卡死，再次解锁时发现播放中断并停滞在历史进度点。**

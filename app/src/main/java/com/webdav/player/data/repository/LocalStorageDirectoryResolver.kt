@@ -19,7 +19,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.net.URLDecoder
-import java.net.URLEncoder
 
 /**
  * Resolves local directories mounted via Android's Storage Access Framework (SAF).
@@ -61,7 +60,7 @@ class LocalStorageDirectoryResolver(
             val subpathSegments = segments.drop(1)
 
             val mountedFolder = folders.firstOrNull { it.uriString == treeUriString }
-            val rootDocId = resolveRootDocId(treeUri)
+            val rootDocId = LocalStorageIndexScanner.resolveRootDocId(treeUri)
 
             var currentDocId = rootDocId
             for (segment in subpathSegments) {
@@ -82,17 +81,9 @@ class LocalStorageDirectoryResolver(
             val files = mutableListOf<RemoteFile>()
 
             val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, targetDocId)
-            val projection =
-                arrayOf(
-                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                    DocumentsContract.Document.COLUMN_MIME_TYPE,
-                    DocumentsContract.Document.COLUMN_SIZE,
-                    DocumentsContract.Document.COLUMN_LAST_MODIFIED,
-                )
 
             try {
-                contentResolver.query(childrenUri, projection, Bundle.EMPTY, null)?.use { cursor ->
+                contentResolver.query(childrenUri, LocalStorageIndexScanner.PROJECTION, Bundle.EMPTY, null)?.use { cursor ->
                     val idIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
                     val nameIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
                     val mimeIdx = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
@@ -107,6 +98,7 @@ class LocalStorageDirectoryResolver(
                         val lastModified = if (modIdx >= 0 && !cursor.isNull(modIdx)) cursor.getLong(modIdx) else 0L
 
                         if (mimeType == DocumentsContract.Document.MIME_TYPE_DIR) {
+                            if (LocalStorageIndexScanner.isNoiseDirectory(displayName)) continue
                             val childPath = "${normalizedPath}$displayName/"
                             subDirs.add(
                                 RemoteDirectory(
@@ -162,17 +154,22 @@ class LocalStorageDirectoryResolver(
 
             val resolvedCoverThumbnailPath: String? =
                 if (companionCover != null && coverArtStorage != null) {
-                    try {
-                        val bytes =
-                            contentResolver.openInputStream(Uri.parse(companionCover.path))?.use { it.readBytes() }
-                        if (bytes != null && ImageHeaderValidator.isCompleteImage(bytes)) {
-                            coverArtStorage.saveThumbnail(LOCAL_STORAGE_ID, companionCover.path, bytes)
-                                ?: companionCover.path
-                        } else {
+                    val existingThumb = coverArtStorage.getThumbnailFile(LOCAL_STORAGE_ID, companionCover.path)
+                    if (existingThumb != null && coverArtStorage.isValidThumbnailFile(existingThumb.absolutePath)) {
+                        existingThumb.absolutePath
+                    } else {
+                        try {
+                            val bytes =
+                                contentResolver.openInputStream(Uri.parse(companionCover.path))?.use { it.readBytes() }
+                            if (bytes != null && ImageHeaderValidator.isCompleteImage(bytes)) {
+                                coverArtStorage.saveThumbnail(LOCAL_STORAGE_ID, companionCover.path, bytes)
+                                    ?: companionCover.path
+                            } else {
+                                companionCover.path
+                            }
+                        } catch (_: Exception) {
                             companionCover.path
                         }
-                    } catch (_: Exception) {
-                        companionCover.path
                     }
                 } else {
                     companionCover?.path
@@ -210,9 +207,8 @@ class LocalStorageDirectoryResolver(
     private fun resolveRoot(folders: List<LocalStorageFolder>): DirectoryContent {
         val subDirs =
             folders.map { folder ->
-                val encoded = URLEncoder.encode(folder.uriString, "UTF-8")
                 RemoteDirectory(
-                    path = "/local/$encoded/",
+                    path = LocalStorageIndexScanner.buildLocalRootPath(folder.uriString),
                     name = folder.displayName,
                     subDirectories = emptyList(),
                     files = emptyList(),
@@ -233,17 +229,6 @@ class LocalStorageDirectoryResolver(
             isEnriching = false,
         )
     }
-
-    private fun resolveRootDocId(treeUri: Uri): String =
-        try {
-            DocumentsContract.getTreeDocumentId(treeUri)
-        } catch (_: Exception) {
-            null
-        } ?: try {
-            DocumentsContract.getDocumentId(treeUri)
-        } catch (_: Exception) {
-            null
-        } ?: (treeUri.lastPathSegment ?: "root")
 
     private fun findChildDirectoryDocId(
         treeUri: Uri,

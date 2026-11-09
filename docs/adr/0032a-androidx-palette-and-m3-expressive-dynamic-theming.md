@@ -1,8 +1,8 @@
-# 0032: AndroidX Palette 官方多色提取、M3E 纯正色调阶梯与音轨驱动零预设全域换肤
+# 0032a: AndroidX Palette 官方多色提取、M3E 纯正色调阶梯与音轨驱动零预设全域换肤
 
 ## Status
 
-Accepted (Supersedes ADR-0028 Section 3 自研 12-Bin 取色与硬编码品牌紫回退)
+Accepted (Supersedes ADR-0028 Section 3; Disambiguated as 0032a alongside 0032b [0032b-local-storage-saf](0032b-local-storage-saf-and-cross-source-playback.md); Implemented via HSL and CIE L*a*b* perceptual chroma in ArtworkColorExtractor)
 
 ## Context
 

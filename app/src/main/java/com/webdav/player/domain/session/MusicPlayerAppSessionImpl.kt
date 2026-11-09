@@ -137,7 +137,12 @@ class MusicPlayerAppSessionImpl(
         }
 
         fun dispatch(target: WebDavServer) {
-            _sessionState.update { it.copy(activeServer = target) }
+            _sessionState.update { current ->
+                current.copy(
+                    activeServer = target,
+                    browsingServer = current.browsingServer ?: target,
+                )
+            }
             hasStreamLoaded = true
             try {
                 playerEngine.loadTrack(target, track, startPositionMs)
@@ -148,12 +153,12 @@ class MusicPlayerAppSessionImpl(
             coroutineScope.launch { flushSessionWithCleanExit(isCleanExit = false) }
         }
         when {
-            server != null && server.id == track.serverId -> {
-                dispatch(server)
-            }
-
             isLocalTrack -> {
                 dispatch(WebDavServer.createLocalStorage())
+            }
+
+            server != null && server.id == track.serverId -> {
+                dispatch(server)
             }
 
             serverRepository != null -> {
@@ -215,26 +220,7 @@ class MusicPlayerAppSessionImpl(
             )
         }
         coroutineScope.launch {
-            val isLocal = targetTrack.isLocal
-            val effectiveServer =
-                when {
-                    isLocal -> {
-                        WebDavServer.createLocalStorage()
-                    }
-
-                    server != null && server.id == targetTrack.serverId -> {
-                        server
-                    }
-
-                    serverRepository != null -> {
-                        serverRepository.getServerById(targetTrack.serverId) ?: server
-                            ?: _sessionState.value.activeServer
-                    }
-
-                    else -> {
-                        server ?: _sessionState.value.activeServer
-                    }
-                }
+            val effectiveServer = queueManager.resolveServerForTrack(targetTrack, server)
             loadTrackIntoEngine(effectiveServer, targetTrack, 0L)
             flushSession()
         }
@@ -275,22 +261,33 @@ class MusicPlayerAppSessionImpl(
         resetPlayback: Boolean,
     ) {
         _sessionState.update { current ->
-            if (current.activeServer?.id == server?.id) return@update current.copy(activeServer = server)
+            val currentBrowsing = current.browsingServer ?: current.activeServer
+            if (currentBrowsing?.id == server?.id && current.activeServer?.id == server?.id) {
+                return@update current.copy(activeServer = server, browsingServer = server)
+            }
             val lastPath = if (server != null) getLastDirectoryForServer(server.id) else "/"
-            if (current.hasTrack && !resetPlayback) {
+            if (server != null && current.hasTrack && !resetPlayback) {
                 // Do not disrupt ongoing playback or wipe queue when switching active browsing storage/server
                 return@update current.copy(
                     activeServer = server,
+                    browsingServer = server,
                     currentDirectoryPath = lastPath,
                 )
             }
-            if (current.queue.isPlaylistQueue) return@update current.copy(activeServer = server)
+            if (current.queue.isPlaylistQueue) {
+                return@update current.copy(
+                    activeServer = server,
+                    browsingServer = server,
+                    currentDirectoryPath = lastPath,
+                )
+            }
 
             if (current.playbackState !is PlaybackState.Idle) playerEngine.stop()
             resetPlaybackState()
             _playbackProgress.value = PlaybackProgress.ZERO
             current.copy(
                 activeServer = server,
+                browsingServer = server,
                 queue = PlaybackQueue.EMPTY,
                 playbackState = PlaybackState.Idle,
                 durationMs = 0L,
@@ -310,21 +307,15 @@ class MusicPlayerAppSessionImpl(
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata>,
     ) {
-        val server = _sessionState.value.activeServer ?: return
+        val server = _sessionState.value.browsingServer ?: _sessionState.value.activeServer ?: return
         val request = queueManager.buildDirectoryQueue(directory, selectedFile, initialMetadata, server = server) ?: return
         dispatchQueueLoad(server, request, directory.path)
         metadataCoordinator.enrichQueueTracksFromCache(server, request.queue)
     }
 
     override fun playTrack(track: AudioTrack) {
-        val isLocalTrack = track.isLocal
         coroutineScope.launch {
-            val effectiveServer =
-                when {
-                    isLocalTrack -> WebDavServer.createLocalStorage()
-                    serverRepository != null -> serverRepository.getServerById(track.serverId) ?: _sessionState.value.activeServer
-                    else -> _sessionState.value.activeServer
-                } ?: return@launch
+            val effectiveServer = queueManager.resolveServerForTrack(track) ?: return@launch
             val request = queueManager.buildTrackQueue(track)
             dispatchQueueLoad(effectiveServer, request)
             metadataCoordinator.enrichSingleTrackMetadata(effectiveServer, track)
@@ -351,12 +342,34 @@ class MusicPlayerAppSessionImpl(
     }
 
     override fun togglePlayPause() {
+        if (!isRestored.value && _sessionState.value.queue.isEmpty) {
+            coroutineScope.launch {
+                restoreSession()
+                if (_sessionState.value.hasTrack) {
+                    if (_sessionState.value.isPlaying || _sessionState.value.isBuffering) pause() else play()
+                }
+            }
+            return
+        }
         if (_sessionState.value.isPlaying || _sessionState.value.isBuffering) pause() else play()
     }
 
     override fun play() {
         clearKilledBySystemFlag()
         clearTransientAudioFocusFlag()
+        if (!isRestored.value && _sessionState.value.queue.isEmpty) {
+            coroutineScope.launch {
+                restoreSession()
+                if (_sessionState.value.hasTrack) {
+                    playRestoredOrCurrent()
+                }
+            }
+            return
+        }
+        playRestoredOrCurrent()
+    }
+
+    private fun playRestoredOrCurrent() {
         val current = _sessionState.value
         if (current.isPaused) {
             if ((!hasStreamLoaded || playerEngine.playbackState.value is PlaybackState.Idle) && current.currentTrack != null &&
@@ -434,14 +447,7 @@ class MusicPlayerAppSessionImpl(
                 return@launch
             }
             val target = request.targetTrack
-            val isLocal = target.isLocal
-            val active =
-                when {
-                    isLocal -> WebDavServer.createLocalStorage()
-                    _sessionState.value.activeServer?.id == target.serverId -> _sessionState.value.activeServer
-                    serverRepository != null -> serverRepository.getServerById(target.serverId) ?: _sessionState.value.activeServer
-                    else -> _sessionState.value.activeServer
-                } ?: return@launch
+            val active = queueManager.resolveServerForTrack(target) ?: return@launch
             dispatchQueueLoad(active, request)
         }
     }
@@ -449,6 +455,15 @@ class MusicPlayerAppSessionImpl(
     override fun skipToNext() {
         clearTransientAudioFocusFlag()
         clearPrerollIfActive()
+        if (!isRestored.value && _sessionState.value.queue.isEmpty) {
+            coroutineScope.launch {
+                restoreSession()
+                if (!_sessionState.value.queue.isEmpty) {
+                    skipToNext()
+                }
+            }
+            return
+        }
         val queue = _sessionState.value.queue
         if (!queue.isEmpty) {
             val mode = _sessionState.value.playbackMode
@@ -468,6 +483,15 @@ class MusicPlayerAppSessionImpl(
     override fun skipToPrevious() {
         clearTransientAudioFocusFlag()
         clearPrerollIfActive()
+        if (!isRestored.value && _sessionState.value.queue.isEmpty) {
+            coroutineScope.launch {
+                restoreSession()
+                if (!_sessionState.value.queue.isEmpty) {
+                    skipToPrevious()
+                }
+            }
+            return
+        }
         val queue = _sessionState.value.queue
         if (queue.isEmpty) return
         if (playerEngine.currentPositionMs.value > 3000L) {
@@ -504,27 +528,8 @@ class MusicPlayerAppSessionImpl(
             },
             onCurrentTrackChanged = { nextTrack ->
                 _playbackProgress.value = PlaybackProgress(0L, nextTrack.durationMs, 0L)
-                val isLocal = nextTrack.isLocal
                 coroutineScope.launch {
-                    val effectiveServer =
-                        when {
-                            isLocal -> {
-                                WebDavServer.createLocalStorage()
-                            }
-
-                            _sessionState.value.activeServer?.id == nextTrack.serverId -> {
-                                _sessionState.value.activeServer
-                            }
-
-                            serverRepository != null -> {
-                                serverRepository.getServerById(nextTrack.serverId)
-                                    ?: _sessionState.value.activeServer
-                            }
-
-                            else -> {
-                                _sessionState.value.activeServer
-                            }
-                        }
+                    val effectiveServer = queueManager.resolveServerForTrack(nextTrack)
                     effectiveServer?.let { loadTrackIntoEngine(it, nextTrack, 0L) }
                 }
             },

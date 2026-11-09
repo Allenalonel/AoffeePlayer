@@ -1,99 +1,139 @@
 # Coding Standards
 
-These standards are enforced during `/code-review` alongside the Fowler code-smell baseline. Mechanical rules (import directions, ProGuard rules, binary budgets) are enforced deterministically in `PackagingSeamVerificationTest`.
+本项目架构设计与编码实现的唯一最高法典（超越所有历史 `docs/adr/`）。代码审查严格对标 Matt Pocock 双轴审查体系：
+1. **Standards 轴**：严格对照本法典六大章节硬约束与 Fowler 代码坏味道基线（杜绝神秘命名、重复代码、依恋情结、数据泥团、基本类型偏执、发散式变化与中间人等），违背法典者一票否决；
+2. **Spec 轴**：严格对照工单验收条件，杜绝需求遗漏与越界重构（Scope Creep）。
 
-- **规范效力铁律**：`CODING_STANDARDS.md` 高于所有 `docs/adr/`。ADR 仅作为特定技术选型的历史背景参考，绝不构成任何模块的“架构免检金牌”，严禁援引 ADR 历史条目对抗或推翻 `CODING_STANDARDS.md`。随着新特性持续迭代，既有已重构模块极易产生架构漂移（Architecture Drift）与边界侵蚀；架构审查必须面向全工程，凡发现真实退化、隐性缺陷或新引入的摩擦，一律允许并应当提出深化（Deepening）方案。
-
----
-
-## 1. Module Depth & Orthogonal Decomposition (模块深度与正交解耦)
-
-- **Judge by Responsibility, Not Line Count**:
-  Evaluate modules by **change-axis orthogonality (Divergent Change)** and **interface depth (leverage)**, never by rigid line-count limits.
-  - **When to keep together**: If a module has a narrow interface and a single cohesive responsibility (e.g., binary stream demuxing in `AsfExtractor`, CUE sheet parsing in `CueParser`, or a self-contained Compose component), keep it in one file even if it spans 400–600+ lines.
-  - **When to split (Internal Seam Discipline)**: When a single implementation class accumulates **2 or more orthogonal sub-domains** (e.g., session persistence + queue topology + network fault watchdog) or exhibits high constructor fan-out (6+ unrelated dependencies), extract package-private (`internal`) collaborators while keeping the external interface narrow.
-- **No Artificial Fragmentation**:
-  Do not split a cohesive 150–400 line component into tiny single-caller satellite files (`*Collaborators.kt`, 30-line pill wrappers) that force readers to bounce across multiple files to understand one concept.
-- **No Formatting Tricks**:
-  Never chain multiple statements on a single line with semicolons (`;`) or compress parameter lists to artificially reduce line counts.
+机械包接缝与防僵尸类规则由 `PackagingSeamVerificationTest` 自动化持续保证。
 
 ---
 
-## 2. Seam Discipline & Zero Zombie Forwarders (接缝纪律与零僵尸转发)
+## 1. Module Depth, Packaging Seams & Test Surface Discipline (模块深度、包接缝与测试表面纪律)
 
-- **Two Adapters Justify a Seam**:
-  Do not introduce an interface if it only ever has one concrete implementation and no test stand-in. Collapse single-adapter wrappers into their owning module.
-- **Delete Transitional Scaffolding (No Middle Man)**:
-  When migrating callers to a new or deepened seam (such as `AppViewModelFactory`, `AudioTrackRow`, or `PlaybackActions`), delete the old pass-through factories, compatibility aliases, and `@Deprecated` shells in the same change. Never leave zero-production-caller forwarding files in the tree.
+- **Module Depth & Zero Artificial Fragmentation (职责内聚与严禁伪碎片化)**:
+  - **高内聚守恒**：对于单一职责的高内聚模块（如 `AsfExtractor` 的解复用、`LrcParser` 的歌词规整、内聚的复杂 Compose 容器），即便达到 400–600+ 行亦应保持在单文件中。
+  - **内部接缝解耦**：当单个类累积 2 个以上正交子领域或 6 个以上非相关构造依赖时，提炼包级私有（`internal`）协作者并隐藏在窄公共接口之后。
+  - **严禁伪碎片化**：严禁将 150–400 行的内聚组件拆成单调用者的卫星碎片文件（如 `*Collaborators.kt` 或 30 行转发壳），严禁通过伪压缩掩饰模块内部复杂度。
+- **Streaming Playback Seam & Zero Reverse Coupling (播放引擎单向隔离铁律)**:
+  - `AudioPlayerEngine` 是纯粹的媒体流播放抽象，严禁持有 `MediaSession`、硬件唤醒锁、音频路由钩子或逆向回调，严禁反向依赖数据层；
+  - `data.player` 绝对禁止反向引入 `data.service`、`domain.session`、`ui` 或 `androidx.media3.session`；
+  - `PlaybackSessionHost` 仅通过公开接口操纵引擎，绝对禁止向下类型转换（如强转 `Media3AudioPlayerEngine`）；
+  - 重构至深层接缝后，严禁遗留中间兼容转发壳、工厂别名或僵尸文件，旧接口必须物理清除（由 `PackagingSeamVerificationTest` 自动化检验）。
+- **UI Layering Cleanliness (表现层通用组件单向隔离纪律)**:
+  `ui.common` 严格保持跨屏幕中立，绝对禁止反向引入任何特定业务屏幕包（`ui.browser`、`ui.playlist`、`ui.player`、`ui.server`；由 `PackagingSeamVerificationTest` 自动化检验）。
+- **Binary Thinning & Packaging Budget (打包轻量化与二进制守恒铁律)**:
+  - 生产构建严格锁定 64 位 `arm64-v8a` ABI 单架构（剥离 32 位动态库）；
+  - 强制开启 R8 全量混淆压缩与资源摇树；排除 `material-icons-extended` 臃肿依赖；
+  - 严禁宽泛通配符（如 `-keep class androidx.media3.** { *; }`）；
+  - 全量 Release APK 体积 $\le 7.5\text{MB}$，单 `classes.dex` 体积 $\le 4.0\text{MB}$（由 `verifyReleasePackaging` 持续验证）。
+- **Black-Box Test Surface & Zero Brittle Assertions (黑盒测试表面与禁止脆弱实现断言)**:
+  测试必须面向公共接口与可观察状态/行为（`StateFlow` / `Flow` 发射值与函数返回值）；严禁使用反射（`Class.forName`、`declaredMethods`）测试内部私有门面，严禁在测试中硬编码源码文件行数断言（`readLines().size <= X`）。
 
 ---
 
-## 3. Test Surface Discipline (测试表面纪律)
+## 2. Concurrency Model & Media3 Looper Thread-Safety (并发调度模型与 Media3 主 Looper 安全契约)
 
-- **The Interface Is the Test Surface**:
-  Write tests against the public interface and observable behavior of a module.
-- **No Implementation-Locking Assertions**:
-  - Do not use reflection (`Class.forName("...Kt")`, `declaredMethods`) to assert on internal Kotlin file facades or private/internal helper names.
-  - Do not hardcode file line-count assertions (`readLines().size <= X`) inside unit tests.
+- **Dispatcher Tripartite Separation & Repository Main-Safety (调度器三权分立与主线程安全契约)**:
+  - **职责三权分立**：I/O 阻塞型网络与磁盘读写严格使用 `Dispatchers.IO`；计算密集型（音频重采样、LRC 规整、Palette 色彩提取、Native 交互）使用 `Dispatchers.Default`；UI 状态与 Media3 播放器操作严格使用 `Dispatchers.Main.immediate`。
+  - **Main-Safety 契约**：所有仓储层（Repository）与用例层暴露给外部调用的公共 `suspend` 函数必须自带调度器切换逻辑（`withContext(ioDispatcher)`），调用方在主线程直接调用无需额外切换，默认保证主线程安全。
+  - **CancellationException 防吞法则**：在循环扫描、网络重试与流式读取中的 `try-catch` 块若捕获宽泛异常，必须显式重抛协程取消异常（`if (e is CancellationException) throw e`），严禁吞噬取消信号破坏结构化并发。
+- **Media3 Application Looper Unidirectional Dispatch (Media3 主 Looper 线程单向派发铁律)**:
+  底层 `Player` 实例（`ExoPlayer`）的方法调用（如 `prepare`、`play`、`pause`、`seekTo`、`setMediaSource`）必须严格收敛运行在引擎创建时的应用主 Looper 线程（`applicationLooper` / `Dispatchers.Main.immediate`）；严禁在后台协程（`Dispatchers.IO` 或 `Dispatchers.Default`）中跨线程直调播放器实例，跨协程交互必须通过 `runOnApplicationLooper` 派发执行。
+- **Lifecycle-Aware StateFlow Collection (UI 状态流生命周期安全收集铁律)**:
+  Compose UI 表现层消费 ViewModel 或应用会话层暴露的 `StateFlow` 时，必须强制使用 `collectAsStateWithLifecycle()`（默认处于 `Lifecycle.State.STARTED` 时收集）；严禁在表现层直接调用裸 `collectAsState()`，确保退入后台或处于 Backstack 时立即挂起消费管道，杜绝后台重组与电量隐性消耗。
 
 ---
 
-## 4. Cache Elasticity & Persistence Boundaries (缓存弹性与持久化边界)
+## 3. Cross-Source Storage Identity, SAF & Incremental Indexing (跨源身份隔离、SAF 本地存储与增量索引体系)
+
+- **Decoupling Browsing Storage and Playback Server Context (浏览源与在播源双轨解耦法则 - ADR-0035)**:
+  `browsingServer`（媒体库浏览源）与 `activeServer`（在播流凭据上下文）必须彻底解耦：
+  - 媒体库目录浏览、面包屑与存储管理仅由 `browsingServer`（对齐 `ServerRepository.getActiveServer()`）驱动；
+  - 播放器时间线、预热、MediaSource 凭据与全屏播放器来源标签仅由在播音轨物理所属源 `activeServer` 驱动；
+  - 跨源歌单或跨源搜索切歌时，仅动态切换底层 `activeServer`，**严禁覆写或重置用户的媒体库浏览源与停留目录**。
+- **Local Storage Identity Clamping (本地存储身份单向钳制法则)**:
+  播放管线（`MusicPlayerAppSessionImpl`）、元数据协调器（`PlaybackMetadataCoordinator`、`TrackMetadataRepositoryImpl`）及持久层（`TrackMetadataEntity.fromDomain`）必须对任何 `content://`、`file://` 以及 `/local/*` 规范化本地音轨将 `serverId` 强制钳制为 `LOCAL_STORAGE_ID` (`0L`)，**严禁借用或污染远程 WebDAV 服务器 ID**。
+- **Strict Source Isolation & Physical Composite Deduplication (严格源过滤与物理复合键去重法则)**:
+  - **单源隔离**：单源检索（`serverId != null`）时，WebDAV 源必须剔除所有本地文件（`content://`、`isLocal`），本地源必须剔除所有远程文件。
+  - **全库复合去重**：全库检索（`serverId == null`）跨越 `media_track_index`、`directory_cache`、`track_metadata` 时，必须按物理唯一规范键 `TrackKey(serverId, remotePath)`（本地 `local:${remotePath}`，远程 `${serverId}:${remotePath}`）严格去重。
+- **Write-Through & Dual-Source Bounded Checkpoint Skipping (目录写穿透与双源增量检查点跳过法则 - ADR-0033)**:
+  - 浏览目录写入 `directory_cache` 时必须同步写穿透 upsert `media_track_index` 并差集清理同目录已删文件；
+  - WebDAV 远程目录扫描协程必须受 `kotlinx.coroutines.sync.Semaphore(maxConcurrency = 3)` 严格限制；
+  - WebDAV 扫描（比对服务端 `(lastModified, etag)`）与本地 SAF 扫描（比对目录修改时间戳）统一基于 `directory_sync_checkpoint` 表，对未变更子树执行毫秒级增量跳过。
+- **SAF Lifecycle Management & Cursor Batch Traversal (SAF 目录权限生命周期与游标批处理性能铁律 - ADR-0032b)**:
+  - **长效权限对称维护**：挂载本地目录调用 `ContentResolver.takePersistableUriPermission`；解除挂载时必须成对执行 `releasePersistableUriPermission` 并级联清除缓存与索引。
+  - **目录遍历过滤黑名单**：扫描本地 SAF 游标时严禁使用低效易假死的 `DocumentFile.listFiles()`，强制采用 `DocumentsContract.buildChildDocumentsUriUsingTree` 查询 ContentResolver 游标并分批批量组装；
+  - **系统级杂质与缩略图目录黑名单标准集**：统一静默过滤系统级杂质目录：`.@eadir`、`#recycle`、`lost.dir`、`.git`、`.thumbnails`、`.cache`、`android`、`__macosx`、`.trash-*`。
+
+---
+
+## 4. Streaming Audio Pipeline, Hardware Defense & Demuxing (流式音频管道、硬件防假死与解复用规范)
+
+- **Pure Ephemeral Streaming & Bounded Range Probing (纯流式零音频落盘与受限切片探针铁律 - ADR-0002, ADR-0003)**:
+  远程音频流严格采用纯内存缓冲回放，**严禁将远程音频数据缓存落盘至本地持久化闪存**（流式 `OkHttpClient` 严禁配置磁盘 `Cache`）；后台远程元数据提取（`DefaultTrackMetadataResolver`）必须通过受限 HTTP Range 头部/尾部字节窗口按需探测，**严禁为提取标签或封面而全量下载整首音频文件**。
+- **Canonical Sample Rate Resampling (标准采样率升采样防御)**:
+  `CanonicalResamplingAudioProcessor` 仅将采样率 `< 44,100 Hz` 的 `16-bit PCM` 流统一升采样至 `44,100 Hz` 双声道 PCM（防厂商 HAL/DSP 路由切换时钟错位假死）；`>= 44,100 Hz` 及 `24-bit` / `32-bit Float` 流必须保持 100% 零损耗直通（Passthrough）。
+- **Stream-Only Demuxing & 32-Bit Timestamp Underflow Safeguard (Native 流式单向解复用与时间戳防下溢防线 - ADR-0012)**:
+  在 Native C++ `ffmpeg_demuxer.cc` 创建 `AVIOContext` 时**显式将流式 `seek` 回调置为 `nullptr`** 锁定单向流；Native 层强制拦截大于 `0x80000000LL` 的下溢时间戳并截断归零，杜绝 ASF/WMA 前卷减法下溢导致的 1193 小时伪进度与开播静音。
+- **Audiophile Specs Resolution & 4-Level Quality Badges (发烧级规格解析与四级音质徽章契约)**:
+  全屏播放器与详情弹窗必须基于音频解码容器通过 `AudioQuality.resolveAudiophileSpecs()` 动态解析真实物理规格（采样率 44.1kHz~384kHz、位深 16-bit~32-bit、比特率及 Hi-Res 状态），严禁静态占位符伪造；列表行以药丸徽章（`AudioQualityBadgePill`）形式动态呈现四级音质（`LOSSLESS`、`HIGH_QUALITY`、`STANDARD`、`COMPRESSED`），色彩统一跟随动态 `MaterialTheme.colorScheme.primary`。
+- **First-Frame Foreground Elevation & Dual-Cache Memory Trimming (首帧前台提升与双内存缓存协同裁剪 - ADR-0010, ADR-0017)**:
+  `WebDavMediaService` 创建首帧必须同步提升前台服务并展示通知（满足 Android 5 秒契约，解耦网络缓冲）；服务显式声明 `ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK` 规范；暂停时执行宽容窗口延迟降级，防短暂停顿被系统查杀；在 `WebDavApplication` 与 `MainActivity` 中监听 `ComponentCallbacks2.onTrimMemory(level)`，收到 `TRIM_MEMORY_UI_HIDDEN` 时主动同时清空 `ThumbnailMemoryCache` 与 `ArtworkColorExtractor` 的 LRU 内存缓存，彻底释放前台展示开销。
+- **Hardware Locks, Audio Focus & Becoming Noisy Protection (双硬件锁、焦点仲裁与拔耳机防护)**:
+  流式播放/缓冲期同时持有 CPU `WakeLock` 与高性能 `WifiLock`（`StreamingHardwareLockManager`），暂停即放；`AudioFocusHandler` 将瞬态焦点丢失映射至会话层门控（仅恢复因瞬态焦点中断的回放，Ducking 交由系统混音器 `setWillPauseWhenDucked = false`）；拦截 `ACTION_AUDIO_BECOMING_NOISY` 在耳机拔出或蓝牙断连时立即调用 `appSession.pause()`。
+- **Single-Server Self-Signed SSL Isolation (单服务器自签名 SSL 信任隔离原则 - ADR-0004)**:
+  自签名证书信任开关（`allowSelfSigned`）在 WebDAV 服务器配置中独立持久化，默认关闭；宽松的 `TrustManager` 与 `HostnameVerifier` 仅作用于该服务器派生的专属 `OkHttpClient`，**严禁提升或污染全局网络客户端与其他服务器连接**。
+- **Non-Disruptive Metadata Enrichment & Premature EOF Guard (零中断富化与流式容错自愈)**:
+  - 后台富化当前在播曲目元数据时仅响应式更新 Session 与 MediaSession 状态，**严禁重建底层播放器时间线（Timeline）**。
+  - `ResilientWebDavDataSource` 遇读超时按字节偏移发起 HTTP Range 透明重连；结合底层传输字节数与上层时长双重比对执行伪 EOF 熔断（Premature EOF Guard），杜绝网络闪断引发提前跳曲。
+
+---
+
+## 5. Fault Lifecycle Symmetry, Cache Elasticity & Queue Invariants (故障生命周期对称、缓存弹性与队列不变量)
 
 - **No Hard SQLite Foreign Keys on Cache Tables**:
-  `directory_cache` and `track_metadata` must **not** declare `FOREIGN KEY (serverId) REFERENCES webdav_servers(id) ON DELETE CASCADE`. Cross-server playlists (`ADR-0020`) and background metadata self-healing (`ADR-0022`) require reading and writing track snapshots even when a server is offline, unconfigured, or isolated in DAO tests. Cascade cleanup upon explicit server deletion is handled in `ServerRepositoryImpl.deleteServer`.
+  `directory_cache` 与 `track_metadata` 严禁声明指向 `webdav_servers(id)` 的硬外键级联删除，保障跨源歌单与元数据缓存的独立读写弹性。
+- **Symmetric Multi-Tier Cache Invalidation on Storage Deletion (存储注销多级缓存级联清理对称律)**:
+  - 解绑本地目录（`removeMountedLocalFolder`）时，必须同步清理 `media_track_index`、`directory_sync_checkpoint`、Room L2 `directory_cache`（`LOCAL_STORAGE_ID` 快照）及 `DirectoryRepositoryImpl` L1 内存缓存。
+  - 删除 WebDAV 服务器（`deleteServer`）时，除清理数据库表、缩略图文件与连接池外，必须同步失效 `DirectoryRepository` L1 内存缓存；若被删节点为默认源，自动升格剩余远程节点为默认源。
+- **Symmetric Fault Lifecycle & Multi-Trigger Self-Healing (故障对称闭环与四重自愈原则)**:
+  凡写入置灰或降级标记（`markTrackInactive`、`markServerInactive`）的接缝，必须在同领域内具备四重自动自愈信道（PROPFIND 探活、测试连接成功、播放解码出声反哺、系统网络恢复广播），严禁只写不销。
+- **Diagnostic Aggregation Parity & Granularity Alignment (诊断聚合对等与粒度对齐原则)**:
+  表现层将多个故障枚举（`InactiveReason.SERVER_UNREACHABLE`、`SERVER_CREDENTIAL_INVALID`、`FILE_NOT_FOUND`）聚合展示时，领域自愈层必须以相同广度覆盖；服务器级连接/认证故障与恢复必须按 `serverId` 批量同步，严禁仅更新单曲。
+- **Atomic Playlist Deduplication & Batch Invariant (歌单批量入库原子去重法则 - ADR-0027)**:
+  `PlaylistRepository.addTracksToPlaylist` 必须在单一 Room 事务内基于 `TrackKey(serverId, remotePath)` 物理复合差异排重，仅对全新曲目分配自增 `sortOrder` 并返回插入记录的自增 ID 集合 `List<Long>`（由上层 ViewModel 计算 `addedCount` 与 `skippedCount` 回调），严禁主线程多次往返。
+- **Unidirectional Session Routing & Session-Managed Queue (播控单向信道与队列集中托管法则)**:
+  - 所有播控入口（UI `PlaybackActions`、系统媒体按键与通知栏 `WebDavMediaSessionCallback`、`PlaybackSessionHost`）必须统一向 `MusicPlayerAppSession` 派发指令，**严禁绕过会话层直调 `AudioPlayerEngine`**。
+  - 队列流转与跨曲仲裁由会话层集中管控，底层引擎仅作单流/双流预热渲染容器，严禁自主跨曲跳转；目录回放（`QueueOrigin.DIRECTORY`）严格以当前目录曲目集合为闭环边界，严禁跨父级或兄弟目录越界。
+- **Explicit Shuffle & Order Mirroring Invariant (显式洗牌队列与原序镜像不变量 - ADR-0026)**:
+  `PlaybackQueue` 必须同时维护打乱序列 `tracks` 与原序镜像 `originalTracks`：
+  - 开启随机模式时强制将当前曲目置顶（`currentIndex = 0`），退出随机时利用 `originalTracks` 瞬时恢复原序且无损重寻址当前音轨；
+  - 切歌与回溯为指针的线性算术移动（`currentIndex ± 1`），**严禁任何 `randomOrNull()` 动态随机跳曲**；
+  - 队列末尾切歌触发确定性的整轮重洗牌（Reshuffle）；“下一首播放”（Play Next）必须向 `tracks` 与 `originalTracks` 双向同步插队。
+- **Cold-Start Restoration Gating (冷启动播控恢复门控法则)**:
+  进程被杀后经外部广播（蓝牙按键、通知栏 Play）唤醒时，若 `restoreSession()` 尚未完成且队列为空，外部播控指令（`play()`、`togglePlayPause()`、`skipToNext()`、`skipToPrevious()`）必须在协程内挂起等待恢复完成后执行，严禁因竞态丢弃指令。
 
 ---
 
-## 5. Mainstream Engineering Benchmark & Pragmatic Review (对标主流工业级标准与务实审查)
+## 6. All-Weather Visual Stage, Color Purity & Fluid Motion (全天候视觉舞台、色彩纯净度防护与流体微动效)
 
-- **Benchmark Against Mainstream Production Engineering (对标主流工业级标准，拒绝教条化审查)**:
-  The sole North Star for architecture review is **mainstream production-grade software engineering**: standard architectural patterns, industry benchmarks, framework-idiomatic conventions, and pragmatic maintainability.
-  Strictly avoid "reviewing for the sake of reviewing" or applying extreme academic/theoretical dogmas that deviate from mainstream industry engineering.
-- **Problem-Driven with Measurable Engineering Value (问题驱动与实质收益)**:
-  Any architectural finding or refactoring proposal must address genuine engineering friction: performance bottlenecks, concurrency/lifecycle hazards, memory leaks, boundary leakage, or real maintenance impediments.
-  If an existing design aligns with mainstream framework idioms, is cleanly structured, and reliably passes all quality/performance gates, it is solid engineering. Strictly prohibit inventing make-work, circular refactorings (endless splitting vs. merging), or aesthetic churn that delivers zero practical engineering value.
-- **Review Stopping Discipline & Drift Auditing (收敛边界与漂移审查准则)**:
-  An architectural review must converge based on empirical health, not historical immunity.
-  审查的收敛与终止是建立在“经全面实证该模块当前运行健康、无真实边界摩擦与维护障碍”之上，绝非建立在“它曾经写过 ADR 或重构过”的免检假设上。
-  若模块经审计符合主流工程标准且无实质痛点，应确认合格并收敛终止；反之，若后续开发在该模块引入了新的正交职责、循环依赖或状态泄漏，无论其历史 ADR 多么完善，均须将其列为深化候选。
-
----
-
-## 6. Fault Lifecycle Symmetry & Diagnostic Parity (故障生命周期对称闭环与诊断对等)
-
-- **Symmetric Fault Lifecycle (故障对称闭环原则)**:
-  凡在仓储或持久层设计了写入持久化错误、降级或置灰标记（如 `markTrackInactive`、`markServerInactive`）的接缝，必须在同一领域边界内提供对等、全自动的解除与自愈信道（如探活自愈、成功出声反哺、测试连接联动清除）。严禁只写不销、只增不减的单向状态累积，杜绝节点交互死锁。
-- **Diagnostic Aggregation Parity (UI 诊断聚合与领域自愈对等原则)**:
-  当表现层将多个底层故障枚举（如 `SERVER_UNREACHABLE` 与瞬态 401/403 `SERVER_CREDENTIAL_INVALID`）聚合映射为同一用户提示文案时，领域自愈层与状态清除逻辑必须以相同的广度覆盖这些枚举，彻底消除“UI 展现已聚合、底层自愈漏一半”引发的认知死角。
-- **Failure Granularity Alignment (故障粒度对齐原则)**:
-  针对整机/服务级异常（如网络拒绝、超时、服务重启认证不可用），故障标记与恢复必须在服务器级批量同步，严禁仅对当前报错单曲标记而留同源排队曲目高亮，杜绝同源数据展现割裂。
-
----
-
-## 7. Motion & Container Morphing Architecture (动效系统与容器形变工程准则)
-
-- **Single Living Entity & Slot Architecture (单一真实实体与插槽架构法则)**:
-  在容器连续形态蜕变（Morphing Container）与多阶界面过渡中，核心视觉元素（专辑封面、主控按钮）必须且仅能在根容器宿主中拥有唯一的实例，全生命周期常驻；子视图（MiniPlayer 与 FullPlayerView）严禁重复实例化同名多媒体视图，必须退化为纯几何插槽（Slot Anchor，仅保留约束尺寸与坐标测量回调）。严禁在动画终点通过 `if (isMorphing)` 等条件分支进行结构性组件卸载与“替身到真实视图”的偷换（End-State Swap），彻底从物理根源上消灭 RenderNode 切换导致的 1 帧空白闪烁与排版跳跃。
-- **Draw Phase Animation Rule (GPU 绘制阶段渲染原则)**:
-  在 60/120fps 连续高频形变中，严禁逐帧修改 `Modifier.size()` 与 `Modifier.offset()`（这会强迫 Compose 逐帧回退至 CPU Measure & Layout 测量重排与图片重采样，引发掉帧卡顿）；必须以固定目标尺寸为基底，统一在 `Modifier.graphicsLayer { scaleX/Y = ...; translationX/Y = ...; shape = ...; clip = true }` 内通过 GPU 矩阵变换完成缩放位移，保障 CPU 零重新测算与 120Hz 硬件加速。
-- **Zero-Ghosting & Parallax Space Orchestration (零残影与全局空间视差联动)**:
-  容器在形变或展开过程中，屏幕上严禁出现同一封面或同一定位控件的二次重叠绘制（Double Rendering / Ghosting Artifacts）。当通过顶层共享图层执行飞行动画时，底层的真实目标槽位必须使用纯净的 `Spacer` 进行无渲染几何占位，严禁底层在半透明浮现期间重复渲染封面背板、阴影或按钮图形，杜绝重影叠印与月牙阴影。同时必须保持全局空间视差联动（底栏下沉 80dp 退出与主视窗微缩至 0.94f），杜绝突兀硬切。
-- **Dynamic Theme Purity & Universal Perceptual Normalization (组件色调动态纯净度与通用感知归一化)**:
-  严禁在 UI 表现层针对特定业务状态（如 Hi-Res 24-bit 标志、格式徽章、播放按钮）硬编码孤立颜色常量（如 `#FFB703` 或写死 Hex 色值）；所有高亮标签、指示器与边框必须统一绑定到 `MaterialTheme.colorScheme` 的动态语义 Token，由当前曲目封面通过 Google Palette + HCT 规范提取的种子色全自动推导，保障在任意色调（冷青、暖金、玫红、纯黑白）专辑下 100% 动态跟随自适应。
-
----
-
-## 8. Cross-Source Storage Identity & Search Scope Discipline (跨源存储身份隔离与检索范围契约)
-
-- **Local Storage Identity Clamping (本地存储身份单向隔离法则)**:
-  `LOCAL_STORAGE_ID = 0L` 与远程 WebDAV 节点互为一等公民，但两者的资源寻址体系完全异构（Android SAF `content://` URI vs 相对路径 HTTP/HTTPS URL）。播放管线（`MusicPlayerAppSessionImpl`）、元数据解析与提取协调器（`PlaybackMetadataCoordinator`、`TrackMetadataRepositoryImpl`）以及数据实体构造（`TrackMetadataEntity.fromDomain`）必须执行**严格单向隔离保护**：任何路径以 `content://` 或 `file://` 开头的本地音轨，其持久化关联的 `serverId` 必须无条件强制钳制为 `LOCAL_STORAGE_ID` (`0L`)，**严禁借用、继承或污染当前活跃的远程 WebDAV 服务器 ID**。
-- **Strict Source Isolation & Physical Composite Deduplication (严格源过滤隔离与物理复合去重法则)**:
-  - **单源严格隔离**：单源检索时（`serverId != null`），若目标源为 WebDAV，底层查询与内存映射层必须对所有数据流（曲目索引、目录快照、元数据缓存）实施严格防御式过滤，坚决剔除任何本地文件（`content://`、`isLocal`）；若目标源为本地存储，坚决剔除任何远程文件。
-  - **全库复合去重**：全库跨源检索时（`serverId == null`），由于存在混合持久化表（`media_track_index`、`directory_cache`、`track_metadata`），必须采用**物理唯一标识键**（本地音轨统一映射为 `local:${remotePath}`，远程音轨映射为 `${serverId}:${remotePath}`）进行严格去重，杜绝同一首物理文件在搜索结果中重复渲染。
-- **Mutual Exclusion Scope Controls & Unmistakable Visual Contrast (互斥检索范围控件与强视觉状态法则)**:
-  当搜索或过滤界面提供“当前源”与“全库搜索”等互斥状态切换时，严禁使用视觉权重轻微、未激活/激活状态差异模糊的松散组件（如弱边界的普通 `FilterChip`），必须采用符合平台设计规范的**一体化分段滑块胶囊（Segmented Pill Capsule）**。选中的分段必须具备饱满的高对比实体背景、加粗文本及语义辅助图标，使当前作用域在任何主题下具有一目了然的确定性心智。
-- **Zero-Friction Silent Auto-Indexing (零阻力静默自建索引原则)**:
-  曲目快速索引必须是完全透明的系统基础设施，严禁将“同步媒体库/建立索引”做成独立的手动阻断前置步骤，更严禁在主界面顶部栏增加二级菜单让用户找寻操作。新节点接入（保存服务器/挂载本地目录）、应用启动切换及进入搜索时，必须由系统在后台协程静默发起增量快照索引，并通过自然手势（列表下拉刷新 Pull-to-Refresh）统一归口手动触发。
-
-
+- **Single Living Entity & Slot Architecture (单一真实常驻实体与插槽架构法则)**:
+  `MorphingPlayerContainer` 中核心元素（封面、播放键、队列键）仅在根容器拥有唯一常驻实例；`MiniPlayer` 与 `FullPlayerView` 退化为纯几何测量插槽（`Spacer` 占位），严禁重复渲染重影（Double Rendering）或在动画终点通过 `if (isMorphing)` 分支偷换视图（Zero End-State Swaps）。
+- **Draw Phase Animation Rule (GPU 绘制阶段变换原则)**:
+  60/120fps 形变严禁逐帧修改 `Modifier.size()` / `Modifier.offset()` 触发 CPU 重测重排；必须以固定尺寸为基底，在 `Modifier.graphicsLayer` 内通过 GPU 矩阵变换（`scaleX/Y`、`translationX/Y`、`shape`、`clip`）完成过渡。
+- **All-Weather Immersive Stage & Universal Perceptual Tonal Model (全天候暗调舞台与三层感知色调模型 - ADR-0032a)**:
+  - 主界面保持深浅双模自适应；全屏播放器（`FullPlayerView`）强制升格为独立暗调流体舞台，前景文字与图标锁定高亮纯白（`#FFFFFF`，对比度 $\ge 11:1$），终结浅色模式白底白字反差失效。
+  - 三层感知色调停靠点：Top Stop（高光发散，优先仲裁 `lightVibrantSwatch`，明度 $L \in [0.58f, 0.72f]$，饱和度 $S \ge 0.50f$）；Mid Stop（漫射层，明度归一化在 Tone 32~45，色阶断点延展至 0.48f）；Bottom Stop（深邃暗彩基底，色相锁定封面基调色，明度 $L = 0.085f$，Tone 8~9）。
+- **Track-Driven Dynamic Theme Purity & Hex Prohibition (音轨驱动动态换肤、全域 Hex 禁令与黑白封面灰阶防线)**:
+  - 全域动态换肤以在播音轨封面（`ArtworkColorExtractor` 基于 `androidx.palette`、HSL 与 CIE L\*a\*b\* 感知彩度提取）为唯一色彩源；UI 组件严禁硬编码孤立 Hex 色值（如 `Color(0x...)`），除主题种子定义文件 `Color.kt` 与色板提取回退实现 `ArtworkColorExtractor.kt` 外，全域强制绑定 `MaterialTheme.colorScheme` 语义 Token（由 `PackagingSeamVerificationTest` 自动化检验）。
+  - 当封面彩度低于阈值（CIE L\*a\*b\* `Chroma < 8` 或 HSL `Saturation < 0.12`）或缺失封面时，强制冻结彩色注入并落入纯正中性石墨灰阶（Pure Neutral Slate `#121318`），杜绝黑白封面被误染成杂色。
+- **Ambient Fluid Lyrics Viewport & Center Anchoring (沉浸式流体歌词舞台与居中锚定)**:
+  歌词列表强制设置 `contentPadding = PaddingValues(vertical = viewportHeight / 2)`，确保当前行精准锚定在屏幕垂直物理居中线；内边距计算必须附带 `coerceAtLeast(0.dp)` 边界保护；在播行放大至 22sp 粗体配 3.5dp Primary 圆角指示条；未唱行对数渐隐。
+- **Local Companion Manifest & Industrial LRC Normalization (伴生清单、无损富化与 LRC 规整四律 - ADR-0006, ADR-0009)**:
+  - 解析本地目录伴生封面与歌词必须直接透传真实 `content://` Document URI；合并元数据执行字段级保底合并，严禁整项覆盖抹除；`WebDavNotificationProvider` 维护当前封面 Bitmap 的 URI 级内存缓存，0 磁盘 I/O 复用。
+  - 封面解析“内嵌优先，外置伴生保底”；歌词解析“外置同名伴生优先，内嵌保底”。
+  - LRC 规整四律：1) 展开行首多时间戳；2) 强制清洗剔除行内/词级（Karaoke / Word-level）时间戳；3) 相邻行时间戳相差 $< 300\text{ms}$ 且文本相同时强制去重；4) 相差 $< 300\text{ms}$ 的两行自动合并为单行 `LyricLine(mainText, translation)` 双语对齐模型。
+- **Dual-Line Track Row Parity, Motion Tokens & Focus Timing Gating (全域双行列表、动效令牌与焦点时序门禁 - ADR-0028, ADR-0031)**:
+  - 全域音轨行（`AudioTrackRow`）固定保持双行高度一致；缺失艺术家/专辑时副标题强制回退显示 `"未知"`，严禁隐藏副标题退化为单行高度。
+  - 动效弹簧参数统一定义在 `MotionTokens.kt`（`SpatialSpring` / `EffectsSpring` / `FastSpatialSpring`），严禁散落硬编码魔法 Tween；FAB 浮动按钮维持 $24\text{dp}$ 动态呼吸净空。
+  - `FloatingSearchPillCapsule` 的软键盘聚焦 `requestFocus()` 必须严格门控至展开动画进度 $\ge 0.35f$ 挂载完成后触发，杜绝提前抢焦引发系统级崩溃。

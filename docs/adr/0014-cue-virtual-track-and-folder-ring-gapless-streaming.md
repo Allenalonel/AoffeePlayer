@@ -4,6 +4,11 @@
 
 Superseded by ADR 0034
 
+> ⚠️ **PURGE NOTICE**:
+> - **状态**: `Superseded by ADR 0034`
+> - **现行法典**: 技术约束以 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **核心废止点**: CUE 虚拟分轨、虚拟时间轴状态机及整轨映射已在 ADR-0034 中被物理彻底清除。代码库完全回归真实 1:1 物理文件音频流，严禁将本文件作为设计依据。
+
 ## Context
 
 在对比同类开源播放器（如 Folder-Player）的功能特性时，发烧友用户群体对 **CUE 整轨无损音频（FLAC/WAV/APE）虚拟分轨播放**与**连贯畅听体验**有着强烈的诉求。

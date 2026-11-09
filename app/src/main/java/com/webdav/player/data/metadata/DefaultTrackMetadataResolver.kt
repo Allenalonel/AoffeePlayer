@@ -143,6 +143,17 @@ internal class DefaultTrackMetadataResolver(
             val title = parsed.title?.takeIf { it.isNotBlank() } ?: cleanFallbackTitle
             val artist = parsed.artist?.takeIf { it.isNotBlank() }
             val album = parsed.album?.takeIf { it.isNotBlank() }
+            val companionLyricsPath =
+                if (parsed.lyrics.isNullOrBlank() && directoryFiles != null) {
+                    directoryFiles
+                        .firstOrNull {
+                            it.isLyrics &&
+                                it.name.substringBeforeLast('.').equals(cleanFallbackTitle, ignoreCase = true) &&
+                                (it.path.startsWith("content://") || it.path.startsWith("file://"))
+                        }?.path
+                } else {
+                    null
+                }
 
             TrackMetadata(
                 serverId = server.id,
@@ -153,7 +164,7 @@ internal class DefaultTrackMetadataResolver(
                 trackNumber = parsed.trackNumber,
                 durationMs = parsed.durationMs,
                 coverThumbnailPath = thumbnailPath,
-                lyrics = parsed.lyrics,
+                lyrics = parsed.lyrics?.takeIf { it.isNotBlank() } ?: companionLyricsPath,
             )
         }
 
@@ -261,6 +272,7 @@ internal class DefaultTrackMetadataResolver(
             }
 
         // 1. Check track-specific artwork first: "${trackName}.jpg", "${trackName}.png", "${filename}.jpg", "${filename}.png"
+        val isContentUri = file.path.startsWith("content://")
         val rawTrackCandidates =
             listOf(
                 "$baseName.jpg",
@@ -268,7 +280,7 @@ internal class DefaultTrackMetadataResolver(
                 "${file.name}.jpg",
                 "${file.name}.png",
             )
-        val trackCandidates = filterCandidatesByManifest(rawTrackCandidates, manifestMap)
+        val trackCandidates = filterCandidatesByManifest(rawTrackCandidates, manifestMap, isContentUri)
         if (trackCandidates.isNotEmpty()) {
             val trackResult = probeCandidates(server, parentDir, trackCandidates)
             when (trackResult) {
@@ -319,7 +331,7 @@ internal class DefaultTrackMetadataResolver(
                     "front.jpg",
                     "cover.png",
                 )
-            val folderCandidates = filterCandidatesByManifest(rawFolderCandidates, manifestMap)
+            val folderCandidates = filterCandidatesByManifest(rawFolderCandidates, manifestMap, isContentUri)
             if (folderCandidates.isEmpty()) {
                 folderArtworkCache[folderKey] = NO_FOLDER_ARTWORK_SENTINEL
                 return@withLock null
@@ -347,13 +359,14 @@ internal class DefaultTrackMetadataResolver(
     private fun filterCandidatesByManifest(
         candidateNames: List<String>,
         manifestMap: Map<String, RemoteFile>?,
+        isContentUri: Boolean = false,
     ): List<String> {
         if (manifestMap == null) {
-            return candidateNames
+            return if (isContentUri) emptyList() else candidateNames
         }
         return candidateNames.mapNotNull { candidate ->
             val match = manifestMap[candidate.lowercase()]
-            match?.name
+            match?.path?.takeIf { it.isNotBlank() } ?: match?.name
         }
     }
 
@@ -375,7 +388,12 @@ internal class DefaultTrackMetadataResolver(
         candidateFileNames: List<String>,
     ): ProbeResult {
         for (name in candidateFileNames) {
-            val path = buildCandidatePath(parentDir, name)
+            val path =
+                if (name.startsWith("content://") || name.startsWith("file://") || name.startsWith("/")) {
+                    name
+                } else {
+                    buildCandidatePath(parentDir, name)
+                }
             try {
                 val thumb = probeAndCacheArtwork(server, path)
                 if (thumb != null) {

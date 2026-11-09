@@ -345,4 +345,44 @@ class LocalStorageIndexScannerTest {
             assertEquals(1, count)
             assertEquals(1, mediaTrackIndexDao.countByServerId(LOCAL_STORAGE_ID))
         }
+
+    @Test
+    fun indexFolder_removesDeletedTracksOnRescan() =
+        runTest {
+            val rootDocId = "primary:Music"
+            ScannerTestDocumentsProvider.childrenMap[rootDocId] =
+                listOf(
+                    ScannerTestDocumentsProvider.DocEntry(
+                        docId = "primary:Music/Keep.mp3",
+                        displayName = "Keep.mp3",
+                        mimeType = "audio/mpeg",
+                        size = 1000L,
+                    ),
+                    ScannerTestDocumentsProvider.DocEntry(
+                        docId = "primary:Music/DeleteMe.flac",
+                        displayName = "DeleteMe.flac",
+                        mimeType = "audio/flac",
+                        size = 2000L,
+                    ),
+                )
+
+            scanner.indexFolder(Uri.parse(TREE_URI_STRING))
+            assertEquals(2, mediaTrackIndexDao.countByServerId(LOCAL_STORAGE_ID))
+
+            // Simulate user deleting DeleteMe.flac on device and rescanning
+            ScannerTestDocumentsProvider.childrenMap[rootDocId] =
+                listOf(
+                    ScannerTestDocumentsProvider.DocEntry(
+                        docId = "primary:Music/Keep.mp3",
+                        displayName = "Keep.mp3",
+                        mimeType = "audio/mpeg",
+                        size = 1000L,
+                    ),
+                )
+
+            scanner.indexFolder(Uri.parse(TREE_URI_STRING), force = true)
+            val remaining = mediaTrackIndexDao.getTracksByServerId(LOCAL_STORAGE_ID)
+            assertEquals(1, remaining.size)
+            assertEquals("Keep.mp3", remaining.first().fileName)
+        }
 }

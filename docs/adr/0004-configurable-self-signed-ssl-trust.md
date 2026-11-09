@@ -1,5 +1,9 @@
 # Configurable Self-Signed SSL Trust
 
+## Status
+
+Accepted
+
 ## Context
 
 许多私有 WebDAV 服务（如部署在局域网内或家庭 NAS 上的 AList、Nextcloud、群晖等）使用自签名 SSL 证书，或通过自定义 IP:Port 提供 HTTPS 服务。Android 默认安全策略会拦截非受信任 CA 颁发的证书，导致连接直接失败。

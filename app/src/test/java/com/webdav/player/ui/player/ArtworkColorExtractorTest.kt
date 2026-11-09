@@ -650,4 +650,45 @@ class ArtworkColorExtractorTest {
         assertTrue("Fallback mid Chroma must be < 8, got $midChroma", midChroma < 8f)
         assertNotNull(fallback.ambientGlowBrush(isDarkTheme = true))
     }
+
+    @Test
+    fun extractArtworkColors_cachesResultInMemory_andInvalidatesWhenFileDeleted() {
+        ArtworkColorExtractor.clearCache()
+        val imageFile = tempFolder.newFile("cached_cover.png")
+        val bitmap = Bitmap.createBitmap(24, 24, Bitmap.Config.ARGB_8888)
+        bitmap.eraseColor(android.graphics.Color.CYAN)
+        FileOutputStream(imageFile).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+        }
+
+        val first =
+            ArtworkColorExtractor.extractArtworkColors(
+                thumbnailPath = imageFile.absolutePath,
+                defaultSurfaceColor = defaultSurface,
+                defaultBackgroundColor = defaultBackground,
+                isDarkTheme = true,
+            )
+        assertFalse(first.isFallback)
+
+        val cached =
+            ArtworkColorExtractor.getCachedArtworkColors(
+                thumbnailPath = imageFile.absolutePath,
+                defaultSurfaceColor = defaultSurface,
+                defaultBackgroundColor = defaultBackground,
+                isDarkTheme = true,
+            )
+        assertNotNull("Extracted artwork colors must be stored in memory cache", cached)
+        assertEquals(first, cached)
+
+        // Delete physical file: subsequent extraction must evict stale entry and return fallback
+        assertTrue(imageFile.delete())
+        val afterDelete =
+            ArtworkColorExtractor.extractArtworkColors(
+                thumbnailPath = imageFile.absolutePath,
+                defaultSurfaceColor = defaultSurface,
+                defaultBackgroundColor = defaultBackground,
+                isDarkTheme = true,
+            )
+        assertTrue(afterDelete.isFallback)
+    }
 }

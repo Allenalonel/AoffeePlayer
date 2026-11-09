@@ -1,5 +1,14 @@
 # 0025: 深化播放引擎与收敛仓储层 (Deepen Player Engine and Consolidate Repositories)
 
+## Status
+
+Accepted (Amended by ADR 0034 and ADR 0035: resolveServerForTrack consolidated in queue manager)
+
+> ⚠️ **AMENDMENT NOTICE**:
+> - **现行法典**: 技术约束以根目录 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **CUE 废除 (ADR-0034)**: 正文中涉及的 `CueSheetResolver` 与 CUE 骨架探测已被 ADR-0034 彻底物理移除。
+> - **双轨源解耦 (ADR-0035)**: 在播凭据解析由 `PlaybackQueueManager` 统一管控，与媒体库浏览解耦。
+
 ## Context
 
 在先前的架构审查中，系统的底层播放核心与数据仓储层暴露了多处虚设接缝、假性委托、跨层强转及横向数据依赖缺陷：

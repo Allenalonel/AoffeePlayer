@@ -18,6 +18,7 @@ import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 
 class ServerRepositoryImpl(
@@ -101,8 +102,11 @@ class ServerRepositoryImpl(
         serverDao.deleteServerById(id)
 
         if (serverToDelete?.isDefault == true) {
-            // Pick any remaining server to be active if available
-            // Wait, if no server is left, active server simply becomes null
+            val remaining = serverDao.getAllServersFlow().firstOrNull().orEmpty()
+            val nextDefault = remaining.firstOrNull()
+            if (nextDefault != null) {
+                serverDao.setActiveServer(nextDefault.id)
+            }
         }
     }
 
@@ -138,14 +142,14 @@ class ServerRepositoryImpl(
 
     override suspend fun removeMountedLocalFolder(uriString: String) {
         try {
-            val encodedTreeUri = java.net.URLEncoder.encode(uriString, "UTF-8")
-            val prefix = "/local/$encodedTreeUri/"
+            val prefix = LocalStorageIndexScanner.buildLocalRootPath(uriString)
             mediaTrackIndexDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, prefix)
             directorySyncCheckpointDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, prefix)
         } catch (_: Exception) {
         }
         mediaTrackIndexDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, uriString)
         directorySyncCheckpointDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, uriString)
+        directoryCacheDao?.deleteCacheByServerId(LOCAL_STORAGE_ID)
         localStorageFolderDao?.deleteFolderByUri(uriString)
     }
 

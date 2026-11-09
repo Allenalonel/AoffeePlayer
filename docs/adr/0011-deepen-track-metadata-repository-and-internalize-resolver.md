@@ -1,5 +1,14 @@
 # Deepen Track Metadata Repository and Internalize Resolver
 
+## Status
+
+Superseded by ADR 0025
+
+> ⚠️ **SUPERSEDED NOTICE**:
+> - **状态**: `Superseded by ADR 0025`
+> - **现行法典**: 技术约束以 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **核心演进**: 本 ADR 的元数据仓储演进已被 ADR-0025（进一步深化播放引擎与统一整合仓储层）深化并整合。
+
 ## Context
 
 在近期的缓存失效韧性（Cache Invalidation Resilience）演进中，为了防止应用清空本地缓存后死缩略图路径破坏播放器 UI 与系统通知，系统引入了缩略图存活性判断与自愈逻辑。然而在原有实现中：

@@ -384,4 +384,69 @@ class PackagingSeamVerificationTest {
             violations.isEmpty(),
         )
     }
+
+    @Test
+    fun uiLayer_enforcesLifecycleAwareStateFlowCollectionAndForbidsBareCollectAsState() {
+        val uiDir = File(sourceRoot, "ui")
+        assertTrue("UI source directory must exist", uiDir.exists())
+
+        // Match bare collectAsState() calls that are NOT collectAsStateWithLifecycle()
+        val bareCollectAsStateRegex = Regex("""(?<!WithLifecycle)\bcollectAsState\s*\(""")
+
+        val violations = mutableListOf<String>()
+
+        uiDir
+            .walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .forEach { file ->
+                file.useLines { lines ->
+                    lines.forEachIndexed { index, line ->
+                        val trimmed = line.trim()
+                        if (!trimmed.startsWith("//") && bareCollectAsStateRegex.containsMatchIn(trimmed)) {
+                            violations.add("${file.name}:${index + 1} -> $trimmed")
+                        }
+                    }
+                }
+            }
+
+        assertTrue(
+            "Compose UI must consume StateFlow via collectAsStateWithLifecycle(); bare collectAsState() is forbidden: $violations",
+            violations.isEmpty(),
+        )
+    }
+
+    @Test
+    fun safDirectoryScanning_forbidsDocumentFileListFiles() {
+        // 1. Forbid importing DocumentFile anywhere in the project (enforces DocumentsContract cursor traversal)
+        val documentFileImportRegex =
+            Regex("""^import (androidx\.documentfile\.provider\.)?DocumentFile\b""", RegexOption.MULTILINE)
+        val documentFileOffenders =
+            sourceRoot
+                .walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .filter { documentFileImportRegex.containsMatchIn(it.readText()) }
+                .map { it.name }
+                .toList()
+        assertTrue(
+            "SAF directory scanning must not import or use DocumentFile (mandatory DocumentsContract traversal): $documentFileOffenders",
+            documentFileOffenders.isEmpty(),
+        )
+
+        // 2. Forbid any .listFiles() calls in LocalStorage resolvers/scanners
+        val safResolvers =
+            listOf(
+                "data/repository/LocalStorageDirectoryResolver.kt",
+                "data/repository/LocalStorageIndexScanner.kt",
+            )
+        val listFilesRegex = Regex("""\.listFiles\s*\(""")
+        safResolvers.forEach { relPath ->
+            val file = File(sourceRoot, relPath)
+            if (file.exists()) {
+                assertFalse(
+                    "$relPath must not call listFiles(); must use DocumentsContract cursor traversal",
+                    listFilesRegex.containsMatchIn(file.readText()),
+                )
+            }
+        }
+    }
 }

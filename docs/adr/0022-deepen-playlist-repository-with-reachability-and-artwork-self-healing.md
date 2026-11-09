@@ -1,5 +1,9 @@
 # 0022: 歌单仓储加深与下沉连通性及封面自愈 (Deepen Playlist Repository with Reachability and Artwork Self-Healing)
 
+## Status
+
+Accepted (Amended by ADR 0030: Full-lifecycle multi-trigger fault self-healing)
+
 ## Context
 
 在引入跨服务器歌单（ADR-0020）后，音轨条目（`PlaylistTrackEntry`）支持引用来自不同 WebDAV 服务器的音频文件。然而在原有实现中，`PlaylistRepository` 仅作为针对本地 Room `PlaylistDao` 的浅层透传模块（Shallow Module），自身缺乏服务器连通性判断与元数据自愈能力。

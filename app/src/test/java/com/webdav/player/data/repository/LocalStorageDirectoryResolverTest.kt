@@ -105,16 +105,17 @@ class LocalStorageDirectoryResolverTest {
             val entries = childrenMap[parentDocumentId] ?: emptyList()
             for (entry in entries) {
                 val row =
-                    cols.map { col ->
-                        when (col) {
-                            Document.COLUMN_DOCUMENT_ID -> entry.docId
-                            Document.COLUMN_DISPLAY_NAME -> entry.displayName
-                            Document.COLUMN_MIME_TYPE -> entry.mimeType
-                            Document.COLUMN_SIZE -> entry.size
-                            Document.COLUMN_LAST_MODIFIED -> entry.lastModified
-                            else -> null
-                        }
-                    }.toTypedArray()
+                    cols
+                        .map { col ->
+                            when (col) {
+                                Document.COLUMN_DOCUMENT_ID -> entry.docId
+                                Document.COLUMN_DISPLAY_NAME -> entry.displayName
+                                Document.COLUMN_MIME_TYPE -> entry.mimeType
+                                Document.COLUMN_SIZE -> entry.size
+                                Document.COLUMN_LAST_MODIFIED -> entry.lastModified
+                                else -> null
+                            }
+                        }.toTypedArray()
                 cursor.addRow(row)
             }
             return cursor
@@ -132,18 +133,20 @@ class LocalStorageDirectoryResolverTest {
         ): ParcelFileDescriptor {
             val bytes =
                 fileBytes[documentId]
-                    ?: fileBytes.entries.firstOrNull {
-                        documentId != null && (documentId.endsWith(it.key) || it.key.endsWith(documentId))
-                    }?.value
+                    ?: fileBytes.entries
+                        .firstOrNull {
+                            documentId != null && (documentId.endsWith(it.key) || it.key.endsWith(documentId))
+                        }?.value
             val tempFile = File(tempDir, "temp_${documentId?.replace('/', '_') ?: "doc"}")
             if (bytes != null) {
                 tempFile.writeBytes(bytes)
             } else {
                 val content =
                     fileContents[documentId]
-                        ?: fileContents.entries.firstOrNull {
-                            documentId != null && (documentId.endsWith(it.key) || it.key.endsWith(documentId))
-                        }?.value
+                        ?: fileContents.entries
+                            .firstOrNull {
+                                documentId != null && (documentId.endsWith(it.key) || it.key.endsWith(documentId))
+                            }?.value
                         ?: ""
                 tempFile.writeText(content, Charsets.UTF_8)
             }
@@ -346,7 +349,9 @@ class LocalStorageDirectoryResolverTest {
     @Test
     fun resolve_companionCover_withCoverArtStorage_savesPhysicalThumbnail() =
         runTest {
-            val coverArtStorage = com.webdav.player.data.local.CoverArtStorageImpl(context)
+            val coverArtStorage =
+                com.webdav.player.data.local
+                    .CoverArtStorageImpl(context)
             val resolverWithStorage =
                 LocalStorageDirectoryResolver(
                     context = context,
@@ -373,10 +378,28 @@ class LocalStorageDirectoryResolverTest {
             // Valid minimal JPEG bytes: SOI (FF D8) ... EOI (FF D9)
             val fakeJpeg =
                 byteArrayOf(
-                    0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(),
-                    0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01,
-                    0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
-                    0xFF.toByte(), 0xD9.toByte(),
+                    0xFF.toByte(),
+                    0xD8.toByte(),
+                    0xFF.toByte(),
+                    0xE0.toByte(),
+                    0x00,
+                    0x10,
+                    0x4A,
+                    0x46,
+                    0x49,
+                    0x46,
+                    0x00,
+                    0x01,
+                    0x01,
+                    0x00,
+                    0x00,
+                    0x01,
+                    0x00,
+                    0x01,
+                    0x00,
+                    0x00,
+                    0xFF.toByte(),
+                    0xD9.toByte(),
                 )
             TestDocumentsProvider.fileBytes["primary:Music/cover.jpg"] = fakeJpeg
 
@@ -388,5 +411,45 @@ class LocalStorageDirectoryResolverTest {
             assertNotNull(audioMeta?.coverThumbnailPath)
             assertTrue(audioMeta?.coverThumbnailPath!!.startsWith(context.cacheDir.absolutePath))
             assertTrue(coverArtStorage.isValidThumbnailFile(audioMeta.coverThumbnailPath))
+        }
+
+    @Test
+    fun resolve_filtersNoiseDirectoriesConsistentWithScanner() =
+        runTest {
+            val rootDocId = "primary:Music"
+            TestDocumentsProvider.childrenMap[rootDocId] =
+                listOf(
+                    TestDocumentsProvider.DocEntry(
+                        docId = "primary:Music/Jazz",
+                        displayName = "Jazz",
+                        mimeType = Document.MIME_TYPE_DIR,
+                    ),
+                    TestDocumentsProvider.DocEntry(
+                        docId = "primary:Music/.thumbnails",
+                        displayName = ".thumbnails",
+                        mimeType = Document.MIME_TYPE_DIR,
+                    ),
+                    TestDocumentsProvider.DocEntry(
+                        docId = "primary:Music/.@eaDir",
+                        displayName = ".@eaDir",
+                        mimeType = Document.MIME_TYPE_DIR,
+                    ),
+                    TestDocumentsProvider.DocEntry(
+                        docId = "primary:Music/#recycle",
+                        displayName = "#recycle",
+                        mimeType = Document.MIME_TYPE_DIR,
+                    ),
+                )
+
+            val encodedTreeUri = URLEncoder.encode(TREE_URI_STRING, "UTF-8")
+            val result = resolver.resolve("/local/$encodedTreeUri/")
+
+            assertEquals(1, result.directory.subDirectories.size)
+            assertEquals(
+                "Jazz",
+                result.directory.subDirectories
+                    .first()
+                    .name,
+            )
         }
 }

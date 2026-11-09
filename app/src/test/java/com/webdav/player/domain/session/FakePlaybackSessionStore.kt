@@ -4,9 +4,8 @@ import com.webdav.player.domain.model.PlaybackSessionData
 import com.webdav.player.domain.repository.PlaybackSessionStore
 
 class FakePlaybackSessionStore(
-    private var initialSession: PlaybackSessionData? = null
+    private var initialSession: PlaybackSessionData? = null,
 ) : PlaybackSessionStore {
-
     var savedSession: PlaybackSessionData? = initialSession
     var saveSessionCount = 0
     var clearSessionCount = 0
@@ -28,9 +27,7 @@ class FakePlaybackSessionStore(
             )
     }
 
-    override suspend fun getSavedSession(): PlaybackSessionData? {
-        return savedSession
-    }
+    override suspend fun getSavedSession(): PlaybackSessionData? = savedSession
 
     override suspend fun clearSession() {
         savedSession = null

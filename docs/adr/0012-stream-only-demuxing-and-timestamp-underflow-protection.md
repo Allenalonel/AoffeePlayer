@@ -1,5 +1,9 @@
 # Stream-Only Demuxing Pipeline and Timestamp Underflow Protection
 
+## Status
+
+Accepted
+
 ## Context
 
 在利用 AndroidX Media3 (ExoPlayer) 配合自定义 Native FFmpeg 扩展（`ffmpeg_demuxer.cc`）回放远程 WebDAV 上的 WMA (ASF 封装) 音频文件时，遇到了三个互相交织的深层架构与稳定性问题：

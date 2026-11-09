@@ -1,14 +1,9 @@
 package com.webdav.player.di
 
-import com.webdav.player.data.local.MediaTrackIndexDao
-import com.webdav.player.data.remote.OkHttpWebDavClient
-import com.webdav.player.data.repository.LocalStorageIndexScanner
-import com.webdav.player.data.repository.WebDavSyncScanner
-import com.webdav.player.domain.network.NetworkConnectivityObserver
+import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.DirectoryRepository
 import com.webdav.player.domain.repository.LibrarySearchRepository
-import com.webdav.player.domain.repository.PlaybackSessionStore
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
@@ -26,10 +21,5 @@ interface AppContainer {
     val trackMetadataRepository: TrackMetadataRepository
     val playerEngine: AudioPlayerEngine
     val musicPlayerAppSession: MusicPlayerAppSession
-    val sessionStore: PlaybackSessionStore
-    val webDavClient: OkHttpWebDavClient
-    val networkConnectivityObserver: NetworkConnectivityObserver
-    val mediaTrackIndexDao: MediaTrackIndexDao
-    val localStorageIndexScanner: LocalStorageIndexScanner
-    val webDavSyncScanner: WebDavSyncScanner
+    val webDavClient: WebDavClient
 }

@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted
+Accepted (Amended by ADR 0035: symmetric cascade deletion and default server promotion)
+
+> ⚠️ **AMENDMENT NOTICE**:
+> - **现行法典**: 技术约束以根目录 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **追溯修订**: 存储节点注销时的多级缓存级联清理与默认节点自动提升已在 ADR-0035 与标准 §5 中完成对称化闭环。
 
 ## Context
 

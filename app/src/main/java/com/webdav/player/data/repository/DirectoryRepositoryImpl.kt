@@ -2,12 +2,18 @@ package com.webdav.player.data.repository
 
 import com.webdav.player.data.local.DirectoryCacheDao
 import com.webdav.player.data.local.DirectoryCacheEntity
+import com.webdav.player.data.local.MediaTrackIndexDao
+import com.webdav.player.data.local.MediaTrackIndexEntity
 import com.webdav.player.data.local.RemoteDirectoryJsonSerializer
+import com.webdav.player.data.metadata.MediaFilenameParser
 import com.webdav.player.data.remote.WebDavClient
+import com.webdav.player.data.remote.WebDavXmlParser
+import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.DirectoryContent
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteDirectory
+import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
@@ -23,6 +29,7 @@ class DirectoryRepositoryImpl(
     private val directoryCacheDao: DirectoryCacheDao? = null,
     private val trackMetadataRepository: TrackMetadataRepository? = null,
     private val localStorageDirectoryResolver: LocalStorageDirectoryResolver? = null,
+    private val mediaTrackIndexDao: MediaTrackIndexDao? = null,
 ) : DirectoryRepository {
     companion object {
         private const val MAX_DIRECTORY_CACHE_SIZE = 50
@@ -242,7 +249,20 @@ class DirectoryRepositoryImpl(
             if (resolvedMetadataMap != null && cachedMetadata.isEmpty()) {
                 resolvedMetadataMap
             } else if (resolvedMetadataMap != null) {
-                resolvedMetadataMap + cachedMetadata
+                val merged = resolvedMetadataMap.toMutableMap()
+                for ((path, cached) in cachedMetadata) {
+                    val fallback = resolvedMetadataMap[path]
+                    merged[path] =
+                        if (fallback != null) {
+                            cached.copy(
+                                coverThumbnailPath = cached.coverThumbnailPath ?: fallback.coverThumbnailPath,
+                                lyrics = cached.lyrics ?: fallback.lyrics,
+                            )
+                        } else {
+                            cached
+                        }
+                }
+                merged
             } else {
                 cachedMetadata
             }
@@ -294,5 +314,54 @@ class DirectoryRepositoryImpl(
                 lastUpdatedMs = System.currentTimeMillis(),
             ),
         )
+        syncDirectoryToMediaIndex(serverId, normalizedPath, directory)
+    }
+
+    private suspend fun syncDirectoryToMediaIndex(
+        serverId: Long,
+        normalizedPath: String,
+        directory: RemoteDirectory,
+    ) {
+        val indexDao = mediaTrackIndexDao ?: return
+        val effectiveServerId = if (normalizedPath.startsWith("/local/")) LOCAL_STORAGE_ID else serverId
+        val discoveredTracks =
+            directory.files.mapNotNull { file ->
+                val audioFormat =
+                    (file.fileType as? RemoteFileType.Audio)?.format
+                        ?: AudioFormat.fromFileName(file.name)
+                if (file.isAudio || audioFormat != null) {
+                    val format = audioFormat ?: AudioFormat.MP3
+                    val parsed = MediaFilenameParser.parse(file.name)
+                    val lastMod =
+                        file.lastModified?.toLongOrNull()
+                            ?: WebDavXmlParser.parseHttpDate(file.lastModified)
+                    MediaTrackIndexEntity(
+                        serverId = effectiveServerId,
+                        remotePath = file.path,
+                        fileName = file.name,
+                        fileSize = file.size,
+                        lastModified = lastMod,
+                        format = format.extension.uppercase(),
+                        parentPath = normalizedPath,
+                        parsedTitle = parsed.title,
+                        parsedArtist = parsed.artist,
+                    )
+                } else {
+                    null
+                }
+            }
+        try {
+            if (discoveredTracks.isNotEmpty()) {
+                indexDao.upsertTracks(discoveredTracks)
+            }
+            val existing = indexDao.getTracksByParentPath(effectiveServerId, normalizedPath)
+            val discoveredPaths = discoveredTracks.map { it.remotePath }.toSet()
+            val staleTracks = existing.filter { it.remotePath !in discoveredPaths }
+            if (staleTracks.isNotEmpty()) {
+                indexDao.deleteByServerAndPaths(effectiveServerId, staleTracks.map { it.remotePath })
+            }
+        } catch (_: Exception) {
+            // Non-fatal index sync failure
+        }
     }
 }

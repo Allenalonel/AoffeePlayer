@@ -10,6 +10,7 @@ import com.webdav.player.data.lyrics.LrcParser
 import com.webdav.player.data.metadata.DefaultTrackMetadataResolver
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.Lyrics
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
@@ -82,6 +83,11 @@ class TrackMetadataRepositoryImpl internal constructor(
     }
 
     private suspend fun findServer(serverId: Long): WebDavServer? {
+        if (serverId == LOCAL_STORAGE_ID) {
+            return knownServers.computeIfAbsent(LOCAL_STORAGE_ID) {
+                WebDavServer.createLocalStorage()
+            }
+        }
         knownServers[serverId]?.let { return it }
         serverLookup?.invoke(serverId)?.let {
             knownServers[serverId] = it

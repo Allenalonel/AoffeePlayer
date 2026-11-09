@@ -1,5 +1,13 @@
 # 0015: Session-Managed Queue Progression and Fault-Tolerant Streaming Pipeline
 
+## Status
+
+Accepted (Amended by ADR 0034: CUE virtual track references purged)
+
+> ⚠️ **AMENDMENT NOTICE**:
+> - **现行法典**: 技术约束以根目录 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **CUE 废除 (ADR-0034)**: 正文中涉及 CUE 虚拟分轨与虚拟调度模型的内容已被 ADR-0034 彻底物理清除。
+
 ## Context
 
 在坚守“纯在线流式播放、无持久化磁盘缓存”（ADR-0002）的核心原则下，移动网络在弱网、家庭 NAS 机械硬盘休眠冷启动或网络波动时，极易诱发网络 I/O 读取超时或 TCP 连接静默断开。

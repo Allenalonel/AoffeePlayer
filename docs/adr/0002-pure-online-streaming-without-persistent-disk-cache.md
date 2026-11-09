@@ -1,5 +1,9 @@
 # Pure Online Streaming Without Persistent Audio Disk Caching
 
+## Status
+
+Accepted
+
 ## Context
 
 对于访问 WebDAV 远程音频库，常规策略包含两种：一种是边播边落盘（持久化 LRU 磁盘缓存），另一种是仅在内存或临时缓冲区中流式播放。将远程音频持久化存储会大量占用移动设备有限的存储容量，并带来多服务器文件的本地缓存生命周期同步问题。

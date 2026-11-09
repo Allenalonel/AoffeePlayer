@@ -8,6 +8,7 @@ import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
+import com.webdav.player.domain.repository.DirectoryRepository
 import com.webdav.player.domain.repository.LibrarySearchRepository
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
@@ -48,6 +49,7 @@ class ServerManagementViewModel(
     private val webDavClient: WebDavClient,
     private val playlistRepository: PlaylistRepository? = null,
     private val librarySearchRepository: LibrarySearchRepository? = null,
+    private val directoryRepository: DirectoryRepository? = null,
 ) : ViewModel() {
     private val _dialogAndActionState = MutableStateFlow(DialogAndActionState())
 
@@ -137,6 +139,7 @@ class ServerManagementViewModel(
         val server = _dialogAndActionState.value.serverToDelete ?: return
         viewModelScope.launch {
             repository.deleteServer(server.id)
+            directoryRepository?.clearCacheForServer(server.id)
             _dialogAndActionState.update {
                 it.copy(
                     serverToDelete = null,
@@ -217,6 +220,7 @@ class ServerManagementViewModel(
     ) {
         viewModelScope.launch {
             repository.addMountedLocalFolder(uriString, displayName)
+            directoryRepository?.clearCacheForServer(LOCAL_STORAGE_ID)
             librarySearchRepository?.syncServer(WebDavServer.createLocalStorage(), force = false)
         }
     }
@@ -224,6 +228,7 @@ class ServerManagementViewModel(
     fun onRemoveMountedFolder(uriString: String) {
         viewModelScope.launch {
             repository.removeMountedLocalFolder(uriString)
+            directoryRepository?.clearCacheForServer(LOCAL_STORAGE_ID)
         }
     }
 }

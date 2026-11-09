@@ -34,19 +34,7 @@ class LocalStorageIndexScanner(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     companion object {
-        private val NOISE_DIRECTORIES =
-            setOf(
-                ".@eaDir",
-                "#recycle",
-                ".Trash",
-                "LOST.DIR",
-                ".git",
-                ".thumbnails",
-                ".cache",
-                "Android",
-            )
-
-        private val PROJECTION =
+        internal val PROJECTION =
             arrayOf(
                 DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                 DocumentsContract.Document.COLUMN_DISPLAY_NAME,
@@ -54,6 +42,24 @@ class LocalStorageIndexScanner(
                 DocumentsContract.Document.COLUMN_SIZE,
                 DocumentsContract.Document.COLUMN_LAST_MODIFIED,
             )
+
+        internal fun isNoiseDirectory(name: String): Boolean = WebDavSyncScanner.isExcludedDirectory(name)
+
+        internal fun resolveRootDocId(treeUri: Uri): String =
+            try {
+                DocumentsContract.getTreeDocumentId(treeUri)
+            } catch (_: Exception) {
+                null
+            } ?: try {
+                DocumentsContract.getDocumentId(treeUri)
+            } catch (_: Exception) {
+                null
+            } ?: (treeUri.lastPathSegment ?: "root")
+
+        internal fun buildLocalRootPath(treeUriString: String): String {
+            val encoded = URLEncoder.encode(treeUriString, "UTF-8")
+            return "/local/$encoded/"
+        }
     }
 
     private data class DirectoryWorkItem(
@@ -62,24 +68,6 @@ class LocalStorageIndexScanner(
         val lastModified: Long,
     )
 
-    private fun isNoiseDirectory(name: String): Boolean {
-        if (name.startsWith(".") && name != "." && name != "..") return true
-        if (NOISE_DIRECTORIES.contains(name)) return true
-        if (name.startsWith(".Trash-", ignoreCase = true)) return true
-        return false
-    }
-
-    private fun resolveRootDocId(treeUri: Uri): String =
-        try {
-            DocumentsContract.getTreeDocumentId(treeUri)
-        } catch (_: Exception) {
-            null
-        } ?: try {
-            DocumentsContract.getDocumentId(treeUri)
-        } catch (_: Exception) {
-            null
-        } ?: (treeUri.lastPathSegment ?: "root")
-
     suspend fun indexFolder(
         treeUri: Uri,
         force: Boolean = false,
@@ -87,8 +75,7 @@ class LocalStorageIndexScanner(
     ): Int =
         withContext(ioDispatcher) {
             val rootDocId = resolveRootDocId(treeUri)
-            val encodedTreeUri = URLEncoder.encode(treeUri.toString(), "UTF-8")
-            val rootPath = "/local/$encodedTreeUri/"
+            val rootPath = buildLocalRootPath(treeUri.toString())
 
             val queue = ArrayDeque<DirectoryWorkItem>()
             queue.add(DirectoryWorkItem(docId = rootDocId, path = rootPath, lastModified = 0L))
@@ -174,6 +161,21 @@ class LocalStorageIndexScanner(
                     )
                 }
 
+                // Clean up stale/deleted tracks in this scanned local directory
+                try {
+                    val existing = mediaTrackIndexDao.getTracksByParentPath(LOCAL_STORAGE_ID, current.path)
+                    val discoveredPaths = discoveredTracks.map { it.remotePath }.toSet()
+                    val staleTracks = existing.filter { it.remotePath !in discoveredPaths }
+                    if (staleTracks.isNotEmpty()) {
+                        mediaTrackIndexDao.deleteByServerAndPaths(
+                            LOCAL_STORAGE_ID,
+                            staleTracks.map { it.remotePath },
+                        )
+                    }
+                } catch (_: Exception) {
+                    // Non-fatal cleanup issue
+                }
+
                 checkpointDao.insertOrUpdate(
                     DirectorySyncCheckpointEntity(
                         serverId = LOCAL_STORAGE_ID,
@@ -203,8 +205,7 @@ class LocalStorageIndexScanner(
 
     suspend fun purgeFolder(treeUri: Uri) =
         withContext(ioDispatcher) {
-            val encoded = URLEncoder.encode(treeUri.toString(), "UTF-8")
-            val prefix = "/local/$encoded/"
+            val prefix = buildLocalRootPath(treeUri.toString())
             mediaTrackIndexDao.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, prefix)
             checkpointDao.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, prefix)
         }

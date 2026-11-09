@@ -33,6 +33,7 @@ class AppViewModelFactory(
                     webDavClient = container.webDavClient,
                     playlistRepository = container.playlistRepository,
                     librarySearchRepository = container.librarySearchRepository,
+                    directoryRepository = container.directoryRepository,
                 ) as T
             }
 

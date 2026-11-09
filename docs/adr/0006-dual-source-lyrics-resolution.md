@@ -1,5 +1,9 @@
 # Dual-Source Lyrics Resolution Strategy
 
+## Status
+
+Accepted
+
 ## Context
 
 WebDAV 音乐收藏中，歌词的存在形式主要有两种：一种是与音频文件同目录且同名的 `.lrc` 文件（常见于 NAS 及自建音乐库），另一种是直接嵌入在音频文件内部的歌词元数据标签（如 ID3v2 USLT 帧或 FLAC Vorbis 歌词块）。

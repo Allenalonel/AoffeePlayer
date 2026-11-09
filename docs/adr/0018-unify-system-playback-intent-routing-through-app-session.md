@@ -1,8 +1,16 @@
 # 0018: Unify System Playback Intent Routing Through App Session
 
-ADR-0016 确立了"底层 `AudioPlayerEngine` 为纯物理流式渲染管道，所有播控意图收归 `MusicPlayerAppSession`"的设计原则，但代码中存在三条绕过会话层、直接操作底层引擎的分裂派发路径，本决策记录如何彻底消除这些偏差并落实 ADR-0016 既定意图。
+## Status
+
+Accepted (Amended by ADR 0019, ADR 0034, and ADR 0035: playback intent restoration gating added)
+
+> ⚠️ **AMENDMENT NOTICE**:
+> - **现行法典**: 技术约束以根目录 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **追溯修订**: 冷启动外部播控门控机制与双轨源凭据由 ADR-0035 统一规范，CUE 相关内容已由 ADR-0034 废止。
 
 ## Context
+
+ADR-0016 确立了"底层 `AudioPlayerEngine` 为纯物理流式渲染管道，所有播控意图收归 `MusicPlayerAppSession`"的设计原则，但代码中存在三条绕过会话层、直接操作底层引擎的分裂派发路径，本决策记录如何彻底消除这些偏差并落实 ADR-0016 既定意图。
 
 审查代码后发现，系统级播控意图存在以下三条**分裂派发路径**，与 ADR-0016 直接矛盾：
 
@@ -104,14 +112,14 @@ ACTION_PAUSE -> host.mediaSessionCallback?.appSession?.pause()
 ### 3. `WebDavApplication` DI：调整构造顺序，先建 `appSession`，再传入 `Callback`
 
 **Before 构造顺序：**
-```
+```text
 1. 建 playerEngine (PlaybackSessionHost)
 2. 建 musicPlayerAppSession (MusicPlayerAppSessionImpl)
 3. playerEngine.setAppSession(musicPlayerAppSession)  // 延迟注入
 ```
 
 **After 构造顺序：**
-```
+```text
 1. 建 playerEngine (PlaybackSessionHost，此时不含 appSession)
 2. 建 musicPlayerAppSession (MusicPlayerAppSessionImpl，传入 playerEngine)
 3. 建 WebDavMediaSessionCallback(appSession = musicPlayerAppSession)  // 构造时注入，非空
@@ -130,7 +138,7 @@ ACTION_PAUSE -> host.mediaSessionCallback?.appSession?.pause()
 ### 5. `Media3AudioPlayerEngine` 不再 import `MusicPlayerAppSession`
 
 修复后 `data.player` 包不再依赖 `domain.session`，依赖方向恢复为单向：
-```
+```text
 domain.session → domain.player (AudioPlayerEngine 接口)
 data.player    → domain.player (实现接口)
 data.service   → domain.session (Callback 持有 appSession)
@@ -138,7 +146,7 @@ data.service   → domain.session (Callback 持有 appSession)
 
 ## 构造拓扑（After）
 
-```
+```text
 WebDavApplication.onCreate()
 │
 ├─ 建 playerEngine: Media3AudioPlayerEngine

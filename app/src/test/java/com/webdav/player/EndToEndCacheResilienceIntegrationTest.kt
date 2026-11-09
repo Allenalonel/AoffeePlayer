@@ -947,14 +947,28 @@ class EndToEndCacheResilienceIntegrationTest {
 
             advanceUntilIdle()
 
-            // Verify player media metadata now has the healed artwork URI
+            // Verify player media metadata now has the healed artwork data or artwork URI
+            val playerArtworkData =
+                engine.player.playlistMetadata.artworkData
+                    ?: engine.player.mediaMetadata.artworkData
+                    ?: engine.player.currentMediaItem
+                        ?.mediaMetadata
+                        ?.artworkData
             val playerArtworkUri =
                 engine.player.playlistMetadata.artworkUri
                     ?: engine.player.mediaMetadata.artworkUri
                     ?: engine.player.currentMediaItem
                         ?.mediaMetadata
                         ?.artworkUri
-            assertEquals(Uri.fromFile(healedFile), playerArtworkUri)
+            assertTrue(
+                "Player media metadata must contain healed artworkData or artworkUri",
+                playerArtworkData != null || playerArtworkUri != null,
+            )
+            if (playerArtworkData != null) {
+                assertEquals(healedFile.readBytes().size, playerArtworkData.size)
+            } else {
+                assertEquals(Uri.fromFile(healedFile), playerArtworkUri)
+            }
 
             // Verify notification now renders the healed artwork without error
             val healedNotification = notificationProvider.buildNotification(mediaSession)

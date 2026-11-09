@@ -1,5 +1,9 @@
 # Use AndroidX Media3 with FFmpeg Extension for Audio Playback
 
+## Status
+
+Accepted
+
 ## Context
 
 本项目需要支持包括 MP3、FLAC、WAV 以及 WMA 在内的主流音频格式。Android 系统的系统解码器和 Media3 (ExoPlayer) 默认并不支持 WMA 格式。主要替代方案包括采用基于 LibVLC 的完整播放内核（包体积大、与 AndroidX 体系隔离），或仅支持 Android 原生格式（牺牲了用户对 WMA 的需求）。

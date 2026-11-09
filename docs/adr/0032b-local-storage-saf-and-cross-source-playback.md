@@ -1,8 +1,16 @@
-# 0032: 本地存储 SAF 挂载集成与跨源多模回放管道 (Local Storage SAF Integration and Cross-Source Playback Pipeline)
+# 0032b: 本地存储 SAF 挂载集成与跨源多模回放管道 (Local Storage SAF Integration and Cross-Source Playback Pipeline)
 
 ## Status
 
-Accepted
+Accepted (Disambiguated as 0032b alongside 0032a [0032a-androidx-palette](0032a-androidx-palette-and-m3-expressive-dynamic-theming.md); Amended by ADR 0034 and ADR 0035: CUE companion parsing purged; dual-track storage state decoupled)
+
+> ⚠️ **AMENDMENT NOTICE**:
+> - **状态**: `Accepted (Amended by ADR 0034 and ADR 0035)`
+> - **现行法典**: 技术约束以 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **核心修订**: 
+>   1. 决策第 3 节中的伴生 CUE 虚拟分轨已被 ADR-0034 彻底废止清除；
+>   2. 决策第 5 节中的复合去重键去除了 `virtualTrackId`，统一由 `TrackKey(serverId, remotePath)` 统摄；
+>   3. 媒体库浏览与在播凭据由 ADR-0035 执行双轨解耦。
 
 ## Context
 
@@ -48,8 +56,8 @@ Aoffee Player 最初设计为面向私有云与家庭 NAS 的高保真 WebDAV �
   - 采用 `DocumentsContract.buildChildDocumentsUriUsingTree` 查询系统 ContentProvider 游标，坚决避开高开销的 `DocumentFile.listFiles()` 反射开销；
   - 媒体库根路径 `/` 渲染所有挂载文件夹卡片（`/local/<encodedTreeUri>/`），子路径支持任意深度下钻导航；
   - 媒体库面包屑条（`DirectoryBreadcrumbStrip`）智能解码并展示挂载文件夹与子目录名；
-- **伴生 CUE 虚拟专辑与 LRC/封面关联**：
-  - 自动枚举同级 `.cue` 文件并读取内容，通过 `CueParser` 解析出虚拟分轨（`VirtualTrack`）与 CUE 专辑卡片（`CueAlbumItem`）；
+- **伴生资源关联与封面/歌词匹配**：
+  - ~~自动枚举同级 `.cue` 文件并通过 `CueParser` 解析出虚拟分轨与 CUE 专辑卡片~~ *(已在 ADR-0034 彻底物理移除)*；
   - 自动按同文件名匹配同级伴生 `.lrc` 歌词与封面图（`cover.jpg`, `folder.jpg` 等）；
   - 将探测结果序列化为 JSON 注入已有的 Room `DirectoryCacheDao`，二次访问享受 0ms 瞬间 SWR 缓存加载。
 
@@ -67,7 +75,7 @@ Aoffee Player 最初设计为面向私有云与家庭 NAS 的高保真 WebDAV �
 
 - **混编持久化与复合去重**：
   - `PlaylistDao` 与 `PlaylistRepositoryImpl` 统一支持存储 `serverId = LOCAL_STORAGE_ID` 与本地 Document URI；
-  - 批量收录音轨时，基于 `(serverId, remotePath, virtualTrackId)` 执行原子去重；
+  - 批量收录音轨时，基于规范物理复合键 `TrackKey(serverId, remotePath)` 执行原子去重（CUE 分轨维度已在 ADR-0034 废止）；
 - **对称失效与自愈网络（Symmetric Fault Lifecycle）**：
   - 本地曲目探活通过 `ContentResolver.query` 或打开文件描述符校验；
   - 若 SD 卡拔出或文件被删除，音轨优雅置灰显示 `FILE_NOT_FOUND`，切歌时静默平滑跳过；

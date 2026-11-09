@@ -1,5 +1,14 @@
 # 0023: 播放会话内部接缝化与解构上帝类 (Internal Seams and Session Decomposition)
 
+## Status
+
+Accepted (Amended by ADR 0034 and ADR 0035: CUE virtual timeline purged; dual-track server state decoupled)
+
+> ⚠️ **AMENDMENT NOTICE**:
+> - **现行法典**: 技术约束以根目录 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **CUE 废除 (ADR-0034)**: 正文中提及的 `VirtualTimelineEngine` 及 CUE 虚拟分轨会话还原已被 ADR-0034 彻底物理移除。
+> - **双轨源解耦 (ADR-0035)**: 会话持久化与状态机已按浏览源与在播源双轨彻底解耦。
+
 ## Context
 
 在先前的架构演进中，**ADR-0018** 确立了将系统所有播控意图（UI、通知栏 Action、蓝牙物理按键、Becoming Noisy 外放阻断）统一收拢至应用会话层（`MusicPlayerAppSession`）的核心决策。该决策彻底消除了底层引擎绕行、冷启动播放无声以及 Stop 资源泄漏等系统级缺陷。

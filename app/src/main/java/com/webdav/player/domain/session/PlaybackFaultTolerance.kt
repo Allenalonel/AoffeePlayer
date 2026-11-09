@@ -346,7 +346,6 @@ internal class PlaybackFaultTolerance(
         activeServer: com.webdav.player.domain.model.WebDavServer?,
         currentTrackId: String?,
         isPrerollAppended: java.util.concurrent.atomic.AtomicBoolean,
-        serverRepository: com.webdav.player.domain.repository.ServerRepository?,
         onPreroll: (server: com.webdav.player.domain.model.WebDavServer, track: AudioTrack) -> Unit,
     ) {
         if (isPrerollAppended.get() || queue.tracks.size <= 1) return
@@ -369,14 +368,7 @@ internal class PlaybackFaultTolerance(
                             sessionStateFlow.value.playbackState is PlaybackState.Playing &&
                             sessionStateFlow.value.currentTrack?.id == currentTrackId
                         ) {
-                            val nextServer =
-                                if (server.id == nextTrack.serverId) {
-                                    server
-                                } else if (nextTrack.isLocal) {
-                                    WebDavServer.createLocalStorage()
-                                } else {
-                                    serverRepository?.getServerById(nextTrack.serverId) ?: server
-                                }
+                            val nextServer = queueManager.resolveServerForTrack(nextTrack, server, server) ?: server
                             onPreroll(nextServer, nextTrack)
                         } else {
                             isPrerollAppended.set(false)

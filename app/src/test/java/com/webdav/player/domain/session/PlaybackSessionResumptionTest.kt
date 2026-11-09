@@ -111,15 +111,14 @@ class PlaybackSessionResumptionTest {
     private fun createSession(
         store: FakePlaybackSessionStore = fakeStore,
         metadataRepo: TrackMetadataRepository? = null,
-    ): MusicPlayerAppSessionImpl {
-        return MusicPlayerAppSessionImpl(
+    ): MusicPlayerAppSessionImpl =
+        MusicPlayerAppSessionImpl(
             playerEngine = fakeEngine,
             serverRepository = fakeServerRepo,
             trackMetadataRepository = metadataRepo,
             sessionStore = store,
             coroutineScope = sessionScope,
         )
-    }
 
     private val darkSideTrack =
         AudioTrack(
@@ -1002,7 +1001,11 @@ class PlaybackSessionResumptionTest {
             assertEquals("/Music/PinkFloyd/dark_side.flac", fakeEngine.loadedTrack?.remotePath)
             assertEquals(98000L, fakeEngine.lastStartPositionMs)
             assertTrue(session.sessionState.value.isPlaying)
-            assertEquals(darkSideTrack.title, session.sessionState.value.currentTrack?.title)
+            assertEquals(
+                darkSideTrack.title,
+                session.sessionState.value.currentTrack
+                    ?.title,
+            )
 
             session.pause()
             advanceUntilIdle()
@@ -1066,5 +1069,33 @@ class PlaybackSessionResumptionTest {
             assertEquals(1, saved?.queueTracks?.size)
             assertEquals("/Music/PinkFloyd/dark_side.flac", saved?.queueTracks?.get(0)?.remotePath)
             assertEquals(PlaybackMode.SHUFFLE, saved?.playbackMode)
+        }
+
+    @Test
+    fun coldStart_externalPlayBeforeRestoreCompletes_awaitsRestorationAndStartsPlayback() =
+        runTest(testDispatcher) {
+            val savedSession =
+                PlaybackSessionData(
+                    activeServerId = 1L,
+                    currentDirectoryPath = "/Music/Jazz/",
+                    queueTracks = listOf(track1, track2),
+                    currentTrackIndex = 1,
+                    positionMs = 42_000L,
+                    playbackMode = PlaybackMode.LIST_LOOP,
+                )
+            fakeStore.savedSession = savedSession
+
+            // Instantiate session (restoreSession coroutine is queued, isRestored is still false)
+            session = createSession()
+            assertFalse(session.isRestored.value)
+
+            // External Bluetooth / Notification play intent arrives before restoration completes
+            session.play()
+            advanceUntilIdle()
+
+            assertTrue(session.isRestored.value)
+            assertTrue(session.sessionState.value.isPlaying)
+            assertEquals(track2, fakeEngine.loadedTrack)
+            assertEquals(42_000L, fakeEngine.lastStartPositionMs)
         }
 }

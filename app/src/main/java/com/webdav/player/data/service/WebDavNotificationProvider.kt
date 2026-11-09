@@ -31,7 +31,7 @@ class WebDavNotificationProvider(
 ) : MediaNotification.Provider {
     companion object {
         const val CHANNEL_ID = "webdav_playback_channel"
-        const val CHANNEL_NAME = "WebDAV Playback"
+        const val CHANNEL_NAME = "Aoffee Playback"
         const val NOTIFICATION_ID = 1001
 
         const val ACTION_PREVIOUS = "com.webdav.player.ACTION_PREVIOUS"
@@ -39,6 +39,12 @@ class WebDavNotificationProvider(
         const val ACTION_PAUSE = "com.webdav.player.ACTION_PAUSE"
         const val ACTION_NEXT = "com.webdav.player.ACTION_NEXT"
     }
+
+    @Volatile
+    private var cachedArtworkKey: String? = null
+
+    @Volatile
+    private var cachedArtworkBitmap: Bitmap? = null
 
     init {
         createNotificationChannel()
@@ -55,7 +61,7 @@ class WebDavNotificationProvider(
                         CHANNEL_NAME,
                         NotificationManager.IMPORTANCE_LOW,
                     ).apply {
-                        description = "WebDAV music player playback controls"
+                        description = "Aoffee Player playback controls"
                         setShowBadge(false)
                     }
                 notificationManager?.createNotificationChannel(channel)
@@ -228,14 +234,45 @@ class WebDavNotificationProvider(
             }
         }
         val uri = meta.artworkUri
-        if (uri != null && uri.scheme == "file") {
-            try {
-                val file = File(uri.path ?: "")
-                if (file.exists() && file.isFile && file.length() > 0) {
-                    return BitmapFactory.decodeFile(file.absolutePath)
+        if (uri != null) {
+            val uriKey = uri.toString()
+            val cached = cachedArtworkBitmap
+            if (cachedArtworkKey == uriKey && cached != null && !cached.isRecycled) {
+                return cached
+            }
+            val decoded =
+                when (uri.scheme) {
+                    "file" -> {
+                        try {
+                            val file = File(uri.path ?: "")
+                            if (file.exists() && file.isFile && file.length() > 0) {
+                                BitmapFactory.decodeFile(file.absolutePath)
+                            } else {
+                                null
+                            }
+                        } catch (_: Throwable) {
+                            null
+                        }
+                    }
+
+                    "content" -> {
+                        try {
+                            context.contentResolver.openInputStream(uri)?.use { stream ->
+                                BitmapFactory.decodeStream(stream)
+                            }
+                        } catch (_: Throwable) {
+                            null
+                        }
+                    }
+
+                    else -> {
+                        null
+                    }
                 }
-            } catch (e: Throwable) {
-                // Ignore decoding errors
+            if (decoded != null) {
+                cachedArtworkKey = uriKey
+                cachedArtworkBitmap = decoded
+                return decoded
             }
         }
         return null

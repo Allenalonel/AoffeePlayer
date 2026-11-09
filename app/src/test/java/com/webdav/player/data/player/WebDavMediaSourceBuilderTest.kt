@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.C
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
@@ -97,12 +98,41 @@ class WebDavMediaSourceBuilderTest {
     }
 
     @Test
-    fun createMediaItem_withCoverThumbnail_attachesArtworkUri() {
-        val coverPath = "/local/path/cover.jpg"
+    fun createMediaItem_withNonExistentCoverThumbnail_doesNotExposePrivateFileUri() {
+        val coverPath = "/local/path/non_existent_cover.jpg"
         val trackWithArt = testTrack.copy(coverThumbnailPath = coverPath)
         val mediaItem = builder.createMediaItem(testServer, trackWithArt)
-        assertNotNull(mediaItem.mediaMetadata.artworkUri)
-        assertEquals(Uri.fromFile(File(coverPath)), mediaItem.mediaMetadata.artworkUri)
+        val artUri = mediaItem.mediaMetadata.artworkUri
+        assertTrue(
+            "artworkUri must not expose non-existent or private file:// scheme, was: $artUri",
+            artUri == null || artUri.scheme == "content",
+        )
+    }
+
+    @Test
+    fun createMediaItem_withLocalCoverThumbnailFile_loadsArtworkData_andDoesNotExposePrivateFileUri() {
+        val coverFile = File(context.cacheDir, "test_album_art.jpg")
+        val fakeImageData = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 0x01, 0x02)
+        coverFile.writeBytes(fakeImageData)
+        try {
+            val trackWithArt = testTrack.copy(coverThumbnailPath = coverFile.absolutePath)
+            val mediaItem = builder.createMediaItem(testServer, trackWithArt)
+
+            assertNotNull("artworkData must be populated for local cover file", mediaItem.mediaMetadata.artworkData)
+            org.junit.Assert.assertArrayEquals(fakeImageData, mediaItem.mediaMetadata.artworkData)
+            assertEquals(
+                MediaMetadata.PICTURE_TYPE_FRONT_COVER,
+                mediaItem.mediaMetadata.artworkDataType,
+            )
+            // Ensure no private file:// URI is leaked to external processes
+            val artUri = mediaItem.mediaMetadata.artworkUri
+            assertTrue(
+                "artworkUri must not expose private file:// scheme to prevent SystemUI ENOENT crash, was: $artUri",
+                artUri == null || artUri.scheme == "content",
+            )
+        } finally {
+            coverFile.delete()
+        }
     }
 
     @Test
@@ -436,7 +466,12 @@ class WebDavMediaSourceBuilderTest {
         val mediaSource = builder.createMediaSource(localServer, localTrack)
         assertNotNull(mediaSource)
         assertEquals(localTrack.id, mediaSource.mediaItem.mediaId)
-        assertEquals(localTrack.remotePath, mediaSource.mediaItem.localConfiguration?.uri.toString())
+        assertEquals(
+            localTrack.remotePath,
+            mediaSource.mediaItem.localConfiguration
+                ?.uri
+                .toString(),
+        )
         assertEquals(AudioFormat.FLAC.mimeType, mediaSource.mediaItem.localConfiguration?.mimeType)
     }
 

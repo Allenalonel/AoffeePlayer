@@ -2,7 +2,15 @@
 
 ## Status
 
-Accepted (Supersedes ADR-0007 elevation constants)
+Accepted (Supersedes ADR-0007; Amended by ADR 0029, ADR 0031, ADR 0032a)
+
+> ⚠️ **AMENDMENT NOTICE**:
+> - **状态**: `Accepted (Amended by ADR 0029, ADR 0031, ADR 0032a)`
+> - **现行法典**: 技术约束以 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **核心修订**: 
+>   1. 应用名称已被 ADR-0029 正式重命名为 `Aoffee Player`；
+>   2. 界面形变与动效已被 ADR-0031 单体流体渐变播放器容器深化；
+>   3. 决策第 3 节中的自研 12 色相桶取色算法已被 ADR-0032a 官方 AndroidX Palette 提取方案全面取代。
 
 ## Context
 

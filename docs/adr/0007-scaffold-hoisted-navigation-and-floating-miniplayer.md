@@ -1,5 +1,14 @@
 # Scaffold-Hoisted Navigation and Floating Docked Mini-Player
 
+## Status
+
+Superseded by ADR 0028 and ADR 0031
+
+> ⚠️ **SUPERSEDED NOTICE**:
+> - **状态**: `Superseded by ADR 0028 and ADR 0031`
+> - **现行法典**: 技术约束以 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **核心演进**: 本 ADR 的独立悬浮覆盖层与手势联动方案已被 ADR-0028 与 ADR-0031 的单体流体渐变播放器容器（`MorphingPlayerContainer`）取代。
+
 ## Context
 
 原应用界面最初采用 `MainActivity` 的简单 Crossfade 在「服务器列表」与「目录浏览」两屏之间切换，MiniPlayer 仅嵌入在局部屏底栏。在早期架构改造中，MiniPlayer 与 `Primary Navigation Bar` 一同被提升至顶层 `Scaffold(bottomBar = { Column { MiniPlayer; NavigationBar } })`。

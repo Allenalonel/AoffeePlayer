@@ -4,6 +4,11 @@
 
 Superseded by ADR 0034
 
+> ⚠️ **PURGE NOTICE**:
+> - **状态**: `Superseded by ADR 0034`
+> - **现行法典**: 技术约束以 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **核心废止点**: 本 ADR 中建立的 `CueSheetResolver`、`CueAlbumItem`、`VirtualTrack` 及关联逻辑已在 ADR-0034 中被物理彻底清除，严禁将本文件作为设计依据。
+
 ## Context
 
 在 WebDavPlayer 中，对 CUE 虚拟分轨（ADR-0014）的支持对于纯流式播放多曲目长音频（如整轨 FLAC/WAV）至关重要。然而，在此前的实现中，CUE 相关逻辑碎片化地分散在三个浅层、静态工具模块中：

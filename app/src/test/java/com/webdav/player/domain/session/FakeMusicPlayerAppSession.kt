@@ -50,7 +50,7 @@ class FakeMusicPlayerAppSession(
     var removedQueueIndices = mutableListOf<Int>()
 
     override fun setActiveServer(server: WebDavServer?) {
-        _sessionState.value = _sessionState.value.copy(activeServer = server)
+        _sessionState.value = _sessionState.value.copy(activeServer = server, browsingServer = server)
     }
 
     override fun setCurrentDirectoryPath(path: String) {
@@ -101,7 +101,6 @@ class FakeMusicPlayerAppSession(
         lastPlaySelectedFile = selectedFile
         lastPlayInitialMetadata = initialMetadata
     }
-
 
     override fun playPlaylist(
         playlist: Playlist,
@@ -171,7 +170,6 @@ class FakeMusicPlayerAppSession(
         pausedByTransientAudioFocusInternal = false
         skipPreviousCount++
     }
-
 
     override fun playQueueIndex(index: Int) {
         lastPlayedQueueIndex = index

@@ -82,7 +82,7 @@ class DirectoryBrowserViewModel(
             }
 
             val activeServerFlow: Flow<WebDavServer?> =
-                musicPlayerAppSession?.sessionState?.map { it.activeServer }?.distinctUntilChanged()
+                musicPlayerAppSession?.sessionState?.map { it.browsingServer ?: it.activeServer }?.distinctUntilChanged()
                     ?: serverRepository?.getActiveServer()?.distinctUntilChanged()
                     ?: emptyFlow()
 

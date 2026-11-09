@@ -2,11 +2,18 @@
 
 ## Status
 
-Accepted
+Accepted (Amended by ADR 0034 and ADR 0035: CUE virtual track indexing purged; write-through directory indexing enforced)
+
+> ⚠️ **AMENDMENT NOTICE**:
+> - **状态**: `Accepted (Amended by ADR 0034 and ADR 0035)`
+> - **现行法典**: 技术约束以 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **核心修订**: 
+>   1. 决策第 1、2、4 节中的 CUE 虚拟分轨检索与 `isCue` 字段已在 ADR-0034 中被物理清除，Room v8 已物理抹除 `isCue` 列；
+>   2. 媒体库浏览与在播流凭据由 ADR-0035 执行双轨解耦。
 
 ## Context
 
-在 Aoffee Player 早期实现中，媒体库的搜索能力主要依赖于对 `directory_cache` 表中存储的 `dataJson` 字段执行 SQL `LIKE %query%` 模糊匹配，再在内存中反序列化完整的 `RemoteDirectory` 对象树。随着本地存储（SAF）一等公民支持（ADR-0032）以及用户收藏音乐规模增长（数千至数万首无损音轨），这种搜索架构暴露了严重的工程瓶颈：
+在 Aoffee Player 早期实现中，媒体库的搜索能力主要依赖于对 `directory_cache` 表中存储的 `dataJson` 字段执行 SQL `LIKE %query%` 模糊匹配，再在内存中反序列化完整的 `RemoteDirectory` 对象树。随着本地存储（SAF）一等公民支持（ADR-0032b）以及用户收藏音乐规模增长（数千至数万首无损音轨），这种搜索架构暴露了严重的工程瓶颈：
 
 1. **未访问目录无法检索（Undiscovered Silos）**：
    - 依赖目录访问时写入的缓存，用户从未下钻浏览过的深层远程子文件夹或本地文件夹无法被搜索命中。
@@ -19,12 +26,12 @@ Accepted
 
 ## Decision
 
-恪守渐进演进式架构与 ADR-0002（纯在线流式零持久音频缓存）、ADR-0013（原生 SQLite 与协程，拒绝第三方搜索引擎库）以及 ADR-0032（本地存储一等公民）规范，建立统一的跨源快照索引与流式检索管道：
+恪守渐进演进式架构与 ADR-0002（纯在线流式零持久音频缓存）、ADR-0013（原生 SQLite 与协程，拒绝第三方搜索引擎库）以及 ADR-0032b（本地存储一等公民）规范，建立统一的跨源快照索引与流式检索管道：
 
 ### 1. 轻量专用索引模型与 B-Tree 查询矩阵 (Room v7 Schema & Index Matrix)
 
 - **`media_track_index` 表**：
-  - 存储最小化字段：`serverId`、`remotePath`、`fileName`、`fileSize`、`lastModified`、`format`、`isCue`、`parentPath`、`parsedTitle`、`parsedArtist`；
+  - 存储最小化字段：`serverId`、`remotePath`、`fileName`、`fileSize`、`lastModified`、`format`、~~`isCue`~~ *(已在 ADR-0034 Room v8 物理抹除)*、`parentPath`、`parsedTitle`、`parsedArtist`；
   - 复合主键 `(serverId, remotePath)`，建立关于 `fileName`、`parsedTitle`、`parsedArtist`、`parentPath`、`remotePath` 的复合索引；
 - **`directory_sync_checkpoint` 表**：
   - 记录 `(serverId, path, lastModified, etag, lastScannedMs)`，专供增量扫描跳过判断；
@@ -36,8 +43,8 @@ Accepted
 - **树状游标批处理**：
   - 遍历挂载目录树时采用 `DocumentsContract.buildChildDocumentsUriUsingTree` 查询 ContentProvider 游标，排除系统噪声目录（`.Trash-*`, `.@eaDir`, `Android`, `.thumbnails` 等）；
   - 提取文件名智能启发式解析标题与艺术家（`MediaFilenameParser`），分批（Batch）批量插入 `media_track_index`；
-- **本地 CUE 无损分轨提取**：
-  - 自动识别同级 `.cue` 文件并通过零依赖的 `CueParser` 解析出各虚拟分轨，生成带有 `#cue_X` 虚拟标识的索引项，确保本地整轨镜像即刻可搜。
+- **~~本地 CUE 无损分轨提取~~ *(Deprecated & Purged by ADR-0034)*`**:
+  - *(已在 ADR-0034 彻底物理移除：代码库完全清除 CUE 分轨逻辑，仅维护 1:1 物理真实文件索引)*。
 
 ### 3. 并发受限与基于 ETag/时间戳的 WebDAV 增量同步 (`WebDavSyncScanner`)
 
@@ -49,11 +56,10 @@ Accepted
 - **网络波动弹性（Transient Network Resilience）**：
   - 单个子目录的网络抖动或 HTTP 异常由管道局部隔离并记录，不中断整体扫描，更不抹除已持久化的曲目索引。
 
-### 4. 虚拟分轨回放解耦与搜索元数据融合 (`LibrarySearchRepositoryImpl`)
+### 4. 搜索结果多源融合与源隔离 (`LibrarySearchRepositoryImpl`)
 
-- **虚拟轨物理路径解耦与 0 错误回放**：
-  - 索引表记录 `id = "$serverId:$parentPath#cue_$trackNumber"` 以满足数据库主键唯一性；
-  - 当转换为播放器消费的 `AudioTrack` 时，`remotePath` 严格保持为母带物理文件的远程路径（如 `/Music/Album.flac`），`cuePath` 指向伴生 CUE 文件。起播时底层 `AudioPlayerEngine` 正确直连物理文件并配合 CUE 时间轴精确 Seek，杜绝向服务器请求包含 `#cue_` 的畸形 URL 引发 HTTP 404；
+- **~~虚拟轨物理路径解耦与 0 错误回放~~ *(Deprecated by ADR-0034)*`**:
+  - *(已在 ADR-0034 彻底物理废除)*；
 - **低内存流式元数据融合（Metadata Harmonization）**：
   - 查询时不全量加载 `track_metadata` 表，通过 `searchMetadataFlow(query, serverId)` 仅精确拉取命中关键词的 ID3 缓存；
   - 内存中动态融合专辑封面缩略图路径、高精度持续时长与正式专辑名。
@@ -85,10 +91,10 @@ Accepted
 
 ### Positive
 - **搜索性能质的飞跃**：从全 JSON 扫描反序列化演进为原生 SQLite 复合 B-Tree 索引检索，击键响应时间压降至毫秒级，且内存开销几乎为零；
-- **全格式与整轨覆盖**：CUE 虚拟分轨与所有常见音频格式（FLAC/WAV/MP3/APE/WMA等）实现一站式检索命中；
+- **全格式覆盖**：所有常见音频格式（FLAC/WAV/MP3/APE/WMA/OGG/M4A/AAC等）实现一站式检索命中（CUE 虚拟分轨已在 ADR-0034 清除）；
 - **纯流式与零数据沉降守则（ADR-0002）**：仅持久化曲目结构元数据与检查点，坚决不向本地磁盘写入持久音频字节数据；
 - **极简依赖（ADR-0013）**：100% 采用 Android Jetpack Room 与 Kotlin Coroutines，无第三方搜索引擎或高复杂组件引入。
 
 ### Compliance & Limits
-- 数据库版本锁定为 v7（`MIGRATION_6_7`），单元测试 `DatabaseMigrationTest` 确保从 v1 到 v7 的平滑无损迁移；
+- 数据库 Schema 演进（Room v7 引入索引用表 `MIGRATION_6_7`，随后由 ADR-0034 Room v8 `MIGRATION_7_8` 彻底物理抹除 `isCue` 字段），单元测试 `DatabaseMigrationTest` 确保全版本平滑无损迁移；
 - 远程扫描并发严格限制在 3 个以内，避免并发过高引发宿主网络拥塞。

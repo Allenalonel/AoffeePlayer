@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.annotation.VisibleForTesting
+import androidx.core.content.FileProvider
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
@@ -162,6 +163,49 @@ internal class WebDavMediaSourceBuilder(
             }
         }
 
+    fun attachArtwork(
+        metaBuilder: MediaMetadata.Builder,
+        coverThumbnailPath: String?,
+    ) {
+        if (coverThumbnailPath.isNullOrBlank()) {
+            metaBuilder.setArtworkUri(null)
+            metaBuilder.setArtworkData(null, null)
+            return
+        }
+
+        if (coverThumbnailPath.startsWith("content://")) {
+            metaBuilder.setArtworkUri(Uri.parse(coverThumbnailPath))
+            return
+        }
+
+        val rawPath =
+            if (coverThumbnailPath.startsWith("file://")) {
+                coverThumbnailPath.removePrefix("file://")
+            } else {
+                coverThumbnailPath
+            }
+
+        val file = File(rawPath)
+        if (file.exists() && file.isFile && file.length() > 0) {
+            try {
+                val bytes = file.readBytes()
+                if (bytes.isNotEmpty()) {
+                    metaBuilder.setArtworkData(bytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                }
+            } catch (_: Throwable) {
+            }
+
+            // Strictly set artworkUri to null for local private files to prevent
+            // external components (e.g. SystemUI) from attempting invalid cross-process
+            // ContentResolver or file URI resolution without explicit IPC permission grants.
+            // External controllers consume the in-memory Bitmap directly from artworkData.
+            metaBuilder.setArtworkUri(null)
+        } else {
+            metaBuilder.setArtworkUri(null)
+            metaBuilder.setArtworkData(null, null)
+        }
+    }
+
     fun createMediaItem(
         server: WebDavServer,
         track: AudioTrack,
@@ -174,15 +218,7 @@ internal class WebDavMediaSourceBuilder(
                 .setArtist(track.artist)
                 .setAlbumTitle(track.album)
 
-        track.coverThumbnailPath?.let { path ->
-            val artUri =
-                if (path.startsWith("content://") || path.startsWith("file://")) {
-                    Uri.parse(path)
-                } else {
-                    Uri.fromFile(File(path))
-                }
-            metaBuilder.setArtworkUri(artUri)
-        }
+        attachArtwork(metaBuilder, track.coverThumbnailPath)
 
         return MediaItem
             .Builder()

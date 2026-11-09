@@ -86,6 +86,39 @@ data class ArtworkColors(
 }
 
 object ArtworkColorExtractor {
+    private const val MAX_COLOR_CACHE_ENTRIES = 64
+    private val colorCache =
+        object : LinkedHashMap<String, ArtworkColors>(MAX_COLOR_CACHE_ENTRIES, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArtworkColors>?): Boolean =
+                size > MAX_COLOR_CACHE_ENTRIES
+        }
+
+    private fun buildCacheKey(
+        thumbnailPath: String,
+        defaultSurfaceColor: Color,
+        defaultBackgroundColor: Color,
+        isDarkTheme: Boolean,
+    ): String = "$thumbnailPath:${defaultSurfaceColor.value}:${defaultBackgroundColor.value}:$isDarkTheme"
+
+    fun getCachedArtworkColors(
+        thumbnailPath: String?,
+        defaultSurfaceColor: Color = SurfaceContainerDark,
+        defaultBackgroundColor: Color = BackgroundDark,
+        isDarkTheme: Boolean = true,
+    ): ArtworkColors? {
+        if (thumbnailPath.isNullOrBlank()) return null
+        val key = buildCacheKey(thumbnailPath, defaultSurfaceColor, defaultBackgroundColor, isDarkTheme)
+        return synchronized(colorCache) {
+            colorCache[key]
+        }
+    }
+
+    fun clearCache() {
+        synchronized(colorCache) {
+            colorCache.clear()
+        }
+    }
+
     /**
      * Converts a Compose [Color] into HSL components:
      * - Hue in [0f, 360f)
@@ -491,6 +524,19 @@ object ArtworkColorExtractor {
             return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
         }
 
+        val cacheKey = buildCacheKey(thumbnailPath, defaultSurfaceColor, defaultBackgroundColor, isDarkTheme)
+        if (!thumbnailPath.startsWith("content://")) {
+            val cleanPath = if (thumbnailPath.startsWith("file://")) thumbnailPath.removePrefix("file://") else thumbnailPath
+            val file = File(cleanPath)
+            if (!file.exists() || file.length() == 0L) {
+                synchronized(colorCache) { colorCache.remove(cacheKey) }
+                return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
+            }
+        }
+        synchronized(colorCache) {
+            colorCache[cacheKey]?.let { return it }
+        }
+
         return try {
             val bitmap =
                 when {
@@ -520,13 +566,20 @@ object ArtworkColorExtractor {
                     }
                 } ?: return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
 
-            try {
-                extractArtworkColors(bitmap, defaultSurfaceColor, defaultBackgroundColor, isDarkTheme)
-            } finally {
-                if (!bitmap.isRecycled) {
-                    bitmap.recycle()
+            val extracted =
+                try {
+                    extractArtworkColors(bitmap, defaultSurfaceColor, defaultBackgroundColor, isDarkTheme)
+                } finally {
+                    if (!bitmap.isRecycled) {
+                        bitmap.recycle()
+                    }
+                }
+            if (!extracted.isFallback) {
+                synchronized(colorCache) {
+                    colorCache[cacheKey] = extracted
                 }
             }
+            extracted
         } catch (_: Throwable) {
             createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
         }
@@ -746,9 +799,16 @@ fun rememberArtworkColors(
             resolvedSurface,
             resolvedBackground,
         )
+    val initialCached =
+        ArtworkColorExtractor.getCachedArtworkColors(
+            thumbnailPath = thumbnailPath,
+            defaultSurfaceColor = resolvedSurface,
+            defaultBackgroundColor = resolvedBackground,
+            isDarkTheme = isDarkTheme,
+        )
 
     return produceState(
-        initialValue = initialFallback,
+        initialValue = initialCached ?: initialFallback,
         thumbnailPath,
         resolvedSurface,
         resolvedBackground,
@@ -756,6 +816,18 @@ fun rememberArtworkColors(
     ) {
         if (thumbnailPath.isNullOrBlank()) {
             value = initialFallback
+            return@produceState
+        }
+
+        val cached =
+            ArtworkColorExtractor.getCachedArtworkColors(
+                thumbnailPath = thumbnailPath,
+                defaultSurfaceColor = resolvedSurface,
+                defaultBackgroundColor = resolvedBackground,
+                isDarkTheme = isDarkTheme,
+            )
+        if (cached != null) {
+            value = cached
             return@produceState
         }
 

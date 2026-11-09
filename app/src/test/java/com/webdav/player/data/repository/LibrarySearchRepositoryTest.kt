@@ -1073,4 +1073,22 @@ class LibrarySearchRepositoryTest {
             assertEquals("Track must appear exactly once despite presence in multiple tables", 1, result.matchedTracks.size)
             assertEquals(localDocUri, result.matchedTracks.first().remotePath)
         }
+
+    @Test
+    fun observeSyncState_isolatesStateByServerId() =
+        runTest {
+            val localServer = WebDavServer.createLocalStorage()
+            repository.syncServer(localServer, force = false)
+
+            val localState = repository.observeSyncState(LOCAL_STORAGE_ID).first()
+            val otherServerState = repository.observeSyncState(99L).first()
+            val globalState = repository.observeSyncState(null).first()
+
+            assertTrue(
+                "Local storage sync state must be Completed",
+                localState is com.webdav.player.domain.model.LibrarySyncState.Completed,
+            )
+            assertEquals("Other server sync state must remain Idle", com.webdav.player.domain.model.LibrarySyncState.Idle, otherServerState)
+            assertTrue("Global sync state must reflect Completed", globalState is com.webdav.player.domain.model.LibrarySyncState.Completed)
+        }
 }

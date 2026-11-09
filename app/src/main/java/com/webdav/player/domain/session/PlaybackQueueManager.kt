@@ -1,6 +1,7 @@
 package com.webdav.player.domain.session
 
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlaybackState
@@ -11,6 +12,7 @@ import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.ServerRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -35,6 +37,41 @@ internal class PlaybackQueueManager(
     fun clearFailedTracks() {
         failedTrackIdsInCurrentCycle.clear()
     }
+
+    /**
+     * Resolves the effective [WebDavServer] context for [track], clamping local tracks
+     * to [LOCAL_STORAGE_ID] and querying [serverRepository] for cross-server tracks.
+     */
+    suspend fun resolveServerForTrack(
+        track: AudioTrack,
+        preferredServer: WebDavServer? = null,
+        fallbackServer: WebDavServer? = sessionStateFlow.value.activeServer,
+    ): WebDavServer? =
+        when {
+            track.isLocal || track.serverId == LOCAL_STORAGE_ID -> {
+                WebDavServer.createLocalStorage()
+            }
+
+            preferredServer != null && preferredServer.id == track.serverId -> {
+                preferredServer
+            }
+
+            fallbackServer != null && fallbackServer.id == track.serverId -> {
+                fallbackServer
+            }
+
+            serverRepository != null -> {
+                try {
+                    serverRepository.getServerById(track.serverId)
+                } catch (_: Throwable) {
+                    null
+                } ?: preferredServer ?: fallbackServer
+            }
+
+            else -> {
+                preferredServer ?: fallbackServer
+            }
+        }
 
     /**
      * Records a failed track ID and determines whether to proceed with skipping to next track
@@ -230,9 +267,7 @@ internal class PlaybackQueueManager(
         )
     }
 
-    fun buildTrackQueue(
-        track: AudioTrack,
-    ): QueueLoadRequest {
+    fun buildTrackQueue(track: AudioTrack): QueueLoadRequest {
         val queue = PlaybackQueue(tracks = listOf(track), currentIndex = 0, origin = QueueOrigin.AD_HOC)
         return QueueLoadRequest(
             queue = queue,

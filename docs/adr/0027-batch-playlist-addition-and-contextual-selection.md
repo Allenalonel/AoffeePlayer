@@ -1,5 +1,9 @@
 # 0027: 批量添加到歌单与上下文多选模式 (Batch Playlist Addition and Contextual Selection)
 
+## Status
+
+Accepted
+
 ## Context
 
 在先前的实现中，向自定义歌单（Playlist）添加音频曲目仅支持单曲维度操作（通过条目溢出菜单调起 `AddToPlaylistDialog`）。在用户整理大量曲目或从媒体库及全库检索结果中批量收录音乐时，单曲逐一添加存在巨大交互负担：

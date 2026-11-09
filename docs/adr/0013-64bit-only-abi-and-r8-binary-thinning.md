@@ -1,5 +1,9 @@
 # 0013: 64-Bit Only Native ABI and R8 Binary Thinning Packaging Seam
 
+## Status
+
+Accepted
+
 ## Context
 
 在对发布版本二进制产物进行全面审查及跨项目对比（对比同类开源播放器 Folder-Player 7.08 MB）时，发现 WebDavPlayer 的 Release APK 高达 **56.8 MB**。通过对 APK 解包并按模块深度测算，体积过度膨胀由以下三个构建工程与打包接缝问题引起：

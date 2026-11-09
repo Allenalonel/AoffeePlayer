@@ -1269,4 +1269,43 @@ class PlaylistRepositoryTest {
             assertFalse("Track in flow must be active", restoredTrackEntry.isInactive)
             assertNull("Inactive reason in flow must be null", restoredTrackEntry.inactiveReason)
         }
+
+    @Test
+    fun localTrackInPlaylist_triggersCoverSelfHealingWithLocalStorageId() =
+        runBlocking {
+            val metadataRepo = TestTrackMetadataRepository()
+            val localUri = "content://media/external/audio/local_cover_test"
+            metadataRepo.singleResolvedMap["$LOCAL_STORAGE_ID:$localUri"] =
+                TrackMetadata(
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = localUri,
+                    title = "Local Healed Song",
+                    coverThumbnailPath = "/covers/local_healed.jpg",
+                )
+
+            val repo =
+                PlaylistRepositoryImpl(
+                    playlistDao = dao,
+                    trackMetadataRepository = metadataRepo,
+                    timeProvider = { simulatedTime },
+                )
+
+            val playlistId = repo.createPlaylist("本地封面自愈测试")
+            val localTrack =
+                AudioTrack(
+                    id = "$LOCAL_STORAGE_ID:$localUri",
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = localUri,
+                    title = "Local Song Without Cover",
+                    format = AudioFormat.FLAC,
+                )
+            val entryId = repo.addTrackToPlaylist(playlistId, localTrack)
+
+            // Trigger reconciliation which launches background cover healing for local track
+            repo.getTracksForPlaylist(playlistId)
+            kotlinx.coroutines.delay(200)
+
+            val healedEntity = dao.getTrackById(entryId)
+            assertEquals("/covers/local_healed.jpg", healedEntity?.coverThumbnailPath)
+        }
 }

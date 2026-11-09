@@ -1,5 +1,9 @@
 # Synchronous Service Elevation and Dynamic Authenticated MediaSource
 
+## Status
+
+Accepted (Amended by ADR 0025: WebDavMediaSourceAdapter consolidated into WebDavMediaSourceBuilder)
+
 ## Context
 
 在 WebDAV 远程音频流式播放架构演进中，遇到了两个影响核心可用性的 P0 级严重缺陷：

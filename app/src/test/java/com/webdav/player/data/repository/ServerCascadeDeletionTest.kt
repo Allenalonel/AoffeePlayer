@@ -212,4 +212,33 @@ class ServerCascadeDeletionTest {
             assertEquals(1, folder2Tracks.size)
             assertNotNull(checkpointDao.getCheckpoint(LOCAL_STORAGE_ID, root2))
         }
+
+    @Test
+    fun removeMountedLocalFolder_clearsLocalDirectoryCache_andDeleteDefaultServer_promotesRemainingServer() =
+        runTest {
+            val directoryCacheDao = database.directoryCacheDao()
+            directoryCacheDao.insertOrUpdate(
+                com.webdav.player.data.local.DirectoryCacheEntity(
+                    serverId = LOCAL_STORAGE_ID,
+                    path = "/",
+                    dataJson = "{}",
+                    lastUpdatedMs = 1000L,
+                ),
+            )
+            assertNotNull(directoryCacheDao.getCache(LOCAL_STORAGE_ID, "/"))
+
+            repository.removeMountedLocalFolder("content://com.android.externalstorage.documents/tree/primary%3AMusic")
+            assertNull(
+                "Local directory cache must be invalidated when folder is unmounted",
+                directoryCacheDao.getCache(LOCAL_STORAGE_ID, "/"),
+            )
+
+            val s1Id = repository.saveServer(WebDavServer(name = "Primary NAS", url = "http://nas1.local", isDefault = true))
+            val s2Id = repository.saveServer(WebDavServer(name = "Backup NAS", url = "http://nas2.local", isDefault = false))
+
+            repository.deleteServer(s1Id)
+            val promoted = repository.getServerById(s2Id)
+            assertNotNull(promoted)
+            assertEquals(true, promoted?.isDefault)
+        }
 }

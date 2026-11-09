@@ -1246,4 +1246,30 @@ class Media3AudioPlayerEngineTest {
                 testEngine.release()
             }
         }
+
+    @Test
+    fun updateTrackMetadata_withLocalCoverFile_attachesArtworkData_withoutExposingPrivateFileUri() {
+        val coverFile = java.io.File(context.cacheDir, "engine_art_test.jpg")
+        val fakeImageData = byteArrayOf(0x01, 0x02, 0x03, 0x04)
+        coverFile.writeBytes(fakeImageData)
+        try {
+            engine.loadTrack(testServer, track1)
+            ShadowLooper.idleMainLooper()
+
+            val enrichedTrack = track1.copy(coverThumbnailPath = coverFile.absolutePath)
+            engine.updateTrackMetadata(enrichedTrack)
+            ShadowLooper.idleMainLooper()
+
+            val playlistMeta = engine.player.playlistMetadata
+            org.junit.Assert.assertNotNull(playlistMeta.artworkData)
+            org.junit.Assert.assertArrayEquals(fakeImageData, playlistMeta.artworkData)
+            val artUri = playlistMeta.artworkUri
+            assertTrue(
+                "artworkUri must not expose private file:// scheme, was: $artUri",
+                artUri == null || artUri.scheme == "content",
+            )
+        } finally {
+            coverFile.delete()
+        }
+    }
 }

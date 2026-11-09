@@ -268,7 +268,7 @@ class Media3AudioPlayerEngine internal constructor(
                 if (playerIndex == 1 && player.mediaItemCount >= 2) {
                     player.removeMediaItem(0)
                     commitPendingEnrichedItem(0)
-                    player.playlistMetadata = MediaMetadata.EMPTY
+                    clearPlaylistMetadata()
                     updatePositionAndDuration()
                     updatePlaybackState()
                     _trackTransitions.tryEmit(Unit)
@@ -276,7 +276,7 @@ class Media3AudioPlayerEngine internal constructor(
                 }
 
                 commitPendingEnrichedItem(0)
-                player.playlistMetadata = MediaMetadata.EMPTY
+                clearPlaylistMetadata()
                 updatePositionAndDuration()
                 updatePlaybackState()
             }
@@ -324,7 +324,7 @@ class Media3AudioPlayerEngine internal constructor(
     ) {
         runOnApplicationLooper {
             pendingEnrichedItems.clear()
-            player.playlistMetadata = MediaMetadata.EMPTY
+            clearPlaylistMetadata()
             activeServerRef.set(server)
             _currentPositionMs.value = startPositionMs
             _durationMs.value = if (track.durationMs > 0L) track.durationMs else 0L
@@ -418,28 +418,32 @@ class Media3AudioPlayerEngine internal constructor(
                 currentMeta
             }
 
-        val newArtworkUri = track.coverThumbnailPath?.let { Uri.fromFile(File(it)) }
-        val sameTitle = effectiveMeta.title?.toString() == track.title
-        val sameArtist = (effectiveMeta.artist?.toString() ?: "") == (track.artist ?: "")
-        val sameAlbum = (effectiveMeta.albumTitle?.toString() ?: "") == (track.album ?: "")
-        val sameArtwork = effectiveMeta.artworkUri == newArtworkUri
-
-        if (sameTitle && sameArtist && sameAlbum && sameArtwork) {
-            return // Metadata identical; bypass to prevent redundant churn
-        }
-
         val metaBuilder =
             currentItem.mediaMetadata
                 .buildUpon()
                 .setTitle(track.title)
                 .setArtist(track.artist)
                 .setAlbumTitle(track.album)
-        if (newArtworkUri != null) {
-            metaBuilder.setArtworkUri(newArtworkUri)
-        } else if (currentItem.mediaMetadata.artworkUri != null) {
-            metaBuilder.setArtworkUri(null)
-        }
+        mediaSourceBuilder.attachArtwork(metaBuilder, track.coverThumbnailPath)
         val updatedMetadata = metaBuilder.build()
+
+        val sameTitle = effectiveMeta.title?.toString() == track.title
+        val sameArtist = (effectiveMeta.artist?.toString() ?: "") == (track.artist ?: "")
+        val sameAlbum = (effectiveMeta.albumTitle?.toString() ?: "") == (track.album ?: "")
+        val sameArtworkUri = effectiveMeta.artworkUri == updatedMetadata.artworkUri
+        val sameArtworkData =
+            if (effectiveMeta.artworkData == null && updatedMetadata.artworkData == null) {
+                true
+            } else if (effectiveMeta.artworkData != null && updatedMetadata.artworkData != null) {
+                effectiveMeta.artworkData.contentEquals(updatedMetadata.artworkData)
+            } else {
+                false
+            }
+
+        if (sameTitle && sameArtist && sameAlbum && sameArtworkUri && sameArtworkData) {
+            return // Metadata identical; bypass to prevent redundant churn
+        }
+
         val updatedItem =
             currentItem
                 .buildUpon()
@@ -447,11 +451,19 @@ class Media3AudioPlayerEngine internal constructor(
                 .build()
 
         if (isActivelyPlayingOrBuffering) {
-            player.playlistMetadata = updatedMetadata
+            if (player.playlistMetadata != updatedMetadata) {
+                player.playlistMetadata = updatedMetadata
+            }
             pendingEnrichedItems[0] = updatedItem
         } else {
             pendingEnrichedItems.remove(0)
             player.replaceMediaItem(0, updatedItem)
+        }
+    }
+
+    private fun clearPlaylistMetadata() {
+        if (player.playlistMetadata != MediaMetadata.EMPTY) {
+            player.playlistMetadata = MediaMetadata.EMPTY
         }
     }
 
@@ -502,7 +514,7 @@ class Media3AudioPlayerEngine internal constructor(
             commitPendingEnrichedItem(0)
             stopPositionTicker()
             player.stop()
-            player.playlistMetadata = MediaMetadata.EMPTY
+            clearPlaylistMetadata()
             _playbackState.value = PlaybackState.Idle
             _currentPositionMs.value = 0L
             _durationMs.value = 0L

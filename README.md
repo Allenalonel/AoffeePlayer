@@ -78,14 +78,14 @@
 - **工业级单一实体连续形态蜕变（Single Component Ownership Capsule Morphing）**：对标 Apple Music 与 Spotify，Mini 胶囊至全屏播放器由根容器单一真实实体常驻驱动；子视图退化为纯几何插槽，核心封面（42dp 正圆 -> 280dp Squircle 方圆大卡片）与主控大按钮无缝飞行动画，伴随底栏下沉 80dp 退出与主视窗 0.94f 景深微缩，彻底杜绝任何假替身偷换（Zero End-State Swaps）与 1 帧空白闪烁。
 - **流体交互与手势避让**：连续流体折叠顶栏、自适应 FAB 悬浮按钮避让、独立药丸搜索舱与悬浮多选操作栏。
 
-### 💽 CUE 虚拟分轨与 Gapless 连续播放
-- **整轨无损免切分**：对 FLAC/APE/WAV 整轨专辑自动解析关联 CUE 文件，底层单网络流无缝映射，提供 0 爆音无缝播放。
-- **目录闭环回流**：列表循环时严格约束在当前活跃目录内自然回流，避免误跨无关目录。
+### 🔄 目录闭环回流与队列管控
+- **目录闭环回流**：列表循环时严格约束在当前活跃目录曲目集合内自然回流，避免误跨无关父级或兄弟目录。
+- **显式洗牌与原序镜像**：随机播放模式保持确定性队列，支持无损还原原始播放次序。
 
 ### 🌐 跨服务器歌单与即时曲库搜索
 - **多源混合收藏**：支持将来自不同 WebDAV 服务器的音轨收藏到同一个歌单中，自动装配对应服务器鉴权凭据。
 - **SWR 目录缓存与离线可用**：基于 Room 数据库缓存远程目录树，二次进入秒开，断网亦可浏览。
-- **毫秒级全文检索**：支持多维即时匹配目录、音频标签与虚拟分轨，内置搜索历史管理。
+- **毫秒级全文检索**：支持多维即时匹配目录与音频标签，内置搜索历史管理。
 
 ### 🛡️ 私有云连接与后台长效播放
 - **自签名 SSL 证书信任**：支持局域网私有 IP HTTPS 及自签名证书一键信任，适配各类家庭私有云与自建服务。
@@ -96,7 +96,7 @@
 
 ## 🌐 支持的 WebDAV 服务器与平台
 
-WebDAVPlayer 严格遵循 **RFC 4918** 标准 WebDAV 规范。以下为经过严格技术核对的主流兼容服务端平台与接入指引：
+Aoffee Player 严格遵循 **RFC 4918** 标准 WebDAV 规范。以下为经过严格技术核对的主流兼容服务端平台与接入指引：
 
 | 类型 / 场景 | 支持的服务与平台 | 接入路径 / 端口示例 | 关键配置与避坑提示 |
 | :--- | :--- | :--- | :--- |
@@ -169,7 +169,7 @@ WebDAVPlayer 严格遵循 **RFC 4918** 标准 WebDAV 规范。以下为经过严
 本项目关键的技术选型与深层架构演进均通过 ADR（Architecture Decision Records）进行规范化追踪。详情请参阅 **[docs/adr/](docs/adr/)** 目录。
 
 <details>
-<summary>展开查看全部 30 项架构设计决策记录</summary>
+<summary>展开查看全部 36 项架构设计决策记录</summary>
 
 - [ADR 0001: 采用 AndroidX Media3 与 FFmpeg JNI 原生解码扩展](docs/adr/0001-use-androidx-media3-with-ffmpeg-extension.md)
 - [ADR 0002: 纯流式播放机制与无永久磁盘缓存设计](docs/adr/0002-pure-online-streaming-without-persistent-disk-cache.md)
@@ -201,6 +201,12 @@ WebDAVPlayer 严格遵循 **RFC 4918** 标准 WebDAV 规范。以下为经过严
 - [ADR 0028: Material 3 Expressive 界面重构、全天候全域动态取色与流体交互规范](docs/adr/0028-material-3-expressive-elevation-and-dynamic-theming.md)
 - [ADR 0029: 品牌更名为 Aoffee Player 及自适应图标全机型工程规范](docs/adr/0029-rebranding-to-aoffee-player-and-adaptive-launcher-icon-specification.md)
 - [ADR 0030: 全链路服务器故障自愈与多触发恢复网络](docs/adr/0030-full-lifecycle-server-fault-self-healing-and-multi-trigger-recovery.md)
+- [ADR 0031: Material 3 Expressive 动效系统与胶囊全屏连续形态蜕变](docs/adr/0031-material-3-expressive-motion-and-capsule-morphing.md)
+- [ADR 0032a: AndroidX Palette 官方多色提取、M3E 纯正色调阶梯与音轨驱动零预设全域换肤](docs/adr/0032a-androidx-palette-and-m3-expressive-dynamic-theming.md)
+- [ADR 0032b: 本地存储 SAF 挂载集成与跨源多模回放管道](docs/adr/0032b-local-storage-saf-and-cross-source-playback.md)
+- [ADR 0033: 统一跨源曲库快速索引与全局搜索架构](docs/adr/0033-cross-source-library-indexing-and-search.md)
+- [ADR 0034: 彻底废弃与物理清除 CUE 虚拟分轨支持](docs/adr/0034-deprecate-and-purge-cue-sheet-support.md)
+- [ADR 0035: 跨源会话双轨解耦与对称存储生命周期闭环](docs/adr/0035-cross-source-session-decoupling-and-symmetric-storage-lifecycle.md)
 
 </details>
 

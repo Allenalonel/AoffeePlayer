@@ -1,5 +1,6 @@
 package com.webdav.player.domain.session
 
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackQueue
@@ -8,6 +9,7 @@ import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.model.QueueOrigin
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.PlaybackSessionStore
 import com.webdav.player.domain.repository.ServerRepository
@@ -63,7 +65,7 @@ internal class SessionPersistenceCoordinator(
     }
 
     fun setCurrentDirectoryPath(path: String) {
-        val serverId = sessionStateFlow.value.activeServer?.id
+        val serverId = (sessionStateFlow.value.browsingServer ?: sessionStateFlow.value.activeServer)?.id
         if (serverId != null) {
             serverLastDirectories[serverId] = path
         }
@@ -135,15 +137,27 @@ internal class SessionPersistenceCoordinator(
         val restoredPlaybackState = if (restoredTrack != null) PlaybackState.Paused else PlaybackState.Idle
 
         val finalQueue =
-            if (server != null) {
+            if (trackMetadataRepository != null && (server != null || savedSession.queueTracks.isNotEmpty())) {
                 val updatedTracks =
                     savedSession.queueTracks.map { track ->
-                        val cachedMeta = trackMetadataRepository?.getCachedMetadata(server.id, track.remotePath)
+                        val trackServerId =
+                            when {
+                                track.isLocal -> LOCAL_STORAGE_ID
+                                track.serverId > 0L -> track.serverId
+                                else -> server?.id ?: LOCAL_STORAGE_ID
+                            }
+                        val cachedMeta = trackMetadataRepository.getCachedMetadata(trackServerId, track.remotePath)
                         if (cachedMeta != null) track.withMetadata(cachedMeta) else track
                     }
                 val updatedOriginal =
                     savedSession.originalTracks.map { track ->
-                        val cachedMeta = trackMetadataRepository?.getCachedMetadata(server.id, track.remotePath)
+                        val trackServerId =
+                            when {
+                                track.isLocal -> LOCAL_STORAGE_ID
+                                track.serverId > 0L -> track.serverId
+                                else -> server?.id ?: LOCAL_STORAGE_ID
+                            }
+                        val cachedMeta = trackMetadataRepository.getCachedMetadata(trackServerId, track.remotePath)
                         if (cachedMeta != null) track.withMetadata(cachedMeta) else track
                     }
                 PlaybackQueue(
@@ -161,6 +175,7 @@ internal class SessionPersistenceCoordinator(
         sessionStateFlow.update {
             it.copy(
                 activeServer = server ?: it.activeServer,
+                browsingServer = server ?: it.browsingServer ?: it.activeServer,
                 queue = finalQueue,
                 playbackState = restoredPlaybackState,
                 playbackMode = savedSession.playbackMode,
@@ -189,11 +204,12 @@ internal class SessionPersistenceCoordinator(
         if (!_isRestored.value) return
         val store = sessionStore ?: return
         val current = sessionStateFlow.value
-        val currentServerId = current.activeServer?.id
-        if (currentServerId != null && current.currentDirectoryPath.isNotBlank()) {
-            serverLastDirectories[currentServerId] = current.currentDirectoryPath
+        val browsingServerId = (current.browsingServer ?: current.activeServer)?.id
+        if (browsingServerId != null && current.currentDirectoryPath.isNotBlank()) {
+            serverLastDirectories[browsingServerId] = current.currentDirectoryPath
         }
-        if (current.activeServer == null && current.queue.isEmpty && serverLastDirectories.isEmpty()) {
+        val activeServerId = current.activeServer?.id
+        if (activeServerId == null && current.queue.isEmpty && serverLastDirectories.isEmpty()) {
             store.clearSession()
             return
         }
@@ -213,7 +229,7 @@ internal class SessionPersistenceCoordinator(
 
         val sessionData =
             PlaybackSessionData(
-                activeServerId = current.activeServer?.id,
+                activeServerId = activeServerId,
                 currentDirectoryPath = current.currentDirectoryPath,
                 queueTracks = current.queue.tracks,
                 currentTrackIndex = current.queue.currentIndex,

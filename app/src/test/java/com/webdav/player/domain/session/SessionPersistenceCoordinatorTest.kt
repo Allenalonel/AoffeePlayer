@@ -115,7 +115,6 @@ class SessionPersistenceCoordinatorTest {
         ): TrackMetadata = cached[server.id to file.path] ?: TrackMetadata(serverId = server.id, remotePath = file.path, title = "Resolved")
     }
 
-
     @Before
     fun setUp() {
         fakeEngine = FakeAudioPlayerEngine()
@@ -339,5 +338,71 @@ class SessionPersistenceCoordinatorTest {
 
             assertEquals("/Jazz/Miles/", coordinator.getLastDirectoryForServer(testServer.id))
             assertEquals("/", coordinator.getLastDirectoryForServer(999L))
+        }
+
+    @Test
+    fun restoreMixedPlaylistSession_enrichesEachTrackUsingItsOwnServerIdAndClampsLocalStorage() =
+        testScope.runTest {
+            val server2 = testServer.copy(id = 2L, name = "NAS 2")
+            val localTrack =
+                AudioTrack(
+                    id = "0:content://media/audio/local1",
+                    serverId = 0L,
+                    remotePath = "content://media/audio/local1",
+                    title = "raw_local",
+                    format = AudioFormat.FLAC,
+                )
+            val remoteTrack2 =
+                AudioTrack(
+                    id = "2:/music/remote2.mp3",
+                    serverId = 2L,
+                    remotePath = "/music/remote2.mp3",
+                    title = "raw_remote2",
+                    format = AudioFormat.MP3,
+                )
+
+            val metadataRepo = TestMetadataRepo()
+            metadataRepo.cached[0L to localTrack.remotePath] =
+                TrackMetadata(
+                    serverId = 0L,
+                    remotePath = localTrack.remotePath,
+                    title = "Local Masterpiece",
+                    artist = "Local Artist",
+                    coverThumbnailPath = "/covers/local.jpg",
+                )
+            metadataRepo.cached[2L to remoteTrack2.remotePath] =
+                TrackMetadata(
+                    serverId = 2L,
+                    remotePath = remoteTrack2.remotePath,
+                    title = "Remote Symphony",
+                    artist = "Remote Artist",
+                    coverThumbnailPath = "/covers/remote2.jpg",
+                )
+
+            val savedSession =
+                PlaybackSessionData(
+                    activeServerId = testServer.id,
+                    currentDirectoryPath = "/Jazz/",
+                    queueTracks = listOf(localTrack, remoteTrack2),
+                    currentTrackIndex = 0,
+                    positionMs = 5_000L,
+                    playbackMode = PlaybackMode.LIST_LOOP,
+                    cleanExit = true,
+                )
+            fakeStore.savedSession = savedSession
+
+            val coordinator =
+                createCoordinator(
+                    serverRepo = TestServerRepo(listOf(testServer, server2)),
+                    metadataRepo = metadataRepo,
+                )
+            coordinator.restoreSession()
+
+            val restoredTracks = sessionStateFlow.value.queue.tracks
+            assertEquals(2, restoredTracks.size)
+            assertEquals("Local Masterpiece", restoredTracks[0].title)
+            assertEquals("/covers/local.jpg", restoredTracks[0].coverThumbnailPath)
+            assertEquals("Remote Symphony", restoredTracks[1].title)
+            assertEquals("/covers/remote2.jpg", restoredTracks[1].coverThumbnailPath)
         }
 }

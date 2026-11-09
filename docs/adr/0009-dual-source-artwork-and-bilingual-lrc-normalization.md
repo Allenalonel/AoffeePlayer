@@ -1,5 +1,9 @@
 # Dual-Source Artwork Pipeline and Industrial LRC Normalization
 
+## Status
+
+Accepted
+
 ## Context
 
 在 WebDAV 远程音频流媒体场景中，原有的音乐封面与歌词处理存在两个显著缺陷：

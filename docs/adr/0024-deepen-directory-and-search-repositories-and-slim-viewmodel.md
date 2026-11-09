@@ -1,5 +1,13 @@
 # 0024: 下沉目录富化与搜索历史至仓储层并轻量化视图模型 (Deepen Directory and Search Repositories and Slim ViewModel)
 
+## Status
+
+Superseded by ADR 0036
+
+> ⚠️ **SUPERSEDED NOTICE**:
+> - **现行法典**: 技术约束以根目录 `CODING_STANDARDS.md` 为唯一权威终审。
+> - **彻底折叠 (ADR-0036)**: 本 ADR 将目录与搜索分别拆分为 `DirectoryRepository` 与 `LibrarySearchRepository` 的浅层过渡设计已被 ADR-0036 彻底废止，正式统一升格为一体化深模块 `MediaLibraryRepository`。
+
 ## Context
 
 在 ADR-0023 成功解构领域层播放会话上帝类后，展示层与仓储层的架构接缝成为系统主要摩擦源：

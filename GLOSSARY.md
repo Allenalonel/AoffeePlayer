@@ -1,413 +1,187 @@
 # Aoffee Player
 
-Android 平台上的现代化高保真 WebDAV 音频流式播放器，通过 HTTP/HTTPS 协议直接访问并流式播放远程 WebDAV 服务器（NAS / 私有云）上的音频资源。
+Android 平台上的现代化高保真音乐播放器，遵循 Material Design 3 Expressive (M3E) 视觉语言，统一支持远程 WebDAV 服务器（NAS / 私有云）纯在线流式回放与本地设备存储（SAF）无损直放。
 
 ## Language
 
 ### Application & Branding
 
 **Aoffee Player**:
-本播放器应用的正式官方名称，遵循 Material Design 3 Expressive (M3E) 视觉语言与纯流式零磁盘占用架构。
+本播放器应用的正式官方名称，遵循 Material Design 3 Expressive 动态视觉体系与跨源音频架构。
 _Avoid_: WebDAVPlayer, WebDavPlayer, WebDav Music Player
 
 ### Storage & Sources
 
 **Storage Source**:
-统一抽象的音乐存储源概念，涵盖本地存储节点（Local Storage，保留标识符 `LOCAL_STORAGE_ID = 0L`）与用户配置的各个远程 WebDAV Server 节点。
+统一抽象的音乐存储源节点，涵盖内置本地设备存储节点与用户配置的各个远程 WebDAV 服务器节点。
 _Avoid_: Drive, Source Provider, Media Account
 
-**Active Storage**:
-用户当前选定用于浏览目录与获取音频资源的活跃存储源（可以是本地存储或某个特定 WebDAV 服务器）。
-_Avoid_: Current Server, Selected Source, Default Target
+**Browsing Storage**:
+用户当前在媒体库中选定用于目录层级浏览与存储管理的存储源，与当前在播音轨所属的物理源独立解耦。
+_Avoid_: Playback Server, Stream Source, Active Server (指代浏览目标时)
+
+**Playback Server**:
+当前正在解码播放或排队待播音轨物理所属的存储服务器凭据与网络连接主体。
+_Avoid_: Browsing Server, UI Selected Server, Navigation Target
 
 **Local Storage**:
-内置不可删除的本地设备存储源节点，基于 Android Storage Access Framework (SAF) 挂载的用户音乐目录，实现离线、零网络缓冲的即时音频与伴生 LRC 解析与直放。
+内置不可删除的本地设备存储源节点，通过 Android 存储访问框架（SAF）聚合管理用户授权的本地音乐目录。
 _Avoid_: Phone Storage, Local File System, Internal Drive
 
 **Mounted Directory**:
-用户通过 Android 原生 SAF 目录选择器（`ACTION_OPEN_DOCUMENT_TREE`）授权并持久化访问权限（`takePersistableUriPermission`）的本地音乐文件夹，展示在媒体库根路径与目录管理弹层中。
+用户通过系统目录选择器授权并持久化访问权限的本地音乐文件夹，作为本地存储源下的根目录节点呈现。
 _Avoid_: Document Tree, Folder Access, Local Path
 
-### Remote Storage
-
 **WebDAV Server**:
-提供基于 WebDAV 协议文件访问能力的远程存储服务器配置，包含主机地址、端口、路径、认证凭证及证书信任选项。
+提供基于 WebDAV 协议远程文件访问能力的存储服务器配置，包含主机地址、端口、路径、认证凭证及证书信任选项。
 _Avoid_: Host, Cloud, Remote Drive
 
-**Active Server**:
-用户当前选定用于浏览目录与流式获取音频资源的活跃 WebDAV Server 节点。
-_Avoid_: Current Host, Selected Account, Default Server
+**Storage Directory**:
+存储源上的目录层级节点，聚合当前路径下的子目录与音频曲目集合。
+_Avoid_: Remote Path, Cue Album, Cue Folder, Virtual Album
 
-**Remote Directory**:
-WebDAV 服务器上的远程目录节点，用于组织子目录与音频文件。
-_Avoid_: Folder, Remote Path
-
-**Remote File**:
-WebDAV 服务器上的文件实体，具备 URL、大小及最后修改时间等元数据。
-_Avoid_: Resource, Item
+**Companion Manifest**:
+与音频曲目同目录存放的外置伴生资源集合（包含同目录封面图像与同名伴生歌词文件），作为音轨标签信息的保真补充源。
+_Avoid_: Extra Files, Sidecar Assets, Folder Icon, Album Photo
 
 **Directory Cache**:
-WebDAV 远程目录在本地持久化数据库中的结构化镜像快照，包含子目录与文件元数据，用于秒级渲染并支持弱网与离线浏览。
+存储源目录在本地持久化存储中的结构化镜像快照，用于秒级列表渲染及离线状态下的目录浏览。
 _Avoid_: Folder Cache, File Index, Offline Copy
 
-**Server Context**:
-运行时维护的包含当前活跃 WebDAV Server 身份凭证、网络超时控制及自定义 SSL 信任套接字工厂的上下文领域对象，供底层 OkHttp 网络客户端与 MediaSource 适配器统一消费。
-_Avoid_: Connection Config, Server Info, Host Context
+**Media Library**:
+跨源音乐曲目的聚合统一组织与检索实体，融合目录层级快照、增量同步检查点与跨源音轨全局索引。
+_Avoid_: Directory Tree, File Catalog, Music Store, Media Browser
 
-### Playback & Library
+### Playback & Queue
 
 **Audio Track**:
-具有可解码音频流特性的远程音频文件（如 MP3、FLAC、WAV、WMA 等格式）。
-_Avoid_: Song, Music, Audio File
+可被播放引擎解码回放的远程 WebDAV 音频流或本地存储音频实体。
+_Avoid_: Song, Music, Audio File, Virtual Track, Cue Track, Sub-track
+
+**Audiophile Specs**:
+音频曲目解码呈现的发烧级规格参数模型，聚合音频格式类型、采样率、位深、比特率及高解析度（Hi-Res）认证状态。
+_Avoid_: Audio Resolution, Track Spec String, Bitrate Text
+
+**Audio Quality Badge**:
+音频曲目在列表中呈现的轻量音质规格徽章，分为无损、高品质、标准与压缩四级。
+_Avoid_: Format Tag, Bitrate Label
+
+**Pure Ephemeral Streaming**:
+音频流直接从网络传输至内存环形缓冲区递送解码渲染、本地闪存不落盘任何持久音频文件的纯在线回放模式。
+_Avoid_: Disk Cached Playback, Offline Sync
+
+**Lossless Direct Playback**:
+本地存储源音频直接通过系统文件流管道送入解码引擎渲染的直读回放模式，无网络开销且零转码损耗。
+_Avoid_: Local File Playback, Offline Playback, Device Playback
 
 **Track Metadata**:
-音频曲目的描述性标签信息，包含曲目标题、艺术家、专辑名称、时长及封面图（优先提取内嵌标签，回退支持同目录外置封面）。
-_Avoid_: ID3, Tag, Audio Info
-
-**Folder Artwork**:
-位于 Remote Directory 下的独立专辑封面图片实体（如 cover.jpg、folder.jpg 或同名图片），在 Audio Track 无内嵌封面时作为后备封面源。
-_Avoid_: External Image, Folder Icon, Album Photo
+音频曲目的描述性标签信息，包含标题、艺术家、专辑名称、曲目编号、时长、歌词及封面缩略图。
+_Avoid_: ID3, Audio Info
 
 **Playback Queue**:
-当前播放会话中排队待播的有序音频曲目运行时集合。具备明确的 Queue Origin 来源标记，与用户持久化保存的 Playlist 解耦。在随机播放模式下表现为显式洗牌队列并持有原序镜像。
+当前播放会话中排队待播的有序音频曲目运行时集合，持有明确的队列来源标记，与持久化保存的歌单独立。
 _Avoid_: Track List, Song Sequence
-
-**Shuffled Playback Queue**:
-在随机播放（Shuffle）模式下将待播音频曲目显式排列打乱的运行时确定性队列。当前播放曲目固定置于首位，后续曲目打乱，用户在播放队列抽屉中所见即真实待播顺序（Up Next），切歌与回溯具备严格数学确定性。
-_Avoid_: Random Walk Queue, Virtual Shuffle, Dynamic Index Map
-
-**Original Queue Mirror**:
-播放队列在进入随机播放模式时在内存中完整保留的原始目录或歌单顺序镜像。用于在关闭随机模式时纯内存无损瞬时恢复原序，并同步维持临时插队（Play Next）曲目的相对拓扑。
-_Avoid_: Backup List, Restore Cache, Unshuffled Copy
-
-**Queue Origin**:
-播放队列的来源拓扑分类标识，包含目录闭环回放（Directory Queue）、跨服务器自定义歌单闭环回放（Playlist Queue）与单曲临时插队起播（Ad-hoc Queue），决定切歌到达末尾时的回流逻辑与跨服媒体流凭据装配。
-_Avoid_: Queue Type, Play Source, List Kind
-
-**Playlist**:
-用户创建并持久化保存的自定义音频曲目集合，支持跨多个 WebDAV Server 引用音轨。
-_Avoid_: Song List, Favorite Folder, Collection
-
-**Playlist Track Entry**:
-持久化在本地数据库中的歌单曲目引用，明确记录所属的 WebDAV Server 标识符、远程相对路径、排序索引及快照元数据（标题、艺术家、专辑、时长、封面缩略图路径等），支持后台异步封面自愈补全。
-_Avoid_: Song Item, Playlist Item
-
-**Batch Playlist Addition**:
-在媒体库或全库检索中一次性将多首选定音频曲目收录至指定歌单的批处理操作。具备仓储层原子去重能力，自动过滤目标歌单中已有的同源曲目，并输出精准的增量添加与跳过统计。
-_Avoid_: Multi Song Insert, Bulk Track Dump
-
-**Inactive Playlist Track**:
-当所属 WebDAV Server 处于离线/无法连接状态，或服务器重启与网关初始化期间认证凭证瞬态失效（401/403），或远程文件返回 404（已被重命名、移动或删除）时，歌单中呈现为置灰减淡的音轨状态。具备显式诊断原因枚举（InactiveReason），点击触发明确 Toast 反馈，流式切歌自动静默平滑跳过。其中服务器级瞬态故障（SERVER_UNREACHABLE 与 SERVER_CREDENTIAL_INVALID）纳入自愈网络全自动恢复。
-_Avoid_: Disabled Song, Dead Link, Error Item
-
-**Reachability Self-Healing**:
-由 `PlaylistRepository` 内部自主担保的连通性与故障自愈网络：通过 PROPFIND 主动探活、服务器设置测试连接成功联动、物理播放引擎解码出声反哺（Playback Success Feedback）及系统网络恢复广播四重触发信道，全自动清除歌单中因网络断开或服务端重启认证波动而产生的置灰状态，杜绝任何交互死锁。
-_Avoid_: Manual Refresh, Re-add Song, Fixed Inactive State
-
-**Symmetric Fault Lifecycle**:
-领域与仓储层架构的对称闭环准则：凡在数据层存在持久化错误或降级标记（如 `markTrackInactive`、`markServerInactive`）的写入接缝，必须在同一领域边界内提供对等、全自动的解除与自愈信道。严禁单向累加、无法逆转的“死状态”。
-_Avoid_: One-Way State Trap, Write-Only Fault, Zombie Inactive Track
-
-**Library Search Index**:
-基于 `media_track_index` 专用表与复合 B-Tree 索引矩阵构建的统一跨源即时搜索索引，彻底取代旧版对 `directory_cache` 序列化 JSON 字段的文本模糊扫描，毫秒级召回深层未访问目录及本地 SAF 曲目。
-_Avoid_: WebDAV Search, Server Index, Cloud Crawler, Legacy Json Search
-
-**Unified Media Track Index**:
-持久化存储在 Room v8 `media_track_index` 中的轻量音轨元数据快照，包含物理音轨路径、文件规格、预提取标题与艺术家，充当全库检索的统一权威数据源。
-_Avoid_: Track Mirror, Audio DB, Cache Table
-
-**Directory Sync Checkpoint**:
-持久化在 `directory_sync_checkpoint` 表中的目录级增量同步检查点，记录各层级目录的 ETag 与修改时间戳，为 WebDAV 树状扫描提供毫秒级子树跳过依据。
-_Avoid_: Scan Cache, Folder State, Sync Token
-
-**Library Sync State**:
-仓储层暴露的反应式曲库同步状态模型（`Idle`、`Scanning`、`Completed`、`Failed`），用于在不阻断前台交互的前提下驱动微动效进度指示。
-_Avoid_: Scan Progress, Sync Status, Background State
-
-**Segmented Scope Pill**:
-搜索界面顶部的一体化双槽滑块胶囊控制器（`SearchScopeSegmentedPill`），选中的栏位覆盖实体高对比主题色药丸滑块，并辅以设备/云端/全局语义图标，在“当前源”与“全库搜索”间提供一目了然的强视觉心智。
-_Avoid_: Filter Tab, Scope Toggle, Search Chip
-
-**Strict Source Isolation**:
-单源检索与元数据持久化管线中的隔离契约。单源检索时严格隔离本地 SAF 文件与远程 WebDAV 文件；播放本地曲目时强制将元数据关联 serverId 钳制为 `LOCAL_STORAGE_ID = 0L`，严禁污染远程节点。
-_Avoid_: Source Bleed, Cross Leak, Shared Server ID
-
-**Physical Composite Deduplication**:
-全库跨源检索时基于物理文件路径建立的唯一规范键机制（本地音轨为 `local:${remotePath}`，远程音轨为 `${serverId}:${remotePath}`），彻底消除索引表、目录快照与元数据缓存重叠引发的单曲重复渲染。
-_Avoid_: ID Match, List Distinct, Duplicate Suppression
-
-**Ad-hoc Queue Insertion**:
-在搜索结果中点击可播放音频文件时，将目标曲目即时插队至当前 Playback Queue 的下一曲（Play Next）或单曲起播，不破坏现有队列所属目录或歌单的主体结构。
-_Avoid_: Queue Overwrite, Single Song Wipe
-
 
 **Playback Mode**:
 播放队列在切歌时的流转规则，包含列表循环（List Loop）、单曲循环（Single Loop）与随机播放（Shuffle）。
-_Avoid_: Play Mode, Repeat Setting
+_Avoid_: Repeat Mode, Loop Type, Play Style
 
-**Streaming Buffer**:
-播放引擎在流式回放过程中暂存在内存或临时缓冲区中的音频数据，播放结束即释放，不落持久化磁盘。
-_Avoid_: Local Cache, Download File, Offline Storage
+**Shuffled Playback Queue**:
+随机播放模式下将待播曲目显式重排后的确定性运行时队列，当前播放曲目固定居首。
+_Avoid_: Random Walk Queue, Virtual Shuffle, Dynamic Index Map
+
+**Order Mirroring**:
+播放队列在随机播放模式下为待播曲目保留的初始未打乱序列镜像，用于在退出随机模式时瞬时无损还原初始队列顺序并精确定位在播曲目。
+_Avoid_: Original Queue Backup, Track History Index, Unshuffled List
+
+**Play Next**:
+将用户选定的一首或多首音轨插入到当前在播音轨正后方的优先待播操作。
+_Avoid_: Insert Track, Priority Queue, Jump Queue
+
+**Queue Origin**:
+播放队列的来源拓扑标识，区分目录闭环回放、跨源歌单闭环回放与临时单曲插队。
+_Avoid_: Queue Type, Play Source, List Kind
+
+**Playback Session**:
+统筹全局播放状态、队列流转、跨源凭据切换与播控指令流转的唯一应用级会话门面。
+_Avoid_: Player Controller, Engine Wrapper, Media Manager
+
+### Playlists, Indexing & Session
+
+**Playlist**:
+用户创建并持久化保存的自定义音频曲目集合，支持跨多个远程 WebDAV 服务器与本地存储混编引用音轨。
+_Avoid_: Song List, Favorite Folder, Collection
+
+**Inactive Playlist Track**:
+因所属存储源离线、认证失效、目录解绑或物理文件缺失而在歌单中呈现为置灰不可用状态的音轨条目。
+_Avoid_: Disabled Song, Dead Link, Error Item
+
+**Track Inactivity Reason**:
+跨源音轨条目因外部环境不可用而呈现置灰状态时的显式领域诊断原因，包含服务器失联、凭据失效与文件缺失。
+_Avoid_: Error Code, Fault Flag, Inactive Status
+
+**Track Identity**:
+音频曲目在跨源体系中的物理唯一复合标识，由所属存储源与物理路径共同确定，用于跨源排重与状态映射。
+_Avoid_: Track UUID, Composite ID, Track Key
+
+**Sync Checkpoint**:
+存储源目录增量同步时记录的变更特征快照，用于识别并跳过未变更的目录子树。
+_Avoid_: Scan Anchor, Cache Timestamp
+
+**Self-Healing**:
+当存储源连通性恢复或底层音频成功解码播放时，自动清除音轨或服务器置灰降级标记的闭环自愈机制。
+_Avoid_: Reset Hook, Retry Loop
+
+**Media Track Index**:
+本地维护的跨源轻量音轨全量索引快照，作为即时检索与当前源过滤的统一权威数据源。
+_Avoid_: Track Mirror, Audio Database, Cache Table, WebDAV Search
+
+**Search Scope**:
+媒体库检索的范围边界，支持在当前选定浏览源与包含所有远程和本地存储的全库范围间无缝切换。
+_Avoid_: Search Filter Mode, Query Range, Search Scope Type
+
+**Lyric Line**:
+按毫秒级时间戳对齐的单行歌词领域模型，聚合主歌词文本与可选双语译文文本。
+_Avoid_: Bilingual Lyric Line, Dual Lyrics, Subtitle Pair
 
 **Playback Session State**:
-本地持久化保存的播放会话现场，记录活跃服务器、播放队列、当前曲目索引及毫秒级播放进度，用于冷启动无缝续播。
+描述播放器当前运行现场的响应式状态，聚合在播曲目、队列、播放模式、底层状态与进度。
+_Avoid_: Transient State, UI Holder
+
+**Playback Session Snapshot**:
+本地持久化保存的播放会话现场数据快照，用于应用进程冷启动后无缝恢复之前的播放上下文。
 _Avoid_: Last Song, Resume Info, History Record
 
-**Directory Session State**:
-针对各个 WebDAV Server 独立持久化记录的最后浏览目录路径，用于在切换服务器或重启应用时无缝还原上次停留的目录层级。
-_Avoid_: Last Folder, Recent Path, Navigation History
-
-**Lyrics Source**:
-与曲目关联的歌词提供方，支持从远程同目录同名 `.lrc` 文件解析或从音频内嵌标签中提取时间轴文本，具备逐行副歌展开、逐字时间戳清洗及主译双语时间对齐能力。由 `TrackMetadataRepository` 内部自主担保双源解析，对外向调用端屏蔽底层网络探测与文件格式提取细节。
-_Avoid_: Lyric File, Lrc Text
-
-**Bilingual Lyric Line**:
-按毫秒级时间戳对齐的结构化单行歌词模型，聚合主歌词文本与可选的译文文本，在播放器中作为单一时间节点高亮与联动跳转。
-_Avoid_: Dual Lyrics, Translated Line, Subtitle Pair
-
-**Audio Focus**:
-Android 系统级音频焦点协商状态，用于响应来电暂停、挂断恢复及系统提示音时的临时音量压低（Ducking）。
-_Avoid_: Sound Priority, Volume Interrupt
-
-**First-Frame Service Elevation**:
-遵循 Android 8.0+ 及更高版本前台服务契约（5 秒限制）的生命周期规范：在 `WebDavMediaService` 创建的首帧同步发起前台服务提升并展示系统通知，彻底解耦网络延迟与流媒体缓冲状态，消除进程被系统杀死的风险。
-_Avoid_: Background Player, Async Notification, Late Elevation
-
-**Authenticated MediaSource**:
-携带活跃 WebDAV Server 凭据头（Basic Authentication）与自定义 SSL 证书配置的流媒体源实例，确保播放器在发生后台元数据富化、自动重试或播放切歌时身份凭证与安全连接不丢失。完全收拢于 `Media3AudioPlayerEngine` 内部私有构建，对外不暴露冗余的适配器接缝。
-_Avoid_: Naked Stream, Anonymous DataSource, Static Player URL
-
-**Non-Disruptive Metadata Enrichment**:
-针对当前正在播放曲目的元数据刷新策略：当后台按需提取到高清封面、完整时长或艺术家信息时，仅响应式广播更新应用会话状态（App Session State）与系统媒体会话（MediaSession），严禁重建底层的播放器时间线（Timeline），确保流式回放无声学卡顿与重缓冲。
-_Avoid_: Timeline Rebuild, Track Reset, Player Reload
-
-**Self-Healing Metadata Cache**:
-由 `TrackMetadataRepository` 内部自主担保的自愈机制：当本地磁盘缩略图因系统清理缓存而丢失，或播放队列加载未解析音轨时，仓储接缝对外先行返回零破坏的安全元数据，并在后台异步发起受限 Range 元数据提取并反向写回本地持久化数据库与落盘，自动修补缺失的专辑标签、时长与封面缩略图，彻底向所有上层调用者屏蔽底层文件存活性校验。
-_Avoid_: Manual Sync, Cold Cache, Static Database
-
-**Virtual Track** [Deprecated by ADR 0034]:
-（已废弃）历史实现中由同目录 `.cue` 文件描述、映射在单一长音频物理文件内部的时间区间切片。自 ADR 0034 起已被彻底移除，播放器全面收敛为 1:1 物理真实音频流回放。
-_Avoid_: Split Audio, Cut Track, Clipped MediaItem
-
-**Cue Sheet Resolver** [Deprecated by ADR 0034]:
-（已废弃）历史实现中负责统筹远程 WebDAV 目录内 `.cue` 文件的探测提取与时间轴分轨解析的深层领域模块。自 ADR 0034 起相关功能与包已物理移除。
-_Avoid_: Cue Helper, Cue Cache, Cue Downloader
-
-**Folder Ring Playback**:
-播放队列以当前所处 Remote Directory 的曲目集合为唯一严格边界。列表循环模式下最后一首播完自动回流至当前目录首曲，严禁跨越父级或同级兄弟目录。
-_Avoid_: Infinite Cross-Folder Playback, Auto Next Folder, Directory Hop
-
-**Pre-roll Stream Buffering**:
-在纯流式、无本地持久化磁盘缓存的约束下，利用长连接复用（Keep-Alive）与双轨预加载机制，在当前曲目接近尾声时提前装填下一曲目起始 PCM 音频流，实现零声学间隙无缝衔接下一首（Gapless Playback）。
-_Avoid_: Local Download, Offline Cache, CacheDataSource
-
-**Track Metadata Resolver**:
-`TrackMetadataRepositoryImpl` 内部私有的深层网络与音频提取适配器，专职负责通过受限网络 HTTP Range 分片提取、自适应两阶段拼接、双源封面探测（内嵌封面优先，同目录外置封面回退并持锁）及图片缩略图本地落盘。对外不设立冗余公共接缝，调用方统一通过 `TrackMetadataRepository` 交互。
-_Avoid_: Metadata Parser, Artwork Helper, Tag Downloader
-
-**Playback Intent**:
-会话层定义的一组原子播控意图，涵盖 play、pause、togglePlayPause、stop、seekTo、skipToNext、skipToPrevious，是所有外部播控来源（系统通知栏 Action、蓝牙/耳机物理按键、应用内 UI）向 `MusicPlayerAppSession` 派发操作的标准信道。任何绕过该接缝直接操作底层 `AudioPlayerEngine` 的调用均为架构违规。
-_Avoid_: Engine Command, Player Action, Direct Player Call
-
-**Cold Restore**:
-应用进程被系统终止后重新冷启动时，`MusicPlayerAppSession` 从持久化 `Playback Session State` 还原播放队列、曲目索引与毫秒级进度，并在底层引擎处于 `Idle` 状态时重新调用 `loadTrackIntoEngine` 完成物理流装载的完整恢复流程。外部 Playback Intent（如通知栏播放键）到达时若绕过会话层直接调用底层引擎，该流程将被静默跳过，导致用户点击播放后无声。
-_Avoid_: App Resume, Session Restore, Player Reload
-
-**Session-Managed Queue Progression**:
-由应用会话层集中管控与仲裁的播放队列流转机制。底层媒体播放引擎仅作为当前曲目或双轨预热的流式渲染容器，丧失自主跨曲跳过权。
-_Avoid_: Autonomous Player Transition, Engine Skip, Internal Playlist Advancement
-
-**Streaming Playback Pipeline**:
-专职负责当前物理音频流与预卷流在播放内核中的解码、PCM 数据拼接、自适应弱网缓冲与状态广播的底层渲染管道。彻底剥离任何播放列表管理、洗牌置换与跨曲调度职责，以纯单流/双流模型向上层提供确定性的音频流回放能力。
-_Avoid_: Playback Queue Controller, Multi-Track Engine, Autonomous Player
-
-**Premature EOF Guard**:
-在纯流式无磁盘缓存回放过程中，由底层数据源（传输字节计数比对）与上层会话层（播放进度与音轨实际时长比对）协同构成的双重熔断防线，杜绝因网络闪断或连接静默关闭被误判为曲目正常播放结束而诱发意外跳集。
-_Avoid_: End-of-Stream Hack, Fake Completion, Silent Disconnect
-
-**Transparent Range Reconnection**:
-底层流式数据源在遭遇读取超时或网络抖动时，在数据传输层记录字节偏移量并以退避重试自动发起 HTTP Range 请求接续流数据的自愈机制。对音频解码器及播放器状态机完全透明，不触发解码管道销毁，不发生进度跳变。
-_Avoid_: Player Re-prepare, Seek Reload, Fatal Source Error
-
-**Deferred Foreground Demotion**:
-在音频播放暂停时延迟注销前台服务身份与系统通知的宽容退避机制。在设定的宽容窗口期内维持前台通知栏与高优先级进程状态，超时未恢复才释放前台身份，消除短暂停顿后被系统快速判定为闲置杀死的风险。
-_Avoid_: Instant Demotion, Service Timeout, Kill Protection
-
-**Dual Streaming Hardware Locks**:
-在纯在线流式音频回放过程中由 CPU 唤醒锁（WakeLock）与 Wi-Fi 高性能锁（WifiLock）构成的硬件级休眠防御体系。回放与数据缓冲时共同加锁防止系统息屏后 CPU 停步及 Wi-Fi 芯片降频节能，暂停时立即释放以兼顾设备能耗。
-_Avoid_: Keep Alive Lock, Power Lock, Network Guard
-
-**OEM Kill Detection & Whitelist Banner**:
-在冷启动时比对上次持久化会话异常终止状态以识别系统强制查杀，并在播放界面展示可跳转至系统电池优化及厂商自启动/神隐模式配置的交互横幅。
-_Avoid_: Battery Dialog, Permission Pop-up, Kill Warning
-
-**Dual-Track Battery Whitelist Flow**:
-在全屏播放器常驻横幅中集成的“原生弹窗快速授权 + 直达应用信息电池策略设置”双轨保活交互机制。既允许用户一键调起 AOSP 原生忽略电池优化弹窗完成 Doze 白名单加入，又面向所有设备提供直达本应用详情页入口与操作指引，引导用户将系统电池策略彻底切换为「无限制（Unrestricted）」，对标主流播放器实践，彻底免疫锁屏降频与进程强杀。
-_Avoid_: Single Popup Flow, Xiaomi-Only Settings
-
-**Becoming Noisy Protection**:
-当音频输出设备（蓝牙音箱/耳机、有线耳机）由于断连、拔出或掉电导致输出流即将不可预期地切换至手机内置扬声器时，应用层主动拦截 `ACTION_AUDIO_BECOMING_NOISY` 广播并触发安全暂停（`appSession.pause()`）的系统级防护机制。
-_Avoid_: Unplug Pause, Disconnect Guard, Mute Event
-
-**Audio Routing Observer**:
-通过 Android `AudioDeviceCallback` 与 `AudioRouting` 建立的应用层音频输出端口感知器，实时追踪物理发声节点并在路由发生漂移时协同底层 AudioSink 刷新缓冲区，防止非标准采样率重混音通道挂起。
-_Avoid_: Bluetooth Monitor, Device Tracker, Headset Listener
-
-**Canonical Sample Rate Resampling**:
-对齐主流流媒体播放器的音频管道防御规范：在进入系统 `AudioTrack` 之前，由播放引擎对低于 `44,100 Hz` 的音频流（如 22050Hz 评书）统一升采样至标准 `44,100 Hz` 双声道 PCM，彻底规避各厂商 Android HAL/DSP 软重采样器在路由切换时的时钟错位与硬件假死缺陷。
-_Avoid_: Audio Upsampling, System Resample, Driver Convert
-
-**Session Persistence Coordinator**:
-专职负责将运行时回放状态（活跃服务器、播放队列、毫秒级进度、服务器最后访问目录）定时落盘至持久层，并在冷启动或异常查杀后无缝重建物理音轨会话的内部私有协调器。对外不设立独立公共接缝，完全内化在会话层内部。
-_Avoid_: Session Saver, History Service, State Manager
-
-**Playback Queue Manager**:
-专职维护运行时播放队列状态机流转的内部私有控制器，集中仲裁列表循环、单曲循环、随机洗牌拓扑、失效曲目平滑跳跃以及单曲即时插队起播，确保队列状态转移的纯粹性与可测性。
-_Avoid_: Playlist Manager, Queue Service, Song Switcher
-
-**Playback Fault Tolerance Guard**:
-专职负责纯在线流式异常自愈与防御的内部私有卫兵，集中管控弱网 15 秒/30 秒看门狗定时器、HTTP 404 与认证凭据失效熔断防死循环，以及不支持 HTTP Range 重建提示等容错状态。
-_Avoid_: Error Handler, Network Retry Helper, Watchdog Service
-
-**Internal Seam Discipline**:
-针对高内聚深层模块的架构防御规范：当单一对外接缝背后承载多项正交子领域逻辑时，必须通过包级私有协作者进行内部接缝化解耦，严格防范单文件代码堆砌膨胀与引力黑洞效应。
-_Avoid_: Single File Monolith, Mega Class, Massive File
-
-**Playback Session Host**:
-专职承载 Android 系统前台服务生命周期、系统媒体会话（MediaSession）、前台通知（Notification）及音频焦点（AudioFocus）的系统级宿主适配器。不再伪装实现底层 `AudioPlayerEngine`，专职单向监听与派发 `MusicPlayerAppSession` 意图。
-_Avoid_: Fake Engine, Forwarding Host, Engine Proxy
-
-**Server Deletion Cascade**:
-在用户注销或删除特定 WebDAV Server 节点时，由本地持久层通过事务原子级联清理其在数据库中沉淀的目录镜像快照（`directory_cache`）、音轨元数据（`track_metadata`）、封面缩略图磁盘文件及网络连接池的清理机制，杜绝存储膨胀与孤儿数据泄露。
-_Avoid_: Orphan Data, Server Wipe, Manual Cache Delete
-
-
-### UI & Navigation
+### UI & Expressive Stage
 
 **Primary Navigation Bar**:
-应用底部的顶层导航容器，以「歌单」（Playlists）—「媒体库」（Directory Browser）—「服务器」（Server Management）有序承载应用三大一级视窗。采用 60dp 紧凑交互区 + 边缘到边缘（Edge-to-Edge）手势区无感浸润，内部以 52dp x 28dp M3 药丸指示舱（圆角 14dp）搭配 20dp 图标与 11sp 标签文字，在 60dp 交互区内绝对垂直居中，具备持久化记忆能力，应用冷启动时精准恢复至上次退出时停留的底栏目的地。
+应用底部的顶层导航栏，承载「歌单」、「媒体库」与「存储」三大一级目的地。
 _Avoid_: Bottom Bar, Tab Bar, Footer Menu
 
-**Shared Axis Navigation Transition**:
-应用全域遵循 Material 3 空间层级规范的共享轴向导航过渡体系。一级底栏目的地切换严格沿水平 X 轴执行 15%~25% 短距方向性推移与交叉淡化（右切自右入、左切自左入），彻底根除全距平移眩晕与瞬态跳变；二级层级下钻（歌单详情、目录子路径）采用 100% 右侧推入伴随父级 30% 视差后退（Parallax Retreat），返回时对等逆向，建立确定性的物理空间心智模型。
-_Avoid_: Instant Tab Swap, Disoriented Jump, Full Width Tab Slide
-
-**Expressive Spring Micro-Interactions**:
-全域可交互组件（卡片、行条目、独立按钮）在手势触按时的物理微缩（按下微缩至 0.97f，抬起果冻回弹）与底栏指示药丸切换时的流体弹性拉伸（Elastic Pill Stretch）微动效体系，杜绝生硬变色与静态死板。
-_Avoid_: Rigid Tap, Static Indicator Jump, Instant Click
-
-
-**Global Dynamic Artwork Palette**:
-全天候全域音轨动态取色系统。在音频回放流转时，由 `ArtworkColorExtractor` 基于 Google 官方 `androidx.palette` 提取多采样色相 Swatch，严格遵循 Material 3 Expressive 的 HCT Tonal Palette 规范，在深色与浅色模式下自适应推导整机大背景、卡片表面容器、底栏药丸指示舱与在播高亮，伴随 450ms 流体呼吸过渡，实现应用全域 100% 随当前在播音轨真实换肤。在全屏大播放器态升格为 `Immersive Stage Player` 沉浸流光舞台。
-_Avoid_: Static Theme, Dark Only Ambient, Wallpaper Color Only, Hardcoded Brand Fallback
-
-**Immersive Stage Player**:
-沉浸舞台式全屏播放器。针对真机在白天浅色模式下若机械套用浅底会导致“四周白斑截断”与“白底白字反差失效（对比度 < 1.2:1）”的物理缺陷，确立分层法则：主界面（媒体库/歌单/服务器）保持深浅双模自适应，而全屏播放器（FullPlayerView）升格为全天候独立音乐舞台。无论系统处于白天浅色还是夜间深色，全屏大背景均统一展现为由当前在播曲目 100% 动态推导的深邃暗调彩色流体舞台（Tone 10~14 暗调流光 + 封面 Vibrant 活力色光晕 + 封面 Muted 辅色上扬流光，黑白封面落入石墨灰阶），全屏文字和控制按键锁定为高对比度纯白（对比度 12.8:1），彻底终结浅底白字发虚看不清的问题。
-_Avoid_: Shallow Player White Bleed, White-on-White Contrast Loss, Fixed Dark Player, Non-Dynamic Stage
-
-**Perceptual Tonal Normalization**:
-感知色调归一化模型。全屏动态取色坚决杜绝针对单一测试曲目的魔法参数或固定底色硬编码，在 HSL / HCT 感知色彩空间中通过严谨数学不变量自适应映射：发散高光源（Top Stop）保留真实色相，优先仲裁透光度更佳的 `lightVibrantSwatch` 并自适应归一化在 Tone 60~72（$S \ge 0.50f$），彻底克服背光暗部像素绑架导致的泥浆暗沉；中间弥散层（Mid Stop）定标在 Tone 32~45；底部基底色（Bottom Stop）随专辑核心色相动态沉降至 Tone 8~9（$L = 0.085f$），确保全曲目在全屏背景上呈现出高度一致的温润透光感。
-_Avoid_: Single Song Overfitting, Muddy Backlight Bias, Hardcoded Hex Background, Inconsistent Glow Brightness
-
-**Track-Driven Zero-Preset Principle**:
-音轨驱动零预设原则。全域动态换肤彻底废除任何硬编码的固定品牌底色（如暗紫 #141022 / #5544B3），当前加载曲目即为界面色彩的唯一驱动源；应用冷启动与运行期严格以在播音轨封面色系为准，无封面时落入中性灰阶，杜绝任何主观预设偏色。
-_Avoid_: Fixed Brand Preset, Synthetic Theme Fallback, Hardcoded Purple Base
-
-**Zero-Tint Monochrome Safeguard**:
-中性无彩色零偏色防线。当封面彩度低于物理阈值（Chroma < 8 或 Saturation < 0.12，如黑白老照片或金属灰质感封面）时，色彩提取系统强制冻结彩色注入，自动落入 Google 纯正中性灰阶（Pure Neutral Slate，深色石墨黑 / 浅色珍珠雪白），物理杜绝中性色相被误染为红色或任何杂色。
-_Avoid_: Grayscale Red Tint, False Hue Injection, Monochromatic Color Cast
-
-**Continuous Fluid Top App Bar**:
-Material 3 Expressive 规范下的连续流体折叠顶栏。展开时左对齐呈现大气标题与次级信息；向上滑动时大标题容器物理高度平滑收缩至 0，无空白悬空占位，且文字全程严格锁定左侧垂直基准线微缩淡入紧凑顶栏（绝不突兀横向居中跳跃），伴随 24px 毛玻璃弥散雾化，顶栏彻底移除冗余加号。
-_Avoid_: Boxy Band Header, Center-Jumping Header, Rigid Instant Collapse
-
-**Floating Search Pill Capsule**:
-纯正 Material 3 Expressive 风格的独立悬浮药丸搜索舱系统。彻底剔除通栏生硬背景大横条与分割线，以 26dp 饱满圆角独立药丸卡片悬浮于顶部安全区（预留 44dp 状态栏避让），集成返回键、放大镜、加粗输入框与清除按钮，无缝呼出全屏搜索视图（SearchView）、历史记录 Chips 及实时过滤切歌。
-_Avoid_: Boxy Search Bar, Search Header Band, Divider Search
-
-**Custom Playlist Reorder Mode**:
-歌单专用的按需编排模式。常规浏览模式下列表彻底隐藏拖拽手柄 `[ ≡ ]` 以保证界面纯净与防止误触；仅在排序菜单显式选择「自定义排序」时，才在条目左侧浮现手柄并于顶栏提供「保存」动作，支持随意跨多曲连续上下拖拽。
-_Avoid_: Permanent Drag Handles, Edit Mode Screen, Always-On Drag
-
-**Threshold-Gated Double-Action Swipe**:
-歌单曲目条目的带物理阈值双向滑动手势体系：左滑为「添加到下一首播放」（触发后平滑弹性归位），右滑为「从歌单中删除」；严格以物理最大宽度的 50% 为触发阈值并伴随清脆触感震动反馈，滑回小于 50% 区域自动安全取消操作，有效免疫误触。
-_Avoid_: Fast Swipe Delete, Unidirectional Dismiss, Immediate Trigger, Sensitive Swipe
-
-**Playlist Track Detail Dialog**:
-由歌单曲目溢出菜单（⋮）调起的专用详细信息视窗，清晰呈现音轨标题、艺术家、专辑、编码格式、实际时长、物理文件大小、来源目录及完整远程路径，并支持在对话框内一键起播。
-_Avoid_: File Info Activity, Song Property Window
-
 **Docked Mini-Player**:
-悬浮驻留在 Primary Navigation Bar 之上（或屏幕底部安全区之上）的全局持久化浮动卡片播控胶囊。在 Material 3 Expressive 体系下高度为 60dp（30dp 饱满圆角），内嵌 42dp 正圆黑胶唱片封面（CircleShape），融入「方案三：流体微光背景填充 (Liquid Fill)」，内部组件 100% 垂直居中且无挤压。具备曲目摘要、播放控制与上滑/点击以容器形变（Container Morphing）平滑展开全屏播放器的能力，在应用内任何页面导航切换时均不中断。
+悬浮驻留在底栏之上的常驻胶囊迷你播放器，承载曲目摘要、进度填充与快捷播控，支持展开为全屏播放器。
 _Avoid_: Bottom Player, Small Player, Playback Bar
 
-**Capsule-to-Fullscreen Morphing**:
-MiniPlayer 药丸胶囊与全屏播放器之间由单一真实实体与插槽架构（Single Component Ownership & Slot Architecture）驱动的连续形态蜕变体系。核心视觉元素（42dp~280dp 封面、主控播放按钮、队列按钮）在全 App 渲染树中自始至终由顶层容器唯一持有并全生命周期常驻；子视图（MiniPlayer 与 FullPlayerView）退化为纯几何插槽（Slot Anchor，仅提供排版尺寸约束与 `onGloballyPositioned` 绝对坐标测量，不创建重复多媒体节点）；在展开过程中，由统一全局时钟源（Global Expansion Progress）驱动空间视差（底栏下沉 80dp、主视窗微缩 0.94f）与核心实体的物理矩阵插值及流体变色（Color Morphing），彻底废除动画终点的 `if (isMorphing)` 销毁逻辑与“替身到真实视图”的偷换（Zero End-State Swaps），实现 100% 物理连贯、零声学卡顿、零闪烁与零视觉跳动的旗舰级形态映射，且 100% 免疫多端机型与平板折叠屏碎片化。
-_Avoid_: Bottom Sheet Popup, Pop-up Overlay, Disjointed Expansion, Fake Player Resize, Mock Transition Swap, Coordinate Drifting Bug, End-State Swap Flashing
+**Morphing Player**:
+统一承载迷你播放器与全屏播放器的单体流体视效容器，在收起与展开状态间平滑无缝形变。
+_Avoid_: Dual Player Instance, Dialog Overlay Player, Sheet Modal Player
 
-**Track Row Height Parity**:
-应用全域（歌单、媒体库、搜索、队列）音频曲目列表行严格遵循双行 72dp 对齐与未知兜底规范。当曲目缺失艺术家或专辑标签信息时，副标题必须回退显示“未知”，严禁完全隐藏导致 ListItem 塌缩为 56dp 单行，保证全列表行高严格一致。
-_Avoid_: Single Line Track Row, Collapsed Subtitle, Inconsistent Track Height
+**Full Player View**:
+由常驻迷你播放器无缝形变展开的全屏播放视图，集成专辑封面、进度控制、发烧级音频规格与同步歌词。
+_Avoid_: Player Activity, Big Player, Music Detail, Full Player Sheet
 
-**Directory Drilldown Loading State**:
-媒体库向未缓存的新目录层级下钻时的即时加载反馈体系。视窗推入时立即清空旧目录快照并居中呈现 `CircularProgressIndicator` 与“正在加载远程目录...”，彻底杜绝父级旧目录内容残留与左侧残影，失败时平滑切换为带重试指引的错误态。
-_Avoid_: Silent Directory Load, Stale Folder Reflection, Sudden Error Flash
+**Floating Search Capsule**:
+常驻媒体库顶部的自适应展开悬浮搜索胶囊条，集成多源过滤分段滑块与即时检索输入。
+_Avoid_: Top Search Bar, Search Header Box, Floating Search Pill Capsule
 
+**Immersive Dark Stage**:
+全屏播放器的全天候深邃暗调流光舞台视觉模型，在任何系统主题下均基于封面动态渲染暗调光晕并锁定高对比纯白前景。
+_Avoid_: Shallow Player White Bleed, Fixed Dark Player, Non-Dynamic Stage
 
-**Liquid Fill MiniPlayer**:
-MiniPlayer 胶囊背景自带进度流动的无侵入进度展示规范。彻底移除了胶囊底部的独立进度指示线，已播部分从左向右带有半透明的主题色微光流体浸润与 1.5dp 前导微光线，内部组件（封面、歌名、播控）在胶囊内 100% 绝对垂直居中。
-_Avoid_: Progress Strip, Bottom Bar Line, Squished MiniPlayer
+**Dynamic Artwork Palette**:
+基于在播音轨专辑封面提取的主色调实时推导应用全域主题色与全屏氛围光晕的动态色彩体系。
+_Avoid_: Static Theme, Wallpaper Color Only, Hardcoded Brand Fallback
 
-**Coordinated Pull-to-Refresh**:
-针对折叠顶栏与下拉刷新共存视窗（如 `DirectoryBrowserScreen`）的手势协同仲裁机制。向上滑动收起顶栏后，向下回滑优先全额消费手势展开顶栏；仅当顶栏 100% 完全展开且列表位于最顶端时，才触发下拉刷新指示器，彻底根除手势抢占死锁。
-_Avoid_: Direct PullRefresh, Gesture Conflict, Swallowed Scroll
-
-**Fluid Ambient Lyrics**:
-Material 3 Expressive 规范下的流体氛围聚焦流歌词体系。全屏沉浸于专辑氛围微光，顶栏整合展示服务与曲目，歌词充盈全屏并以视口半高内边距动态锚定，当前在播行精准锁定屏幕正中央，放大至 22sp 粗体并带有柔和底舱与 3.5dp 左侧垂直原色强调条，非在播行靠左微透渐隐，支持毫秒级精准点击 Seek 跳转。
-_Avoid_: Centered Rigid Lyrics, Duplicated Header Lyrics
-
-**Full Player Sheet**:
-全屏沉浸式大播放器视图，采用单行轻量留白顶栏与自适应封面全域环境光晕背景。顶栏彻底剔除原重复第二行的曲目与歌手信息，单行居中呈现 `正在播放自 $serverName` 来源，杜绝与大封面下方正中信息的视觉冗余。核心告别圆形黑胶唱片，升级为 28dp 方形圆角大封面卡片（Squircle 250x250，具备 clamp 流体宽高比），集成流体进度拖拽、Squircle 圆角方块播控键与全格式动态自适应规格胶囊，通过轻量顶部拖拽条及下滑手势收起，支持左右滑动切换至逐行同步高亮双语歌词页，并在平板/折叠大屏模式下自动自适应为左右双栏分屏。
-_Avoid_: Player Activity, Big Player, Music Detail, Duplicate Header Track Title
-
-**Immersive Chrome**:
-基于 Android Edge-to-Edge 规范的全沉浸式系统窗口体系，应用内容完整延伸至状态栏与手势导航条后方，并根据当前主题色调与封面氛围光晕自适应反转状态栏与导航栏图标明暗反差。
-_Avoid_: Transparent Bars, Fullscreen Hack
-
-**Directory Breadcrumb Strip**:
-由 Material Design 3 胶囊 Chip 构成的可水平滑动的目录路径条，直观展示自活跃服务器根目录至当前层级的继承关系，支持点选任意祖先目录瞬时跳转。
-_Avoid_: Path Bar, Folder Tree, Location Bar
-
-**Contextual Multi-Select Mode**:
-通过长按音频条目激活的临时选择状态机。顶栏转换为包含取消、已选计数与全选动作的 Contextual Top App Bar，底部悬浮胶囊动作条（Floating Pill Bar）提供批量加入歌单与下一首插队播放，物理返回键优先解除该选择态。
-_Avoid_: Edit Mode, Checkbox View, Batch Mode
-
-**Audio Quality Badge**:
-音频曲目列表中标识音频编码格式（如 FLAC、MP3、WAV、WMA）及无损/高解析度层级的视觉标签胶囊。在全屏大播放器下（`AudiophileSpecsBadge`），彻底拔除写死固定金色与 `if (isHiRes)` 导致普通 FLAC/MP3 降级为死灰色的缺陷，全格式统一由当前曲目的动态主色 `primary` 驱动（半透底舱 + 细边框 + 高亮文字），100% 随歌自适应变色。
-_Avoid_: Format Icon, Audio Tag, Hardcoded HiRes Gold, Static Gray Fallback
-
-**Equalizer Track Indicator**:
-媒体库与歌单曲目列表中标识当前回放状态曲目的动态三柱等化器跳动脉冲视觉指示。在媒体库文件行与歌单歌曲详情行（PlaylistTrackRow）双向完全对齐，暂停时静止，播放时跳动，配合主标题 Primary 色加粗高亮，秒级定位当前播放音轨。
-_Avoid_: Playing Icon, Waveform GIF
-
-**WindowSizeClass Fluid Viewport**:
-跨设备响应式流体视口规范。依据 Android WindowSizeClass 标准，彻底废除写死绝对 px/dp，采用百分比、`aspect-ratio` 宽高比与 `clamp()` 动态弹性伸缩，在小屏紧凑设备（360dp）、标准主流设备（392dp）、大屏旗舰设备（430dp）及折叠/平板大屏（660dp+ 双栏并排）下自适应无损呈现。
-_Avoid_: Hardcoded Px Layout, Fixed Width Window, Stretched UI
-
-**Adaptive Themed Icon**:
-遵循 Android Material You 规范的自适应启动图标体系，由极简黑胶唱片与云端流媒体意象前景、自适应背景及单色主题层（Monochrome）构成，自适应跟随系统壁纸动态调色板着色。
-_Avoid_: App Logo, Static Icon
-
-**Playback Queue Bottom Sheet**:
-由应用底部弹出的全高/半高播放队列管理模态抽屉，支持平滑滚动定位当前播放曲目、点选秒级切歌、显示曲目来源及播放模式切换。
-_Avoid_: Queue Dialog, Playlist Popup, Track Selector
-
-**Animated Queue Placement**:
-播放队列在切换随机洗牌（Shuffle）或移除曲目时，由排版插值器驱动全列表音轨平滑滑向新物理槽位的连续重排与缝隙吸附动效体系。
-_Avoid_: Abrupt Reorder, Instant Queue Shuffle, Flash Placement
-
-
-**Bilingual Lyrics View**:
-集成在 Full Player Sheet 内支持主译双语平行排版、单时间戳高亮对齐、逐行平滑滚动及点击精准 Seek 交互的沉浸式歌词呈现容器。
-_Avoid_: Lrc View, Subtitle View, Text Reader
-
+**Monochrome Safeguard**:
+当在播曲目专辑封面为黑白或低饱和度灰阶时，自动回退至中性灰阶以防止界面产生杂色偏色的视觉保护机制。
+_Avoid_: Grayscale Color Leak, Red Tinted Neutral

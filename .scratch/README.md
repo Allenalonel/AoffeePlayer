@@ -14,7 +14,9 @@
 
 ## 活跃任务 (Active)
 
-当前无进行中的活跃任务（全部工单已结项并通过全量验收）。
+| 特性 / 优化项 Slug | 描述 / 规范主题 | 状态 | 规范路径 |
+| :--- | :--- | :---: | :--- |
+| `consolidate-media-library-repository` | 折叠媒体库浏览与索引检索为单一深模块，统一 L1 内存缓存与 B-Tree 检索 (ADR-0036) | `ready-for-agent` | [`consolidate-media-library-repository/spec.md`](consolidate-media-library-repository/spec.md) |
 
 ---
 
@@ -24,10 +26,11 @@
 
 | 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 归档路径 |
 | :--- | :--- | :---: | :---: | :--- |
+| `cross-source-session-decoupling-and-symmetric-storage-lifecycle` | 跨源会话双轨解耦、冷启动播控门控与对称存储生命周期闭环 (ADR-0035) | 1 | Completed | [`docs/adr/0035-cross-source-session-decoupling-and-symmetric-storage-lifecycle.md`](../docs/adr/0035-cross-source-session-decoupling-and-symmetric-storage-lifecycle.md) |
 | `purge-cue-support` | 彻底移除 CUE 虚拟分轨支持、平滑升级 Room v8 数据库、净化会话引擎与全链路代码瘦身 (ADR-0034) | 6 | Completed | [`archive/purge-cue-support/`](archive/purge-cue-support/) |
 | `unified-library-indexing-and-search` | 跨源（本地 SAF + 远程 WebDAV）统一曲库索引与增量即时搜索体系 (ADR-0033) | 4 | Completed | [`archive/unified-library-indexing-and-search/`](archive/unified-library-indexing-and-search/) |
-| `local-storage-support` | 本地存储集成、SAF 多目录挂载与跨源混编播放 (ADR-0033) | 5 | Completed | [`archive/local-storage-support/`](archive/local-storage-support/) |
-| `dynamic-palette-theming` | AndroidX Palette 官方多色提取、M3E 纯正色调阶梯与音轨驱动零预设全域换肤 (ADR-0032) | 4 | Completed | [`archive/dynamic-palette-theming/`](archive/dynamic-palette-theming/) |
+| `local-storage-support` | 本地存储集成、SAF 多目录挂载与跨源混编播放 (ADR-0032b) | 5 | Completed | [`archive/local-storage-support/`](archive/local-storage-support/) |
+| `dynamic-palette-theming` | AndroidX Palette 官方多色提取、M3E 纯正色调阶梯与音轨驱动零预设全域换肤 (ADR-0032a) | 4 | Completed | [`archive/dynamic-palette-theming/`](archive/dynamic-palette-theming/) |
 | `architecture-deepening-and-seam-purification` | v3.3 后续架构深化：清理形变无用数学接缝、内聚媒体库多选、统一音轨行兜底与消除歌单对账重复代码 | 4 | Completed | [`archive/architecture-deepening-and-seam-purification/`](archive/architecture-deepening-and-seam-purification/) |
 | `m3-expressive-motion-system` | Material 3 Expressive 动效系统、单一真实实体胶囊全屏蜕变与层级穿梭 (ADR-0031) | 7 | Completed | [`archive/m3-expressive-motion-system/`](archive/m3-expressive-motion-system/) |
 | `m3-expressive-ui-redesign` | Material 3 Expressive 界面重构、全天候全域动态取色与流体交互 (ADR-0028) | 6 | Completed | [`archive/m3-expressive-ui-redesign/`](archive/m3-expressive-ui-redesign/) |

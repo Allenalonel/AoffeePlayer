@@ -3,22 +3,15 @@ package com.webdav.player.ui.browser
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.Breadcrumb
-import com.webdav.player.domain.model.DirectoryContent
-import com.webdav.player.domain.model.LibrarySearchResult
-import com.webdav.player.domain.model.LibrarySyncResult
 import com.webdav.player.domain.model.LibrarySyncState
-import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.WebDavServer
-import com.webdav.player.domain.repository.DirectoryRepository
-import com.webdav.player.domain.repository.LibrarySearchRepository
+import com.webdav.player.domain.repository.FakeMediaLibraryRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.session.FakeMusicPlayerAppSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -36,8 +29,7 @@ import org.junit.Test
 class DirectoryBrowserSyncTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeMusicPlayerAppSession: FakeMusicPlayerAppSession
-    private lateinit var fakeLibrarySearchRepository: FakeSyncLibrarySearchRepository
-    private lateinit var fakeDirectoryRepository: FakeSyncDirectoryRepository
+    private lateinit var fakeMediaLibraryRepository: FakeMediaLibraryRepository
     private lateinit var fakeServerRepository: FakeSyncServerRepository
     private lateinit var viewModel: DirectoryBrowserViewModel
 
@@ -49,43 +41,6 @@ class DirectoryBrowserSyncTest {
             port = 5005,
             isDefault = true,
         )
-
-    private class FakeSyncLibrarySearchRepository : LibrarySearchRepository {
-        val syncStateFlow = MutableStateFlow<LibrarySyncState>(LibrarySyncState.Idle)
-        var syncServerCalls = mutableListOf<Pair<WebDavServer, Boolean>>()
-
-        override fun search(
-            query: String,
-            serverId: Long?,
-        ): Flow<LibrarySearchResult> = flowOf(LibrarySearchResult())
-
-        override fun observeSyncState(serverId: Long?): Flow<LibrarySyncState> = syncStateFlow.asStateFlow()
-
-        override suspend fun syncServer(
-            server: WebDavServer,
-            force: Boolean,
-        ): LibrarySyncResult {
-            syncServerCalls.add(server to force)
-            syncStateFlow.value = LibrarySyncState.Scanning(progress = 0.5f, currentPath = "/Music/", tracksFound = 42)
-            syncStateFlow.value = LibrarySyncState.Completed(totalTracks = 42)
-            return LibrarySyncResult.Success(totalTracksIndexed = 42)
-        }
-    }
-
-    private class FakeSyncDirectoryRepository : DirectoryRepository {
-        override fun observeDirectoryContent(
-            server: WebDavServer,
-            path: String,
-            forceRefresh: Boolean,
-        ): Flow<DirectoryContent> =
-            flowOf(
-                DirectoryContent(
-                    directory = RemoteDirectory(path = path, name = path.trimEnd('/').substringAfterLast('/')),
-                ),
-            )
-
-        override suspend fun clearCache() {}
-    }
 
     private class FakeSyncServerRepository(
         private val activeServer: WebDavServer,
@@ -108,16 +63,17 @@ class DirectoryBrowserSyncTest {
         Dispatchers.setMain(testDispatcher)
         fakeMusicPlayerAppSession = FakeMusicPlayerAppSession()
         fakeMusicPlayerAppSession.setActiveServer(sampleServer)
-        fakeLibrarySearchRepository = FakeSyncLibrarySearchRepository()
-        fakeDirectoryRepository = FakeSyncDirectoryRepository()
+        fakeMediaLibraryRepository =
+            FakeMediaLibraryRepository().apply {
+                defaultDirectoryFallback = true
+            }
         fakeServerRepository = FakeSyncServerRepository(sampleServer)
 
         viewModel =
             DirectoryBrowserViewModel(
                 serverRepository = fakeServerRepository,
-                directoryRepository = fakeDirectoryRepository,
+                mediaLibraryRepository = fakeMediaLibraryRepository,
                 musicPlayerAppSession = fakeMusicPlayerAppSession,
-                librarySearchRepository = fakeLibrarySearchRepository,
             )
     }
 
@@ -130,17 +86,17 @@ class DirectoryBrowserSyncTest {
     fun autoSync_runsOnServerInitialization_andProjectsReactiveState() =
         runTest {
             advanceUntilIdle()
-            assertEquals(1, fakeLibrarySearchRepository.syncServerCalls.size)
+            assertEquals(1, fakeMediaLibraryRepository.syncServerCalls.size)
             assertEquals(
                 sampleServer.id,
-                fakeLibrarySearchRepository.syncServerCalls
+                fakeMediaLibraryRepository.syncServerCalls
                     .first()
                     .first.id,
             )
-            assertFalse(fakeLibrarySearchRepository.syncServerCalls.first().second)
+            assertFalse(fakeMediaLibraryRepository.syncServerCalls.first().second)
 
             // Repository transitions to Scanning
-            fakeLibrarySearchRepository.syncStateFlow.value =
+            fakeMediaLibraryRepository.syncStateFlow.value =
                 LibrarySyncState.Scanning(progress = 0.2f, currentPath = "/Flac/", tracksFound = 10)
             advanceUntilIdle()
 
@@ -150,7 +106,7 @@ class DirectoryBrowserSyncTest {
             assertEquals("/Flac/", state.currentPath)
 
             // Repository transitions to Completed
-            fakeLibrarySearchRepository.syncStateFlow.value =
+            fakeMediaLibraryRepository.syncStateFlow.value =
                 LibrarySyncState.Completed(totalTracks = 50)
             advanceUntilIdle()
 
@@ -163,13 +119,13 @@ class DirectoryBrowserSyncTest {
     fun onRefresh_triggersDirectoryLoadAndSyncServer() =
         runTest {
             advanceUntilIdle()
-            assertEquals(1, fakeLibrarySearchRepository.syncServerCalls.size)
+            assertEquals(1, fakeMediaLibraryRepository.syncServerCalls.size)
 
             viewModel.onRefresh()
             advanceUntilIdle()
 
-            assertEquals(2, fakeLibrarySearchRepository.syncServerCalls.size)
-            val (calledServer, force) = fakeLibrarySearchRepository.syncServerCalls.last()
+            assertEquals(2, fakeMediaLibraryRepository.syncServerCalls.size)
+            val (calledServer, force) = fakeMediaLibraryRepository.syncServerCalls.last()
             assertEquals(sampleServer.id, calledServer.id)
             assertFalse(force)
         }

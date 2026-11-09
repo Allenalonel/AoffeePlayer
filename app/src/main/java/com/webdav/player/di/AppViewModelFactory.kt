@@ -21,9 +21,8 @@ class AppViewModelFactory(
             modelClass.isAssignableFrom(DirectoryBrowserViewModel::class.java) -> {
                 DirectoryBrowserViewModel(
                     serverRepository = container.serverRepository,
-                    directoryRepository = container.directoryRepository,
+                    mediaLibraryRepository = container.mediaLibraryRepository,
                     musicPlayerAppSession = container.musicPlayerAppSession,
-                    librarySearchRepository = container.librarySearchRepository,
                 ) as T
             }
 
@@ -32,8 +31,7 @@ class AppViewModelFactory(
                     repository = container.serverRepository,
                     webDavClient = container.webDavClient,
                     playlistRepository = container.playlistRepository,
-                    librarySearchRepository = container.librarySearchRepository,
-                    directoryRepository = container.directoryRepository,
+                    mediaLibraryRepository = container.mediaLibraryRepository,
                 ) as T
             }
 

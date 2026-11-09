@@ -4,10 +4,10 @@
 
 **Blocked by:** 01: 建立 MediaLibraryRepository 领域接口与深层实现, 02: 收敛 ServerRepository 存储级联注销至 MediaLibraryRepository
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] `AppContainer` 声明 `val mediaLibraryRepository: MediaLibraryRepository`，并在 `WebDavApplication` 中完成单例初始化与依赖组装。
-- [ ] `DirectoryBrowserViewModel` 构造函数移除 `librarySearchRepository`，统一依赖 `mediaLibraryRepository: MediaLibraryRepository`，收拢目录流、检索流、同步状态与历史记录。
-- [ ] `ServerManagementViewModel` 移除对分离仓储的双重依赖，改由 `mediaLibraryRepository` 触发后台扫描与缓存失效。
-- [ ] `AppViewModelFactory` 同步更新，使用 `mediaLibraryRepository` 装配各 ViewModel。
-- [ ] 重构更新 `DirectoryBrowserViewModelTest`、`DirectoryBrowserSyncTest` 与 `ServerManagementViewModelTest`，全部断言在统一媒体库接缝上 100% 通过。
+- [x] `AppContainer` 声明 `val mediaLibraryRepository: MediaLibraryRepository`，并在 `WebDavApplication` 中完成单例初始化与依赖组装。
+- [x] `DirectoryBrowserViewModel` 构造函数移除 `librarySearchRepository`，统一依赖 `mediaLibraryRepository: MediaLibraryRepository`，收拢目录流、检索流、同步状态与历史记录。
+- [x] `ServerManagementViewModel` 移除对分离仓储的双重依赖，改由 `mediaLibraryRepository` 触发后台扫描与缓存失效。
+- [x] `AppViewModelFactory` 同步更新，使用 `mediaLibraryRepository` 装配各 ViewModel。
+- [x] 重构更新 `DirectoryBrowserViewModelTest`、`DirectoryBrowserSyncTest` 与 `ServerManagementViewModelTest`，全部断言在统一媒体库接缝上 100% 通过。

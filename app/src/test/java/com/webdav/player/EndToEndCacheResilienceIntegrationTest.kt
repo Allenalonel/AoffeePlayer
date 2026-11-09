@@ -19,6 +19,7 @@ import com.webdav.player.data.player.Media3AudioPlayerEngine
 import com.webdav.player.data.player.WebDavMediaSourceBuilder
 import com.webdav.player.data.remote.OkHttpWebDavClient
 import com.webdav.player.data.repository.DirectoryRepositoryImpl
+import com.webdav.player.data.repository.MediaLibraryRepositoryImpl
 import com.webdav.player.data.repository.ServerRepositoryImpl
 import com.webdav.player.data.repository.TrackMetadataRepositoryImpl
 import com.webdav.player.data.service.PlaybackSessionHost
@@ -92,6 +93,7 @@ class EndToEndCacheResilienceIntegrationTest {
     private lateinit var webDavClient: OkHttpWebDavClient
     private lateinit var serverRepository: ServerRepositoryImpl
     private lateinit var directoryRepository: DirectoryRepositoryImpl
+    private lateinit var mediaLibraryRepository: MediaLibraryRepositoryImpl
     private lateinit var mediaSourceBuilder: WebDavMediaSourceBuilder
     private lateinit var trackMetadataRepository: TrackMetadataRepositoryImpl
     private lateinit var sessionStore: FakePlaybackSessionStore
@@ -133,6 +135,17 @@ class EndToEndCacheResilienceIntegrationTest {
                 webDavClient = webDavClient,
                 directoryCacheDao = database.directoryCacheDao(),
                 trackMetadataRepository = trackMetadataRepository,
+            )
+        mediaLibraryRepository =
+            MediaLibraryRepositoryImpl(
+                webDavClient = webDavClient,
+                directoryCacheDao = database.directoryCacheDao(),
+                trackMetadataDao = database.trackMetadataDao(),
+                mediaTrackIndexDao = database.mediaTrackIndexDao(),
+                directorySyncCheckpointDao = database.directorySyncCheckpointDao(),
+                trackMetadataRepository = trackMetadataRepository,
+                context = context,
+                ioDispatcher = testDispatcher,
             )
 
         testServer =
@@ -368,7 +381,7 @@ class EndToEndCacheResilienceIntegrationTest {
             val viewModel =
                 DirectoryBrowserViewModel(
                     serverRepository = serverRepository,
-                    directoryRepository = directoryRepository,
+                    mediaLibraryRepository = mediaLibraryRepository,
                     musicPlayerAppSession = appSession,
                 )
 
@@ -663,7 +676,7 @@ class EndToEndCacheResilienceIntegrationTest {
             val viewModel =
                 DirectoryBrowserViewModel(
                     serverRepository = serverRepository,
-                    directoryRepository = directoryRepository,
+                    mediaLibraryRepository = mediaLibraryRepository,
                     musicPlayerAppSession = appSession,
                 )
 

@@ -24,6 +24,7 @@ import com.webdav.player.di.AppContainer
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.DirectoryRepository
 import com.webdav.player.domain.repository.LibrarySearchRepository
+import com.webdav.player.domain.repository.MediaLibraryRepository
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
@@ -40,6 +41,9 @@ class WebDavApplication :
         private set
 
     override lateinit var trackMetadataRepository: TrackMetadataRepository
+        private set
+
+    override lateinit var mediaLibraryRepository: MediaLibraryRepository
         private set
 
     override lateinit var directoryRepository: DirectoryRepository
@@ -146,6 +150,7 @@ class WebDavApplication :
                 localStorageIndexScanner = localStorageIndexScanner,
                 context = this,
             )
+        this.mediaLibraryRepository = mediaLibraryRepository
         (serverRepository as? ServerRepositoryImpl)?.mediaLibraryRepository = mediaLibraryRepository
 
         librarySearchRepository =
@@ -190,6 +195,9 @@ class WebDavApplication :
                 .clear()
             com.webdav.player.ui.player.ArtworkColorExtractor
                 .clearCache()
+            if (::mediaLibraryRepository.isInitialized) {
+                mediaLibraryRepository.clearMemoryCache()
+            }
         }
     }
 }

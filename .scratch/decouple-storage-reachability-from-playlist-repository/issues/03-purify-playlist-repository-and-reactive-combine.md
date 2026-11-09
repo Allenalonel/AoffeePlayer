@@ -5,7 +5,7 @@
 
 **Blocked by:** 01: 建立 StorageReachabilityTracker 独立深模块与依赖装配, 02: 迁移播控容错、会话宿主与服务器管理至 Tracker
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] 从 `PlaylistRepository` 接口与 `PlaylistRepositoryImpl` 实现中物理删除 `markTrackInactive`、`markServerInactive`、`clearServerUnreachableStatus`、`getInactiveTracksFlow`、`checkTrackReachability` 与 `triggerReachabilitySelfHealing` 6 个连通性方法。
 - [ ] 从 `PlaylistRepositoryImpl` 构造函数中剥离 `webDavClient`、`serverRepository`、`localUriReachabilityChecker` 与 `context`，注入 `storageReachabilityTracker: StorageReachabilityTracker?`。

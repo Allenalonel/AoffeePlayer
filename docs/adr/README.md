@@ -1,6 +1,6 @@
 # Architectural Decision Records (ADRs)
 
-本文档归档了 Aoffee Player 架构演进全生命周期的 37 篇架构决策记录。
+本文档归档了 Aoffee Player 架构演进全生命周期的 38 篇架构决策记录。
 
 > ⚠️ **CONSUMPTION RULE & PRECEDENCE**:
 > 1. **最高权威法典**：所有架构约束与实现不变量以根目录 **`CODING_STANDARDS.md`** 为唯一最高裁决（详见 `AGENTS.md`）；
@@ -51,3 +51,4 @@
 | **0034** | [彻底废弃与物理清除 CUE 虚拟分轨支持](0034-deprecate-and-purge-cue-sheet-support.md) | `Accepted` | 物理清除 4,500+ 行 CUE 模块，回归 1:1 真实文件 |
 | **0035** | [跨源会话双轨解耦与对称存储生命周期](0035-cross-source-session-decoupling-and-symmetric-storage-lifecycle.md) | `Accepted` | browsingServer 与 activeServer 双轨彻底解耦 |
 | **0036** | [折叠媒体库浏览与索引检索为单一深模块](0036-consolidate-media-library-repository.md) | `Accepted` | 折叠 Directory 与 Search 仓储，确立 MediaLibraryRepository 深模块 |
+| **0037** | [存储生命周期级联失效与单向仓储接缝](0037-storage-lifecycle-cascade-and-unidirectional-repository-seams.md) | `Accepted` | 提炼 StorageCascadeInvalidator 窄接口，斩断仓储层环形接缝 |

@@ -52,6 +52,10 @@ _Avoid_: Folder Cache, File Index, Offline Copy
 跨源音乐曲目的聚合统一组织与检索实体，融合目录层级快照、增量同步检查点与跨源音轨全局索引。
 _Avoid_: Directory Tree, File Catalog, Music Store, Media Browser
 
+**Storage Cascade Invalidation**:
+当远程 WebDAV 服务器被删除或本地目录被解绑时，由存储源生命周期单向触发的多级缓存、同步检查点与音轨检索索引的确定性同步级联清理契约。
+_Avoid_: Cache Flush, Delete Hook, Cleanup Listener, Clear Storage
+
 ### Playback & Queue
 
 **Audio Track**:

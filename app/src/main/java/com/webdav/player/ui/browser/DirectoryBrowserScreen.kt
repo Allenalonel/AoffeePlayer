@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -69,6 +70,7 @@ import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.ui.browser.components.AudioTrackItemRow
 import com.webdav.player.ui.browser.components.DirectoryBreadcrumbStrip
 import com.webdav.player.ui.browser.components.DirectoryItemRow
+import com.webdav.player.ui.browser.components.DirectorySortActionButton
 import com.webdav.player.ui.browser.components.EmptyFolderState
 import com.webdav.player.ui.browser.components.ErrorState
 import com.webdav.player.ui.browser.components.FloatingSearchPillCapsule
@@ -331,12 +333,23 @@ fun DirectoryBrowserScreen(
                         navigationIcon = null,
                         actions = {
                             if (!uiState.isInitializing && uiState.activeServer != null) {
+                                val actionsAlpha = if (searchExpansionProgress > 0f) 0f else 1f
+                                val actionsEnabled = searchExpansionProgress == 0f
+
+                                DirectorySortActionButton(
+                                    sortOrder = uiState.sortOrder,
+                                    onSortOrderChanged = { viewModel.onSortOrderChanged(it) },
+                                    enabled = actionsEnabled,
+                                    modifier = Modifier.alpha(actionsAlpha),
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 FilledTonalIconButton(
                                     onClick = { viewModel.onSearchActiveChanged(true) },
+                                    enabled = actionsEnabled,
                                     modifier =
                                         Modifier
                                             .size(38.dp)
-                                            .alpha(if (searchExpansionProgress > 0f) 0f else 1f),
+                                            .alpha(actionsAlpha),
                                     shape = CircleShape,
                                     colors =
                                         IconButtonDefaults.filledTonalIconButtonColors(

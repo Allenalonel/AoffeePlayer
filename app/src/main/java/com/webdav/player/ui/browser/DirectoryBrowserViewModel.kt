@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -66,7 +65,6 @@ class DirectoryBrowserViewModel(
 
         if (musicPlayerAppSession != null) {
             viewModelScope.launch {
-                musicPlayerAppSession.isRestored.first { it }
                 musicPlayerAppSession.sessionState.collect { state ->
                     val (path, id, playing) = resolveActivePlayback(_uiState.value.activeServer, state.currentTrack, state.isPlaying)
                     _uiState.update { it.copy(activeTrackPath = path, activeTrackId = id, isPlaying = playing) }
@@ -75,10 +73,6 @@ class DirectoryBrowserViewModel(
         }
 
         viewModelScope.launch {
-            if (musicPlayerAppSession != null) {
-                musicPlayerAppSession.isRestored.first { it }
-            }
-
             val activeServerFlow: Flow<WebDavServer?> =
                 musicPlayerAppSession?.sessionState?.map { it.browsingServer ?: it.activeServer }?.distinctUntilChanged()
                     ?: serverRepository?.getActiveServer()?.distinctUntilChanged()
@@ -90,16 +84,7 @@ class DirectoryBrowserViewModel(
                     clearSelection()
                     currentLoadJob?.cancel()
 
-                    // If previousServer == null, this is app startup -> restore saved directory from session.
-                    // If previousServer != null, user switched servers -> restore target server's last visited directory.
-                    val initialPath =
-                        if (previousServer == null) {
-                            val sessionPath = musicPlayerAppSession?.sessionState?.value?.currentDirectoryPath
-                            val saved = server?.let { musicPlayerAppSession?.getLastDirectoryForServer(it.id) }
-                            if (!sessionPath.isNullOrBlank() && sessionPath != "/") sessionPath else saved ?: "/"
-                        } else {
-                            server?.let { musicPlayerAppSession?.getLastDirectoryForServer(it.id) } ?: "/"
-                        }
+                    val initialPath = server?.let { mediaLibraryRepository.getLastBrowsingPath(it.id) } ?: "/"
 
                     val session = musicPlayerAppSession?.sessionState?.value
                     val (activeTrackPath, activeTrackId, isPlaying) =
@@ -466,7 +451,7 @@ class DirectoryBrowserViewModel(
                         }
                     }.collect { content ->
                         hasEmittedContent = true
-                        musicPlayerAppSession?.setCurrentDirectoryPath(normalizedPath)
+                        mediaLibraryRepository.setLastBrowsingPath(server.id, normalizedPath)
                         _uiState.update { current ->
                             if (current.currentPath == normalizedPath) {
                                 current.copy(

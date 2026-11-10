@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.update
 class FakeMusicPlayerAppSession(
     initialState: PlayerSessionState = PlayerSessionState(),
     initialProgress: PlaybackProgress = PlaybackProgress.ZERO,
+    initialIsRestored: Boolean = true,
 ) : MusicPlayerAppSession {
     val _sessionState = MutableStateFlow(initialState)
     override val sessionState: StateFlow<PlayerSessionState> = _sessionState.asStateFlow()
@@ -30,8 +31,12 @@ class FakeMusicPlayerAppSession(
     val _playbackProgress = MutableStateFlow(initialProgress)
     override val playbackProgress: StateFlow<PlaybackProgress> = _playbackProgress.asStateFlow()
 
-    private val _isRestored = MutableStateFlow(true)
+    val _isRestored = MutableStateFlow(initialIsRestored)
     override val isRestored: StateFlow<Boolean> = _isRestored.asStateFlow()
+
+    fun setRestored(restored: Boolean) {
+        _isRestored.value = restored
+    }
 
     val serverLastDirectories = mutableMapOf<Long, String>()
 

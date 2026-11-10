@@ -4,11 +4,11 @@
 
 **Blocked by:** 01: Establish Media Library Browsing Cursor Deep Seam and Store
 
-**Status:** in-progress
+**Status:** completed
 
-- [ ] The Directory Browser view model retrieves its initial browsing path directly and synchronously from the Media Library repository on launch.
-- [ ] Directory browser initialization does not suspend or wait on the playback session's restoration state.
-- [ ] Switching between remote WebDAV servers and local storage immediately restores the target source's remembered browsing cursor from the Media Library.
-- [ ] Navigating into folders or breadcrumbs updates the browsing cursor in the Media Library repository and does not invoke directory methods on the playback session.
-- [ ] The Directory Browser view model continues to support audio playback commands and active track indicator observation without regression.
-- [ ] Directory browser unit tests and presentation tests verify immediate initial directory rendering, server switching, and folder navigation without stubbing or mocking directory methods on the playback session facade.
+- [x] The Directory Browser view model retrieves its initial browsing path directly and synchronously from the Media Library repository on launch.
+- [x] Directory browser initialization does not suspend or wait on the playback session's restoration state.
+- [x] Switching between remote WebDAV servers and local storage immediately restores the target source's remembered browsing cursor from the Media Library.
+- [x] Navigating into folders or breadcrumbs updates the browsing cursor in the Media Library repository and does not invoke directory methods on the playback session.
+- [x] The Directory Browser view model continues to support audio playback commands and active track indicator observation without regression.
+- [x] Directory browser unit tests and presentation tests verify immediate initial directory rendering, server switching, and folder navigation without stubbing or mocking directory methods on the playback session facade.

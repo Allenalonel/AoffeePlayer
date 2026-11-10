@@ -172,6 +172,79 @@ class DirectoryBrowserViewModelTest {
         }
 
     @Test
+    fun init_rendersImmediately_withoutWaitingForPlaybackSessionRestoration() =
+        runTest(testDispatcher) {
+            val unrestoredSession = FakeMusicPlayerAppSession(initialIsRestored = false)
+            unrestoredSession.setActiveServer(sampleServer)
+
+            val vm =
+                DirectoryBrowserViewModel(
+                    serverRepository = fakeServerRepository,
+                    mediaLibraryRepository = fakeMediaLibraryRepository,
+                    musicPlayerAppSession = unrestoredSession,
+                )
+            advanceUntilIdle()
+
+            // The directory browser renders immediately without waiting for isRestored
+            val state = vm.uiState.value
+            assertEquals(sampleServer, state.activeServer)
+            assertEquals("/", state.currentPath)
+            assertEquals(rootDir, state.currentDirectory)
+            assertFalse(state.isInitializing)
+            assertFalse(state.isLoading)
+
+            // Reactive playback updates are still collected without blocking
+            val playingTrack =
+                AudioTrack(
+                    id = "1:/root_track.mp3",
+                    serverId = sampleServer.id,
+                    remotePath = "/root_track.mp3",
+                    title = "Root Track",
+                    format = AudioFormat.MP3,
+                )
+            unrestoredSession._sessionState.value =
+                unrestoredSession._sessionState.value.copy(
+                    queue = PlaybackQueue(tracks = listOf(playingTrack), currentIndex = 0),
+                    playbackState = PlaybackState.Playing,
+                )
+            advanceUntilIdle()
+
+            assertEquals("/root_track.mp3", vm.uiState.value.activeTrackPath)
+            assertTrue(vm.uiState.value.isPlaying)
+        }
+
+    @Test
+    fun onDirectoryClicked_updatesBrowsingCursorInMediaLibrary_andDoesNotInvokePlaybackSession() =
+        runTest {
+            advanceUntilIdle()
+
+            viewModel.onDirectoryClicked(RemoteDirectory(path = "/Music/", name = "Music"))
+            advanceUntilIdle()
+
+            assertEquals("/Music/", fakeMediaLibraryRepository.getLastBrowsingPath(sampleServer.id))
+            assertTrue(fakeMediaLibraryRepository.setBrowsingPathCalls.contains(sampleServer.id to "/Music/"))
+            assertTrue(fakeMusicPlayerAppSession.serverLastDirectories.isEmpty())
+        }
+
+    @Test
+    fun onBreadcrumbClicked_updatesBrowsingCursorInMediaLibrary_andDoesNotInvokePlaybackSession() =
+        runTest {
+            advanceUntilIdle()
+
+            viewModel.onDirectoryClicked(RemoteDirectory(path = "/Music/", name = "Music"))
+            advanceUntilIdle()
+            viewModel.onDirectoryClicked(RemoteDirectory(path = "/Music/Rock/", name = "Rock"))
+            advanceUntilIdle()
+            assertEquals("/Music/Rock/", fakeMediaLibraryRepository.getLastBrowsingPath(sampleServer.id))
+
+            viewModel.onBreadcrumbClicked(Breadcrumb(name = "Music", path = "/Music/"))
+            advanceUntilIdle()
+
+            assertEquals("/Music/", fakeMediaLibraryRepository.getLastBrowsingPath(sampleServer.id))
+            assertTrue(fakeMusicPlayerAppSession.serverLastDirectories.isEmpty())
+        }
+
+    @Test
     fun onNavigateUp_returnsToParentDirectory() =
         runTest {
             advanceUntilIdle()
@@ -581,57 +654,48 @@ class DirectoryBrowserViewModelTest {
         }
 
     @Test
-    fun init_restoresSavedDirectoryPathFromAppSession() =
+    fun init_restoresSavedDirectoryPathFromMediaLibrary() =
         runTest(testDispatcher) {
+            val repo = FakeMediaLibraryRepository(fakeTrackMetadataRepository)
             val jazzDir =
                 RemoteDirectory(
                     path = "/Music/Jazz/",
                     name = "Jazz",
                     files = listOf(RemoteFile(name = "miles.mp3", path = "/Music/Jazz/miles.mp3")),
                 )
-            fakeMediaLibraryRepository.setResult("/Music/Jazz/", ListDirectoryResult.Success(jazzDir))
+            repo.setResult("/Music/Jazz/", ListDirectoryResult.Success(jazzDir))
+            repo.setLastBrowsingPath(sampleServer.id, "/Music/Jazz/")
 
-            val sessionWithDir =
-                FakeMusicPlayerAppSession(
-                    com.webdav.player.domain.model.PlayerSessionState(
-                        activeServer = sampleServer,
-                        currentDirectoryPath = "/Music/Jazz/",
-                    ),
-                )
             val vm =
                 DirectoryBrowserViewModel(
                     serverRepository = fakeServerRepository,
-                    mediaLibraryRepository = fakeMediaLibraryRepository,
-                    musicPlayerAppSession = sessionWithDir,
+                    mediaLibraryRepository = repo,
+                    musicPlayerAppSession = fakeMusicPlayerAppSession,
                 )
             advanceUntilIdle()
 
             assertEquals("/Music/Jazz/", vm.uiState.value.currentPath)
             assertEquals(jazzDir, vm.uiState.value.currentDirectory)
             assertTrue(vm.uiState.value.canNavigateUp)
+            assertTrue(fakeMusicPlayerAppSession.serverLastDirectories.isEmpty())
         }
 
     @Test
     fun init_whenRestoredDirectoryPathFails_gracefullyFallsBackToRoot() =
         runTest(testDispatcher) {
-            fakeMediaLibraryRepository.setResult(
+            val repo = FakeMediaLibraryRepository(fakeTrackMetadataRepository)
+            repo.setResult(
                 "/DeletedFolder/",
                 ListDirectoryResult.Failure("404 Not Found"),
             )
-            fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(rootDir))
+            repo.setResult("/", ListDirectoryResult.Success(rootDir))
+            repo.setLastBrowsingPath(sampleServer.id, "/DeletedFolder/")
 
-            val sessionWithDir =
-                FakeMusicPlayerAppSession(
-                    com.webdav.player.domain.model.PlayerSessionState(
-                        activeServer = sampleServer,
-                        currentDirectoryPath = "/DeletedFolder/",
-                    ),
-                )
             val vm =
                 DirectoryBrowserViewModel(
                     serverRepository = fakeServerRepository,
-                    mediaLibraryRepository = fakeMediaLibraryRepository,
-                    musicPlayerAppSession = sessionWithDir,
+                    mediaLibraryRepository = repo,
+                    musicPlayerAppSession = fakeMusicPlayerAppSession,
                 )
             advanceUntilIdle()
 
@@ -726,7 +790,8 @@ class DirectoryBrowserViewModelTest {
             assertEquals(1, viewModel.uiState.value.breadcrumbs.size)
             assertEquals(rootDir, viewModel.uiState.value.currentDirectory)
             assertFalse(viewModel.uiState.value.canNavigateUp)
-            assertEquals("/", fakeMusicPlayerAppSession.sessionState.value.currentDirectoryPath)
+            assertEquals("/", fakeMediaLibraryRepository.getLastBrowsingPath(sampleServer.id))
+            assertTrue(fakeMusicPlayerAppSession.serverLastDirectories.isEmpty())
         }
 
     @Test
@@ -838,6 +903,10 @@ class DirectoryBrowserViewModelTest {
             advanceUntilIdle()
             assertEquals(server2, viewModel.uiState.value.activeServer)
             assertEquals("/Pop/", viewModel.uiState.value.currentPath)
+            assertEquals("/Pop/", fakeMediaLibraryRepository.getLastBrowsingPath(server2.id))
+
+            // Playback session must have zero recorded directory paths
+            assertTrue(fakeMusicPlayerAppSession.serverLastDirectories.isEmpty())
         }
 
     @Test

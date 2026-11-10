@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -34,19 +35,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.SecureFlagPolicy
 import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.ui.theme.AppIcons
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,9 +94,31 @@ fun ManageFoldersSheet(
         onRemoveFolder(uriString)
     }
 
+    val coroutineScope = rememberCoroutineScope()
+    val animateDismiss: () -> Unit = {
+        coroutineScope
+            .launch {
+                sheetState.hide()
+            }.invokeOnCompletion {
+                if (!sheetState.isVisible) {
+                    onDismiss()
+                }
+            }
+    }
+
+    BackHandler(enabled = true) {
+        animateDismiss()
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        properties =
+            ModalBottomSheetProperties(
+                securePolicy = SecureFlagPolicy.Inherit,
+                isFocusable = false,
+                shouldDismissOnBackPress = true,
+            ),
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
@@ -125,7 +152,7 @@ fun ManageFoldersSheet(
                     )
                 }
 
-                IconButton(onClick = onDismiss) {
+                IconButton(onClick = animateDismiss) {
                     Icon(
                         imageVector = AppIcons.Close,
                         contentDescription = "关闭",

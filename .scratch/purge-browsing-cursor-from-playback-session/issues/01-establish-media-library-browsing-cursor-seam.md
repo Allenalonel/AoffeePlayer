@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Media Library repository exposes public methods to read and update the last browsing path for any storage source ID.
 - [ ] Unvisited storage sources return the root directory ("/") by default.

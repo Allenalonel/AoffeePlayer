@@ -4,12 +4,12 @@
 
 **Blocked by:** 01: Domain Sort Engine and Media Library Sort Preference Persistence
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] `DirectoryBrowserUiState` holds the active `DirectorySortOrder`, initialized from the persisted preference in `MediaLibraryRepository`.
-- [ ] `DirectoryBrowserViewModel` exposes a public method `onSortOrderChanged(newOrder: DirectorySortOrder)` that updates UI state, persists the preference, and immediately resorts `currentDirectory` in memory.
-- [ ] Directory content loaded from `MediaLibraryRepository.observeDirectoryContent()` is automatically sorted according to the current sort order before being emitted in UI state.
-- [ ] Switching sort orders operates purely in memory with zero redundant network requests or SQLite database invalidation.
-- [ ] When the user clicks an audio track (`onAudioTrackClicked`), the `RemoteDirectory` passed to `MusicPlayerAppSession.playDirectoryTrack()` contains the files in the exact order visible on screen, guaranteeing that "next track" playback strictly honors the user's sort preference.
-- [ ] In multi-select mode, `selectAllAudioFiles()`, `getSelectedAudioTracks()`, and `playSelectedNext()` maintain the sequence established by the active sort order.
-- [ ] Unit tests in `DirectoryBrowserViewModelTest` verify sort order loading, dynamic in-memory reordering, persistence triggering, and exact playback queue alignment upon track selection.
+- [x] `DirectoryBrowserUiState` holds the active `DirectorySortOrder`, initialized from the persisted preference in `MediaLibraryRepository`.
+- [x] `DirectoryBrowserViewModel` exposes a public method `onSortOrderChanged(newOrder: DirectorySortOrder)` that updates UI state, persists the preference, and immediately resorts `currentDirectory` in memory.
+- [x] Directory content loaded from `MediaLibraryRepository.observeDirectoryContent()` is automatically sorted according to the current sort order before being emitted in UI state.
+- [x] Switching sort orders operates purely in memory with zero redundant network requests or SQLite database invalidation.
+- [x] When the user clicks an audio track (`onAudioTrackClicked`), the `RemoteDirectory` passed to `MusicPlayerAppSession.playDirectoryTrack()` contains the files in the exact order visible on screen, guaranteeing that "next track" playback strictly honors the user's sort preference.
+- [x] In multi-select mode, `selectAllAudioFiles()`, `getSelectedAudioTracks()`, and `playSelectedNext()` maintain the sequence established by the active sort order.
+- [x] Unit tests in `DirectoryBrowserViewModelTest` verify sort order loading, dynamic in-memory reordering, persistence triggering, and exact playback queue alignment upon track selection.

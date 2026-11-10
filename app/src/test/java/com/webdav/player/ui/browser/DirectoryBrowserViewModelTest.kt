@@ -6,6 +6,7 @@ import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.Breadcrumb
 import com.webdav.player.domain.model.DirectoryContent
+import com.webdav.player.domain.model.DirectorySortOrder
 import com.webdav.player.domain.model.LibrarySearchResult
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.PlaybackQueue
@@ -13,6 +14,8 @@ import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
+import com.webdav.player.domain.model.SortDirection
+import com.webdav.player.domain.model.SortField
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.FakeMediaLibraryRepository
@@ -1918,5 +1921,174 @@ class DirectoryBrowserViewModelTest {
 
             // Does not add duplicate calls since path is unchanged
             assertEquals(1, fakeMediaLibraryRepository.setBrowsingPathCalls.size)
+        }
+
+    // =========================================================================
+    // Reactive Directory Sorting & Queue Alignment Tests (Ticket 02)
+    // =========================================================================
+
+    @Test
+    fun initialization_loadsPersistedSortOrder_fromMediaLibraryRepository() =
+        runTest {
+            fakeMediaLibraryRepository.setDirectorySortOrder(
+                DirectorySortOrder(SortField.SIZE, SortDirection.DESCENDING)
+            )
+            val freshViewModel = DirectoryBrowserViewModel(
+                serverRepository = fakeServerRepository,
+                mediaLibraryRepository = fakeMediaLibraryRepository,
+                musicPlayerAppSession = fakeMusicPlayerAppSession,
+            )
+            assertEquals(
+                DirectorySortOrder(SortField.SIZE, SortDirection.DESCENDING),
+                freshViewModel.uiState.value.sortOrder
+            )
+        }
+
+    @Test
+    fun observeDirectoryContent_automaticallySortsDirectoryByActiveSortOrder() =
+        runTest {
+            advanceUntilIdle()
+
+            // Directory with un-sorted files: Track 10, Track 2, Track 1
+            val albumDir = RemoteDirectory(
+                path = "/Album/",
+                name = "Album",
+                subDirectories = listOf(
+                    RemoteDirectory(path = "/Album/Disc2/", name = "Disc 2"),
+                    RemoteDirectory(path = "/Album/Disc10/", name = "Disc 10"),
+                    RemoteDirectory(path = "/Album/Disc1/", name = "Disc 1"),
+                ),
+                files = listOf(
+                    RemoteFile(name = "Track 10.flac", path = "/Album/Track 10.flac", size = 3000),
+                    RemoteFile(name = "Track 2.flac", path = "/Album/Track 2.flac", size = 2000),
+                    RemoteFile(name = "Track 1.flac", path = "/Album/Track 1.flac", size = 1000),
+                )
+            )
+            fakeMediaLibraryRepository.setResult("/Album/", ListDirectoryResult.Success(albumDir))
+
+            viewModel.loadDirectory("/Album/")
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            // Subdirectories naturally sorted at top
+            assertEquals(listOf("Disc 1", "Disc 2", "Disc 10"), state.subDirectories.map { it.name })
+            // Files naturally sorted
+            assertEquals(listOf("Track 1.flac", "Track 2.flac", "Track 10.flac"), state.files.map { it.name })
+        }
+
+    @Test
+    fun onSortOrderChanged_updatesUiState_persistsToRepository_andResortsInMemoryWithoutNetwork() =
+        runTest {
+            advanceUntilIdle()
+
+            val albumDir = RemoteDirectory(
+                path = "/Album/",
+                name = "Album",
+                files = listOf(
+                    RemoteFile(name = "A.flac", path = "/Album/A.flac", size = 1000),
+                    RemoteFile(name = "B.flac", path = "/Album/B.flac", size = 5000),
+                    RemoteFile(name = "C.flac", path = "/Album/C.flac", size = 2000),
+                )
+            )
+            fakeMediaLibraryRepository.setResult("/Album/", ListDirectoryResult.Success(albumDir))
+            viewModel.loadDirectory("/Album/")
+            advanceUntilIdle()
+
+            assertEquals(listOf("A.flac", "B.flac", "C.flac"), viewModel.uiState.value.files.map { it.name })
+
+            val observeCountBefore = fakeMediaLibraryRepository.observeCalls.size
+
+            // Change sort order to SIZE DESCENDING
+            val newOrder = DirectorySortOrder(SortField.SIZE, SortDirection.DESCENDING)
+            viewModel.onSortOrderChanged(newOrder)
+
+            // State and persistence updated
+            assertEquals(newOrder, viewModel.uiState.value.sortOrder)
+            assertEquals(newOrder, fakeMediaLibraryRepository.getDirectorySortOrder())
+
+            // In-memory resorting occurred immediately: 5000 (B), 2000 (C), 1000 (A)
+            assertEquals(listOf("B.flac", "C.flac", "A.flac"), viewModel.uiState.value.files.map { it.name })
+
+            // No new repository observe calls were triggered (in-memory only)
+            assertEquals(observeCountBefore, fakeMediaLibraryRepository.observeCalls.size)
+        }
+
+    @Test
+    fun onAudioTrackClicked_dispatchesSortedDirectoryToPlaybackSession() =
+        runTest {
+            advanceUntilIdle()
+
+            val albumDir = RemoteDirectory(
+                path = "/Album/",
+                name = "Album",
+                files = listOf(
+                    RemoteFile(name = "Track 10.flac", path = "/Album/Track 10.flac", size = 3000),
+                    RemoteFile(name = "Track 2.flac", path = "/Album/Track 2.flac", size = 2000),
+                    RemoteFile(name = "Track 1.flac", path = "/Album/Track 1.flac", size = 1000),
+                )
+            )
+            fakeMediaLibraryRepository.setResult("/Album/", ListDirectoryResult.Success(albumDir))
+            viewModel.loadDirectory("/Album/")
+            advanceUntilIdle()
+
+            val selectedFile = viewModel.uiState.value.files[0] // "Track 1.flac"
+            viewModel.onAudioTrackClicked(selectedFile)
+
+            // Playback session received the sorted directory
+            val dispatchedDir = fakeMusicPlayerAppSession.lastPlayDirectory
+            assertNotNull(dispatchedDir)
+            assertEquals(
+                listOf("Track 1.flac", "Track 2.flac", "Track 10.flac"),
+                dispatchedDir?.files?.map { it.name }
+            )
+            assertEquals(selectedFile, fakeMusicPlayerAppSession.lastPlaySelectedFile)
+        }
+
+    @Test
+    fun selectAllAudioFiles_and_playSelectedNext_followsSortOrder() =
+        runTest {
+            advanceUntilIdle()
+
+            val initialTrack = AudioTrack(
+                id = "1:/initial.mp3",
+                serverId = 1L,
+                remotePath = "/initial.mp3",
+                title = "Initial Track",
+                format = AudioFormat.MP3,
+            )
+            fakeMusicPlayerAppSession.playTrack(initialTrack)
+
+            val albumDir = RemoteDirectory(
+                path = "/Album/",
+                name = "Album",
+                files = listOf(
+                    RemoteFile(name = "Track 1.flac", path = "/Album/Track 1.flac", size = 1000),
+                    RemoteFile(name = "Track 2.flac", path = "/Album/Track 2.flac", size = 5000),
+                    RemoteFile(name = "Track 3.flac", path = "/Album/Track 3.flac", size = 3000),
+                )
+            )
+            fakeMediaLibraryRepository.setResult("/Album/", ListDirectoryResult.Success(albumDir))
+            viewModel.loadDirectory("/Album/")
+            advanceUntilIdle()
+
+            // Sort by SIZE DESCENDING: Track 2 (5000), Track 3 (3000), Track 1 (1000)
+            viewModel.onSortOrderChanged(DirectorySortOrder(SortField.SIZE, SortDirection.DESCENDING))
+
+            viewModel.selectAllAudioFiles()
+            val selectedTracks = viewModel.getSelectedAudioTracks()
+
+            assertEquals(3, selectedTracks.size)
+            assertEquals("1:/Album/Track 2.flac", selectedTracks[0].id)
+            assertEquals("1:/Album/Track 3.flac", selectedTracks[1].id)
+            assertEquals("1:/Album/Track 1.flac", selectedTracks[2].id)
+
+            // playSelectedNext dispatches them
+            viewModel.playSelectedNext()
+            val queuedTracks = fakeMusicPlayerAppSession.sessionState.value.queue.tracks
+            assertEquals(4, queuedTracks.size)
+            assertEquals("1:/initial.mp3", queuedTracks[0].id)
+            assertEquals("1:/Album/Track 2.flac", queuedTracks[1].id)
+            assertEquals("1:/Album/Track 3.flac", queuedTracks[2].id)
+            assertEquals("1:/Album/Track 1.flac", queuedTracks[3].id)
         }
 }

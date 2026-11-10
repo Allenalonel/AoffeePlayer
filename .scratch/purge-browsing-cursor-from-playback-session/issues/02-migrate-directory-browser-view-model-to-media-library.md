@@ -4,7 +4,7 @@
 
 **Blocked by:** 01: Establish Media Library Browsing Cursor Deep Seam and Store
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Directory Browser view model retrieves its initial browsing path directly and synchronously from the Media Library repository on launch.
 - [ ] Directory browser initialization does not suspend or wait on the playback session's restoration state.

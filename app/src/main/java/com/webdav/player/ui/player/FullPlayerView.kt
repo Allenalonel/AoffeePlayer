@@ -117,13 +117,9 @@ fun FullPlayerView(
             pageCount = { 2 },
         )
 
-    // Intercept back button to close sheet or collapse to mini-player when enabled
-    BackHandler(enabled = enableBackHandler) {
-        if (showQueueSheet) {
-            showQueueSheet = false
-        } else {
-            onCollapse()
-        }
+    // Intercept back button to collapse to mini-player when enabled (yields to bottom sheet when open)
+    BackHandler(enabled = enableBackHandler && !showQueueSheet) {
+        onCollapse()
     }
 
     val currentTrack = sessionState.currentTrack
@@ -324,7 +320,7 @@ fun FullPlayerView(
                                         currentTrack = currentTrack,
                                         sessionState = sessionState,
                                         onArtworkClick = {},
-                                        modifier = downwardSwipeModifier,
+                                        modifier = Modifier,
                                         isArtworkVisible = isArtworkVisible,
                                         onArtworkPositioned = onArtworkPositioned,
                                     )
@@ -375,7 +371,7 @@ fun FullPlayerView(
                                                     pagerState.animateScrollToPage(1)
                                                 }
                                             },
-                                            modifier = downwardSwipeModifier,
+                                            modifier = Modifier,
                                             isArtworkVisible = isArtworkVisible,
                                             onArtworkPositioned = onArtworkPositioned,
                                         )

@@ -427,13 +427,9 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Maintain BackHandler to collapse player when expanded or dismiss queue sheet
-                    BackHandler(enabled = navState.isFullPlayerExpanded || showQueueSheet) {
-                        if (showQueueSheet) {
-                            showQueueSheet = false
-                        } else {
-                            coordinator.collapseFullPlayer()
-                        }
+                    // Maintain BackHandler to collapse player when expanded (yields to bottom sheet when open)
+                    BackHandler(enabled = navState.isFullPlayerExpanded && !showQueueSheet) {
+                        coordinator.collapseFullPlayer()
                     }
 
                     // Unified Continuous Morphing Player Container

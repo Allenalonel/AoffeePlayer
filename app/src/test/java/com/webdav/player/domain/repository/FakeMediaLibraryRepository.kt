@@ -2,6 +2,7 @@ package com.webdav.player.domain.repository
 
 import com.webdav.player.data.repository.LocalStorageIndexScanner
 import com.webdav.player.domain.model.DirectoryContent
+import com.webdav.player.domain.model.DirectorySortOrder
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LibrarySearchResult
 import com.webdav.player.domain.model.LibrarySyncResult
@@ -220,6 +221,17 @@ open class FakeMediaLibraryRepository(
         val normalized = if (path.isBlank()) "/" else RemoteDirectory.normalizePath(path)
         setBrowsingPathCalls.add(serverId to normalized)
         browsingCursors[serverId] = normalized
+    }
+
+    // Sort Order Retention
+    var currentSortOrder: DirectorySortOrder = DirectorySortOrder()
+    val setSortOrderCalls = mutableListOf<DirectorySortOrder>()
+
+    override fun getDirectorySortOrder(): DirectorySortOrder = currentSortOrder
+
+    override fun setDirectorySortOrder(sortOrder: DirectorySortOrder) {
+        setSortOrderCalls.add(sortOrder)
+        currentSortOrder = sortOrder
     }
 
     // Unified Storage Deletion Cascade Invalidation

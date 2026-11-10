@@ -4,11 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.Breadcrumb
+import com.webdav.player.domain.model.DirectorySortOrder
 import com.webdav.player.domain.model.LibrarySearchResult
 import com.webdav.player.domain.model.LibrarySyncState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.domain.model.withSortOrder
 import com.webdav.player.domain.repository.MediaLibraryRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.session.MusicPlayerAppSession
@@ -30,7 +32,7 @@ class DirectoryBrowserViewModel(
     val mediaLibraryRepository: MediaLibraryRepository,
     private val musicPlayerAppSession: MusicPlayerAppSession? = null,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(DirectoryBrowserUiState())
+    private val _uiState = MutableStateFlow(DirectoryBrowserUiState(sortOrder = mediaLibraryRepository.getDirectorySortOrder()))
     val uiState: StateFlow<DirectoryBrowserUiState> = _uiState.asStateFlow()
 
     private val _selectedFilePaths = MutableStateFlow<Set<String>>(emptySet())
@@ -126,6 +128,18 @@ class DirectoryBrowserViewModel(
 
     fun onDirectoryClicked(directory: RemoteDirectory) {
         loadDirectory(directory.path, forceRefresh = false)
+    }
+
+    fun onSortOrderChanged(newOrder: DirectorySortOrder) {
+        if (_uiState.value.sortOrder == newOrder) return
+        mediaLibraryRepository.setDirectorySortOrder(newOrder)
+        _uiState.update { current ->
+            val sortedDirectory = current.currentDirectory?.withSortOrder(newOrder)
+            current.copy(
+                sortOrder = newOrder,
+                currentDirectory = sortedDirectory,
+            )
+        }
     }
 
     fun onBreadcrumbClicked(breadcrumb: Breadcrumb) {
@@ -454,8 +468,9 @@ class DirectoryBrowserViewModel(
                         hasEmittedContent = true
                         _uiState.update { current ->
                             if (current.currentPath == normalizedPath) {
+                                val sortedDirectory = content.directory.withSortOrder(current.sortOrder)
                                 current.copy(
-                                    currentDirectory = content.directory,
+                                    currentDirectory = sortedDirectory,
                                     metadataMap = content.metadataMap,
                                     isLoading = false,
                                     isRefreshing = content.isEnriching,

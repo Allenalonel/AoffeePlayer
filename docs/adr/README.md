@@ -54,3 +54,4 @@
 | **0037** | [存储生命周期级联失效与单向仓储接缝](0037-storage-lifecycle-cascade-and-unidirectional-repository-seams.md) | `Accepted` | 提炼 StorageCascadeInvalidator 窄接口，斩断仓储层环形接缝 |
 | **0038** | [从歌单仓储解耦存储源连通性追踪器与内存响应式自愈](0038-decouple-storage-reachability-from-playlist-repository.md) | `Accepted` | 提炼 StorageReachabilityTracker 深模块，解耦播控/歌单与内存状态流 |
 | **0039** | [从播控会话剥离浏览游标并收敛至媒体库深模块](0039-purge-browsing-cursor-from-playback-session.md) | `Accepted` | 消除目录切换 DataStore 刷盘风暴，彻底落实 ADR-0035 终局解耦 |
+| **0040** | [媒体库目录排序策略与播控队列对齐架构](0040-directory-sort-order-and-queue-alignment.md) | `Accepted` | 确定自然排序、文件夹置顶、表现层实时重排与播控队列强对齐不变量 |

@@ -1,6 +1,7 @@
 package com.webdav.player.domain.repository
 
 import com.webdav.player.domain.model.DirectoryContent
+import com.webdav.player.domain.model.DirectorySortOrder
 import com.webdav.player.domain.model.LibrarySearchResult
 import com.webdav.player.domain.model.LibrarySyncResult
 import com.webdav.player.domain.model.LibrarySyncState
@@ -59,6 +60,11 @@ interface MediaLibraryRepository : StorageCascadeInvalidator {
         serverId: Long,
         path: String,
     )
+
+    // Sort Order Retention
+    fun getDirectorySortOrder(): DirectorySortOrder
+
+    fun setDirectorySortOrder(sortOrder: DirectorySortOrder)
 
     // Unified Storage Deletion Cascade Invalidation
     override suspend fun clearStorageData(serverId: Long)

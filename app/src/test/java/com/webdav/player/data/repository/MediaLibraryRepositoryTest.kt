@@ -17,6 +17,7 @@ import com.webdav.player.data.local.TrackMetadataEntity
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
+import com.webdav.player.domain.model.DirectorySortOrder
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LibrarySyncState
 import com.webdav.player.domain.model.ListDirectoryResult
@@ -24,6 +25,8 @@ import com.webdav.player.data.local.LocalStorageFolderEntity
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
+import com.webdav.player.domain.model.SortDirection
+import com.webdav.player.domain.model.SortField
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import kotlinx.coroutines.runBlocking
@@ -1024,6 +1027,32 @@ class MediaLibraryRepositoryTest {
             repository.clearLocalFolderData(unmountedUri)
             assertEquals(otherSubfolder, repository.getLastBrowsingPath(LOCAL_STORAGE_ID))
         }
+
+    @Test
+    fun getDirectorySortOrder_returnsDefaultNameAscending_onCleanInstall() {
+        val sortOrder = repository.getDirectorySortOrder()
+        assertEquals(DirectorySortOrder(SortField.NAME, SortDirection.ASCENDING), sortOrder)
+    }
+
+    @Test
+    fun setDirectorySortOrder_updatesAndPersistsAcrossRepositoryInstances() {
+        val newOrder = DirectorySortOrder(SortField.LAST_MODIFIED, SortDirection.DESCENDING)
+        repository.setDirectorySortOrder(newOrder)
+        assertEquals(newOrder, repository.getDirectorySortOrder())
+
+        val secondRepo = MediaLibraryRepositoryImpl(
+            webDavClient = fakeWebDavClient,
+            directoryCacheDao = directoryCacheDao,
+            trackMetadataDao = trackMetadataDao,
+            mediaTrackIndexDao = mediaTrackIndexDao,
+            directorySyncCheckpointDao = checkpointDao,
+            trackMetadataRepository = fakeTrackMetadataRepository,
+            localStorageDirectoryResolver = localResolver,
+            localStorageFolderDao = localStorageFolderDao,
+            context = context,
+        )
+        assertEquals(newOrder, secondRepo.getDirectorySortOrder())
+    }
 
     // =========================================================================
     // Test Doubles (Fakes)

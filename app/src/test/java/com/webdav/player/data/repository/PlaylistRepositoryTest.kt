@@ -428,7 +428,8 @@ class PlaylistRepositoryTest {
             val entryId = repository.addTrackToPlaylist(playlistId, track)
 
             // Simulate legacy dirty state on disk where entity is stamped inactive
-            dao.updateTrackInactiveStatus(1L, "/dirty.mp3", true, InactiveReason.SERVER_UNREACHABLE.name)
+            val currentEntity = dao.getTrackById(entryId)!!
+            dao.updateTracks(listOf(currentEntity.copy(isInactive = true, inactiveReason = InactiveReason.SERVER_UNREACHABLE.name)))
             val entityOnDisk = dao.getTrackById(entryId)!!
             assertTrue("Disk entity is stamped inactive", entityOnDisk.isInactive)
 

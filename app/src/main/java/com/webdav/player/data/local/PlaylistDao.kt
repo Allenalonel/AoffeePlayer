@@ -106,41 +106,6 @@ interface PlaylistDao {
         coverThumbnailPath: String?,
     ): Int
 
-    @Query(
-        "UPDATE playlist_tracks SET isInactive = :isInactive, inactiveReason = :reason WHERE serverId = :serverId AND remotePath = :remotePath",
-    )
-    suspend fun updateTrackInactiveStatus(
-        serverId: Long,
-        remotePath: String,
-        isInactive: Boolean,
-        reason: String?,
-    ): Int
-
-    @Query("SELECT DISTINCT serverId FROM playlist_tracks WHERE isInactive = 1 AND inactiveReason = :reason")
-    suspend fun getDistinctServerIdsForInactiveReason(reason: String): List<Long>
-
-    @Query(
-        "SELECT DISTINCT serverId FROM playlist_tracks WHERE isInactive = 1 AND (inactiveReason = 'SERVER_UNREACHABLE' OR inactiveReason = 'SERVER_CREDENTIAL_INVALID')",
-    )
-    suspend fun getDistinctServerIdsForInactiveServers(): List<Long>
-
-    @Query("UPDATE playlist_tracks SET isInactive = 1, inactiveReason = :reason WHERE serverId = :serverId")
-    suspend fun markServerInactiveStatus(
-        serverId: Long,
-        reason: String = "SERVER_UNREACHABLE",
-    ): Int
-
-    @Query(
-        "UPDATE playlist_tracks SET isInactive = 0, inactiveReason = NULL WHERE serverId = :serverId AND (inactiveReason = 'SERVER_UNREACHABLE' OR inactiveReason = 'SERVER_CREDENTIAL_INVALID')",
-    )
-    suspend fun clearServerInactiveStatus(serverId: Long): Int
-
-    @Query("UPDATE playlist_tracks SET isInactive = 0, inactiveReason = NULL WHERE serverId = :serverId AND inactiveReason = :reason")
-    suspend fun clearServerUnreachableStatus(
-        serverId: Long,
-        reason: String = "SERVER_UNREACHABLE",
-    ): Int
-
     @Query("SELECT * FROM playlist_tracks WHERE id = :trackEntryId LIMIT 1")
     suspend fun getTrackById(trackEntryId: Long): PlaylistTrackEntity?
 
@@ -173,7 +138,4 @@ interface PlaylistDao {
 
     @Query("SELECT * FROM playlist_tracks WHERE serverId = :serverId")
     suspend fun getTracksByServerId(serverId: Long): List<PlaylistTrackEntity>
-
-    @Query("SELECT * FROM playlist_tracks WHERE serverId = :serverId AND isInactive = 1")
-    suspend fun getInactiveTracksForServer(serverId: Long): List<PlaylistTrackEntity>
 }

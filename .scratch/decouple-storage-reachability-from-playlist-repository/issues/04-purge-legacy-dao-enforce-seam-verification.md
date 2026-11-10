@@ -5,10 +5,10 @@
 
 **Blocked by:** 03: 净化歌单仓储并以响应式组合重构歌单详情状态
 
-**Status:** in-progress
+**Status:** completed
 
-- [ ] 从 `PlaylistDao` 中物理删除废弃的 8 个 `isInactive` 更新与查询方法（`updateTrackInactiveStatus`、`markServerInactiveStatus`、`clearServerInactiveStatus`、`getDistinctServerIdsForInactiveServers` 等）。
-- [ ] 确保 `PlaylistTrackEntity` 保留现存 `isInactive = false` 与 `inactiveReason = null` 列定义，无需变更 Room 数据库版本。
-- [ ] 在 `PackagingSeamVerificationTest` 中增加针对逆向依赖的静态检查：断言 `PlaybackFaultTolerance.kt` 严禁反向 `import com.webdav.player.domain.repository.PlaylistRepository`；断言 `PlaylistRepositoryImpl.kt` 严禁引入 `WebDavClient`。
-- [ ] 运行 `./gradlew testDebugUnitTest` 验证全量单元测试 100% 绿色通过。
-- [ ] 运行 `./gradlew verifyReleasePackaging` 验证 Release 构建与单架构 ABI 预算达标。
+- [x] 从 `PlaylistDao` 中物理删除废弃的 8 个 `isInactive` 更新与查询方法（`updateTrackInactiveStatus`、`markServerInactiveStatus`、`clearServerInactiveStatus`、`getDistinctServerIdsForInactiveServers` 等）。
+- [x] 确保 `PlaylistTrackEntity` 保留现存 `isInactive = false` 与 `inactiveReason = null` 列定义，无需变更 Room 数据库版本。
+- [x] 在 `PackagingSeamVerificationTest` 中增加针对逆向依赖的静态检查：断言 `PlaybackFaultTolerance.kt` 严禁反向 `import com.webdav.player.domain.repository.PlaylistRepository`；断言 `PlaylistRepositoryImpl.kt` 严禁引入 `WebDavClient`。
+- [x] 运行 `./gradlew testDebugUnitTest` 验证全量单元测试 100% 绿色通过。
+- [x] 运行 `./gradlew verifyReleasePackaging` 验证 Release 构建与单架构 ABI 预算达标。

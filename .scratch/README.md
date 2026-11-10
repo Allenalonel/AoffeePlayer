@@ -14,10 +14,7 @@
 
 ## 活跃任务 (Active)
 
-| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 规格与工单路径 |
-| :--- | :--- | :---: | :---: | :--- |
-| `directory-file-sorting` | 媒体库目录排序策略与播控队列对齐体系 (ADR-0040) | 3 | Ready for Agent | [`.scratch/directory-file-sorting/spec.md`](directory-file-sorting/spec.md) |
-
+当前无活跃任务。所有功能特性与技术债务重构均已结项并归档至 [`archive/`](archive/)。
 
 ---
 
@@ -27,6 +24,7 @@
 
 | 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 归档路径 |
 | :--- | :--- | :---: | :---: | :--- |
+| `directory-file-sorting` | 媒体库目录排序策略与播控队列对齐体系 (ADR-0040) | 3 | Completed | [`archive/directory-file-sorting/`](archive/directory-file-sorting/) |
 | `purge-browsing-cursor-from-playback-session` | 从播控会话剥离浏览游标并收敛至媒体库深模块 (ADR-0039) | 4 | Completed | [`archive/purge-browsing-cursor-from-playback-session/`](archive/purge-browsing-cursor-from-playback-session/) |
 | `decouple-storage-reachability-from-playlist-repository` | 从歌单仓储解耦存储源连通性追踪器与内存响应式自愈体系 (ADR-0038) | 4 | Completed | [`archive/decouple-storage-reachability-from-playlist-repository/`](archive/decouple-storage-reachability-from-playlist-repository/) |
 | `decouple-storage-lifecycle-and-repository-seams` | 解耦存储源生命周期并消除仓储层环形接缝，建立单向不可变装配管道 (ADR-0037) | 4 | Completed | [`archive/decouple-storage-lifecycle-and-repository-seams/`](archive/decouple-storage-lifecycle-and-repository-seams/) |

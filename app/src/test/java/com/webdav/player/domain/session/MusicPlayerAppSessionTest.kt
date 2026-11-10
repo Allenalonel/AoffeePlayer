@@ -1203,7 +1203,6 @@ class MusicPlayerAppSessionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = testServer.id,
-                    currentDirectoryPath = "/SavedFolder/",
                     queueTracks = listOf(savedTrack),
                     currentTrackIndex = 0,
                     positionMs = 88000L,
@@ -1226,7 +1225,6 @@ class MusicPlayerAppSessionTest {
             assertEquals(savedTrack, state.currentTrack)
             assertTrue(state.isPaused)
             assertEquals(PlaybackMode.SINGLE_LOOP, state.playbackMode)
-            assertEquals("/SavedFolder/", state.currentDirectoryPath)
 
             val progress = restoredSession.playbackProgress.value
             assertEquals(88000L, progress.currentPositionMs)

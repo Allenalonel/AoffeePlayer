@@ -102,7 +102,6 @@ class DataStorePlaybackSessionStoreTest {
             val original =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Rock/",
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 1,
                     positionMs = 65432L,
@@ -115,7 +114,6 @@ class DataStorePlaybackSessionStoreTest {
             val restored = repository.getSavedSession()
             assertNotNull(restored)
             assertEquals(1L, restored?.activeServerId)
-            assertEquals("/Music/Rock/", restored?.currentDirectoryPath)
             assertEquals(2, restored?.queueTracks?.size)
             assertEquals("Track One", restored?.queueTracks?.get(0)?.title)
             assertEquals("Artist A", restored?.queueTracks?.get(0)?.artist)
@@ -140,7 +138,6 @@ class DataStorePlaybackSessionStoreTest {
             val original =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/",
                     queueTracks = emptyList(),
                     currentTrackIndex = 0,
                     positionMs = 12000L,
@@ -165,7 +162,6 @@ class DataStorePlaybackSessionStoreTest {
             val original =
                 PlaybackSessionData(
                     activeServerId = 2L,
-                    currentDirectoryPath = "/Jazz/",
                     queueTracks = emptyList(),
                     currentTrackIndex = -1,
                     positionMs = 1000L,
@@ -185,7 +181,6 @@ class DataStorePlaybackSessionStoreTest {
             // First save with corrupted tracks JSON
             repository.saveRawForTesting(
                 serverId = 3L,
-                dirPath = "/Corrupted/",
                 tracksJson = "NOT_A_VALID_JSON_ARRAY{{{",
                 trackIndex = 0,
                 posMs = 5000L,
@@ -195,7 +190,6 @@ class DataStorePlaybackSessionStoreTest {
             val restored = repository.getSavedSession()
             assertNotNull(restored)
             assertEquals(3L, restored?.activeServerId)
-            assertEquals("/Corrupted/", restored?.currentDirectoryPath)
             assertTrue(restored?.queueTracks?.isEmpty() == true)
             assertEquals(0, restored?.currentTrackIndex)
             assertEquals(5000L, restored?.positionMs)
@@ -208,7 +202,6 @@ class DataStorePlaybackSessionStoreTest {
             val initial =
                 PlaybackSessionData(
                     activeServerId = 5L,
-                    currentDirectoryPath = "/Music/",
                     queueTracks = emptyList(),
                     currentTrackIndex = 0,
                     positionMs = 1000L,
@@ -228,35 +221,5 @@ class DataStorePlaybackSessionStoreTest {
             assertEquals(5L, restored?.activeServerId)
             assertEquals(25000L, restored?.positionMs)
             assertEquals(PlaybackMode.SINGLE_LOOP, restored?.playbackMode)
-        }
-
-    @Test
-    fun saveSession_withServerLastDirectories_roundTripsCorrectly() =
-        runTest(testDispatcher) {
-            val original =
-                PlaybackSessionData(
-                    activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Pop/",
-                    queueTracks = emptyList(),
-                    currentTrackIndex = -1,
-                    positionMs = 0L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
-                    serverLastDirectories =
-                        mapOf(
-                            1L to "/Music/Pop/",
-                            2L to "/Jazz/Miles/",
-                            3L to "/Classical/Bach/",
-                        ),
-                )
-
-            repository.saveSession(original)
-
-            val restored = repository.getSavedSession()
-            assertNotNull(restored)
-            assertEquals(1L, restored?.activeServerId)
-            assertEquals(3, restored?.serverLastDirectories?.size)
-            assertEquals("/Music/Pop/", restored?.serverLastDirectories?.get(1L))
-            assertEquals("/Jazz/Miles/", restored?.serverLastDirectories?.get(2L))
-            assertEquals("/Classical/Bach/", restored?.serverLastDirectories?.get(3L))
         }
 }

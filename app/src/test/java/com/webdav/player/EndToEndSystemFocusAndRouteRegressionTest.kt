@@ -431,7 +431,6 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                     positionMs = 15_000L,
                     cleanExit = false,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    currentDirectoryPath = "/music/",
                 )
             sessionStore.saveSession(savedSessionData)
 
@@ -511,7 +510,6 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                     positionMs = 15_000L,
                     cleanExit = false,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    currentDirectoryPath = "/music/",
                 )
             sessionStore.saveSession(savedSessionData)
 

@@ -34,12 +34,10 @@ class DataStorePlaybackSessionStore(
 
     companion object {
         private val KEY_ACTIVE_SERVER_ID = longPreferencesKey("active_server_id")
-        private val KEY_CURRENT_DIRECTORY_PATH = stringPreferencesKey("current_directory_path")
         private val KEY_QUEUE_TRACKS_JSON = stringPreferencesKey("queue_tracks_json")
         private val KEY_CURRENT_TRACK_INDEX = intPreferencesKey("current_track_index")
         private val KEY_POSITION_MS = longPreferencesKey("position_ms")
         private val KEY_PLAYBACK_MODE = stringPreferencesKey("playback_mode")
-        private val KEY_SERVER_LAST_DIRS_JSON = stringPreferencesKey("server_last_dirs_json")
         private val KEY_CLEAN_EXIT = booleanPreferencesKey("clean_exit")
         private val KEY_QUEUE_ORIGIN = stringPreferencesKey("queue_origin")
         private val KEY_ORIGINAL_TRACKS_JSON = stringPreferencesKey("original_tracks_json")
@@ -48,7 +46,6 @@ class DataStorePlaybackSessionStore(
     override suspend fun saveSession(sessionData: PlaybackSessionData) {
         val tracksJson = serializeTracks(sessionData.queueTracks)
         val originalTracksJson = serializeTracks(sessionData.originalTracks)
-        val serverLastDirsJson = serializeServerLastDirs(sessionData.serverLastDirectories)
         dataStore.edit { prefs ->
             testFileProvider?.invoke()?.let { file -> if (file.exists()) file.delete() }
             if (sessionData.activeServerId != null) {
@@ -56,13 +53,11 @@ class DataStorePlaybackSessionStore(
             } else {
                 prefs.remove(KEY_ACTIVE_SERVER_ID)
             }
-            prefs[KEY_CURRENT_DIRECTORY_PATH] = sessionData.currentDirectoryPath
             prefs[KEY_QUEUE_TRACKS_JSON] = tracksJson
             prefs[KEY_ORIGINAL_TRACKS_JSON] = originalTracksJson
             prefs[KEY_CURRENT_TRACK_INDEX] = sessionData.currentTrackIndex
             prefs[KEY_POSITION_MS] = sessionData.positionMs
             prefs[KEY_PLAYBACK_MODE] = sessionData.playbackMode.name
-            prefs[KEY_SERVER_LAST_DIRS_JSON] = serverLastDirsJson
             prefs[KEY_CLEAN_EXIT] = sessionData.cleanExit
             prefs[KEY_QUEUE_ORIGIN] = sessionData.queueOrigin.name
         }
@@ -91,12 +86,11 @@ class DataStorePlaybackSessionStore(
                     }
                 }.first()
 
-        // If no server and no directory path and no tracks, consider it empty
+        // If no server and no tracks, consider it empty
         val serverId = prefs[KEY_ACTIVE_SERVER_ID]
-        val dirPath = prefs[KEY_CURRENT_DIRECTORY_PATH]
         val tracksJson = prefs[KEY_QUEUE_TRACKS_JSON]
 
-        if (serverId == null && dirPath == null && tracksJson == null) {
+        if (serverId == null && tracksJson == null) {
             return null
         }
 
@@ -112,7 +106,6 @@ class DataStorePlaybackSessionStore(
                     PlaybackMode.LIST_LOOP
                 }
             } ?: PlaybackMode.LIST_LOOP
-        val serverLastDirs = deserializeServerLastDirs(prefs[KEY_SERVER_LAST_DIRS_JSON])
         val cleanExit = prefs[KEY_CLEAN_EXIT] ?: true
         val queueOriginStr = prefs[KEY_QUEUE_ORIGIN]
         val queueOrigin =
@@ -131,12 +124,10 @@ class DataStorePlaybackSessionStore(
 
         return PlaybackSessionData(
             activeServerId = serverId,
-            currentDirectoryPath = dirPath ?: "/",
             queueTracks = tracks,
             currentTrackIndex = trackIndex,
             positionMs = positionMs,
             playbackMode = mode,
-            serverLastDirectories = serverLastDirs,
             cleanExit = cleanExit,
             queueOrigin = queueOrigin,
             originalTracks = originalTracks,
@@ -153,7 +144,6 @@ class DataStorePlaybackSessionStore(
     @VisibleForTesting
     suspend fun saveRawForTesting(
         serverId: Long,
-        dirPath: String,
         tracksJson: String,
         trackIndex: Int,
         posMs: Long,
@@ -162,7 +152,6 @@ class DataStorePlaybackSessionStore(
         dataStore.edit { prefs ->
             testFileProvider?.invoke()?.let { file -> if (file.exists()) file.delete() }
             prefs[KEY_ACTIVE_SERVER_ID] = serverId
-            prefs[KEY_CURRENT_DIRECTORY_PATH] = dirPath
             prefs[KEY_QUEUE_TRACKS_JSON] = tracksJson
             prefs[KEY_CURRENT_TRACK_INDEX] = trackIndex
             prefs[KEY_POSITION_MS] = posMs
@@ -228,33 +217,6 @@ class DataStorePlaybackSessionStore(
             list
         } catch (e: Exception) {
             emptyList()
-        }
-    }
-
-    private fun serializeServerLastDirs(map: Map<Long, String>): String {
-        val obj = JSONObject()
-        for ((k, v) in map) {
-            obj.put(k.toString(), v)
-        }
-        return obj.toString()
-    }
-
-    private fun deserializeServerLastDirs(json: String?): Map<Long, String> {
-        if (json.isNullOrBlank()) return emptyMap()
-        return try {
-            val obj = JSONObject(json)
-            val map = mutableMapOf<Long, String>()
-            val keys = obj.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val id = key.toLongOrNull()
-                if (id != null) {
-                    map[id] = obj.getString(key)
-                }
-            }
-            map
-        } catch (e: Exception) {
-            emptyMap()
         }
     }
 }

@@ -10,7 +10,6 @@ data class PlayerSessionState(
     val errorMessage: String? = null,
     val lyrics: Lyrics? = null,
     val isLoadingLyrics: Boolean = false,
-    val currentDirectoryPath: String = "/",
     val isWeakNetwork: Boolean = false,
     val canManualRetry: Boolean = false,
     val isReconnecting: Boolean = false,

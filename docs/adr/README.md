@@ -1,6 +1,6 @@
 # Architectural Decision Records (ADRs)
 
-本文档归档了 Aoffee Player 架构演进全生命周期的 39 篇架构决策记录。
+本文档归档了 Aoffee Player 架构演进全生命周期的 40 篇架构决策记录。
 
 > ⚠️ **CONSUMPTION RULE & PRECEDENCE**:
 > 1. **最高权威法典**：所有架构约束与实现不变量以根目录 **`CODING_STANDARDS.md`** 为唯一最高裁决（详见 `AGENTS.md`）；
@@ -53,3 +53,4 @@
 | **0036** | [折叠媒体库浏览与索引检索为单一深模块](0036-consolidate-media-library-repository.md) | `Accepted` | 折叠 Directory 与 Search 仓储，确立 MediaLibraryRepository 深模块 |
 | **0037** | [存储生命周期级联失效与单向仓储接缝](0037-storage-lifecycle-cascade-and-unidirectional-repository-seams.md) | `Accepted` | 提炼 StorageCascadeInvalidator 窄接口，斩断仓储层环形接缝 |
 | **0038** | [从歌单仓储解耦存储源连通性追踪器与内存响应式自愈](0038-decouple-storage-reachability-from-playlist-repository.md) | `Accepted` | 提炼 StorageReachabilityTracker 深模块，解耦播控/歌单与内存状态流 |
+| **0039** | [从播控会话剥离浏览游标并收敛至媒体库深模块](0039-purge-browsing-cursor-from-playback-session.md) | `Accepted` | 消除目录切换 DataStore 刷盘风暴，彻底落实 ADR-0035 终局解耦 |

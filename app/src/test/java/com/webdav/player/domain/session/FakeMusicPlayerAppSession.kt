@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.update
 class FakeMusicPlayerAppSession(
     initialState: PlayerSessionState = PlayerSessionState(),
     initialProgress: PlaybackProgress = PlaybackProgress.ZERO,
+    initialIsRestored: Boolean = true,
 ) : MusicPlayerAppSession {
     val _sessionState = MutableStateFlow(initialState)
     override val sessionState: StateFlow<PlayerSessionState> = _sessionState.asStateFlow()
@@ -30,12 +31,12 @@ class FakeMusicPlayerAppSession(
     val _playbackProgress = MutableStateFlow(initialProgress)
     override val playbackProgress: StateFlow<PlaybackProgress> = _playbackProgress.asStateFlow()
 
-    private val _isRestored = MutableStateFlow(true)
+    val _isRestored = MutableStateFlow(initialIsRestored)
     override val isRestored: StateFlow<Boolean> = _isRestored.asStateFlow()
 
-    val serverLastDirectories = mutableMapOf<Long, String>()
-
-    override fun getLastDirectoryForServer(serverId: Long): String = serverLastDirectories[serverId] ?: "/"
+    fun setRestored(restored: Boolean) {
+        _isRestored.value = restored
+    }
 
     var lastPlayDirectory: RemoteDirectory? = null
     var lastPlaySelectedFile: RemoteFile? = null
@@ -51,14 +52,6 @@ class FakeMusicPlayerAppSession(
 
     override fun setActiveServer(server: WebDavServer?) {
         _sessionState.value = _sessionState.value.copy(activeServer = server, browsingServer = server)
-    }
-
-    override fun setCurrentDirectoryPath(path: String) {
-        val serverId = _sessionState.value.activeServer?.id
-        if (serverId != null) {
-            serverLastDirectories[serverId] = path
-        }
-        _sessionState.update { it.copy(currentDirectoryPath = path) }
     }
 
     var restoreSessionCount = 0

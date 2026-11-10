@@ -367,7 +367,7 @@ class EndToEndCacheResilienceIntegrationTest {
                 )
 
             appSession.setActiveServer(testServer)
-            appSession.setCurrentDirectoryPath("/Music/Classics/")
+            mediaLibraryRepository.setLastBrowsingPath(testServer.id, "/Music/Classics/")
             advanceUntilIdle()
 
             val viewModel =
@@ -662,7 +662,7 @@ class EndToEndCacheResilienceIntegrationTest {
                 )
 
             appSession.setActiveServer(testServer)
-            appSession.setCurrentDirectoryPath("/Music/Acoustic/")
+            mediaLibraryRepository.setLastBrowsingPath(testServer.id, "/Music/Acoustic/")
             advanceUntilIdle()
 
             val viewModel =
@@ -841,12 +841,10 @@ class EndToEndCacheResilienceIntegrationTest {
             val savedSessionData =
                 PlaybackSessionData(
                     activeServerId = testServer.id,
-                    currentDirectoryPath = "/Music/Classics/",
                     queueTracks = listOf(initialTrack),
                     currentTrackIndex = 0,
                     positionMs = 35000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    serverLastDirectories = mapOf(testServer.id to "/Music/Classics/"),
                 )
             sessionStore.saveSession(savedSessionData)
 

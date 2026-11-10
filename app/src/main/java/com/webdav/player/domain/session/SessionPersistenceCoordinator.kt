@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Internal collaborator managing playback session persistence, periodic flushing,
@@ -44,14 +43,11 @@ internal class SessionPersistenceCoordinator(
     private val _isRestored = MutableStateFlow(sessionStore == null)
     val isRestored: StateFlow<Boolean> = _isRestored.asStateFlow()
 
-    private val serverLastDirectories = ConcurrentHashMap<Long, String>()
     private var periodicFlushJob: Job? = null
 
     fun markRestored() {
         _isRestored.value = true
     }
-
-    fun getLastDirectoryForServer(serverId: Long): String = serverLastDirectories[serverId] ?: "/"
 
     fun savePosition(
         positionMs: Long,
@@ -64,26 +60,11 @@ internal class SessionPersistenceCoordinator(
         }
     }
 
-    fun setCurrentDirectoryPath(path: String) {
-        val serverId = (sessionStateFlow.value.browsingServer ?: sessionStateFlow.value.activeServer)?.id
-        if (serverId != null) {
-            serverLastDirectories[serverId] = path
-        }
-        sessionStateFlow.update { it.copy(currentDirectoryPath = path) }
-        coroutineScope.launch { flushSession() }
-    }
-
     suspend fun restoreSession() {
         val store = sessionStore ?: return
         try {
             val savedSession = store.getSavedSession() ?: return
-            savedSession.serverLastDirectories.forEach { (id, path) ->
-                serverLastDirectories[id] = path
-            }
             val serverId = savedSession.activeServerId
-            if (serverId != null && savedSession.currentDirectoryPath.isNotBlank()) {
-                serverLastDirectories[serverId] = savedSession.currentDirectoryPath
-            }
 
             val server =
                 if (serverId != null) {
@@ -180,7 +161,6 @@ internal class SessionPersistenceCoordinator(
                 playbackState = restoredPlaybackState,
                 playbackMode = savedSession.playbackMode,
                 durationMs = durationMs,
-                currentDirectoryPath = savedSession.currentDirectoryPath,
                 errorMessage = null,
                 wasKilledBySystem = wasKilled,
             )
@@ -204,12 +184,8 @@ internal class SessionPersistenceCoordinator(
         if (!_isRestored.value) return
         val store = sessionStore ?: return
         val current = sessionStateFlow.value
-        val browsingServerId = (current.browsingServer ?: current.activeServer)?.id
-        if (browsingServerId != null && current.currentDirectoryPath.isNotBlank()) {
-            serverLastDirectories[browsingServerId] = current.currentDirectoryPath
-        }
         val activeServerId = current.activeServer?.id
-        if (activeServerId == null && current.queue.isEmpty && serverLastDirectories.isEmpty()) {
+        if (activeServerId == null && current.queue.isEmpty) {
             store.clearSession()
             return
         }
@@ -230,12 +206,10 @@ internal class SessionPersistenceCoordinator(
         val sessionData =
             PlaybackSessionData(
                 activeServerId = activeServerId,
-                currentDirectoryPath = current.currentDirectoryPath,
                 queueTracks = current.queue.tracks,
                 currentTrackIndex = current.queue.currentIndex,
                 positionMs = livePositionMs,
                 playbackMode = current.playbackMode,
-                serverLastDirectories = serverLastDirectories.toMap(),
                 cleanExit = isCleanExit,
                 queueOrigin = current.queue.origin,
                 originalTracks = current.queue.originalTracks,

@@ -631,4 +631,77 @@ class PackagingSeamVerificationTest {
             appContainer.contains("val storageReachabilityTracker: StorageReachabilityTracker"),
         )
     }
+
+    @Test
+    fun playbackSession_exposesZeroBrowsingCursorConcerns() {
+        // ADR-0039: MusicPlayerAppSession facade has physically purged directory browsing methods
+        val sessionInterface = source("domain/session/MusicPlayerAppSession.kt")
+        assertFalse(
+            "MusicPlayerAppSession must not declare getLastDirectoryForServer",
+            sessionInterface.contains("getLastDirectoryForServer"),
+        )
+        assertFalse(
+            "MusicPlayerAppSession must not declare setCurrentDirectoryPath",
+            sessionInterface.contains("setCurrentDirectoryPath"),
+        )
+
+        // MusicPlayerAppSessionImpl must not contain directory browsing methods
+        val sessionImpl = source("domain/session/MusicPlayerAppSessionImpl.kt")
+        assertFalse(
+            "MusicPlayerAppSessionImpl must not declare getLastDirectoryForServer",
+            sessionImpl.contains("getLastDirectoryForServer"),
+        )
+        assertFalse(
+            "MusicPlayerAppSessionImpl must not declare setCurrentDirectoryPath",
+            sessionImpl.contains("setCurrentDirectoryPath"),
+        )
+
+        // PlayerSessionState must not contain currentDirectoryPath
+        val sessionState = source("domain/model/PlayerSessionState.kt")
+        assertFalse(
+            "PlayerSessionState must not contain currentDirectoryPath",
+            sessionState.contains("currentDirectoryPath"),
+        )
+
+        // PlaybackSessionData must not contain browsing directory fields
+        val sessionData = source("domain/model/PlaybackSessionData.kt")
+        assertFalse(
+            "PlaybackSessionData must not contain currentDirectoryPath",
+            sessionData.contains("currentDirectoryPath"),
+        )
+        assertFalse(
+            "PlaybackSessionData must not contain serverLastDirectories",
+            sessionData.contains("serverLastDirectories"),
+        )
+
+        // DataStorePlaybackSessionStore must not contain KEY_CURRENT_DIRECTORY_PATH or KEY_SERVER_LAST_DIRS_JSON
+        val sessionStore = source("data/repository/DataStorePlaybackSessionStore.kt")
+        assertFalse(
+            "DataStorePlaybackSessionStore must not reference current_directory_path",
+            sessionStore.contains("current_directory_path"),
+        )
+        assertFalse(
+            "DataStorePlaybackSessionStore must not reference server_last_dirs_json",
+            sessionStore.contains("server_last_dirs_json"),
+        )
+        assertFalse(
+            "DataStorePlaybackSessionStore must not reference KEY_CURRENT_DIRECTORY_PATH",
+            sessionStore.contains("KEY_CURRENT_DIRECTORY_PATH"),
+        )
+        assertFalse(
+            "DataStorePlaybackSessionStore must not reference KEY_SERVER_LAST_DIRS_JSON",
+            sessionStore.contains("KEY_SERVER_LAST_DIRS_JSON"),
+        )
+
+        // SessionPersistenceCoordinator must not reference currentDirectoryPath or serverLastDirectories
+        val persistenceCoordinator = source("domain/session/SessionPersistenceCoordinator.kt")
+        assertFalse(
+            "SessionPersistenceCoordinator must not reference currentDirectoryPath",
+            persistenceCoordinator.contains("currentDirectoryPath"),
+        )
+        assertFalse(
+            "SessionPersistenceCoordinator must not reference serverLastDirectories",
+            persistenceCoordinator.contains("serverLastDirectories"),
+        )
+    }
 }

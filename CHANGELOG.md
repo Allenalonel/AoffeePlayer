@@ -4,9 +4,44 @@
 
 ---
 
-## [3.4] - 2026-11-06
+## [3.4] - 2026-11-10
 
-### 🧱 架构深化与核心接缝净化 (Architecture Deepening & Seam Purification)
+### 💾 本地设备存储（SAF）双源音频与离线播放支持 (Local Device Storage & Hybrid SAF Playback, ADR-0032)
+- **本地存储访问框架 (SAF) 授权与双源拓扑**：
+  - 新增本地设备存储挂载支持，通过 Android Storage Access Framework (SAF) 授予目录持久化访问权限（`takePersistableUriPermission`）；
+  - 将应用升级为 WebDAV 远程私有云与本地存储双源拓扑架构，本地根目录与子目录毫秒级遍历与 SWR 缓存；
+  - 突破传统本地播放器与远程串流播放器的壁垒，支持 WebDAV 与本地音频混合构建歌单、跨源连续播放与离线平滑切换。
+
+### 🎨 全天候全域音轨动态取色与沉浸式舞台黑胶光晕 (Dynamic Palette Theming & Immersive Ambient Glow, ADR-0032)
+- **通用感知色调规范化模型 (Universal Perceptual Tonal Normalization)**：
+  - 基于 `androidx.palette` 提取专辑封面种子色，解绑单一强调色，构建 HCT 双向色彩推导管道；
+  - 自动将任意高对比或杂乱封面映射为深邃暗夜舞台背景（Tone 6~8，Chroma <= 12）与高对比度文字排版（WCAG AAA >= 8.5:1）；
+  - 内置 `isMonochrome` 中性灰保护网，彻底消除单色/黑白封面在算法下偏红偏暖的色偏问题。
+- **多级环境光晕与超椭圆黑胶阴影 (Multi-Stop Ambient Glow & Squircle Shadow)**：
+  - 打造沉浸式舞台全屏播放器，封面底部漫延两级平滑高斯环境光晕（Ambient Glow Stops）；
+  - 全屏大封面配备 28dp 超椭圆自然景深阴影，浅色与深色主题 450ms 流体动态过渡换肤。
+
+### 🔍 双源统一曲库毫秒级增量索引与全文检索 (Unified Cross-Source Library Indexing & Search, ADR-0033)
+- **统一本地媒体索引表与 B-Tree 极速检索 (Unified Media Track Index)**：
+  - 建立统一的 `media_track_index` 数据库索引架构，双源音频统一摄录入库并建立复合索引（`(serverId, title, artist, album)`）；
+  - 媒体库向未索引目录穿梭时自动在后台触发低并发增量同步，移除顶栏冗余的手动同步溢出菜单；
+  - 本地与远程统一毫秒级实时联想检索与多条件即打即搜。
+- **分段药丸搜索范围切换舱 (Segmented Slider Pill Scope Selector)**：
+  - 搜索舱顶部新增纯硬件绘制的连贯分段滑块药丸（`SegmentedSliderPill`），支持在“当前源（WebDAV/本地）”与“全部曲库”之间零闪烁平滑横跳滑动；
+  - 严格确保单源模式下搜索结果的绝对源隔离，防止跨服务/跨源数据污染。
+
+### 🧹 CUE 虚拟分轨彻底解耦与整轨流式净化 (Purge CUE Sheet Support, ADR-0034)
+- **回退纯粹流式本质与架构降维**：
+  - 彻底剥离并废除 CUE 纯内存状态机解析器、虚拟时间轴映射及相关复杂耦合逻辑；
+  - Room 数据库架构平滑迁移至版本 8，物理清理数据表中已废弃的虚拟分轨与字段；
+  - 释放底层播放引擎维持双轨预热的复杂约束，播放管线接口深度与测试表面积精简逾 50%。
+
+### 🧱 仓储与会话深度解耦及架构接缝净化 (Storage & Session Decoupling, ADR-0035 ~ ADR-0039)
+- **跨源会话解耦与对称存储生命周期 (ADR-0035)**：彻底解除播放会话与单一远程 WebDAV 的硬绑定，建立对称统一的存储源生命周期管理。
+- **媒体库仓储深度收拢 (Consolidate MediaLibraryRepository, ADR-0036)**：折叠分散的 `DirectoryRepository` 与 `LibrarySearchRepository` 浅层仓储，收敛至单一高内聚深度仓储 `MediaLibraryRepository`。
+- **存储级联失效反转与依赖图解耦 (ADR-0037)**：反转 `ServerRepository` 与媒体库仓储之间的通知机制，拔除 Application 容器依赖图（DAG）中的向下转型与循环耦合。
+- **存储可达性状态独立追踪 (Storage Reachability Tracker, ADR-0038)**：将服务器故障诊断与网络探活自愈从 `PlaylistRepository` 彻底剥离，建立专职高内聚的 `StorageReachabilityTracker`。
+- **回放会话彻底剥离媒体库浏览游标 (ADR-0039)**：从 `MusicPlayerAppSession` 与持久化 DataStore 中彻底拔除 `lastBrowsingPath` 等非回放状态，内聚至 `MediaLibraryRepository` 内部状态，实现关注点完全分离。
 - **胶囊全屏形变容器 GPU 绘制阶段深化 (GPU Draw-Phase Morphing Container)**：
   - 清理 `MorphingPlayerMath` 接口中 8 个未使用的几何与透明度僵尸数学函数，仅保留 4 个实际生产使用的几何插值工具；
   - 内化次级控件淡入与胶囊淡出门限常量至 `MorphingPlayerDefaults`，与实际渲染参数严格绑定；
@@ -14,13 +49,13 @@
 - **媒体库上下文多选与批量排队状态内聚 (Directory Contextual Selection & Batch Queueing)**：
   - 彻底重构 `DirectoryBrowserViewModel`，将原先在 UI 表现层维护的文件与搜索结果多选状态机（`selectedFilePaths` / `selectedSearchTrackIds`）、全选与清空动作彻底内聚至 ViewModel 内部；
   - 封装批量“下一首播放（Play Next）”调度，将多选音频以用户选定的正向顺序原子插入当前播放队列下一首并自动退出多选模式；
-  - 收紧 `musicPlayerAppSession` 访问级别为 `private`，切断 UI 绕过 ViewModel 直接调度底层会话的违规接缝，精简 `DirectoryBrowserScreen` 表现层代码并补齐 60 项独立单元测试。
+  - 收紧 `musicPlayerAppSession` 访问级别为 `private`，切断 UI 绕过 ViewModel 直接调度底层会话的违规接缝，精简 `DirectoryBrowserScreen` 表现层代码。
 - **全 App 音轨列表行副标题规范与兜底策略统一 (Canonical Subtitle Formatter & Height Parity)**：
-  - 在 `AudioTrackRowDefaults` 中提供单一权威的 `formatTrackSubtitle` 接口，在缺少艺术家与专辑信息时统一安全回退显示 `"未知"`，彻底消除媒体库、歌单、搜索结果与队列抽屉四处分散拼接造成的 `"未知"` 与 `"未知艺术家"` 散落漂移；
-  - 严格满足 72dp 双行高度平齐规范（Track Row Height Parity），防止缺失元数据时单行塌陷；重构 CUE 专辑卡片条目接入统一规范。
+  - 在 `AudioTrackRowDefaults` 中提供单一权威的 `formatTrackSubtitle` 接口，在缺少艺术家与专辑信息时统一安全回退显示 `"未知"`，彻底消除媒体库、歌单、搜索结果与队列抽屉四处分散拼接造成的散落漂移；
+  - 严格满足 72dp 双行高度平齐规范（Track Row Height Parity），防止缺失元数据时单行塌陷。
 - **歌单曲目复合对账与去重自愈流水线去重 (Unified Playlist Track Reconciliation Pipeline)**：
-  - 在 `PlaylistRepositoryImpl` 中提炼统一私有对账函数 `reconcilePlaylistTracks`，彻底消除响应式 Flow 与一次性快照之间近 80 行高度重复的代码；
-  - 集中处理复合键去重（`serverId:remotePath:virtualTrackId`）与冗余数据库行异步删除、服务器不可达状态合并以及缺失封面后台异步自愈调度。
+  - 在 `PlaylistRepositoryImpl` 中提炼统一私有对账函数 `reconcilePlaylistTracks`，彻底消除响应式 Flow 与一次性快照之间高度重复的代码；
+  - 集中处理复合键去重（`serverId:remotePath`）与冗余数据库行异步删除、服务器不可达状态合并以及缺失封面后台异步自愈调度。
 
 ---
 

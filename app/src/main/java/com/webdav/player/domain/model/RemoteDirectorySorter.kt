@@ -62,9 +62,13 @@ object RemoteDirectorySorter {
                 }
             }
             SortField.LAST_MODIFIED -> {
+                val timestamps = HashMap<String, Long>(files.size)
+                for (f in files) {
+                    timestamps[f.path] = parseLastModifiedToMillis(f.lastModified)
+                }
                 Comparator { f1, f2 ->
-                    val t1 = parseLastModifiedToMillis(f1.lastModified)
-                    val t2 = parseLastModifiedToMillis(f2.lastModified)
+                    val t1 = timestamps[f1.path] ?: 0L
+                    val t2 = timestamps[f2.path] ?: 0L
                     val diff = t1.compareTo(t2)
                     if (diff != 0) diff else NaturalOrderComparator.compare(f1.name, f2.name)
                 }
@@ -89,12 +93,16 @@ object RemoteDirectorySorter {
         if (dateStr.isNullOrBlank()) return 0L
         val trimmed = dateStr.trim()
         trimmed.toLongOrNull()?.let { return it }
-        try {
-            return ZonedDateTime.parse(trimmed, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli()
-        } catch (_: Exception) {}
-        try {
-            return Instant.parse(trimmed).toEpochMilli()
-        } catch (_: Exception) {}
+        if (trimmed.contains("GMT", ignoreCase = true) || trimmed.contains(",")) {
+            try {
+                return ZonedDateTime.parse(trimmed, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli()
+            } catch (_: Exception) {}
+        }
+        if (trimmed.contains("T") || trimmed.contains("-")) {
+            try {
+                return Instant.parse(trimmed).toEpochMilli()
+            } catch (_: Exception) {}
+        }
         try {
             val sdf = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US)
             return sdf.parse(trimmed)?.time ?: 0L

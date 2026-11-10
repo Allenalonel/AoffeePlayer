@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -59,6 +60,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -690,6 +692,16 @@ fun DirectoryContentList(
     onFileLongClicked: ((RemoteFile) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val isReduceMotion = isReduceMotionEnabled()
+    val placementSpec =
+        if (isReduceMotion) {
+            null
+        } else {
+            remember {
+                MotionTokens.spatialSpring<IntOffset>(visibilityThreshold = IntOffset.VisibilityThreshold)
+            }
+        }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 8.dp, bottom = MiniPlayerDefaults.PenetrativeContentBottomPadding),
@@ -699,19 +711,14 @@ fun DirectoryContentList(
             DirectoryItemRow(
                 directory = dir,
                 onClick = { if (!isSelectionMode) onDirectoryClicked(dir) },
-                modifier = Modifier.animateItemPlacement(MotionTokens.spatialSpring()),
+                modifier = if (placementSpec != null) Modifier.animateItemPlacement(placementSpec) else Modifier,
             )
         }
 
         // Space between folders and files if both exist
         if (directories.isNotEmpty() && files.isNotEmpty()) {
             item(key = "divider_folder_files") {
-                Spacer(
-                    modifier =
-                        Modifier
-                            .height(8.dp)
-                            .animateItemPlacement(MotionTokens.spatialSpring()),
-                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
 
@@ -736,7 +743,7 @@ fun DirectoryContentList(
                         }
                     }
                 },
-                modifier = Modifier.animateItemPlacement(MotionTokens.spatialSpring()),
+                modifier = if (placementSpec != null) Modifier.animateItemPlacement(placementSpec) else Modifier,
             )
         }
     }

@@ -95,7 +95,7 @@ class DirectoryBrowserViewModel(
                             isInitializing = false,
                             activeServer = server,
                             currentPath = initialPath,
-                            breadcrumbs = buildBreadcrumbs(server, initialPath),
+                            breadcrumbs = RemoteDirectory.buildBreadcrumbs(server, initialPath),
                             canNavigateUp = initialPath != "/",
                             currentDirectory = null,
                             errorMessage = null,
@@ -402,6 +402,7 @@ class DirectoryBrowserViewModel(
         val isNavigatingToNewDirectory = _uiState.value.currentDirectory?.path != normalizedPath
         if (isNavigatingToNewDirectory) {
             clearSelection()
+            mediaLibraryRepository.setLastBrowsingPath(server.id, normalizedPath)
         }
 
         _uiState.update { current ->
@@ -451,7 +452,6 @@ class DirectoryBrowserViewModel(
                         }
                     }.collect { content ->
                         hasEmittedContent = true
-                        mediaLibraryRepository.setLastBrowsingPath(server.id, normalizedPath)
                         _uiState.update { current ->
                             if (current.currentPath == normalizedPath) {
                                 current.copy(
@@ -485,9 +485,4 @@ class DirectoryBrowserViewModel(
         val matches = track != null && server != null && track.serverId == server.id
         return if (matches) Triple(track?.remotePath, track?.id, isPlaying) else Triple(null, null, false)
     }
-
-    private fun buildBreadcrumbs(
-        server: WebDavServer?,
-        path: String,
-    ): List<Breadcrumb> = RemoteDirectory.buildBreadcrumbs(server, path)
 }

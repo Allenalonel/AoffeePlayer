@@ -27,9 +27,10 @@ class InternalBrowsingCursorStoreTest {
     @Test
     fun sharedPreferencesPersistence_withContext() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val prefsName = "test_browsing_cursor_prefs_1"
+        val prefsName = "test_browsing_cursor_prefs_persistence"
         val store1 = InternalBrowsingCursorStore(context = context, prefsName = prefsName)
-        store1.clearAllCursors()
+        store1.clearCursor(1L)
+        store1.clearCursor(2L)
 
         store1.setLastBrowsingPath(1L, "/Music/Jazz/")
         store1.setLastBrowsingPath(2L, "/Audiobooks/")
@@ -41,9 +42,35 @@ class InternalBrowsingCursorStoreTest {
         assertEquals("/Music/Jazz/", store2.getLastBrowsingPath(1L))
         assertEquals("/Audiobooks/", store2.getLastBrowsingPath(2L))
 
-        store2.clearAllCursors()
+        store2.clearCursor(1L)
+        store2.clearCursor(2L)
         assertEquals("/", store2.getLastBrowsingPath(1L))
         assertEquals("/", store2.getLastBrowsingPath(2L))
+    }
+
+    @Test
+    fun setLastBrowsingPath_skipsRedundantWrite_whenPathMatchesCache() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val prefsName = "test_browsing_cursor_redundant"
+        val store = InternalBrowsingCursorStore(context = context, prefsName = prefsName)
+        store.clearCursor(1L)
+
+        store.setLastBrowsingPath(1L, "/Music/Jazz/")
+        assertEquals("/Music/Jazz/", store.getLastBrowsingPath(1L))
+
+        // Manually alter SharedPreferences behind the scenes to verify that repeated setLastBrowsingPath
+        // with the same path returns early and does not hit disk
+        val prefs = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+        prefs.edit().putString("cursor_1", "/Tampered/").apply()
+
+        // Cache still holds "/Music/Jazz/", calling set with same path should return early
+        store.setLastBrowsingPath(1L, "/Music/Jazz/")
+        assertEquals("/Tampered/", prefs.getString("cursor_1", null))
+
+        // Setting a different path updates both cache and disk
+        store.setLastBrowsingPath(1L, "/Music/Rock/")
+        assertEquals("/Music/Rock/", prefs.getString("cursor_1", null))
+        assertEquals("/Music/Rock/", store.getLastBrowsingPath(1L))
     }
 
     @Test

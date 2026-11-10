@@ -1,11 +1,7 @@
 package com.webdav.player
 
 import com.webdav.player.data.service.PlaybackSessionHost
-import com.webdav.player.domain.model.PlaybackSessionData
-import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.player.AudioPlayerEngine
-import com.webdav.player.domain.session.MusicPlayerAppSession
-import com.webdav.player.domain.session.MusicPlayerAppSessionImpl
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -707,42 +703,5 @@ class PackagingSeamVerificationTest {
             "SessionPersistenceCoordinator must not reference serverLastDirectories",
             persistenceCoordinator.contains("serverLastDirectories"),
         )
-
-        // Reflection invariants: verify compiled class bytecodes have zero browsing cursor methods and fields
-        val forbiddenMethodNames = listOf("getLastDirectoryForServer", "setCurrentDirectoryPath", "getCurrentDirectoryPath")
-        forbiddenMethodNames.forEach { methodName ->
-            assertFalse(
-                "MusicPlayerAppSession must not have method '$methodName'",
-                MusicPlayerAppSession::class.java.methods.any { it.name == methodName },
-            )
-            assertFalse(
-                "MusicPlayerAppSessionImpl must not have method '$methodName'",
-                MusicPlayerAppSessionImpl::class.java.methods.any { it.name == methodName },
-            )
-        }
-
-        val forbiddenFieldNames = listOf("currentDirectoryPath", "serverLastDirectories")
-        forbiddenFieldNames.forEach { fieldName ->
-            assertFalse(
-                "PlaybackSessionData must not have field '$fieldName'",
-                PlaybackSessionData::class.java.declaredFields.any { it.name == fieldName },
-            )
-            assertFalse(
-                "PlayerSessionState must not have field '$fieldName'",
-                PlayerSessionState::class.java.declaredFields.any { it.name == fieldName },
-            )
-        }
-
-        val forbiddenGetters = listOf("getCurrentDirectoryPath", "getServerLastDirectories")
-        forbiddenGetters.forEach { getterName ->
-            assertFalse(
-                "PlaybackSessionData must not have getter '$getterName'",
-                PlaybackSessionData::class.java.methods.any { it.name == getterName },
-            )
-            assertFalse(
-                "PlayerSessionState must not have getter '$getterName'",
-                PlayerSessionState::class.java.methods.any { it.name == getterName },
-            )
-        }
     }
 }

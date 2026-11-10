@@ -47,7 +47,7 @@ import kotlinx.coroutines.withContext
  * SWR directory navigation, pure B-Tree search, incremental sync, search history,
  * and cascading invalidation into a deep domain subsystem.
  */
-class MediaLibraryRepositoryImpl(
+class MediaLibraryRepositoryImpl internal constructor(
     private val webDavClient: WebDavClient,
     private val directoryCacheDao: DirectoryCacheDao? = null,
     private val trackMetadataDao: TrackMetadataDao? = null,

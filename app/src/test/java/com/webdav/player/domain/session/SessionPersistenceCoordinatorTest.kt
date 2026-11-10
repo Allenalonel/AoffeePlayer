@@ -8,7 +8,6 @@ import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlaybackSessionData
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
-import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
@@ -318,6 +317,57 @@ class SessionPersistenceCoordinatorTest {
             assertEquals(12_345L, saved?.positionMs)
 
             coordinator.stopPeriodicFlush()
+        }
+
+    @Test
+    fun persistenceCoordinator_onlyFlushesOnAudioQueueTrackAndProgressMutations() =
+        testScope.runTest {
+            val coordinator = createCoordinator()
+            coordinator.markRestored()
+
+            // 1. Initial state: store save count is 0
+            assertEquals(0, fakeStore.saveSessionCount)
+
+            // 2. Non-audio session changes (browsingServer, errorMessage, wasKilledBySystem)
+            // do not invoke flush on their own
+            sessionStateFlow.value =
+                sessionStateFlow.value.copy(
+                    browsingServer = testServer,
+                    errorMessage = "Network warning",
+                    wasKilledBySystem = false,
+                )
+            advanceTimeBy(2000L)
+            assertEquals(0, fakeStore.saveSessionCount)
+
+            // 3. Audio queue and track mutation triggers flushSession()
+            sessionStateFlow.value =
+                sessionStateFlow.value.copy(
+                    activeServer = testServer,
+                    queue = PlaybackQueue(listOf(testTrack), currentIndex = 0),
+                    playbackState = PlaybackState.Paused,
+                )
+            coordinator.flushSession()
+            assertEquals(1, fakeStore.saveSessionCount)
+            assertEquals(listOf(testTrack), fakeStore.savedSession?.queueTracks)
+            assertEquals(0, fakeStore.savedSession?.currentTrackIndex)
+
+            // 4. Progress mutation triggers savePosition()
+            coordinator.savePosition(15_000L, isCleanExit = false)
+            advanceTimeBy(100L)
+            assertEquals(2, fakeStore.saveSessionCount)
+            assertEquals(15_000L, fakeStore.savedSession?.positionMs)
+            assertFalse(fakeStore.savedSession?.cleanExit == true)
+
+            // 5. Audio track advance mutation triggers flushSession()
+            val secondTrack = testTrack.copy(id = "1:/music/track2.mp3", remotePath = "/music/track2.mp3")
+            sessionStateFlow.value =
+                sessionStateFlow.value.copy(
+                    queue = PlaybackQueue(listOf(testTrack, secondTrack), currentIndex = 1),
+                )
+            coordinator.flushSession()
+            assertEquals(3, fakeStore.saveSessionCount)
+            assertEquals(1, fakeStore.savedSession?.currentTrackIndex)
+            assertEquals(2, fakeStore.savedSession?.queueTracks?.size)
         }
 
     @Test

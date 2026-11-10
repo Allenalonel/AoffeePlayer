@@ -1894,4 +1894,29 @@ class DirectoryBrowserViewModelTest {
             assertTrue(viewModel.selectedFilePaths.value.isEmpty())
             assertFalse(viewModel.isSelectionMode.value)
         }
+
+    @Test
+    fun loadDirectory_persistsCursorOnce_andDoesNotDoubleWriteOnSwrEmissionsOrRefresh() =
+        runTest {
+            advanceUntilIdle()
+
+            val musicDir = RemoteDirectory(path = "/Music/", name = "Music")
+            fakeMediaLibraryRepository.setResult("/Music/", ListDirectoryResult.Success(musicDir))
+            fakeMediaLibraryRepository.setBrowsingPathCalls.clear()
+
+            // Navigate to /Music/
+            viewModel.loadDirectory("/Music/")
+            advanceUntilIdle()
+
+            // Persisted exactly once upon navigation trigger despite multiple SWR emissions
+            assertEquals(1, fakeMediaLibraryRepository.setBrowsingPathCalls.size)
+            assertEquals(sampleServer.id to "/Music/", fakeMediaLibraryRepository.setBrowsingPathCalls[0])
+
+            // SWR refresh on the current directory
+            viewModel.onRefresh()
+            advanceUntilIdle()
+
+            // Does not add duplicate calls since path is unchanged
+            assertEquals(1, fakeMediaLibraryRepository.setBrowsingPathCalls.size)
+        }
 }

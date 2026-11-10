@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
  * with an in-memory ConcurrentHashMap cache for zero-latency lookups, and an in-memory fallback
  * when Context is absent.
  */
-class InternalBrowsingCursorStore(
+internal class InternalBrowsingCursorStore(
     private val context: Context? = null,
     private val prefsName: String = DEFAULT_PREFS_NAME,
 ) {
@@ -37,6 +37,9 @@ class InternalBrowsingCursorStore(
 
     fun setLastBrowsingPath(serverId: Long, path: String) {
         val normalized = if (path.isBlank()) "/" else RemoteDirectory.normalizePath(path)
+        if (inMemoryCursors[serverId] == normalized) {
+            return
+        }
         inMemoryCursors[serverId] = normalized
         prefs?.edit()?.putString("$KEY_PREFIX$serverId", normalized)?.apply()
     }
@@ -44,15 +47,5 @@ class InternalBrowsingCursorStore(
     fun clearCursor(serverId: Long) {
         inMemoryCursors.remove(serverId)
         prefs?.edit()?.remove("$KEY_PREFIX$serverId")?.apply()
-    }
-
-    fun clearAllCursors() {
-        inMemoryCursors.clear()
-        val sharedPrefs = prefs ?: return
-        val editor = sharedPrefs.edit()
-        sharedPrefs.all.keys.filter { it.startsWith(KEY_PREFIX) }.forEach { key ->
-            editor.remove(key)
-        }
-        editor.apply()
     }
 }

@@ -23,16 +23,12 @@ interface MusicPlayerAppSession {
     val isRestored: StateFlow<Boolean>
         get() = kotlinx.coroutines.flow.MutableStateFlow(true)
 
-    fun getLastDirectoryForServer(serverId: Long): String = "/"
-
     fun setActiveServer(server: WebDavServer?)
 
     fun setActiveServer(
         server: WebDavServer?,
         resetPlayback: Boolean,
     ) = setActiveServer(server)
-
-    fun setCurrentDirectoryPath(path: String)
 
     suspend fun restoreSession()
 

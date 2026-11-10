@@ -223,7 +223,7 @@ class DirectoryBrowserViewModelTest {
 
             assertEquals("/Music/", fakeMediaLibraryRepository.getLastBrowsingPath(sampleServer.id))
             assertTrue(fakeMediaLibraryRepository.setBrowsingPathCalls.contains(sampleServer.id to "/Music/"))
-            assertTrue(fakeMusicPlayerAppSession.serverLastDirectories.isEmpty())
+            assertEquals(0, fakeMusicPlayerAppSession.flushSessionCount)
         }
 
     @Test
@@ -241,7 +241,7 @@ class DirectoryBrowserViewModelTest {
             advanceUntilIdle()
 
             assertEquals("/Music/", fakeMediaLibraryRepository.getLastBrowsingPath(sampleServer.id))
-            assertTrue(fakeMusicPlayerAppSession.serverLastDirectories.isEmpty())
+            assertEquals(0, fakeMusicPlayerAppSession.flushSessionCount)
         }
 
     @Test
@@ -677,7 +677,7 @@ class DirectoryBrowserViewModelTest {
             assertEquals("/Music/Jazz/", vm.uiState.value.currentPath)
             assertEquals(jazzDir, vm.uiState.value.currentDirectory)
             assertTrue(vm.uiState.value.canNavigateUp)
-            assertTrue(fakeMusicPlayerAppSession.serverLastDirectories.isEmpty())
+            assertEquals(0, fakeMusicPlayerAppSession.flushSessionCount)
         }
 
     @Test
@@ -791,7 +791,7 @@ class DirectoryBrowserViewModelTest {
             assertEquals(rootDir, viewModel.uiState.value.currentDirectory)
             assertFalse(viewModel.uiState.value.canNavigateUp)
             assertEquals("/", fakeMediaLibraryRepository.getLastBrowsingPath(sampleServer.id))
-            assertTrue(fakeMusicPlayerAppSession.serverLastDirectories.isEmpty())
+            assertEquals(0, fakeMusicPlayerAppSession.flushSessionCount)
         }
 
     @Test
@@ -905,8 +905,8 @@ class DirectoryBrowserViewModelTest {
             assertEquals("/Pop/", viewModel.uiState.value.currentPath)
             assertEquals("/Pop/", fakeMediaLibraryRepository.getLastBrowsingPath(server2.id))
 
-            // Playback session must have zero recorded directory paths
-            assertTrue(fakeMusicPlayerAppSession.serverLastDirectories.isEmpty())
+            // Playback session must have zero flushes triggered from browsing
+            assertEquals(0, fakeMusicPlayerAppSession.flushSessionCount)
         }
 
     @Test

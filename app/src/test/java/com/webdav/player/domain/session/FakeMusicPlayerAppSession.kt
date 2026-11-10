@@ -38,10 +38,6 @@ class FakeMusicPlayerAppSession(
         _isRestored.value = restored
     }
 
-    val serverLastDirectories = mutableMapOf<Long, String>()
-
-    override fun getLastDirectoryForServer(serverId: Long): String = serverLastDirectories[serverId] ?: "/"
-
     var lastPlayDirectory: RemoteDirectory? = null
     var lastPlaySelectedFile: RemoteFile? = null
     var togglePlayPauseCount = 0
@@ -56,14 +52,6 @@ class FakeMusicPlayerAppSession(
 
     override fun setActiveServer(server: WebDavServer?) {
         _sessionState.value = _sessionState.value.copy(activeServer = server, browsingServer = server)
-    }
-
-    override fun setCurrentDirectoryPath(path: String) {
-        val serverId = _sessionState.value.activeServer?.id
-        if (serverId != null) {
-            serverLastDirectories[serverId] = path
-        }
-        _sessionState.update { it.copy(currentDirectoryPath = path) }
     }
 
     var restoreSessionCount = 0

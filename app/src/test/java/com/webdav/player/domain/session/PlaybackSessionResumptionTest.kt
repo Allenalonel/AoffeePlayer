@@ -139,7 +139,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Jazz/",
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 1,
                     positionMs = 75000L,
@@ -159,7 +158,6 @@ class PlaybackSessionResumptionTest {
             assertEquals(75000L, session.playbackProgress.value.currentPositionMs)
             assertEquals(track2.durationMs, state.durationMs)
             assertEquals(PlaybackMode.SINGLE_LOOP, state.playbackMode)
-            assertEquals("/Music/Jazz/", state.currentDirectoryPath)
 
             // Engine should still be idle - no network streaming has started yet
             assertTrue(fakeEngine.playbackState.value is PlaybackState.Idle)
@@ -173,7 +171,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Jazz/",
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 0,
                     positionMs = 30000L,
@@ -199,7 +196,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Jazz/",
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 0,
                     positionMs = 30000L,
@@ -224,7 +220,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Jazz/",
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 1,
                     positionMs = 75000L,
@@ -249,7 +244,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Jazz/",
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 1,
                     positionMs = 75000L,
@@ -282,7 +276,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Jazz/",
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 0,
                     positionMs = 20000L,
@@ -313,11 +306,10 @@ class PlaybackSessionResumptionTest {
         }
 
     @Test
-    fun flushSession_persistsCurrentDirectoryPathAndAllFields() =
+    fun flushSession_persistsQueueAndAllFields() =
         runTest(testDispatcher) {
             session = createSession()
             session.setActiveServer(testServer)
-            session.setCurrentDirectoryPath("/Music/Jazz/")
             advanceUntilIdle()
 
             val directory =
@@ -341,7 +333,6 @@ class PlaybackSessionResumptionTest {
             val saved = fakeStore.savedSession
             assertNotNull(saved)
             assertEquals(1L, saved?.activeServerId)
-            assertEquals("/Music/Jazz/", saved?.currentDirectoryPath)
             assertEquals(2, saved?.queueTracks?.size)
             // Under ADR-0026 explicit shuffled queue, active track is pinned to index 0
             assertEquals(0, saved?.currentTrackIndex)
@@ -362,7 +353,6 @@ class PlaybackSessionResumptionTest {
                     periodicDispatcher = testDispatcher,
                 )
             session.setActiveServer(testServer)
-            session.setCurrentDirectoryPath("/Music/Jazz/")
             advanceUntilIdle()
 
             val directory =
@@ -520,7 +510,6 @@ class PlaybackSessionResumptionTest {
             val nonExistentSession =
                 PlaybackSessionData(
                     activeServerId = 9999L,
-                    currentDirectoryPath = "/Unknown/",
                     queueTracks = listOf(track1),
                     currentTrackIndex = 0,
                     positionMs = 10000L,
@@ -567,7 +556,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Jazz/",
                     queueTracks = listOf(track1),
                     currentTrackIndex = 0,
                     positionMs = 10000L,
@@ -613,7 +601,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Jazz/",
                     queueTracks = listOf(trackWithDeadArt),
                     currentTrackIndex = 0,
                     positionMs = 15000L,
@@ -664,7 +651,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Jazz/",
                     queueTracks = listOf(trackWithDeadArt),
                     currentTrackIndex = 0,
                     positionMs = 20000L,
@@ -746,7 +732,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Jazz/",
                     queueTracks = listOf(t1, t2),
                     currentTrackIndex = 1,
                     positionMs = 30000L,
@@ -812,7 +797,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Jazz/",
                     queueTracks = listOf(trackWithValidArt),
                     currentTrackIndex = 0,
                     positionMs = 10000L,
@@ -941,7 +925,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/PinkFloyd/",
                     queueTracks = listOf(darkSideTrack),
                     currentTrackIndex = 0,
                     positionMs = 98000L,
@@ -961,7 +944,6 @@ class PlaybackSessionResumptionTest {
             assertEquals(darkSideTrack.durationMs, state.currentTrack?.durationMs)
             assertTrue("Restored physical track must be in paused state", state.isPaused)
             assertEquals(darkSideTrack.durationMs, state.durationMs)
-            assertEquals("/Music/PinkFloyd/", state.currentDirectoryPath)
 
             // Progress reflects native media position directly
             assertEquals(98000L, session.playbackProgress.value.currentPositionMs)
@@ -978,7 +960,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/PinkFloyd/",
                     queueTracks = listOf(darkSideTrack),
                     currentTrackIndex = 0,
                     positionMs = 98000L,
@@ -1017,7 +998,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/PinkFloyd/",
                     queueTracks = listOf(darkSideTrack),
                     currentTrackIndex = 0,
                     positionMs = 98000L,
@@ -1077,7 +1057,6 @@ class PlaybackSessionResumptionTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 1L,
-                    currentDirectoryPath = "/Music/Jazz/",
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 1,
                     positionMs = 42_000L,

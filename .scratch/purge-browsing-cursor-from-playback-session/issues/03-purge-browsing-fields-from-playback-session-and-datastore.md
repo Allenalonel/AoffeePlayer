@@ -4,11 +4,11 @@
 
 **Blocked by:** 02: Migrate Directory Browser View Model to Media Library Seam and Eliminate Startup Wait
 
-**Status:** in-progress
+**Status:** completed
 
-- [ ] The playback session interface physically eliminates `getLastDirectoryForServer` and `setCurrentDirectoryPath`.
-- [ ] The playback session reactive state and snapshot data models physically eliminate `currentDirectoryPath` and `serverLastDirectories`.
-- [ ] DataStore session serialization and deserialization physically eliminate the directory path preference key.
-- [ ] Session persistence coordinator flushes playback snapshots only on genuine playback events (track transition, queue mutation, periodic progress) and never on folder navigation.
-- [ ] Cold start playback resumption and process restart simulation tests restore the queue, active track, and progress cleanly without directory fields.
-- [ ] All playback session test doubles and unit test suites are updated to remove obsolete directory path assertions.
+- [x] The playback session interface physically eliminates `getLastDirectoryForServer` and `setCurrentDirectoryPath`.
+- [x] The playback session reactive state and snapshot data models physically eliminate `currentDirectoryPath` and `serverLastDirectories`.
+- [x] DataStore session serialization and deserialization physically eliminate the directory path preference key.
+- [x] Session persistence coordinator flushes playback snapshots only on genuine playback events (track transition, queue mutation, periodic progress) and never on folder navigation.
+- [x] Cold start playback resumption and process restart simulation tests restore the queue, active track, and progress cleanly without directory fields.
+- [x] All playback session test doubles and unit test suites are updated to remove obsolete directory path assertions.

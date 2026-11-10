@@ -149,7 +149,6 @@ class SessionPersistenceCoordinatorTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = testServer.id,
-                    currentDirectoryPath = "/Rock/",
                     queueTracks = listOf(testTrack),
                     currentTrackIndex = 0,
                     positionMs = 45_000L,
@@ -167,7 +166,6 @@ class SessionPersistenceCoordinatorTest {
             assertEquals(testTrack, state.currentTrack)
             assertEquals(PlaybackState.Paused, state.playbackState)
             assertEquals(PlaybackMode.SHUFFLE, state.playbackMode)
-            assertEquals("/Rock/", state.currentDirectoryPath)
             assertTrue(state.wasKilledBySystem)
 
             val progress = playbackProgressFlow.value
@@ -192,7 +190,6 @@ class SessionPersistenceCoordinatorTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = testServer.id,
-                    currentDirectoryPath = "/",
                     queueTracks = listOf(testTrack),
                     currentTrackIndex = 0,
                     positionMs = 10_000L,
@@ -218,7 +215,6 @@ class SessionPersistenceCoordinatorTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = 999L,
-                    currentDirectoryPath = "/",
                     queueTracks = listOf(testTrack),
                     currentTrackIndex = 0,
                     positionMs = 10_000L,
@@ -250,7 +246,6 @@ class SessionPersistenceCoordinatorTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = testServer.id,
-                    currentDirectoryPath = "/album/",
                     queueTracks = listOf(parentTrack),
                     currentTrackIndex = 0,
                     positionMs = 75_000L,
@@ -283,7 +278,6 @@ class SessionPersistenceCoordinatorTest {
             sessionStateFlow.value =
                 PlayerSessionState(
                     activeServer = testServer,
-                    currentDirectoryPath = "/Classical/",
                     queue = PlaybackQueue(listOf(testTrack), currentIndex = 0),
                     playbackMode = PlaybackMode.LIST_LOOP,
                 )
@@ -294,7 +288,6 @@ class SessionPersistenceCoordinatorTest {
             val saved = fakeStore.savedSession
             assertNotNull(saved)
             assertEquals(testServer.id, saved?.activeServerId)
-            assertEquals("/Classical/", saved?.currentDirectoryPath)
             assertEquals(1, saved?.queueTracks?.size)
             assertEquals(30_000L, saved?.positionMs)
             assertEquals(PlaybackMode.LIST_LOOP, saved?.playbackMode)
@@ -325,19 +318,6 @@ class SessionPersistenceCoordinatorTest {
             assertEquals(12_345L, saved?.positionMs)
 
             coordinator.stopPeriodicFlush()
-        }
-
-    @Test
-    fun directoryMemory_tracksAndRestoresDirectoryPerServer() =
-        testScope.runTest {
-            val coordinator = createCoordinator()
-            coordinator.markRestored()
-
-            sessionStateFlow.value = PlayerSessionState(activeServer = testServer)
-            coordinator.setCurrentDirectoryPath("/Jazz/Miles/")
-
-            assertEquals("/Jazz/Miles/", coordinator.getLastDirectoryForServer(testServer.id))
-            assertEquals("/", coordinator.getLastDirectoryForServer(999L))
         }
 
     @Test
@@ -382,7 +362,6 @@ class SessionPersistenceCoordinatorTest {
             val savedSession =
                 PlaybackSessionData(
                     activeServerId = testServer.id,
-                    currentDirectoryPath = "/Jazz/",
                     queueTracks = listOf(localTrack, remoteTrack2),
                     currentTrackIndex = 0,
                     positionMs = 5_000L,

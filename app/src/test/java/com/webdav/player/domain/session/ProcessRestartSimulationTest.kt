@@ -211,7 +211,6 @@ class ProcessRestartSimulationTest {
             assertTrue("Restored mini-player must be in paused state", restoredState.isPaused)
             assertEquals(48000L, session2.playbackProgress.value.currentPositionMs)
             assertEquals(PlaybackMode.SINGLE_LOOP, restoredState.playbackMode)
-            assertEquals("/Music/Rock/", restoredState.currentDirectoryPath)
 
             // Engine must be idle before user taps play
             assertTrue(engine2.playbackState.value is PlaybackState.Idle)
@@ -242,7 +241,6 @@ class ProcessRestartSimulationTest {
             sessionStore.saveSession(
                 com.webdav.player.domain.model.PlaybackSessionData(
                     activeServerId = 100L,
-                    currentDirectoryPath = "/Music/",
                     queueTracks = listOf(track1),
                     currentTrackIndex = 0,
                     positionMs = 15000L,
@@ -284,7 +282,6 @@ class ProcessRestartSimulationTest {
             sessionStore.saveSession(
                 com.webdav.player.domain.model.PlaybackSessionData(
                     activeServerId = 100L,
-                    currentDirectoryPath = "/Music/",
                     queueTracks = listOf(track1),
                     currentTrackIndex = 0,
                     positionMs = 15000L,

@@ -184,7 +184,6 @@ class MusicPlayerAppSessionImpl(
     private fun dispatchQueueLoad(
         server: WebDavServer,
         request: QueueLoadRequest,
-        directoryPath: String? = null,
     ) {
         clearKilledBySystemFlag()
         clearTransientAudioFocusFlag()
@@ -196,7 +195,6 @@ class MusicPlayerAppSessionImpl(
             it.copy(
                 queue = request.queue,
                 durationMs = request.targetTrack.durationMs,
-                currentDirectoryPath = directoryPath ?: it.currentDirectoryPath,
                 errorMessage = null,
             )
         }
@@ -253,8 +251,6 @@ class MusicPlayerAppSessionImpl(
         metadataCoordinator.startLyricsObservation()
     }
 
-    override fun getLastDirectoryForServer(serverId: Long): String = persistenceCoordinator.getLastDirectoryForServer(serverId)
-
     override fun setActiveServer(server: WebDavServer?) {
         setActiveServer(server, resetPlayback = true)
     }
@@ -268,20 +264,17 @@ class MusicPlayerAppSessionImpl(
             if (currentBrowsing?.id == server?.id && current.activeServer?.id == server?.id) {
                 return@update current.copy(activeServer = server, browsingServer = server)
             }
-            val lastPath = if (server != null) getLastDirectoryForServer(server.id) else "/"
             if (server != null && current.hasTrack && !resetPlayback) {
                 // Do not disrupt ongoing playback or wipe queue when switching active browsing storage/server
                 return@update current.copy(
                     activeServer = server,
                     browsingServer = server,
-                    currentDirectoryPath = lastPath,
                 )
             }
             if (current.queue.isPlaylistQueue) {
                 return@update current.copy(
                     activeServer = server,
                     browsingServer = server,
-                    currentDirectoryPath = lastPath,
                 )
             }
 
@@ -294,7 +287,6 @@ class MusicPlayerAppSessionImpl(
                 queue = PlaybackQueue.EMPTY,
                 playbackState = PlaybackState.Idle,
                 durationMs = 0L,
-                currentDirectoryPath = lastPath,
                 errorMessage = null,
                 lyrics = null,
                 isLoadingLyrics = false,
@@ -312,7 +304,7 @@ class MusicPlayerAppSessionImpl(
     ) {
         val server = _sessionState.value.browsingServer ?: _sessionState.value.activeServer ?: return
         val request = queueManager.buildDirectoryQueue(directory, selectedFile, initialMetadata, server = server) ?: return
-        dispatchQueueLoad(server, request, directory.path)
+        dispatchQueueLoad(server, request)
         metadataCoordinator.enrichQueueTracksFromCache(server, request.queue)
     }
 
@@ -594,8 +586,6 @@ class MusicPlayerAppSessionImpl(
     override fun flushSessionAsync() = persistenceCoordinator.flushSessionAsync()
 
     private fun stopPeriodicFlush(): Unit = persistenceCoordinator.stopPeriodicFlush()
-
-    override fun setCurrentDirectoryPath(path: String) = persistenceCoordinator.setCurrentDirectoryPath(path)
 
     override suspend fun restoreSession() = persistenceCoordinator.restoreSession()
 

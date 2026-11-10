@@ -101,13 +101,14 @@ fun PlaybackQueueBottomSheet(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val animateDismiss: () -> Unit = {
-        coroutineScope.launch {
-            sheetState.hide()
-        }.invokeOnCompletion {
-            if (!sheetState.isVisible) {
-                onDismissRequest()
+        coroutineScope
+            .launch {
+                sheetState.hide()
+            }.invokeOnCompletion {
+                if (!sheetState.isVisible) {
+                    onDismissRequest()
+                }
             }
-        }
     }
 
     BackHandler(enabled = true) {

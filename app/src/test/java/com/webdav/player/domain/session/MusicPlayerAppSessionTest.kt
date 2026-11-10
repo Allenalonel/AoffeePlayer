@@ -27,6 +27,7 @@ import com.webdav.player.domain.network.FakeNetworkConnectivityObserver
 import com.webdav.player.domain.player.FakeAudioPlayerEngine
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
+import com.webdav.player.domain.storage.FakeStorageReachabilityTracker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
@@ -2404,12 +2405,14 @@ class MusicPlayerAppSessionTest {
                 )
             val playlistRepo = TestPlaylistRepository(mutableListOf(notFoundEntry, normalEntry))
             val serverRepo = TestServerRepository(listOf(testServer))
+            val fakeTracker = FakeStorageReachabilityTracker()
 
             val playlistSession =
                 MusicPlayerAppSessionImpl(
                     playerEngine = fakeEngine,
                     serverRepository = serverRepo,
                     playlistRepository = playlistRepo,
+                    storageReachabilityTracker = fakeTracker,
                     coroutineScope = sessionScope,
                 )
 
@@ -2423,8 +2426,13 @@ class MusicPlayerAppSessionTest {
             fakeEngine._playbackState.value = PlaybackState.Error("HTTP 404 error", http404Exception)
             advanceUntilIdle()
 
-            // Verify track 1 was marked inactive as FILE_NOT_FOUND in repo
-            assertTrue(playlistRepo.markedInactive.contains(testServer.id to "/deleted.mp3"))
+            // Verify track 1 was reported unavailable to StorageReachabilityTracker, with ZERO writes to playlistRepo
+            assertEquals(1, fakeTracker.reportedUnavailableTracks.size)
+            assertEquals(
+                Triple(testServer.id, "/deleted.mp3", InactiveReason.FILE_NOT_FOUND),
+                fakeTracker.reportedUnavailableTracks[0],
+            )
+            assertTrue(playlistRepo.markedInactive.isEmpty())
 
             // Verify smoothly skipped to track 2 ("Normal Song") without hanging
             assertEquals(1, playlistSession.sessionState.value.queue.currentIndex)
@@ -2588,7 +2596,7 @@ class MusicPlayerAppSessionTest {
             orderedTrackIds: List<Long>,
         ) {}
 
-        override fun markTrackInactive(
+        fun markTrackInactive(
             serverId: Long,
             remotePath: String,
             reason: InactiveReason,
@@ -2734,6 +2742,36 @@ class MusicPlayerAppSessionTest {
 
             assertEquals("Playback must strictly remain paused", PlaybackState.Paused, netSession.sessionState.value.playbackState)
             assertEquals("No auto-resumption on noisy pause", initialLoads, fakeEngine.loadTrackCount)
+
+            netSession.release()
+        }
+
+    @Test
+    fun networkRestored_triggersReachabilitySelfHealingOnStorageReachabilityTracker() =
+        runTest(testDispatcher) {
+            val fakeNetwork = FakeNetworkConnectivityObserver(NetworkStatus(isConnected = true, isWifi = true))
+            val fakeTracker = FakeStorageReachabilityTracker()
+            val netSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = null,
+                    storageReachabilityTracker = fakeTracker,
+                    coroutineScope = sessionScope,
+                    networkConnectivityObserver = fakeNetwork,
+                )
+            advanceUntilIdle()
+
+            assertEquals(0, fakeTracker.selfHealingCallCount)
+
+            // Network drops
+            fakeNetwork.emitStatus(NetworkStatus.DISCONNECTED)
+            advanceUntilIdle()
+
+            // Network reconnects
+            fakeNetwork.emitStatus(NetworkStatus(isConnected = true, isWifi = true))
+            advanceUntilIdle()
+
+            assertEquals(1, fakeTracker.selfHealingCallCount)
 
             netSession.release()
         }

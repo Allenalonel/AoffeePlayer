@@ -9,6 +9,7 @@ import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.session.FakeMusicPlayerAppSession
+import com.webdav.player.domain.storage.FakeStorageReachabilityTracker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -184,7 +185,7 @@ class DetailFakePlaylistRepository : PlaylistRepository {
         syncTracksFlow(playlistId)
     }
 
-    override fun markTrackInactive(
+    fun markTrackInactive(
         serverId: Long,
         remotePath: String,
         reason: InactiveReason,
@@ -203,12 +204,6 @@ class DetailFakePlaylistRepository : PlaylistRepository {
             syncTracksFlow(pId)
         }
     }
-
-    var triggerReachabilitySelfHealingCallCount = 0
-
-    override suspend fun triggerReachabilitySelfHealing() {
-        triggerReachabilitySelfHealingCallCount++
-    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -216,6 +211,7 @@ class PlaylistDetailViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeRepo: DetailFakePlaylistRepository
     private lateinit var fakeSession: FakeMusicPlayerAppSession
+    private lateinit var fakeTracker: FakeStorageReachabilityTracker
     private lateinit var viewModel: PlaylistDetailViewModel
 
     private val playlistId = 1L
@@ -253,6 +249,7 @@ class PlaylistDetailViewModelTest {
             Dispatchers.setMain(testDispatcher)
             fakeRepo = DetailFakePlaylistRepository()
             fakeSession = FakeMusicPlayerAppSession()
+            fakeTracker = FakeStorageReachabilityTracker()
 
             fakeRepo.createPlaylist("我的车载精选")
             fakeRepo.addTrackToPlaylist(playlistId, trackA) // id = 1
@@ -264,6 +261,7 @@ class PlaylistDetailViewModelTest {
                     playlistId = playlistId,
                     playlistRepository = fakeRepo,
                     musicPlayerAppSession = fakeSession,
+                    storageReachabilityTracker = fakeTracker,
                 )
         }
 
@@ -287,6 +285,7 @@ class PlaylistDetailViewModelTest {
             assertEquals("Bravo", state.tracks[2].title)
             assertFalse(state.isReordering)
             assertEquals(PlaylistSortOption.CUSTOM, state.activeSortOption)
+            assertTrue("Self-healing must trigger on load", fakeTracker.selfHealingCallCount >= 1)
         }
 
     @Test
@@ -490,6 +489,7 @@ class PlaylistDetailViewModelTest {
                     playlistId = playlistId,
                     playlistRepository = fakeRepo,
                     musicPlayerAppSession = fakeSession,
+                    storageReachabilityTracker = fakeTracker,
                 )
             advanceUntilIdle()
 
@@ -518,6 +518,7 @@ class PlaylistDetailViewModelTest {
                     playlistId = playlistId,
                     playlistRepository = fakeRepo,
                     musicPlayerAppSession = fakeSession,
+                    storageReachabilityTracker = fakeTracker,
                 )
             advanceUntilIdle()
 
@@ -543,7 +544,7 @@ class PlaylistDetailViewModelTest {
             // Playback NOT started
             assertNull(fakeSession.lastPlayPlaylist)
             // Self-healing triggered on click (initial load + 1 on click = 2)
-            assertTrue(fakeRepo.triggerReachabilitySelfHealingCallCount >= 2)
+            assertTrue(fakeTracker.selfHealingCallCount >= 2)
 
             // Test 404 inactive track
             val notFoundTrack =
@@ -577,6 +578,7 @@ class PlaylistDetailViewModelTest {
                     playlistId = playlistId,
                     playlistRepository = fakeRepo,
                     musicPlayerAppSession = fakeSession,
+                    storageReachabilityTracker = fakeTracker,
                 )
             advanceUntilIdle()
 

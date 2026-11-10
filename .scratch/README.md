@@ -16,6 +16,7 @@
 
 当前无活跃任务。所有功能特性与技术债务重构均已结项并归档至 [`archive/`](archive/)。
 
+
 ---
 
 ## 已归档历史特性 (Archived)
@@ -24,6 +25,7 @@
 
 | 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 归档路径 |
 | :--- | :--- | :---: | :---: | :--- |
+| `decouple-storage-reachability-from-playlist-repository` | 从歌单仓储解耦存储源连通性追踪器与内存响应式自愈体系 (ADR-0038) | 4 | Completed | [`archive/decouple-storage-reachability-from-playlist-repository/`](archive/decouple-storage-reachability-from-playlist-repository/) |
 | `decouple-storage-lifecycle-and-repository-seams` | 解耦存储源生命周期并消除仓储层环形接缝，建立单向不可变装配管道 (ADR-0037) | 4 | Completed | [`archive/decouple-storage-lifecycle-and-repository-seams/`](archive/decouple-storage-lifecycle-and-repository-seams/) |
 | `consolidate-media-library-repository` | 折叠媒体库浏览与索引检索为单一深模块，统一 L1 内存缓存与 B-Tree 检索 (ADR-0036) | 4 | Completed | [`archive/consolidate-media-library-repository/`](archive/consolidate-media-library-repository/) |
 | `cross-source-session-decoupling-and-symmetric-storage-lifecycle` | 跨源会话双轨解耦、冷启动播控门控与对称存储生命周期闭环 (ADR-0035) | 1 | Completed | [`docs/adr/0035-cross-source-session-decoupling-and-symmetric-storage-lifecycle.md`](../docs/adr/0035-cross-source-session-decoupling-and-symmetric-storage-lifecycle.md) |

@@ -9,8 +9,8 @@ import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.MediaLibraryRepository
-import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
+import com.webdav.player.domain.storage.StorageReachabilityTracker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -46,7 +46,7 @@ data class ServerManagementUiState(
 class ServerManagementViewModel(
     private val repository: ServerRepository,
     private val webDavClient: WebDavClient,
-    private val playlistRepository: PlaylistRepository? = null,
+    private val storageReachabilityTracker: StorageReachabilityTracker? = null,
     private val mediaLibraryRepository: MediaLibraryRepository? = null,
 ) : ViewModel() {
     private val _dialogAndActionState = MutableStateFlow(DialogAndActionState())
@@ -165,7 +165,7 @@ class ServerManagementViewModel(
             }
             val result = webDavClient.testConnection(server)
             if (result is ConnectionResult.Success && serverId != null) {
-                playlistRepository?.clearServerUnreachableStatus(serverId)
+                storageReachabilityTracker?.reportServerReachable(serverId)
             }
             _dialogAndActionState.update {
                 val updatedResults =

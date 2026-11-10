@@ -20,6 +20,7 @@ import com.webdav.player.domain.repository.PlaybackSessionStore
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
+import com.webdav.player.domain.storage.StorageReachabilityTracker
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +46,7 @@ class MusicPlayerAppSessionImpl(
     trackMetadataRepository: TrackMetadataRepository? = null,
     sessionStore: PlaybackSessionStore? = null,
     private val playlistRepository: PlaylistRepository? = null,
+    private val storageReachabilityTracker: StorageReachabilityTracker? = null,
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob()),
     progressDispatcher: CoroutineDispatcher =
         (coroutineScope.coroutineContext[kotlin.coroutines.ContinuationInterceptor] as? CoroutineDispatcher)?.takeIf {
@@ -77,7 +79,8 @@ class MusicPlayerAppSessionImpl(
 
     private val queueManager =
         PlaybackQueueManager(_sessionState, serverRepository) { coroutineScope.launch { flushSession() } }
-    private val faultTolerance = PlaybackFaultTolerance(_sessionState, playerEngine, playlistRepository, queueManager, coroutineScope)
+    private val faultTolerance =
+        PlaybackFaultTolerance(_sessionState, playerEngine, storageReachabilityTracker, queueManager, coroutineScope)
     private val metadataCoordinator = PlaybackMetadataCoordinator(trackMetadataRepository, playerEngine, _sessionState, coroutineScope)
 
     @VisibleForTesting val isPrerollAppended = AtomicBoolean(false)
@@ -238,7 +241,7 @@ class MusicPlayerAppSessionImpl(
                             faultTolerance.onNetworkRestored {
                                 resumeCurrentTrack()
                             }
-                            playlistRepository?.triggerReachabilitySelfHealing()
+                            storageReachabilityTracker?.triggerReachabilitySelfHealing()
                         }
                     }
             }

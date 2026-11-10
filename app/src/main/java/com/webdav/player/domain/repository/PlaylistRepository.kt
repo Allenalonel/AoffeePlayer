@@ -1,16 +1,9 @@
 package com.webdav.player.domain.repository
 
 import com.webdav.player.domain.model.AudioTrack
-import com.webdav.player.domain.model.InactiveReason
 import com.webdav.player.domain.model.Playlist
 import com.webdav.player.domain.model.PlaylistTrackEntry
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
-
-data class TrackKey(
-    val serverId: Long,
-    val remotePath: String,
-)
 
 interface PlaylistRepository {
     fun getAllPlaylistsFlow(): Flow<List<Playlist>>
@@ -65,23 +58,4 @@ interface PlaylistRepository {
         playlistId: Long,
         orderedTrackIds: List<Long>,
     )
-
-    fun markTrackInactive(
-        serverId: Long,
-        remotePath: String,
-        reason: InactiveReason,
-    ) {}
-
-    fun markServerInactive(
-        serverId: Long,
-        reason: InactiveReason,
-    ) {}
-
-    suspend fun clearServerUnreachableStatus(serverId: Long) {}
-
-    fun getInactiveTracksFlow(): Flow<Map<TrackKey, InactiveReason>> = emptyFlow()
-
-    suspend fun checkTrackReachability(entry: PlaylistTrackEntry): Boolean = true
-
-    suspend fun triggerReachabilitySelfHealing() {}
 }

@@ -1,6 +1,6 @@
 # Architectural Decision Records (ADRs)
 
-本文档归档了 Aoffee Player 架构演进全生命周期的 38 篇架构决策记录。
+本文档归档了 Aoffee Player 架构演进全生命周期的 39 篇架构决策记录。
 
 > ⚠️ **CONSUMPTION RULE & PRECEDENCE**:
 > 1. **最高权威法典**：所有架构约束与实现不变量以根目录 **`CODING_STANDARDS.md`** 为唯一最高裁决（详见 `AGENTS.md`）；
@@ -35,7 +35,7 @@
 | **0019** | [Streamline Playback Pipeline and Consolidate Session Host](0019-streamline-playback-pipeline-and-consolidate-session-host.md) | `Amended` | 凭据统一由 ADR-0035 队列管理器解析 |
 | **0020** | [跨服务器本地歌单与增量曲库即时搜索](0020-cross-server-playlists-and-incremental-library-search.md) | `Amended` | CUE 由 ADR-0034 废除，搜索由 ADR-0033 升级 |
 | **0021** | [深层 CUE 解析器下沉与消除网络客户端泄漏](0021-deepen-cue-sheet-resolver-and-purge-network-leakage.md) | **`Superseded`** | **已被 ADR-0034 彻底全盘废除与物理清除** |
-| **0022** | [歌单仓储加深与下沉连通性及封面自愈](0022-deepen-playlist-repository-with-reachability-and-artwork-self-healing.md) | `Amended` | 歌单自愈探活下沉；由 ADR-0030 闭环多触发故障自愈 |
+| **0022** | [歌单仓储加深与下沉连通性及封面自愈](0022-deepen-playlist-repository-with-reachability-and-artwork-self-healing.md) | `Amended` | 歌单自愈探活下沉；连通性管理由 ADR-0038 解耦至 StorageReachabilityTracker |
 | **0023** | [播放会话内部接缝化与解构上帝类](0023-internal-seams-and-session-decomposition.md) | `Amended` | CUE 由 ADR-0034 清除，双轨源由 ADR-0035 解耦 |
 | **0024** | [下沉目录富化与搜索历史至仓储层并轻量化视图模型](0024-deepen-directory-and-search-repositories-and-slim-viewmodel.md) | **`Superseded`** | **已被 ADR-0036 彻底取代并升格为 MediaLibraryRepository** |
 | **0025** | [深化播放引擎与收敛仓储层](0025-deepen-player-engine-and-consolidate-repositories.md) | `Amended` | 废除硬外键；CUE 骨架由 ADR-0034 清除 |
@@ -43,12 +43,13 @@
 | **0027** | [批量添加到歌单与上下文多选模式](0027-batch-playlist-addition-and-contextual-selection.md) | `Accepted` | 歌单批量入库原子去重与上下文多选底栏 |
 | **0028** | [Material 3 Expressive 界面重构、全屏流体播放器与双行规范](0028-material-3-expressive-elevation-and-dynamic-theming.md) | `Accepted` | M3E 界面重构与 AudioTrackRow 双行规范 |
 | **0029** | [品牌更名为 Aoffee Player 及自适应图标规范](0029-rebranding-to-aoffee-player-and-adaptive-launcher-icon-specification.md) | `Accepted` | 正式更名为 Aoffee Player，包名维持 com.webdav.player |
-| **0030** | [全链路服务器故障自愈与多触发恢复网络](0030-full-lifecycle-server-fault-self-healing-and-multi-trigger-recovery.md) | `Amended` | 级联删除与默认节点提升由 ADR-0035 闭环 |
+| **0030** | [全链路服务器故障自愈与多触发恢复网络](0030-full-lifecycle-server-fault-self-healing-and-multi-trigger-recovery.md) | `Amended` | 级联删除由 ADR-0035 闭环；持久化置灰由 ADR-0038 迁移为内存响应式流 |
 | **0031** | [Material 3 Expressive 动效系统与流体胶囊形变架构](0031-material-3-expressive-motion-and-capsule-morphing.md) | `Accepted` | 统一 MotionTokens 与 GPU 矩阵形变过渡 |
-| **0032a**| [AndroidX Palette 官方多色提取、深邃暗调舞台与感知色调](0032a-androidx-palette-and-m3-expressive-dynamic-theming.md) | `Accepted` | 三层感知色调模型与 Monochrome Safeguard |
-| **0032b**| [本地存储 SAF 挂载集成与跨源多模回放管道](0032b-local-storage-saf-and-cross-source-playback.md) | `Amended` | CUE 由 ADR-0034 清除；确立 LOCAL_STORAGE_ID 与 SAF 架构 |
+| **0032a** | [AndroidX Palette 官方多色提取、深邃暗调舞台与感知色调](0032a-androidx-palette-and-m3-expressive-dynamic-theming.md) | `Accepted` | 三层感知色调模型与 Monochrome Safeguard |
+| **0032b** | [本地存储 SAF 挂载集成与跨源多模回放管道](0032b-local-storage-saf-and-cross-source-playback.md) | `Amended` | CUE 由 ADR-0034 清除；确立 LOCAL_STORAGE_ID 与 SAF 架构 |
 | **0033** | [统一跨源曲库快速索引与全局搜索架构](0033-cross-source-library-indexing-and-search.md) | `Amended` | CUE 检索由 ADR-0034 清除；确立 media_track_index 表 |
 | **0034** | [彻底废弃与物理清除 CUE 虚拟分轨支持](0034-deprecate-and-purge-cue-sheet-support.md) | `Accepted` | 物理清除 4,500+ 行 CUE 模块，回归 1:1 真实文件 |
 | **0035** | [跨源会话双轨解耦与对称存储生命周期](0035-cross-source-session-decoupling-and-symmetric-storage-lifecycle.md) | `Accepted` | browsingServer 与 activeServer 双轨彻底解耦 |
 | **0036** | [折叠媒体库浏览与索引检索为单一深模块](0036-consolidate-media-library-repository.md) | `Accepted` | 折叠 Directory 与 Search 仓储，确立 MediaLibraryRepository 深模块 |
 | **0037** | [存储生命周期级联失效与单向仓储接缝](0037-storage-lifecycle-cascade-and-unidirectional-repository-seams.md) | `Accepted` | 提炼 StorageCascadeInvalidator 窄接口，斩断仓储层环形接缝 |
+| **0038** | [从歌单仓储解耦存储源连通性追踪器与内存响应式自愈](0038-decouple-storage-reachability-from-playlist-repository.md) | `Accepted` | 提炼 StorageReachabilityTracker 深模块，解耦播控/歌单与内存状态流 |

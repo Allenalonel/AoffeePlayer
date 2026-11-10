@@ -30,7 +30,7 @@ class AppViewModelFactory(
                 ServerManagementViewModel(
                     repository = container.serverRepository,
                     webDavClient = container.webDavClient,
-                    playlistRepository = container.playlistRepository,
+                    storageReachabilityTracker = container.storageReachabilityTracker,
                     mediaLibraryRepository = container.mediaLibraryRepository,
                 ) as T
             }
@@ -47,6 +47,7 @@ class AppViewModelFactory(
                     playlistId = id,
                     playlistRepository = container.playlistRepository,
                     musicPlayerAppSession = container.musicPlayerAppSession,
+                    storageReachabilityTracker = container.storageReachabilityTracker,
                 ) as T
             }
 

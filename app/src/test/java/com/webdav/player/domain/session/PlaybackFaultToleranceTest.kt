@@ -8,17 +8,12 @@ import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
-import com.webdav.player.domain.model.Playlist
-import com.webdav.player.domain.model.PlaylistTrackEntry
 import com.webdav.player.domain.player.FakeAudioPlayerEngine
-import com.webdav.player.domain.repository.PlaylistRepository
+import com.webdav.player.domain.storage.FakeStorageReachabilityTracker
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -42,7 +37,7 @@ class PlaybackFaultToleranceTest {
     private lateinit var sessionStateFlow: MutableStateFlow<PlayerSessionState>
     private lateinit var queueManager: PlaybackQueueManager
     private lateinit var faultTolerance: PlaybackFaultTolerance
-    private lateinit var fakePlaylistRepo: FakePlaylistRepo
+    private lateinit var fakeStorageReachabilityTracker: FakeStorageReachabilityTracker
 
     private val t1 =
         AudioTrack(
@@ -64,83 +59,10 @@ class PlaybackFaultToleranceTest {
             format = AudioFormat.MP3,
         )
 
-    private class FakePlaylistRepo : PlaylistRepository {
-        val markedInactive = mutableListOf<Triple<Long, String, InactiveReason>>()
-        val markedServerInactive = mutableListOf<Pair<Long, InactiveReason>>()
-        val clearedServerIds = mutableListOf<Long>()
-
-        override fun getAllPlaylistsFlow(): Flow<List<Playlist>> = emptyFlow()
-
-        override suspend fun getAllPlaylists(): List<Playlist> = emptyList()
-
-        override fun getPlaylistFlow(playlistId: Long): Flow<Playlist?> = flowOf(null)
-
-        override suspend fun getPlaylist(playlistId: Long): Playlist? = null
-
-        override suspend fun createPlaylist(name: String): Long = 1L
-
-        override suspend fun renamePlaylist(
-            playlistId: Long,
-            newName: String,
-        ) {}
-
-        override suspend fun deletePlaylist(playlistId: Long) {}
-
-        override suspend fun isPlaylistNameExists(
-            name: String,
-            excludePlaylistId: Long?,
-        ): Boolean = false
-
-        override fun getTracksForPlaylistFlow(playlistId: Long): Flow<List<PlaylistTrackEntry>> = emptyFlow()
-
-        override suspend fun getTracksForPlaylist(playlistId: Long): List<PlaylistTrackEntry> = emptyList()
-
-        override suspend fun addTrackToPlaylist(
-            playlistId: Long,
-            track: AudioTrack,
-        ): Long = 1L
-
-        override suspend fun addTracksToPlaylist(
-            playlistId: Long,
-            tracks: List<AudioTrack>,
-        ): List<Long> = emptyList()
-
-        override suspend fun removeTrackFromPlaylist(trackEntryId: Long) {}
-
-        override suspend fun removeTracksFromPlaylist(
-            playlistId: Long,
-            trackEntryIds: List<Long>,
-        ) {}
-
-        override suspend fun updateTrackOrders(
-            playlistId: Long,
-            orderedTrackIds: List<Long>,
-        ) {}
-
-        override fun markTrackInactive(
-            serverId: Long,
-            remotePath: String,
-            reason: InactiveReason,
-        ) {
-            markedInactive.add(Triple(serverId, remotePath, reason))
-        }
-
-        override fun markServerInactive(
-            serverId: Long,
-            reason: InactiveReason,
-        ) {
-            markedServerInactive.add(serverId to reason)
-        }
-
-        override suspend fun clearServerUnreachableStatus(serverId: Long) {
-            clearedServerIds.add(serverId)
-        }
-    }
-
     @Before
     fun setUp() {
         fakeEngine = FakeAudioPlayerEngine()
-        fakePlaylistRepo = FakePlaylistRepo()
+        fakeStorageReachabilityTracker = FakeStorageReachabilityTracker()
         sessionStateFlow =
             MutableStateFlow(
                 PlayerSessionState(
@@ -153,7 +75,7 @@ class PlaybackFaultToleranceTest {
             PlaybackFaultTolerance(
                 sessionStateFlow = sessionStateFlow,
                 playerEngine = fakeEngine,
-                playlistRepository = fakePlaylistRepo,
+                storageReachabilityTracker = fakeStorageReachabilityTracker,
                 queueManager = queueManager,
                 coroutineScope = testScope,
             )
@@ -222,8 +144,24 @@ class PlaybackFaultToleranceTest {
         faultTolerance.handle404Failure(t1, "Missing file") { skipped = true }
 
         assertTrue(skipped)
-        assertEquals(1, fakePlaylistRepo.markedInactive.size)
-        assertEquals(InactiveReason.FILE_NOT_FOUND, fakePlaylistRepo.markedInactive[0].third)
+        assertEquals(1, fakeStorageReachabilityTracker.reportedUnavailableTracks.size)
+        assertEquals(
+            Triple(t1.serverId, t1.remotePath, InactiveReason.FILE_NOT_FOUND),
+            fakeStorageReachabilityTracker.reportedUnavailableTracks[0],
+        )
+    }
+
+    @Test
+    fun handleAuthFailure_reportsServerUnavailable() {
+        var skipped = false
+        faultTolerance.handleAuthFailure(t1, "Auth error") { skipped = true }
+
+        assertTrue(skipped)
+        assertEquals(1, fakeStorageReachabilityTracker.reportedUnavailableServers.size)
+        assertEquals(
+            t1.serverId to InactiveReason.SERVER_CREDENTIAL_INVALID,
+            fakeStorageReachabilityTracker.reportedUnavailableServers[0],
+        )
     }
 
     @Test
@@ -350,10 +288,11 @@ class PlaybackFaultToleranceTest {
     fun handleServerUnavailable_marksBothTrackAndServerInactive() {
         faultTolerance.handleServerUnavailable(t1) {}
 
-        assertEquals(1, fakePlaylistRepo.markedInactive.size)
-        assertEquals(InactiveReason.SERVER_UNREACHABLE, fakePlaylistRepo.markedInactive[0].third)
-        assertEquals(1, fakePlaylistRepo.markedServerInactive.size)
-        assertEquals(1L to InactiveReason.SERVER_UNREACHABLE, fakePlaylistRepo.markedServerInactive[0])
+        assertEquals(1, fakeStorageReachabilityTracker.reportedUnavailableServers.size)
+        assertEquals(
+            t1.serverId to InactiveReason.SERVER_UNREACHABLE,
+            fakeStorageReachabilityTracker.reportedUnavailableServers[0],
+        )
     }
 
     @Test
@@ -370,9 +309,17 @@ class PlaybackFaultToleranceTest {
             faultTolerance.onPlayingStarted()
             testScope.testScheduler.advanceUntilIdle()
 
-            assertTrue(fakePlaylistRepo.clearedServerIds.contains(t1.serverId))
+            assertTrue(fakeStorageReachabilityTracker.reportedReachableServers.contains(t1.serverId))
             val current = sessionStateFlow.value
             assertFalse(current.isWeakNetwork)
             assertFalse(current.canManualRetry)
         }
+
+    @Test
+    fun playbackFaultTolerance_hasNoPlaylistRepositoryDependency() {
+        val constructors = PlaybackFaultTolerance::class.java.declaredConstructors
+        assertTrue(constructors.none { constructor ->
+            constructor.parameterTypes.any { it.name.contains("PlaylistRepository") }
+        })
+    }
 }

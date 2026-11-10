@@ -18,6 +18,7 @@ import com.webdav.player.data.repository.ServerRepositoryImpl
 import com.webdav.player.data.repository.TrackMetadataRepositoryImpl
 import com.webdav.player.data.repository.WebDavSyncScanner
 import com.webdav.player.data.service.PlaybackSessionHost
+import com.webdav.player.data.storage.StorageReachabilityTrackerImpl
 import com.webdav.player.di.AppContainer
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.repository.MediaLibraryRepository
@@ -26,6 +27,7 @@ import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import com.webdav.player.domain.session.MusicPlayerAppSession
 import com.webdav.player.domain.session.MusicPlayerAppSessionImpl
+import com.webdav.player.domain.storage.StorageReachabilityTracker
 
 class WebDavApplication :
     Application(),
@@ -43,6 +45,9 @@ class WebDavApplication :
         private set
 
     override lateinit var playlistRepository: PlaylistRepository
+        private set
+
+    override lateinit var storageReachabilityTracker: StorageReachabilityTracker
         private set
 
     override lateinit var playerEngine: AudioPlayerEngine
@@ -134,13 +139,18 @@ class WebDavApplication :
                 cascadeInvalidator = mediaLibraryRepository,
             )
 
+        storageReachabilityTracker =
+            StorageReachabilityTrackerImpl(
+                webDavClient = webDavClient,
+                serverRepository = serverRepository,
+                context = this,
+            )
+
         playlistRepository =
             PlaylistRepositoryImpl(
                 playlistDao = database.playlistDao(),
-                serverRepository = serverRepository,
                 trackMetadataRepository = trackMetadataRepository,
-                webDavClient = webDavClient,
-                context = this,
+                storageReachabilityTracker = storageReachabilityTracker,
             )
 
         val networkConnectivityObserver = DefaultNetworkConnectivityObserver(this)
@@ -152,6 +162,7 @@ class WebDavApplication :
                 trackMetadataRepository = trackMetadataRepository,
                 sessionStore = sessionStore,
                 playlistRepository = playlistRepository,
+                storageReachabilityTracker = storageReachabilityTracker,
                 networkConnectivityObserver = networkConnectivityObserver,
                 hardwareLockManager = sessionHost.hardwareLockManager,
             )

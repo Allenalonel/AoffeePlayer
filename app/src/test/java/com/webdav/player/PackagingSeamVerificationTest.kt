@@ -586,4 +586,49 @@ class PackagingSeamVerificationTest {
             resolverSource.contains("ServerRepository"),
         )
     }
+
+    @Test
+    fun decoupledStorageReachability_enforcesUnidirectionalSeams() {
+        // 1. PlaybackFaultTolerance must not import or reference PlaylistRepository
+        val faultToleranceSource = source("domain/session/PlaybackFaultTolerance.kt")
+        assertFalse(
+            "PlaybackFaultTolerance must not import PlaylistRepository",
+            faultToleranceSource.contains("import com.webdav.player.domain.repository.PlaylistRepository"),
+        )
+        assertFalse(
+            "PlaybackFaultTolerance must not reference PlaylistRepository",
+            faultToleranceSource.contains("PlaylistRepository"),
+        )
+
+        // 2. PlaylistRepository and PlaylistRepositoryImpl must not import or reference WebDavClient
+        val playlistRepoInterface = source("domain/repository/PlaylistRepository.kt")
+        assertFalse(
+            "PlaylistRepository interface must not reference WebDavClient",
+            playlistRepoInterface.contains("WebDavClient"),
+        )
+        val playlistRepoImpl = source("data/repository/PlaylistRepositoryImpl.kt")
+        assertFalse(
+            "PlaylistRepositoryImpl must not import WebDavClient",
+            playlistRepoImpl.contains("import com.webdav.player.data.remote.WebDavClient"),
+        )
+        assertFalse(
+            "PlaylistRepositoryImpl must not reference WebDavClient",
+            playlistRepoImpl.contains("WebDavClient"),
+        )
+        assertFalse(
+            "PlaylistRepositoryImpl must not reference localUriReachabilityChecker",
+            playlistRepoImpl.contains("localUriReachabilityChecker"),
+        )
+        assertFalse(
+            "PlaylistRepositoryImpl must not reference serverRepository",
+            playlistRepoImpl.contains("serverRepository"),
+        )
+
+        // 3. AppContainer must expose storageReachabilityTracker
+        val appContainer = source("di/AppContainer.kt")
+        assertTrue(
+            "AppContainer must expose storageReachabilityTracker",
+            appContainer.contains("val storageReachabilityTracker: StorageReachabilityTracker"),
+        )
+    }
 }

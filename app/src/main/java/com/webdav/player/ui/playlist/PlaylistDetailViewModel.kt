@@ -7,6 +7,7 @@ import com.webdav.player.domain.model.Playlist
 import com.webdav.player.domain.model.PlaylistTrackEntry
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.session.MusicPlayerAppSession
+import com.webdav.player.domain.storage.StorageReachabilityTracker
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -52,6 +53,7 @@ class PlaylistDetailViewModel(
     val playlistId: Long,
     private val playlistRepository: PlaylistRepository,
     private val musicPlayerAppSession: MusicPlayerAppSession? = null,
+    private val storageReachabilityTracker: StorageReachabilityTracker? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PlaylistDetailUiState(isLoading = true))
     val uiState: StateFlow<PlaylistDetailUiState> = _uiState.asStateFlow()
@@ -82,7 +84,7 @@ class PlaylistDetailViewModel(
 
     private fun loadData() {
         viewModelScope.launch {
-            playlistRepository.triggerReachabilitySelfHealing()
+            storageReachabilityTracker?.triggerReachabilitySelfHealing()
         }
 
         playlistRepository
@@ -305,7 +307,7 @@ class PlaylistDetailViewModel(
                 track.inactiveReason == InactiveReason.FILE_NOT_FOUND
             ) {
                 viewModelScope.launch {
-                    playlistRepository.triggerReachabilitySelfHealing()
+                    storageReachabilityTracker?.triggerReachabilitySelfHealing()
                 }
             }
             return

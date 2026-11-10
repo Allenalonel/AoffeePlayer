@@ -63,6 +63,7 @@ class MediaLibraryRepositoryImpl(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     searchCoordinator: MediaLibrarySearchCoordinator? = null,
     searchHistoryStore: InternalSearchHistoryStore? = null,
+    browsingCursorStore: InternalBrowsingCursorStore? = null,
 ) : MediaLibraryRepository {
 
     companion object {
@@ -94,6 +95,9 @@ class MediaLibraryRepositoryImpl(
 
     private val searchHistoryStore: InternalSearchHistoryStore =
         searchHistoryStore ?: InternalSearchHistoryStore(context, prefsName)
+
+    private val browsingCursorStore: InternalBrowsingCursorStore =
+        browsingCursorStore ?: InternalBrowsingCursorStore(context)
 
     // Sync state tracking
     private val _syncState = MutableStateFlow<LibrarySyncState>(LibrarySyncState.Idle)
@@ -524,6 +528,16 @@ class MediaLibraryRepositoryImpl(
     override fun clearSearchHistory() = searchHistoryStore.clearSearchHistory()
 
     // =========================================================================
+    // Browsing Cursor Retention (Delegated to InternalBrowsingCursorStore)
+    // =========================================================================
+
+    override fun getLastBrowsingPath(serverId: Long): String = browsingCursorStore.getLastBrowsingPath(serverId)
+
+    override fun setLastBrowsingPath(serverId: Long, path: String) {
+        browsingCursorStore.setLastBrowsingPath(serverId, path)
+    }
+
+    // =========================================================================
     // Storage Deletion Cascading Invalidation
     // =========================================================================
 
@@ -538,6 +552,7 @@ class MediaLibraryRepositoryImpl(
             mediaTrackIndexDao?.deleteByServerId(serverId)
             directorySyncCheckpointDao?.deleteByServerId(serverId)
             _syncStatesByServer.update { it - serverId }
+            browsingCursorStore.clearCursor(serverId)
         }
     }
 
@@ -580,6 +595,13 @@ class MediaLibraryRepositoryImpl(
                 // Non-fatal
             }
             directoryCacheDao?.deleteCacheByServerId(LOCAL_STORAGE_ID)
+
+            val currentCursor = browsingCursorStore.getLastBrowsingPath(LOCAL_STORAGE_ID)
+            if ((localRoot.isNotEmpty() && (currentCursor.startsWith(localRoot) || currentCursor.contains(localRoot))) ||
+                (uriString.isNotEmpty() && currentCursor.contains(uriString))
+            ) {
+                browsingCursorStore.setLastBrowsingPath(LOCAL_STORAGE_ID, "/")
+            }
         }
     }
 

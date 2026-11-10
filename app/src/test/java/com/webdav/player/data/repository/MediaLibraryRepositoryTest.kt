@@ -130,6 +130,10 @@ class MediaLibraryRepositoryTest {
     @After
     fun tearDown() {
         repository.clearSearchHistory()
+        context.getSharedPreferences(InternalBrowsingCursorStore.DEFAULT_PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .commit()
         database.close()
     }
 
@@ -940,6 +944,85 @@ class MediaLibraryRepositoryTest {
                 repository.rebuildIndex(testServer)
             }
             deferred.await()
+        }
+
+    // =========================================================================
+    // 9. Browsing Cursor Retention & Cascade Reset Tests
+    // =========================================================================
+
+    @Test
+    fun getLastBrowsingPath_returnsRootByDefault_forUnvisitedServer() {
+        assertEquals("/", repository.getLastBrowsingPath(testServer.id))
+        assertEquals("/", repository.getLastBrowsingPath(secondServer.id))
+        assertEquals("/", repository.getLastBrowsingPath(LOCAL_STORAGE_ID))
+        assertEquals("/", repository.getLastBrowsingPath(999L))
+    }
+
+    @Test
+    fun setLastBrowsingPath_updatesAndPersistsAcrossInstances() {
+        val path = "/music/Rock/"
+        repository.setLastBrowsingPath(testServer.id, path)
+        assertEquals(path, repository.getLastBrowsingPath(testServer.id))
+
+        val secondRepo = MediaLibraryRepositoryImpl(
+            webDavClient = fakeWebDavClient,
+            directoryCacheDao = directoryCacheDao,
+            trackMetadataDao = trackMetadataDao,
+            mediaTrackIndexDao = mediaTrackIndexDao,
+            directorySyncCheckpointDao = checkpointDao,
+            trackMetadataRepository = fakeTrackMetadataRepository,
+            localStorageDirectoryResolver = localResolver,
+            localStorageFolderDao = localStorageFolderDao,
+            context = context,
+        )
+        assertEquals(path, secondRepo.getLastBrowsingPath(testServer.id))
+    }
+
+    @Test
+    fun serverIsolation_multipleServersMaintainDistinctBrowsingCursors() {
+        repository.setLastBrowsingPath(1L, "/music/classical/")
+        repository.setLastBrowsingPath(2L, "/remote/jazz/")
+        repository.setLastBrowsingPath(LOCAL_STORAGE_ID, "/local/albums/")
+
+        assertEquals("/music/classical/", repository.getLastBrowsingPath(1L))
+        assertEquals("/remote/jazz/", repository.getLastBrowsingPath(2L))
+        assertEquals("/local/albums/", repository.getLastBrowsingPath(LOCAL_STORAGE_ID))
+    }
+
+    @Test
+    fun clearStorageData_purgesBrowsingCursorForServer() =
+        runTest {
+            repository.setLastBrowsingPath(1L, "/music/classical/")
+            repository.setLastBrowsingPath(2L, "/remote/jazz/")
+
+            repository.clearStorageData(1L)
+
+            assertEquals("/", repository.getLastBrowsingPath(1L))
+            assertEquals("/remote/jazz/", repository.getLastBrowsingPath(2L))
+        }
+
+    @Test
+    fun clearLocalFolderData_resetsLocalCursorToRoot_whenCursorInsideUnmountedFolder() =
+        runTest {
+            val unmountedUri = "content://test.storage/tree/Music"
+            val unmountedLocalPrefix = LocalStorageIndexScanner.buildLocalRootPath(unmountedUri)
+            val subfolderPath = "${unmountedLocalPrefix}Rock/"
+
+            // Case 1: Cursor is inside the unmounted folder hierarchy
+            repository.setLastBrowsingPath(LOCAL_STORAGE_ID, subfolderPath)
+            assertEquals(subfolderPath, repository.getLastBrowsingPath(LOCAL_STORAGE_ID))
+
+            repository.clearLocalFolderData(unmountedUri)
+            assertEquals("/", repository.getLastBrowsingPath(LOCAL_STORAGE_ID))
+
+            // Case 2: Cursor is in another mounted folder -> should NOT reset
+            val otherUri = "content://test.storage/tree/Other"
+            val otherLocalPrefix = LocalStorageIndexScanner.buildLocalRootPath(otherUri)
+            val otherSubfolder = "${otherLocalPrefix}Ambient/"
+            repository.setLastBrowsingPath(LOCAL_STORAGE_ID, otherSubfolder)
+
+            repository.clearLocalFolderData(unmountedUri)
+            assertEquals(otherSubfolder, repository.getLastBrowsingPath(LOCAL_STORAGE_ID))
         }
 
     // =========================================================================

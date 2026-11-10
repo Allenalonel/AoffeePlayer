@@ -53,9 +53,9 @@ interface MediaLibraryRepository : StorageCascadeInvalidator {
     fun clearSearchHistory()
 
     // Browsing Cursor Retention
-    fun getLastBrowsingPath(serverId: Long): String = "/"
+    fun getLastBrowsingPath(serverId: Long): String
 
-    fun setLastBrowsingPath(serverId: Long, path: String) {}
+    fun setLastBrowsingPath(serverId: Long, path: String)
 
     // Unified Storage Deletion Cascade Invalidation
     override suspend fun clearStorageData(serverId: Long)

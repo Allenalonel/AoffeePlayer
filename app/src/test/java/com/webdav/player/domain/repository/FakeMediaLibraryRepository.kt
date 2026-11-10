@@ -1,6 +1,8 @@
 package com.webdav.player.domain.repository
 
+import com.webdav.player.data.repository.LocalStorageIndexScanner
 import com.webdav.player.domain.model.DirectoryContent
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LibrarySearchResult
 import com.webdav.player.domain.model.LibrarySyncResult
 import com.webdav.player.domain.model.LibrarySyncState
@@ -207,13 +209,40 @@ open class FakeMediaLibraryRepository(
         historyList.clear()
     }
 
+    // Browsing Cursor Retention
+    val browsingCursors = mutableMapOf<Long, String>()
+    val setBrowsingPathCalls = mutableListOf<Pair<Long, String>>()
+
+    override fun getLastBrowsingPath(serverId: Long): String =
+        browsingCursors[serverId] ?: "/"
+
+    override fun setLastBrowsingPath(serverId: Long, path: String) {
+        val normalized = if (path.isBlank()) "/" else RemoteDirectory.normalizePath(path)
+        setBrowsingPathCalls.add(serverId to normalized)
+        browsingCursors[serverId] = normalized
+    }
+
     // Unified Storage Deletion Cascade Invalidation
     override suspend fun clearStorageData(serverId: Long) {
         clearedStorageServerIds.add(serverId)
+        browsingCursors.remove(serverId)
     }
 
     override suspend fun clearLocalFolderData(uriString: String) {
         clearedLocalFolderUris.add(uriString)
+        val currentCursor = browsingCursors[LOCAL_STORAGE_ID]
+        if (currentCursor != null) {
+            val localRoot = try {
+                LocalStorageIndexScanner.buildLocalRootPath(uriString)
+            } catch (_: Exception) {
+                ""
+            }
+            if ((localRoot.isNotEmpty() && (currentCursor.startsWith(localRoot) || currentCursor.contains(localRoot))) ||
+                (uriString.isNotEmpty() && currentCursor.contains(uriString))
+            ) {
+                browsingCursors[LOCAL_STORAGE_ID] = "/"
+            }
+        }
     }
 
     override suspend fun clearAllCaches() {

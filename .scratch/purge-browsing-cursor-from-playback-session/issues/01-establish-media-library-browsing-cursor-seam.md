@@ -4,12 +4,12 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** in-progress
+**Status:** completed
 
-- [ ] The Media Library repository exposes public methods to read and update the last browsing path for any storage source ID.
-- [ ] Unvisited storage sources return the root directory ("/") by default.
-- [ ] Updated browsing paths persist across repository instances and do not touch audio playback queue storage.
-- [ ] Different storage sources maintain completely isolated browsing cursors without cross-contamination.
-- [ ] Deleting a storage source via cascade invalidation automatically and permanently purges its remembered browsing cursor.
-- [ ] Unmounting a local storage folder safely resets the local browsing cursor to root if it pointed within the unmounted tree.
-- [ ] Unit tests for the Media Library repository thoroughly verify browsing cursor persistence, isolation, defaults, and cascade invalidation without mocking audio playback components.
+- [x] The Media Library repository exposes public methods to read and update the last browsing path for any storage source ID.
+- [x] Unvisited storage sources return the root directory ("/") by default.
+- [x] Updated browsing paths persist across repository instances and do not touch audio playback queue storage.
+- [x] Different storage sources maintain completely isolated browsing cursors without cross-contamination.
+- [x] Deleting a storage source via cascade invalidation automatically and permanently purges its remembered browsing cursor.
+- [x] Unmounting a local storage folder safely resets the local browsing cursor to root if it pointed within the unmounted tree.
+- [x] Unit tests for the Media Library repository thoroughly verify browsing cursor persistence, isolation, defaults, and cascade invalidation without mocking audio playback components.

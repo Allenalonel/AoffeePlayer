@@ -320,7 +320,7 @@ fun FullPlayerView(
                                         currentTrack = currentTrack,
                                         sessionState = sessionState,
                                         onArtworkClick = {},
-                                        modifier = downwardSwipeModifier,
+                                        modifier = Modifier,
                                         isArtworkVisible = isArtworkVisible,
                                         onArtworkPositioned = onArtworkPositioned,
                                     )
@@ -371,7 +371,7 @@ fun FullPlayerView(
                                                     pagerState.animateScrollToPage(1)
                                                 }
                                             },
-                                            modifier = downwardSwipeModifier,
+                                            modifier = Modifier,
                                             isArtworkVisible = isArtworkVisible,
                                             onArtworkPositioned = onArtworkPositioned,
                                         )

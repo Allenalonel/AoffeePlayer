@@ -10,7 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -203,18 +203,41 @@ fun MorphingPlayerContainer(
     val downwardSwipeModifier =
         Modifier.pointerInput(isExpanded) {
             if (!isExpanded) return@pointerInput
-            var downwardDrag = 0f
-            detectVerticalDragGestures(
-                onVerticalDrag = { change, dragAmount ->
-                    downwardDrag += dragAmount
-                    if (downwardDrag > 24f) {
+            var totalDragX = 0f
+            var totalDragY = 0f
+            var isVerticalCollapse = false
+            detectDragGestures(
+                onDragStart = {
+                    totalDragX = 0f
+                    totalDragY = 0f
+                    isVerticalCollapse = false
+                },
+                onDrag = { change, dragAmount ->
+                    totalDragX += dragAmount.x
+                    totalDragY += dragAmount.y
+
+                    // Determine vertical collapse intent: must be predominantly downward
+                    if (!isVerticalCollapse && totalDragY > 0f && totalDragY > kotlin.math.abs(totalDragX) * 1.5f && totalDragY > 32f) {
+                        isVerticalCollapse = true
+                    }
+
+                    if (isVerticalCollapse && totalDragY > 96f) {
                         change.consume()
                         onCollapse()
-                        downwardDrag = 0f
+                        totalDragY = 0f
+                        isVerticalCollapse = false
                     }
                 },
-                onDragEnd = { downwardDrag = 0f },
-                onDragCancel = { downwardDrag = 0f },
+                onDragEnd = {
+                    totalDragX = 0f
+                    totalDragY = 0f
+                    isVerticalCollapse = false
+                },
+                onDragCancel = {
+                    totalDragX = 0f
+                    totalDragY = 0f
+                    isVerticalCollapse = false
+                },
             )
         }
 
@@ -511,6 +534,17 @@ fun MorphingPlayerContainer(
             val curCoverRadiusPx = lerp(curCoverWidth / 2f, with(density) { FullPlayerDefaults.ArtworkSquircleRadius.toPx() }, p)
             val curCoverElevation = with(density) { lerp(0.dp, 24.dp, p).toPx() }
 
+            val coverClickModifier =
+                if (p < 0.85f) {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onExpand,
+                    )
+                } else {
+                    Modifier
+                }
+
             // Continuous Morphing Album Artwork (Single Living Instance)
             Box(
                 modifier =
@@ -528,15 +562,7 @@ fun MorphingPlayerContainer(
                             ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                         ).clip(RoundedCornerShape(curCoverRadiusPx))
                         .background(curCoverBgColor)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                if (p < 0.85f) {
-                                    onExpand()
-                                }
-                            },
-                        ),
+                        .then(coverClickModifier),
                 contentAlignment = Alignment.Center,
             ) {
                 CoverThumbnailImage(

@@ -2,6 +2,9 @@ package com.webdav.player.data.repository
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.webdav.player.domain.model.DirectorySortOrder
+import com.webdav.player.domain.model.SortDirection
+import com.webdav.player.domain.model.SortField
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -101,5 +104,31 @@ class InternalBrowsingCursorStoreTest {
         assertEquals("/", store.getLastBrowsingPath(1L))
         assertEquals("/Server2/Path/", store.getLastBrowsingPath(2L))
         assertEquals("/local/Path/", store.getLastBrowsingPath(0L))
+    }
+
+    @Test
+    fun sortOrder_inMemoryFallback_whenContextIsNull() {
+        val store = InternalBrowsingCursorStore(context = null)
+        assertEquals(DirectorySortOrder(SortField.NAME, SortDirection.ASCENDING), store.getDirectorySortOrder())
+
+        val newOrder = DirectorySortOrder(SortField.LAST_MODIFIED, SortDirection.DESCENDING)
+        store.setDirectorySortOrder(newOrder)
+        assertEquals(newOrder, store.getDirectorySortOrder())
+    }
+
+    @Test
+    fun sortOrder_persistsAcrossInstances() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val prefsName = "test_sort_order_prefs_persistence"
+        val store1 = InternalBrowsingCursorStore(context = context, prefsName = prefsName)
+        assertEquals(DirectorySortOrder(SortField.NAME, SortDirection.ASCENDING), store1.getDirectorySortOrder())
+
+        val customOrder = DirectorySortOrder(SortField.SIZE, SortDirection.DESCENDING)
+        store1.setDirectorySortOrder(customOrder)
+        assertEquals(customOrder, store1.getDirectorySortOrder())
+
+        // Simulate new app launch with fresh store instance
+        val store2 = InternalBrowsingCursorStore(context = context, prefsName = prefsName)
+        assertEquals(customOrder, store2.getDirectorySortOrder())
     }
 }

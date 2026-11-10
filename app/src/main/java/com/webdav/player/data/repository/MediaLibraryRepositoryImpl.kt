@@ -15,6 +15,7 @@ import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.data.remote.WebDavXmlParser
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.DirectoryContent
+import com.webdav.player.domain.model.DirectorySortOrder
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LibrarySearchResult
 import com.webdav.player.domain.model.LibrarySyncResult
@@ -535,6 +536,16 @@ class MediaLibraryRepositoryImpl internal constructor(
 
     override fun setLastBrowsingPath(serverId: Long, path: String) {
         browsingCursorStore.setLastBrowsingPath(serverId, path)
+    }
+
+    // =========================================================================
+    // Sort Order Retention (Delegated to InternalBrowsingCursorStore)
+    // =========================================================================
+
+    override fun getDirectorySortOrder(): DirectorySortOrder = browsingCursorStore.getDirectorySortOrder()
+
+    override fun setDirectorySortOrder(sortOrder: DirectorySortOrder) {
+        browsingCursorStore.setDirectorySortOrder(sortOrder)
     }
 
     // =========================================================================

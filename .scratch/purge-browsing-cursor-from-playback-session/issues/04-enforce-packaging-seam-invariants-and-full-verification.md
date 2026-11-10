@@ -4,7 +4,7 @@
 
 **Blocked by:** 03: Purge Browsing Fields from Playback Session and DataStore
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Packaging seam verification tests assert that the playback session facade exposes zero directory browsing methods.
 - [ ] Packaging seam verification tests assert that playback session data models contain zero directory path properties.

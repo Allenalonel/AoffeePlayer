@@ -14,7 +14,10 @@
 
 ## 活跃任务 (Active)
 
-当前无活跃任务。所有功能特性与技术债务重构均已结项并归档至 [`archive/`](archive/)。
+| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 规范路径 |
+| :--- | :--- | :---: | :---: | :--- |
+| `purge-browsing-cursor-from-playback-session` | 从播控会话剥离浏览游标并收敛至媒体库深模块 (ADR-0039) | 4 | `ready-for-agent` | [`purge-browsing-cursor-from-playback-session/spec.md`](purge-browsing-cursor-from-playback-session/spec.md) |
+
 
 
 ---

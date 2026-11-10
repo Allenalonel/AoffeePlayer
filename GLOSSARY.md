@@ -64,6 +64,10 @@ _Avoid_: Raw URI, Document ID, Content Link
 当歌单或持久化缓存中记录的封面文件在磁盘物理丢失或前缀失配时，自动检测并对齐媒体库权威元数据或重新按需提取的存活性自愈机制。
 _Avoid_: Image Fixer, Cover Rescan, Thumbnail Rebind
 
+**Browsing Cursor**:
+用户在媒体库特定存储源（远程 WebDAV 或本地存储）浏览时停留访问的最新目录路径现场，独立于当前播放会话及在播音轨，并在存储源注销时对称级联清理。
+_Avoid_: Current Directory, Session Folder, Last Visited Path, Directory History
+
 ### Playback & Queue
 
 **Audio Track**:

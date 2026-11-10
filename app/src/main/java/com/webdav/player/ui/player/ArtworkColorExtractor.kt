@@ -125,7 +125,7 @@ object ArtworkColorExtractor {
      * - Saturation in [0f, 1f]
      * - Lightness in [0f, 1f]
      */
-    fun colorToHsl(color: Color): FloatArray {
+    private fun colorToHsl(color: Color): FloatArray {
         val r = color.red
         val g = color.green
         val b = color.blue
@@ -150,10 +150,12 @@ object ArtworkColorExtractor {
         return floatArrayOf((h % 360f + 360f) % 360f, s.coerceIn(0f, 1f), l.coerceIn(0f, 1f))
     }
 
+    internal fun colorToHslForTesting(color: Color): FloatArray = colorToHsl(color)
+
     /**
      * Reconstructs a Compose [Color] from HSL components.
      */
-    fun hslToColor(
+    private fun hslToColor(
         h: Float,
         s: Float,
         l: Float,
@@ -188,7 +190,7 @@ object ArtworkColorExtractor {
     /**
      * Computes the perceptual Chroma (C*) in CIE L*a*b* color space for the given [Color].
      */
-    fun perceptualChroma(color: Color): Float {
+    private fun perceptualChroma(color: Color): Float {
         fun pivot(n: Double): Double = if (n <= 0.04045) n / 12.92 else ((n + 0.055) / 1.055).pow(2.4)
 
         val rLin = pivot(color.red.toDouble())
@@ -213,7 +215,7 @@ object ArtworkColorExtractor {
     /**
      * Checks if a [Color] is neutral monochrome (saturation < 0.12 or perceptual Chroma < 8).
      */
-    fun isMonochrome(color: Color): Boolean {
+    private fun isMonochrome(color: Color): Boolean {
         val hsl = colorToHsl(color)
         if (hsl[1] < 0.12f) return true
         return perceptualChroma(color) < 8f
@@ -236,7 +238,7 @@ object ArtworkColorExtractor {
      * Produces deep dark immersive background (Tone 6~8, Chroma <= 12), dark container (Tone 12~14),
      * and vibrant primary (Tone 80) with contrast >= 4.5:1.
      */
-    fun deriveDarkColorScheme(
+    internal fun deriveDarkColorScheme(
         seedColor: Color,
         dominantColor: Color = seedColor,
     ): ColorScheme {
@@ -321,7 +323,7 @@ object ArtworkColorExtractor {
      * fixed dark slate charcoal text (#1E293B / #3A3546, contrast >= 8.5:1 WCAG AAA),
      * and high-contrast pills (>= 8.5:1 WCAG AAA).
      */
-    fun deriveLightColorScheme(
+    internal fun deriveLightColorScheme(
         seedColor: Color,
         dominantColor: Color = seedColor,
     ): ColorScheme {
@@ -719,7 +721,7 @@ object ArtworkColorExtractor {
      * Extracts the most prominent/vibrant dominant color from a bitmap using androidx.palette.
      * Returns null if bitmap is invalid or has no non-transparent pixels.
      */
-    fun extractDominantColor(bitmap: Bitmap): Color? {
+    internal fun extractDominantColor(bitmap: Bitmap): Color? {
         if (bitmap.width <= 0 || bitmap.height <= 0 || !hasNonTransparentPixels(bitmap)) return null
         return try {
             val palette =

@@ -4,7 +4,7 @@
 
 **Blocked by:** 02: Migrate Directory Browser View Model to Media Library Seam and Eliminate Startup Wait
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The playback session interface physically eliminates `getLastDirectoryForServer` and `setCurrentDirectoryPath`.
 - [ ] The playback session reactive state and snapshot data models physically eliminate `currentDirectoryPath` and `serverLastDirectories`.

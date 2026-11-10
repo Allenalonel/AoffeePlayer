@@ -68,6 +68,10 @@ _Avoid_: Image Fixer, Cover Rescan, Thumbnail Rebind
 用户在媒体库特定存储源（远程 WebDAV 或本地存储）浏览时停留访问的最新目录路径现场，独立于当前播放会话及在播音轨，并在存储源注销时对称级联清理。
 _Avoid_: Current Directory, Session Folder, Last Visited Path, Directory History
 
+**Directory Sort Order**:
+用户在媒体库目录浏览时选定的曲目与子文件夹排序策略，由排序字段（名称、修改时间、文件大小）与排序方向（升序、降序）复合构成，作为全库统一的持久化偏好并直接决定目录点播的播放队列初始顺序。
+_Avoid_: File Sort, File Order, List Sorter, Display Ordering
+
 ### Playback & Queue
 
 **Audio Track**:

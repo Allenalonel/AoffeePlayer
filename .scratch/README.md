@@ -14,7 +14,10 @@
 
 ## 活跃任务 (Active)
 
-当前无活跃任务。所有功能特性与技术债务重构均已结项并归档至 [`archive/`](archive/)。
+| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 规格与工单路径 |
+| :--- | :--- | :---: | :---: | :--- |
+| `directory-file-sorting` | 媒体库目录排序策略与播控队列对齐体系 (ADR-0040) | 3 | Ready for Agent | [`.scratch/directory-file-sorting/spec.md`](directory-file-sorting/spec.md) |
+
 
 ---
 

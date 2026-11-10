@@ -6,42 +6,71 @@
 
 ## [3.4] - 2026-11-10
 
-### 💾 本地设备存储（SAF）双源音频与离线播放支持 (Local Device Storage & Hybrid SAF Playback, ADR-0032)
-- **本地存储访问框架 (SAF) 授权与双源拓扑**：
-  - 新增本地设备存储挂载支持，通过 Android Storage Access Framework (SAF) 授予目录持久化访问权限（`takePersistableUriPermission`）；
-  - 将应用升级为 WebDAV 远程私有云与本地存储双源拓扑架构，本地根目录与子目录毫秒级遍历与 SWR 缓存；
-  - 突破传统本地播放器与远程串流播放器的壁垒，支持 WebDAV 与本地音频混合构建歌单、跨源连续播放与离线平滑切换。
+### 💾 本地设备存储（SAF）双源架构与离线播放 (Local Storage SAF & Dual-Source Topology, ADR-0032b)
+- **本地存储访问框架 (SAF) 持久化挂载**：
+  - 新增本地设备存储挂载支持，通过 Android Storage Access Framework (SAF) 授予目录持久化访问权限（`takePersistableUriPermission`），支持本地音频文件与目录的读写与管理；
+  - 确立 `LOCAL_STORAGE_ID = 0L` 体系，将应用正式升级为 WebDAV 远程私有云与本地设备存储双源拓扑架构；
+  - 重构存储管理 Tab（Storage Tab），提供直观的 SAF 目录授权添加、根路径别名解析与目录移除，支持本地曲库毫秒级层级遍历与 SWR 缓存。
+- **WebDAV 与本地混合歌单 (Hybrid Playlists & Seamless Playback)**：
+  - 彻底打破传统本地播放器与远程流媒体播放器的隔离壁垒，支持用户在同一歌单内自由混合收藏 WebDAV 远程云曲目与本地 SAF 音频；
+  - 针对混合歌单提供毫秒级平滑过渡无缝切歌，会话层根据歌曲源头智能调度直读本地 Content URI 或通过 OkHttp 长连接流式回放。
+- **本地存储离线/不可达状态与连通性自愈**：
+  - 本地挂载目录在存储卷被拔出（如 SD 卡弹出）或 SAF 授权被系统撤销时，自动被识别为不可达状态并置灰减淡显示；
+  - 重新授权或设备接入后秒级自动自愈点亮，提供与 WebDAV 远程服务器完全对称的故障与生命周期管理。
 
-### 🎨 全天候全域音轨动态取色与沉浸式舞台黑胶光晕 (Dynamic Palette Theming & Immersive Ambient Glow, ADR-0032)
+### 🎨 全天候全域音轨动态取色与沉浸式舞台黑胶光晕 (Dynamic Palette Theming & Immersive Ambient Glow, ADR-0032a)
 - **通用感知色调规范化模型 (Universal Perceptual Tonal Normalization)**：
-  - 基于 `androidx.palette` 提取专辑封面种子色，解绑单一强调色，构建 HCT 双向色彩推导管道；
-  - 自动将任意高对比或杂乱封面映射为深邃暗夜舞台背景（Tone 6~8，Chroma <= 12）与高对比度文字排版（WCAG AAA >= 8.5:1）；
-  - 内置 `isMonochrome` 中性灰保护网，彻底消除单色/黑白封面在算法下偏红偏暖的色偏问题。
-- **多级环境光晕与超椭圆黑胶阴影 (Multi-Stop Ambient Glow & Squircle Shadow)**：
-  - 打造沉浸式舞台全屏播放器，封面底部漫延两级平滑高斯环境光晕（Ambient Glow Stops）；
-  - 全屏大封面配备 28dp 超椭圆自然景深阴影，浅色与深色主题 450ms 流体动态过渡换肤。
+  - 基于 `androidx.palette` 官方多色提取算法提取专辑封面代表色，解绑单点强调色，构建深层 HCT 双向色彩推导管道；
+  - 无论输入封面是极艳彩图、明亮白色还是复杂渐变，全自动推导收敛为深邃暗夜舞台背景（Tone 6~8，Chroma <= 12）与暗色容器（Tone 12~14）；
+  - 配备石板墨炭色文字排版与高对比度操作胶囊，全天候严格满足 WCAG AAA >= 8.5:1 超高清阅读对比度。
+- **中性灰与单色保护网 (isMonochrome Safeguard)**：
+  - 在色彩模型底层内置 `isMonochrome` 检测（饱和度 < 0.12 或感知彩度 C* < 8.0）；
+  - 遇到黑白封面、灰阶老唱片或无封面兜底时，强制切断暖色/红相漂移，渲染为纯净沉稳的银灰中性光泽，彻底根除灰黑封面在算法下偏红偏暖的色偏问题。
+- **沉浸式舞台全屏播放器与双层高斯光晕 (Immersive Stage Player & Ambient Glow)**：
+  - 全屏播放器核心升级为沉浸式舞台（Immersive Stage），大封面配备 28dp 超椭圆（Squircle）自然景深阴影；
+  - 封面底部漫延两级平滑高斯环境光晕（Ambient Glow Stops：Top Stop 色调投射 + Mid Stop 渐变过渡 + Bottom Stop 融入舞台深底）；
+  - 全屏换歌时主题色伴随 450ms 流体弹簧平滑渐变过度，杜绝颜色突变爆闪。
+- **高解析度音质角标动态配色协调 (Dynamic Audiophile Specs Badge)**：
+  - MP3, FLAC, AAC, WAV, APE, ALAC 等全格式音质规格角标与封面主强调色实时谐振运算，浅色模式与暗色模式下均呈现温润通透的玻璃拟态质感。
 
 ### 🔍 双源统一曲库毫秒级增量索引与全文检索 (Unified Cross-Source Library Indexing & Search, ADR-0033)
 - **统一本地媒体索引表与 B-Tree 极速检索 (Unified Media Track Index)**：
-  - 建立统一的 `media_track_index` 数据库索引架构，双源音频统一摄录入库并建立复合索引（`(serverId, title, artist, album)`）；
-  - 媒体库向未索引目录穿梭时自动在后台触发低并发增量同步，移除顶栏冗余的手动同步溢出菜单；
-  - 本地与远程统一毫秒级实时联想检索与多条件即打即搜。
+  - 建立统一的 `media_track_index` 数据库索引架构，将 WebDAV 远程服务器音频与本地 SAF 存储曲目统一摄录入库并建立复合索引（`(serverId, title, artist, album)`）；
+  - 支持对千万级双源曲目库发起毫秒级实时联想检索与多字段即打即搜，结果呈现高度保持 72dp 双行规范并内嵌高解析度角标。
 - **分段药丸搜索范围切换舱 (Segmented Slider Pill Scope Selector)**：
-  - 搜索舱顶部新增纯硬件绘制的连贯分段滑块药丸（`SegmentedSliderPill`），支持在“当前源（WebDAV/本地）”与“全部曲库”之间零闪烁平滑横跳滑动；
-  - 严格确保单源模式下搜索结果的绝对源隔离，防止跨服务/跨源数据污染。
+  - 搜索舱顶栏新增纯硬件绘制的连贯分段滑块药丸（`SegmentedSliderPill`），支持在“当前源（当前 WebDAV / 本地）”与“全部曲库”之间零闪烁平滑横跳滑动；
+  - 单源模式下实施严格的源隔离机制，防止跨服务/跨源数据污染。
+- **后台低并发静默增量同步 (Silent Incremental Sync)**：
+  - 媒体库向未索引目录穿梭时，后台自动触发低并发增量扫描入库，移除顶栏冗余的手动同步溢出菜单，检索数据始终与文件系统保持实时一致。
 
-### 🧹 CUE 虚拟分轨彻底解耦与整轨流式净化 (Purge CUE Sheet Support, ADR-0034)
-- **回退纯粹流式本质与架构降维**：
-  - 彻底剥离并废除 CUE 纯内存状态机解析器、虚拟时间轴映射及相关复杂耦合逻辑；
-  - Room 数据库架构平滑迁移至版本 8，物理清理数据表中已废弃的虚拟分轨与字段；
-  - 释放底层播放引擎维持双轨预热的复杂约束，播放管线接口深度与测试表面积精简逾 50%。
+### 🧹 CUE 虚拟分轨彻底物理清除与整轨流式降维 (Purge CUE Sheet Support, ADR-0034)
+- **物理清除 4,500+ 行 CUE 模块与回归纯粹流式**：
+  - 彻底剥离并物理清除 CUE 纯内存状态机解析器、虚拟时间轴映射引擎、分轨切歌反向回调及相关 4,500+ 行高度耦合代码；
+  - 彻底终结虚拟时间与物理时间双向折算引发的进度条跳跃、切歌爆音与跨目录穿透风险，应用全面回归“单音频文件即单曲目”的 1:1 纯粹流式本质。
+- **Room 数据库版本 8 平滑迁移 (Room v8 Migration)**：
+  - 实施 `AppDatabase.MIGRATION_7_8`，从 `playlist_tracks` 等数据表中彻底剔除 `virtualTrackId`, `cuePath`, `virtualStartTimeMs` 等虚拟字段；
+  - 自动化迁移脚本执行字段清洗与旧行迁移，升级过程毫秒级完成，零数据丢失。
+- **底层播放管道深度收窄与测试表面净化**：
+  - 释放底层播放引擎维持双轨预热与虚拟时间轴的复杂约束，播放管线接口深度与测试表面积精简逾 50%。
 
-### 🧱 仓储与会话深度解耦及架构接缝净化 (Storage & Session Decoupling, ADR-0035 ~ ADR-0039)
-- **跨源会话解耦与对称存储生命周期 (ADR-0035)**：彻底解除播放会话与单一远程 WebDAV 的硬绑定，建立对称统一的存储源生命周期管理。
-- **媒体库仓储深度收拢 (Consolidate MediaLibraryRepository, ADR-0036)**：折叠分散的 `DirectoryRepository` 与 `LibrarySearchRepository` 浅层仓储，收敛至单一高内聚深度仓储 `MediaLibraryRepository`。
-- **存储级联失效反转与依赖图解耦 (ADR-0037)**：反转 `ServerRepository` 与媒体库仓储之间的通知机制，拔除 Application 容器依赖图（DAG）中的向下转型与循环耦合。
-- **存储可达性状态独立追踪 (Storage Reachability Tracker, ADR-0038)**：将服务器故障诊断与网络探活自愈从 `PlaylistRepository` 彻底剥离，建立专职高内聚的 `StorageReachabilityTracker`。
-- **回放会话彻底剥离媒体库浏览游标 (ADR-0039)**：从 `MusicPlayerAppSession` 与持久化 DataStore 中彻底拔除 `lastBrowsingPath` 等非回放状态，内聚至 `MediaLibraryRepository` 内部状态，实现关注点完全分离。
+### 🧱 仓储层与会话中枢深度解耦 (Storage & Session Architectural Decoupling, ADR-0035 ~ ADR-0039)
+- **跨源会话双轨解耦与对称存储生命周期 (ADR-0035)**：
+  - 彻底解绑正在播放的服务器（`activeServer`）与当前正在浏览的媒体库源（`browsingServer`），支持用户在后台播放远程 WebDAV 音频的同时自由在前端浏览本地设备存储或切换其他服务器；
+  - 建立对称统一的存储源生命周期管理模型。
+- **折叠媒体库浏览与索引检索为单一深模块 (ADR-0036)**：
+  - 依据深模块设计哲学，将原先分散的 `DirectoryRepository`（目录 SWR 浏览）与 `LibrarySearchRepository`（索引检索）彻底折叠，收敛至单一高内聚深度仓储 `MediaLibraryRepository`；
+  - 削减两套冗余接口与注入点，大幅降低表现层 ViewModel 协作复杂度。
+- **存储生命周期级联失效与单向仓储接缝 (ADR-0037)**：
+  - 提炼 `StorageCascadeInvalidator` 窄接口，反转 `ServerRepository` 与媒体库仓储之间的通知流；
+  - 彻底斩断仓储层与 Application 依赖图（DAG）中的向下转型、循环依赖与跨层泄漏。
+- **存储源连通性追踪器解耦与内存响应式自愈 (ADR-0038)**：
+  - 将服务器网络探活、故障诊断与不可达状态管理从 `PlaylistRepository` 彻底剥离，建立专职高内聚的 `StorageReachabilityTracker`；
+  - 确立“只读状态由内存 StateFlow 广播，故障自愈由独立探活任务触发”的纯净单向数据流。
+- **从播控会话彻底剥离媒体库浏览游标 (ADR-0039)**：
+  - 从 `MusicPlayerAppSession` 与持久化 DataStore 中彻底拔除 `lastBrowsingPath` 等非回放状态，将其内化为 `MediaLibraryRepository` 的私有状态；
+  - 彻底根除用户在媒体库快速切目录时引发的 DataStore 频繁写盘风暴与跨生命周期污染。
+
+### 🎬 UI 交互体验与动效工程深化 (UI & Motion Engineering Polish)
 - **胶囊全屏形变容器 GPU 绘制阶段深化 (GPU Draw-Phase Morphing Container)**：
   - 清理 `MorphingPlayerMath` 接口中 8 个未使用的几何与透明度僵尸数学函数，仅保留 4 个实际生产使用的几何插值工具；
   - 内化次级控件淡入与胶囊淡出门限常量至 `MorphingPlayerDefaults`，与实际渲染参数严格绑定；
@@ -50,12 +79,22 @@
   - 彻底重构 `DirectoryBrowserViewModel`，将原先在 UI 表现层维护的文件与搜索结果多选状态机（`selectedFilePaths` / `selectedSearchTrackIds`）、全选与清空动作彻底内聚至 ViewModel 内部；
   - 封装批量“下一首播放（Play Next）”调度，将多选音频以用户选定的正向顺序原子插入当前播放队列下一首并自动退出多选模式；
   - 收紧 `musicPlayerAppSession` 访问级别为 `private`，切断 UI 绕过 ViewModel 直接调度底层会话的违规接缝，精简 `DirectoryBrowserScreen` 表现层代码。
-- **全 App 音轨列表行副标题规范与兜底策略统一 (Canonical Subtitle Formatter & Height Parity)**：
+- **全 App 音轨列表行副标题规范与行高严格平齐 (Canonical Subtitle Formatter & Height Parity)**：
   - 在 `AudioTrackRowDefaults` 中提供单一权威的 `formatTrackSubtitle` 接口，在缺少艺术家与专辑信息时统一安全回退显示 `"未知"`，彻底消除媒体库、歌单、搜索结果与队列抽屉四处分散拼接造成的散落漂移；
   - 严格满足 72dp 双行高度平齐规范（Track Row Height Parity），防止缺失元数据时单行塌陷。
 - **歌单曲目复合对账与去重自愈流水线去重 (Unified Playlist Track Reconciliation Pipeline)**：
   - 在 `PlaylistRepositoryImpl` 中提炼统一私有对账函数 `reconcilePlaylistTracks`，彻底消除响应式 Flow 与一次性快照之间高度重复的代码；
   - 集中处理复合键去重（`serverId:remotePath`）与冗余数据库行异步删除、服务器不可达状态合并以及缺失封面后台异步自愈调度。
+
+### 🛡️ 架构规范、自动化门禁与包体积守门 (Engineering Standards & Guardrails)
+- **架构决策记录 (ADR) 演进**：
+  - 正式归档落地 ADR-0032a 至 ADR-0039 共 9 篇核心决策文档，详尽记录双源存储拓扑、感知动态取色、跨源全文索引、CUE 彻底净化以及仓储会话深度解耦的技术决策与实施规范；
+  - 全局追溯修订既有 ADR 矩阵并确立最高权威法典层级。
+- **自动化测试防护套件**：
+  - 全局 1,202 项单元测试 100% 通过，涵盖端到端缓存韧性（`EndToEndCacheResilienceIntegrationTest`）、回放管线（`EndToEndPlaybackPipelineIntegrationTest`）、动态取色算法及仓储接缝不变性（`PackagingSeamVerificationTest`）。
+- **发布包体积预算硬门禁 (Size Budget Enforcement)**：
+  - 严格执行 `./gradlew verifyReleasePackaging` 守门检查；
+  - 在引入本地 SAF 存储挂载、官方 Palette 动态取色推导、全文增量索引表及沉浸式舞台光晕后，Release APK 总包体依然严控在 **6.87 MB**（预算 <= 7.5 MB），`classes.dex` 字节码 **4.16 MB**（预算 <= 4.25 MB），纯 64 位 `arm64-v8a` 架构（5 个核心原生动态库，0 个 32 位冗余）。
 
 ---
 

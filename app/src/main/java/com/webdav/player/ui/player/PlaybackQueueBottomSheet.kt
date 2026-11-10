@@ -1,5 +1,6 @@
 package com.webdav.player.ui.player
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
@@ -39,11 +41,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.SecureFlagPolicy
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackProgress
@@ -54,6 +58,7 @@ import com.webdav.player.ui.common.AudioTrackRowDefaults
 import com.webdav.player.ui.common.TrackThumbnailLeading
 import com.webdav.player.ui.motion.MotionTokens
 import com.webdav.player.ui.theme.AppIcons
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,9 +99,30 @@ fun PlaybackQueueBottomSheet(
     onAddToPlaylist: (AudioTrack) -> Unit = {},
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    val animateDismiss: () -> Unit = {
+        coroutineScope.launch {
+            sheetState.hide()
+        }.invokeOnCompletion {
+            if (!sheetState.isVisible) {
+                onDismissRequest()
+            }
+        }
+    }
+
+    BackHandler(enabled = true) {
+        animateDismiss()
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
+        properties =
+            ModalBottomSheetProperties(
+                securePolicy = SecureFlagPolicy.Inherit,
+                isFocusable = false,
+                shouldDismissOnBackPress = true,
+            ),
         modifier = modifier,
     ) {
         Column(
@@ -153,7 +179,7 @@ fun PlaybackQueueBottomSheet(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    IconButton(onClick = onDismissRequest) {
+                    IconButton(onClick = animateDismiss) {
                         Icon(imageVector = AppIcons.Close, contentDescription = "关闭队列")
                     }
                 }

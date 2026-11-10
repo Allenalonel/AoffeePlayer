@@ -13,6 +13,9 @@ class FakeStorageReachabilityTracker : StorageReachabilityTracker {
     private val _serverReachability = MutableStateFlow<Map<Long, Boolean>>(emptyMap())
     override val serverReachability: StateFlow<Map<Long, Boolean>> = _serverReachability.asStateFlow()
 
+    private val _serverReasons = MutableStateFlow<Map<Long, InactiveReason>>(emptyMap())
+    override val serverReasons: StateFlow<Map<Long, InactiveReason>> = _serverReasons.asStateFlow()
+
     val reportedUnavailableTracks = mutableListOf<Triple<Long, String, InactiveReason>>()
     val reportedUnavailableServers = mutableListOf<Pair<Long, InactiveReason>>()
     val reportedReachableServers = mutableListOf<Long>()
@@ -37,6 +40,9 @@ class FakeStorageReachabilityTracker : StorageReachabilityTracker {
         _serverReachability.update { current ->
             current + (serverId to false)
         }
+        _serverReasons.update { current ->
+            current + (serverId to reason)
+        }
         _inactiveTracks.update { current ->
             current.mapValues { (key, value) ->
                 if (key.serverId == serverId && value != InactiveReason.FILE_NOT_FOUND) reason else value
@@ -48,6 +54,9 @@ class FakeStorageReachabilityTracker : StorageReachabilityTracker {
         reportedReachableServers.add(serverId)
         _serverReachability.update { current ->
             current + (serverId to true)
+        }
+        _serverReasons.update { current ->
+            current - serverId
         }
         _inactiveTracks.update { current ->
             current.filterNot {
@@ -64,6 +73,7 @@ class FakeStorageReachabilityTracker : StorageReachabilityTracker {
     fun reset() {
         _inactiveTracks.value = emptyMap()
         _serverReachability.value = emptyMap()
+        _serverReasons.value = emptyMap()
         reportedUnavailableTracks.clear()
         reportedUnavailableServers.clear()
         reportedReachableServers.clear()

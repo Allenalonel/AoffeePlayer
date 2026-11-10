@@ -54,7 +54,8 @@ class PlaylistRepositoryImpl(
         val isLocalTrack =
             serverId == LOCAL_STORAGE_ID ||
                 remotePath.startsWith("content://") ||
-                remotePath.startsWith("file://")
+                remotePath.startsWith("file://") ||
+                remotePath.startsWith("/local/")
         if (!isLocalTrack) return
         val activeJob = inFlightCoverHealing[trackEntryId]
         if (activeJob != null && activeJob.isActive) return
@@ -145,13 +146,15 @@ class PlaylistRepositoryImpl(
     override fun getTracksForPlaylistFlow(playlistId: Long): Flow<List<PlaylistTrackEntry>> {
         val inactiveFlow = storageReachabilityTracker?.inactiveTracks ?: flowOf(emptyMap())
         val serverFlow = storageReachabilityTracker?.serverReachability ?: flowOf(emptyMap())
+        val reasonsFlow = storageReachabilityTracker?.serverReasons ?: flowOf(emptyMap())
 
         return combine(
             playlistDao.getTracksForPlaylistFlow(playlistId),
             inactiveFlow,
             serverFlow,
-        ) { entities, inactiveMap, serverReachability ->
-            reconcilePlaylistTracks(entities, inactiveMap, serverReachability)
+            reasonsFlow,
+        ) { entities, inactiveMap, serverReachability, serverReasons ->
+            reconcilePlaylistTracks(entities, inactiveMap, serverReachability, serverReasons)
         }
     }
 
@@ -159,19 +162,21 @@ class PlaylistRepositoryImpl(
         val entities = playlistDao.getTracksForPlaylist(playlistId)
         val inactiveMap = storageReachabilityTracker?.inactiveTracks?.value ?: emptyMap()
         val serverReachability = storageReachabilityTracker?.serverReachability?.value ?: emptyMap()
-        return reconcilePlaylistTracks(entities, inactiveMap, serverReachability)
+        val serverReasons = storageReachabilityTracker?.serverReasons?.value ?: emptyMap()
+        return reconcilePlaylistTracks(entities, inactiveMap, serverReachability, serverReasons)
     }
 
     private suspend fun reconcilePlaylistTracks(
         entities: List<PlaylistTrackEntity>,
         inactiveMap: Map<TrackKey, InactiveReason>,
         serverReachability: Map<Long, Boolean>,
+        serverReasons: Map<Long, InactiveReason>,
     ): List<PlaylistTrackEntry> {
-        val seenKeys = mutableSetOf<String>()
+        val seenKeys = mutableSetOf<TrackKey>()
         val duplicateIds = mutableListOf<Long>()
         val uniqueEntities = mutableListOf<PlaylistTrackEntity>()
         for (entity in entities) {
-            val key = "${entity.serverId}:${entity.remotePath}"
+            val key = TrackKey(entity.serverId, entity.remotePath)
             if (seenKeys.add(key)) {
                 uniqueEntities.add(entity)
             } else {
@@ -200,7 +205,8 @@ class PlaylistRepositoryImpl(
                     }
 
                     isServerUnreachable -> {
-                        domain.copy(isInactive = true, inactiveReason = InactiveReason.SERVER_UNREACHABLE)
+                        val serverReason = serverReasons[domain.serverId] ?: InactiveReason.SERVER_UNREACHABLE
+                        domain.copy(isInactive = true, inactiveReason = serverReason)
                     }
 
                     else -> {
@@ -214,7 +220,8 @@ class PlaylistRepositoryImpl(
                 val effectiveServerId =
                     if (track.serverId == LOCAL_STORAGE_ID ||
                         track.remotePath.startsWith("content://") ||
-                        track.remotePath.startsWith("file://")
+                        track.remotePath.startsWith("file://") ||
+                        track.remotePath.startsWith("/local/")
                     ) {
                         LOCAL_STORAGE_ID
                     } else {

@@ -394,14 +394,14 @@ class PlaylistRepositoryTest {
             val e1 = repo.addTrackToPlaylist(playlistId, track1)
             val e2 = repo.addTrackToPlaylist(playlistId, track2)
 
-            // Report server 10 unavailable
-            tracker.reportServerUnavailable(10L, InactiveReason.SERVER_UNREACHABLE)
+            // Report server 10 unavailable with credential invalid
+            tracker.reportServerUnavailable(10L, InactiveReason.SERVER_CREDENTIAL_INVALID)
 
             val flowTracks = repo.getTracksForPlaylistFlow(playlistId).first()
             val t1 = flowTracks.first { it.id == e1 }
             val t2 = flowTracks.first { it.id == e2 }
             assertTrue(t1.isInactive)
-            assertEquals(InactiveReason.SERVER_UNREACHABLE, t1.inactiveReason)
+            assertEquals(InactiveReason.SERVER_CREDENTIAL_INVALID, t1.inactiveReason)
             assertFalse(t2.isInactive)
             assertNull(t2.inactiveReason)
 

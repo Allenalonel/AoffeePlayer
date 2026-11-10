@@ -11,6 +11,7 @@ data class TrackKey(
 interface StorageReachabilityTracker {
     val inactiveTracks: StateFlow<Map<TrackKey, InactiveReason>>
     val serverReachability: StateFlow<Map<Long, Boolean>>
+    val serverReasons: StateFlow<Map<Long, InactiveReason>>
 
     fun reportTrackUnavailable(
         serverId: Long,

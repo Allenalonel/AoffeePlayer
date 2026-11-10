@@ -9,6 +9,7 @@ import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.storage.TrackKey
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -385,5 +386,39 @@ class StorageReachabilityTrackerTest {
                 InactiveReason.FILE_NOT_FOUND,
                 inactive[TrackKey(LOCAL_STORAGE_ID, "content://media/sdcard/song.flac")],
             )
+        }
+
+    @Test
+    fun reportServerUnavailable_preservesServerReasons_andClearsOnServerReachable() {
+        val tracker = StorageReachabilityTrackerImpl()
+
+        tracker.reportServerUnavailable(42L, InactiveReason.SERVER_CREDENTIAL_INVALID)
+
+        assertEquals(false, tracker.serverReachability.value[42L])
+        assertEquals(InactiveReason.SERVER_CREDENTIAL_INVALID, tracker.serverReasons.value[42L])
+
+        tracker.reportServerReachable(42L)
+
+        assertEquals(true, tracker.serverReachability.value[42L])
+        assertNull(tracker.serverReasons.value[42L])
+    }
+
+    @Test(expected = CancellationException::class)
+    fun triggerReachabilitySelfHealing_rethrowsCancellationException(): Unit =
+        runBlocking {
+            val server = WebDavServer(id = 1L, name = "Cancel Server", url = "https://example.com/webdav")
+            val fakeClient = FakeProbeWebDavClient()
+            fakeClient.onTestConnection = {
+                throw CancellationException("Simulated coroutine cancellation")
+            }
+            val tracker =
+                StorageReachabilityTrackerImpl(
+                    webDavClient = fakeClient,
+                    serverRepository = FakeServerRepository(listOf(server)),
+                    ioDispatcher = Dispatchers.Unconfined,
+                )
+
+            tracker.reportServerUnavailable(1L, InactiveReason.SERVER_UNREACHABLE)
+            tracker.triggerReachabilitySelfHealing()
         }
 }

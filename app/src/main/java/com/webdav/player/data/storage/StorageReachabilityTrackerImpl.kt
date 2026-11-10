@@ -10,6 +10,7 @@ import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.storage.StorageReachabilityTracker
 import com.webdav.player.domain.storage.TrackKey
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -37,6 +38,9 @@ class StorageReachabilityTrackerImpl(
     private val _serverReachability = MutableStateFlow<Map<Long, Boolean>>(emptyMap())
     override val serverReachability: StateFlow<Map<Long, Boolean>> = _serverReachability.asStateFlow()
 
+    private val _serverReasons = MutableStateFlow<Map<Long, InactiveReason>>(emptyMap())
+    override val serverReasons: StateFlow<Map<Long, InactiveReason>> = _serverReasons.asStateFlow()
+
     private val isSelfHealingInProgress = AtomicBoolean(false)
 
     override fun reportTrackUnavailable(
@@ -56,6 +60,9 @@ class StorageReachabilityTrackerImpl(
         _serverReachability.update { current ->
             current + (serverId to false)
         }
+        _serverReasons.update { current ->
+            current + (serverId to reason)
+        }
         _inactiveTracks.update { current ->
             current.mapValues { (key, value) ->
                 if (key.serverId == serverId && value != InactiveReason.FILE_NOT_FOUND) reason else value
@@ -67,6 +74,9 @@ class StorageReachabilityTrackerImpl(
         _serverReachability.update { current ->
             current + (serverId to true)
         }
+        _serverReasons.update { current ->
+            current - serverId
+        }
         _inactiveTracks.update { current ->
             current.filterNot {
                 it.key.serverId == serverId &&
@@ -75,7 +85,7 @@ class StorageReachabilityTrackerImpl(
         }
     }
 
-    fun checkLocalTrackReachability(remotePath: String): Boolean {
+    internal fun checkLocalTrackReachability(remotePath: String): Boolean {
         if (localUriReachabilityChecker != null) {
             return localUriReachabilityChecker.invoke(remotePath)
         }
@@ -160,7 +170,8 @@ class StorageReachabilityTrackerImpl(
                                             val result =
                                                 try {
                                                     webDavClient.testConnection(server)
-                                                } catch (_: Throwable) {
+                                                } catch (e: Exception) {
+                                                    if (e is CancellationException) throw e
                                                     ConnectionResult.Failure("Reachability probe failed")
                                                 }
                                             if (result is ConnectionResult.Success) {
@@ -184,7 +195,8 @@ class StorageReachabilityTrackerImpl(
                     }
                 }
             }
-        } catch (_: Throwable) {
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
             // Ignore transient errors during probe
         } finally {
             isSelfHealingInProgress.set(false)

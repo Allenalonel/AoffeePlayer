@@ -1,7 +1,11 @@
 package com.webdav.player
 
 import com.webdav.player.data.service.PlaybackSessionHost
+import com.webdav.player.domain.model.PlaybackSessionData
+import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.player.AudioPlayerEngine
+import com.webdav.player.domain.session.MusicPlayerAppSession
+import com.webdav.player.domain.session.MusicPlayerAppSessionImpl
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -645,6 +649,17 @@ class PackagingSeamVerificationTest {
             sessionInterface.contains("setCurrentDirectoryPath"),
         )
 
+        // MusicPlayerAppSessionImpl must not contain directory browsing methods
+        val sessionImpl = source("domain/session/MusicPlayerAppSessionImpl.kt")
+        assertFalse(
+            "MusicPlayerAppSessionImpl must not declare getLastDirectoryForServer",
+            sessionImpl.contains("getLastDirectoryForServer"),
+        )
+        assertFalse(
+            "MusicPlayerAppSessionImpl must not declare setCurrentDirectoryPath",
+            sessionImpl.contains("setCurrentDirectoryPath"),
+        )
+
         // PlayerSessionState must not contain currentDirectoryPath
         val sessionState = source("domain/model/PlayerSessionState.kt")
         assertFalse(
@@ -673,5 +688,61 @@ class PackagingSeamVerificationTest {
             "DataStorePlaybackSessionStore must not reference server_last_dirs_json",
             sessionStore.contains("server_last_dirs_json"),
         )
+        assertFalse(
+            "DataStorePlaybackSessionStore must not reference KEY_CURRENT_DIRECTORY_PATH",
+            sessionStore.contains("KEY_CURRENT_DIRECTORY_PATH"),
+        )
+        assertFalse(
+            "DataStorePlaybackSessionStore must not reference KEY_SERVER_LAST_DIRS_JSON",
+            sessionStore.contains("KEY_SERVER_LAST_DIRS_JSON"),
+        )
+
+        // SessionPersistenceCoordinator must not reference currentDirectoryPath or serverLastDirectories
+        val persistenceCoordinator = source("domain/session/SessionPersistenceCoordinator.kt")
+        assertFalse(
+            "SessionPersistenceCoordinator must not reference currentDirectoryPath",
+            persistenceCoordinator.contains("currentDirectoryPath"),
+        )
+        assertFalse(
+            "SessionPersistenceCoordinator must not reference serverLastDirectories",
+            persistenceCoordinator.contains("serverLastDirectories"),
+        )
+
+        // Reflection invariants: verify compiled class bytecodes have zero browsing cursor methods and fields
+        val forbiddenMethodNames = listOf("getLastDirectoryForServer", "setCurrentDirectoryPath", "getCurrentDirectoryPath")
+        forbiddenMethodNames.forEach { methodName ->
+            assertFalse(
+                "MusicPlayerAppSession must not have method '$methodName'",
+                MusicPlayerAppSession::class.java.methods.any { it.name == methodName },
+            )
+            assertFalse(
+                "MusicPlayerAppSessionImpl must not have method '$methodName'",
+                MusicPlayerAppSessionImpl::class.java.methods.any { it.name == methodName },
+            )
+        }
+
+        val forbiddenFieldNames = listOf("currentDirectoryPath", "serverLastDirectories")
+        forbiddenFieldNames.forEach { fieldName ->
+            assertFalse(
+                "PlaybackSessionData must not have field '$fieldName'",
+                PlaybackSessionData::class.java.declaredFields.any { it.name == fieldName },
+            )
+            assertFalse(
+                "PlayerSessionState must not have field '$fieldName'",
+                PlayerSessionState::class.java.declaredFields.any { it.name == fieldName },
+            )
+        }
+
+        val forbiddenGetters = listOf("getCurrentDirectoryPath", "getServerLastDirectories")
+        forbiddenGetters.forEach { getterName ->
+            assertFalse(
+                "PlaybackSessionData must not have getter '$getterName'",
+                PlaybackSessionData::class.java.methods.any { it.name == getterName },
+            )
+            assertFalse(
+                "PlayerSessionState must not have getter '$getterName'",
+                PlayerSessionState::class.java.methods.any { it.name == getterName },
+            )
+        }
     }
 }

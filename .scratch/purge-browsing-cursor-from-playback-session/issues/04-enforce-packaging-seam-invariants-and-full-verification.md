@@ -4,10 +4,10 @@
 
 **Blocked by:** 03: Purge Browsing Fields from Playback Session and DataStore
 
-**Status:** in-progress
+**Status:** completed
 
-- [ ] Packaging seam verification tests assert that the playback session facade exposes zero directory browsing methods.
-- [ ] Packaging seam verification tests assert that playback session data models contain zero directory path properties.
-- [ ] End-to-end cache resilience and playback pipeline integration tests pass without regression.
-- [ ] Full unit test verification suite (`./gradlew testDebugUnitTest`) passes with 100% green tests.
-- [ ] Release packaging checks (`./gradlew verifyReleasePackaging`) pass with zero budget regressions.
+- [x] Packaging seam verification tests assert that the playback session facade exposes zero directory browsing methods.
+- [x] Packaging seam verification tests assert that playback session data models contain zero directory path properties.
+- [x] End-to-end cache resilience and playback pipeline integration tests pass without regression.
+- [x] Full unit test verification suite (`./gradlew testDebugUnitTest`) passes with 100% green tests.
+- [x] Release packaging checks (`./gradlew verifyReleasePackaging`) pass with zero budget regressions.

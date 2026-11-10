@@ -9,6 +9,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -671,6 +672,7 @@ fun DirectoryBrowserScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DirectoryContentList(
     directories: List<RemoteDirectory>,
@@ -697,13 +699,19 @@ fun DirectoryContentList(
             DirectoryItemRow(
                 directory = dir,
                 onClick = { if (!isSelectionMode) onDirectoryClicked(dir) },
+                modifier = Modifier.animateItemPlacement(MotionTokens.spatialSpring()),
             )
         }
 
         // Space between folders and files if both exist
         if (directories.isNotEmpty() && files.isNotEmpty()) {
             item(key = "divider_folder_files") {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(
+                    modifier =
+                        Modifier
+                            .height(8.dp)
+                            .animateItemPlacement(MotionTokens.spatialSpring()),
+                )
             }
         }
 
@@ -728,6 +736,7 @@ fun DirectoryContentList(
                         }
                     }
                 },
+                modifier = Modifier.animateItemPlacement(MotionTokens.spatialSpring()),
             )
         }
     }

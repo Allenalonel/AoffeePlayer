@@ -1,6 +1,6 @@
 # Spec: Decouple Storage Reachability from Playlist Repository
 
-Status: ready-for-agent
+Status: completed
 
 ## Problem Statement
 

@@ -137,3 +137,6 @@
   - 全域音轨行（`AudioTrackRow`）固定保持双行高度一致；缺失艺术家/专辑时副标题强制回退显示 `"未知"`，严禁隐藏副标题退化为单行高度。
   - 动效弹簧参数统一定义在 `MotionTokens.kt`（`SpatialSpring` / `EffectsSpring` / `FastSpatialSpring`），严禁散落硬编码魔法 Tween；FAB 浮动按钮维持 $24\text{dp}$ 动态呼吸净空。
   - `FloatingSearchPillCapsule` 的软键盘聚焦 `requestFocus()` 必须严格门控至展开动画进度 $\ge 0.35f$ 挂载完成后触发，杜绝提前抢焦引发系统级崩溃。
+- **ModalBottomSheet Focus Isolation & Graceful Dismissal Invariant (无输入框抽屉焦点隔离与优雅收回规范)**:
+  - **焦点隔离（Focus Isolation）**：对于仅包含列表展示、菜单点选或操作按钮，**无任何文本输入框（TextField）**的 `ModalBottomSheet`，必须强制配置 `properties = ModalBottomSheetProperties(isFocusable = false, shouldDismissOnBackPress = true)`。杜绝底层 Dialog 窗口与主窗口争夺 Window Focus，从根源切断 Android 14 预测性返回机制在窗口切回时因 `IME_REQUESTED_CHANGED_LISTENER` 误判向主窗口拉起软键盘引发的 1181px 闪退鬼影。
+  - **内聚优雅收起（Graceful Dismissal）**：抽屉关闭（点击关闭按钮或拦截返回键）严禁直接把外层布尔状态（如 `showSheet = false`）同步置为 `false` 造成底层 Window 暴力注销；必须在抽屉内聚通过 `coroutineScope.launch { sheetState.hide() }.invokeOnCompletion { if (!sheetState.isVisible) onDismiss() }` 顺畅执行物理位移动画滑落出屏幕后再通知外层卸载。

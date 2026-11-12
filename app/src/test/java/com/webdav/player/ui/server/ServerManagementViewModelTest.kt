@@ -3,12 +3,14 @@ package com.webdav.player.ui.server
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
+import com.webdav.player.domain.model.LibrarySyncResult
 import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.FakeMediaLibraryRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.storage.FakeStorageReachabilityTracker
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -331,6 +334,86 @@ class ServerManagementViewModelTest {
             advanceUntilIdle()
 
             assertEquals(2, fakeMediaLibraryRepository.clearedStorageServerIds.count { it == LOCAL_STORAGE_ID })
+        }
+
+    @Test
+    fun saveServer_whenSyncIsSlow_dismissesDialogImmediatelyWithoutBlockingReturn() =
+        runTest {
+            val syncGate = CompletableDeferred<LibrarySyncResult>()
+            val slowSyncLibraryRepo =
+                object : FakeMediaLibraryRepository() {
+                    override suspend fun syncServer(
+                        server: WebDavServer,
+                        force: Boolean,
+                    ): LibrarySyncResult {
+                        syncServerCalls.add(server to force)
+                        return syncGate.await()
+                    }
+                }
+            val slowViewModel =
+                ServerManagementViewModel(
+                    repository = fakeRepository,
+                    webDavClient = fakeClient,
+                    mediaLibraryRepository = slowSyncLibraryRepo,
+                )
+
+            slowViewModel.onAddServerClicked()
+            runCurrent()
+            assertTrue(slowViewModel.uiState.value.isAddEditDialogVisible)
+
+            val candidate = WebDavServer(name = "Slow NAS", url = "http://nas.local", port = 5005)
+            slowViewModel.onSaveServer(candidate)
+            runCurrent()
+
+            // Dialog must already be dismissed without waiting for slow syncServer network scan
+            assertFalse(
+                "Dialog must close immediately after saveServer DB write without waiting for syncServer",
+                slowViewModel.uiState.value.isAddEditDialogVisible,
+            )
+            assertFalse(slowViewModel.uiState.value.isSaving)
+            assertEquals(1, fakeRepository.savedServers.size)
+
+            syncGate.complete(LibrarySyncResult.Success(0, 0, 0))
+            advanceUntilIdle()
+            assertEquals(1, slowSyncLibraryRepo.syncServerCalls.size)
+        }
+
+    @Test
+    fun saveServer_rapidDuplicateCallsWhilePersisting_insertsOnlyOnce() =
+        runTest {
+            val persistGate = CompletableDeferred<Long>()
+            val delegate = FakeServerRepository()
+            val gatedRepo =
+                object : ServerRepository by delegate {
+                    override suspend fun saveServer(server: WebDavServer): Long {
+                        persistGate.await()
+                        return delegate.saveServer(server)
+                    }
+                }
+            val gatedViewModel =
+                ServerManagementViewModel(
+                    repository = gatedRepo,
+                    webDavClient = fakeClient,
+                    mediaLibraryRepository = fakeMediaLibraryRepository,
+                )
+
+            gatedViewModel.onAddServerClicked()
+            runCurrent()
+            val candidate = WebDavServer(name = "Double Tap NAS", url = "http://nas2.local", port = 5005)
+
+            gatedViewModel.onSaveServer(candidate)
+            runCurrent()
+            assertTrue(gatedViewModel.uiState.value.isSaving)
+
+            gatedViewModel.onSaveServer(candidate)
+            runCurrent()
+
+            persistGate.complete(1L)
+            advanceUntilIdle()
+
+            assertFalse(gatedViewModel.uiState.value.isSaving)
+            assertFalse(gatedViewModel.uiState.value.isAddEditDialogVisible)
+            assertEquals(1, delegate.savedServers.size)
         }
 }
 

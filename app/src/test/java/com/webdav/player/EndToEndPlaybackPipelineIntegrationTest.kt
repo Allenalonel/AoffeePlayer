@@ -24,6 +24,7 @@ import com.webdav.player.data.metadata.AudioMetadataParser
 import com.webdav.player.data.metadata.ImageHeaderValidator
 import com.webdav.player.data.player.AsfExtractor
 import com.webdav.player.data.player.Media3AudioPlayerEngine
+import com.webdav.player.data.player.UnsupportedRangeReconnectionException
 import com.webdav.player.data.player.WebDavLoadErrorHandlingPolicy
 import com.webdav.player.data.player.WebDavMediaSourceBuilder
 import com.webdav.player.data.remote.ConnectionResult
@@ -38,6 +39,7 @@ import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.LyricLine
 import com.webdav.player.domain.model.Lyrics
+import com.webdav.player.domain.model.PlaybackErrorKind
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackState
@@ -306,11 +308,8 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
-            advanceUntilIdle()
-
             // User taps 01-Symphony.flac to play directory
-            appSession.playDirectoryTrack(directory, flacFile)
+            appSession.playDirectoryTrack(testServer, directory, flacFile)
             advanceUntilIdle()
 
             // Step 4: Verify queue and session state
@@ -656,8 +655,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
 
             try {
                 // 1. Launch -> WebDAV stream starts -> host elevates foreground and acquires both locks
-                appSession.setActiveServer(testServer)
-                appSession.playDirectoryTrack(directory, file1)
+                appSession.playDirectoryTrack(testServer, directory, file1)
                 settle()
                 assertEquals("01.flac", fakeEngine.loadedTrack?.title)
                 assertEquals(PlaybackState.Playing, appSession.sessionState.value.playbackState)
@@ -753,8 +751,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
-            appSession.playDirectoryTrack(sampleDirectory, sampleFile1)
+            appSession.playDirectoryTrack(testServer, sampleDirectory, sampleFile1)
             advanceUntilIdle()
 
             // Track emissions on both reactive streams
@@ -1235,8 +1232,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
-            appSession.playDirectoryTrack(directory, remoteFile, mapOf(remoteFile.path to resolvedMeta))
+            appSession.playDirectoryTrack(testServer, directory, remoteFile, mapOf(remoteFile.path to resolvedMeta))
             advanceUntilIdle()
 
             val currentTrack = appSession.sessionState.value.currentTrack
@@ -1395,8 +1391,8 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
             appSession.playDirectoryTrack(
+                testServer,
                 directory,
                 file1,
                 mapOf(file1.path to meta1, file2.path to meta2!!),
@@ -1524,8 +1520,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
-            appSession.playDirectoryTrack(directory, karaokeFile)
+            appSession.playDirectoryTrack(testServer, directory, karaokeFile)
             advanceUntilIdle()
 
             // Wait for lyrics to resolve from MockWebServer
@@ -1686,8 +1681,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
-            appSession.playDirectoryTrack(directory, file1)
+            appSession.playDirectoryTrack(testServer, directory, file1)
             advanceUntilIdle()
 
             // Wait for lyrics to load
@@ -1799,5 +1793,119 @@ class EndToEndPlaybackPipelineIntegrationTest {
             restoredSession.release()
             appSession.release()
             engine.release()
+        }
+
+    @Test
+    fun e2e_media3EngineErrorBoundary_mapsExceptionsToPlaybackErrorKind_andDrivesSessionFaultTolerance() =
+        runTest(testDispatcher) {
+            val basePlayer =
+                androidx.media3.exoplayer.ExoPlayer
+                    .Builder(context)
+                    .build()
+            val listeners = java.util.concurrent.CopyOnWriteArrayList<Player.Listener>()
+            val controllablePlayer =
+                object : androidx.media3.common.ForwardingPlayer(basePlayer) {
+                    override fun addListener(listener: Player.Listener) {
+                        listeners.add(listener)
+                        super.addListener(listener)
+                    }
+
+                    override fun removeListener(listener: Player.Listener) {
+                        listeners.remove(listener)
+                        super.removeListener(listener)
+                    }
+                }
+
+            val media3Engine =
+                Media3AudioPlayerEngine(
+                    context = context,
+                    mediaSourceBuilder = mediaSourceBuilder,
+                    customPlayer = controllablePlayer,
+                    coroutineScope = kotlinx.coroutines.CoroutineScope(testDispatcher + SupervisorJob()),
+                )
+            val sessionJob = SupervisorJob()
+            val appSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = media3Engine,
+                    serverRepository = serverRepository,
+                    sessionStore = sessionStore,
+                    coroutineScope = kotlinx.coroutines.CoroutineScope(testDispatcher + sessionJob),
+                    progressDispatcher = testDispatcher,
+                )
+
+            val file1 = RemoteFile("01.mp3", "/Music/01.mp3", 1_000L, fileType = RemoteFileType.Audio(AudioFormat.MP3))
+            val file2 = RemoteFile("02.mp3", "/Music/02.mp3", 1_000L, fileType = RemoteFileType.Audio(AudioFormat.MP3))
+            val directory = RemoteDirectory(path = "/Music/", name = "Music", files = listOf(file1, file2))
+
+            val emittedEngineErrors = mutableListOf<PlaybackState.Error>()
+            val collectJob =
+                launch(kotlinx.coroutines.Dispatchers.Unconfined) {
+                    media3Engine.playbackState.collect { state ->
+                        if (state is PlaybackState.Error) {
+                            emittedEngineErrors.add(state)
+                        }
+                    }
+                }
+
+            try {
+                appSession.playDirectoryTrack(testServer, directory, file1)
+                runCurrent()
+                shadowOf(android.os.Looper.getMainLooper()).idle()
+                runCurrent()
+
+                assertEquals("01.mp3", appSession.sessionState.value.currentTrack?.title)
+
+                // 1. Engine boundary receives HTTP 404 -> PlaybackErrorKind.FILE_NOT_FOUND -> session skips to track 2
+                val http404 =
+                    HttpDataSource.InvalidResponseCodeException(
+                        404,
+                        "Not Found",
+                        null,
+                        emptyMap(),
+                        DataSpec.Builder().setUri("http://127.0.0.1/01.mp3").build(),
+                        byteArrayOf(),
+                    )
+                val notFoundEx =
+                    androidx.media3.common.PlaybackException(
+                        "HTTP 404",
+                        http404,
+                        androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,
+                    )
+                listeners.forEach { it.onPlayerError(notFoundEx) }
+                shadowOf(android.os.Looper.getMainLooper()).idle()
+                runCurrent()
+
+                assertTrue(emittedEngineErrors.any { it.kind == PlaybackErrorKind.FILE_NOT_FOUND })
+                assertEquals(1, appSession.sessionState.value.queue.currentIndex)
+                assertEquals("02.mp3", appSession.sessionState.value.currentTrack?.title)
+
+                // 2. Engine boundary receives UnsupportedRangeReconnectionException -> PlaybackErrorKind.UNSUPPORTED_RANGE -> session shows replay confirmation
+                val rangeEx = UnsupportedRangeReconnectionException("Remote server does not support partial content (HTTP 200 returned on Range request)")
+                val wrappedRangeEx =
+                    androidx.media3.common.PlaybackException(
+                        "Wrapper error",
+                        IOException("Nested IO", rangeEx),
+                        androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+                    )
+                listeners.forEach { it.onPlayerError(wrappedRangeEx) }
+                shadowOf(android.os.Looper.getMainLooper()).idle()
+                runCurrent()
+
+                assertTrue(emittedEngineErrors.any { it.kind == PlaybackErrorKind.UNSUPPORTED_RANGE })
+                assertTrue(appSession.sessionState.value.isUnsupportedRange)
+                assertEquals(PlaybackState.Paused, appSession.sessionState.value.playbackState)
+
+                // 3. Confirming replay clears unsupported range dialog flag
+                appSession.confirmUnsupportedRangeReplay()
+                runCurrent()
+                shadowOf(android.os.Looper.getMainLooper()).idle()
+                runCurrent()
+                assertFalse(appSession.sessionState.value.isUnsupportedRange)
+            } finally {
+                collectJob.cancel()
+                appSession.release()
+                sessionJob.cancel()
+                media3Engine.release()
+            }
         }
 }

@@ -1,7 +1,5 @@
 package com.webdav.player.domain.session
 
-import com.webdav.player.data.player.StreamingHardwareLockManager
-import com.webdav.player.data.player.UnsupportedRangeReconnectionException
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
@@ -10,6 +8,7 @@ import com.webdav.player.domain.model.InactiveReason
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.NetworkStatus
+import com.webdav.player.domain.model.PlaybackErrorKind
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackQueue
@@ -65,34 +64,6 @@ class MusicPlayerAppSessionTest {
     private lateinit var sessionScope: kotlinx.coroutines.CoroutineScope
     private lateinit var session: MusicPlayerAppSessionImpl
 
-    private class FakeStreamingHardwareLockManager : StreamingHardwareLockManager {
-        override var isWakeLockHeld: Boolean = false
-        override var isWifiLockHeld: Boolean = false
-
-        override fun acquireLocks() {
-            isWakeLockHeld = true
-            isWifiLockHeld = true
-        }
-
-        override fun acquireWakeLockOnly() {
-            isWakeLockHeld = true
-            isWifiLockHeld = false
-        }
-
-        override fun releaseWifiLock() {
-            isWifiLockHeld = false
-        }
-
-        override fun releaseLocks() {
-            isWakeLockHeld = false
-            isWifiLockHeld = false
-        }
-
-        override fun release() {
-            releaseLocks()
-        }
-    }
-
     private val testServer =
         WebDavServer(
             id = 1L,
@@ -138,20 +109,8 @@ class MusicPlayerAppSessionTest {
         }
 
     @Test
-    fun setActiveServer_updatesSessionState() =
-        runTest(testDispatcher) {
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
-
-            assertEquals(testServer, session.sessionState.value.activeServer)
-        }
-
-    @Test
     fun playDirectoryTrack_populatesQueueWithOnlyAudioFilesAndStartsPlayback() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
-
             val track1 = RemoteFile(name = "01 - Intro.mp3", path = "/Music/Album/01 - Intro.mp3", size = 1000)
             val lrc = RemoteFile(name = "01 - Intro.lrc", path = "/Music/Album/01 - Intro.lrc", size = 200)
             val track2 = RemoteFile(name = "02 - Main Song.flac", path = "/Music/Album/02 - Main Song.flac", size = 5000)
@@ -166,10 +125,11 @@ class MusicPlayerAppSessionTest {
                 )
 
             // User clicks track 2
-            session.playDirectoryTrack(directory, track2)
+            session.playDirectoryTrack(testServer, directory, track2)
             advanceUntilIdle()
 
             val state = session.sessionState.value
+            assertEquals(testServer, state.activeServer)
             assertEquals(3, state.queue.size)
             assertEquals(1, state.queue.currentIndex)
             assertEquals("02 - Main Song.flac", state.currentTrack?.title)
@@ -185,9 +145,6 @@ class MusicPlayerAppSessionTest {
     @Test
     fun playDirectoryTrack_withInitialMetadata_immediatelyPopulatesArtworkAndMetadata() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
-
             val track1 = RemoteFile(name = "01 - Intro.mp3", path = "/Music/Album/01 - Intro.mp3", size = 1000)
             val track2 = RemoteFile(name = "02 - Main Song.flac", path = "/Music/Album/02 - Main Song.flac", size = 5000)
             val directory = RemoteDirectory(path = "/Music/Album/", name = "Album", files = listOf(track1, track2))
@@ -206,7 +163,7 @@ class MusicPlayerAppSessionTest {
                         ),
                 )
 
-            session.playDirectoryTrack(directory, track2, initialMetadata = metadataMap)
+            session.playDirectoryTrack(testServer, directory, track2, initialMetadata = metadataMap)
 
             val immediateTrack = session.sessionState.value.currentTrack
             assertNotNull(immediateTrack)
@@ -231,8 +188,6 @@ class MusicPlayerAppSessionTest {
                     trackMetadataRepository = fakeMetadataRepo,
                     coroutineScope = sessionScope,
                 )
-            sessionWithRepo.setActiveServer(testServer)
-            advanceUntilIdle()
 
             val track = RemoteFile(name = "cached.mp3", path = "/Music/cached.mp3", size = 3000)
             val directory = RemoteDirectory(path = "/Music/", name = "Music", files = listOf(track))
@@ -249,7 +204,7 @@ class MusicPlayerAppSessionTest {
             fakeMetadataRepo.emit(listOf(cachedMetadata))
             advanceUntilIdle()
 
-            sessionWithRepo.playDirectoryTrack(directory, track)
+            sessionWithRepo.playDirectoryTrack(testServer, directory, track)
             advanceUntilIdle()
 
             val currentTrack = sessionWithRepo.sessionState.value.currentTrack
@@ -263,9 +218,6 @@ class MusicPlayerAppSessionTest {
     @Test
     fun playDirectoryTrack_withWmaFile_populatesQueueWithWmaAudioTrackAndMimeType() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
-
             val wmaTrack = RemoteFile(name = "01 - Classic.wma", path = "/Music/01 - Classic.wma", size = 1500)
             val mp3Track = RemoteFile(name = "02 - Pop.mp3", path = "/Music/02 - Pop.mp3", size = 2500)
             val directory =
@@ -275,7 +227,7 @@ class MusicPlayerAppSessionTest {
                     files = listOf(wmaTrack, mp3Track),
                 )
 
-            session.playDirectoryTrack(directory, wmaTrack)
+            session.playDirectoryTrack(testServer, directory, wmaTrack)
             advanceUntilIdle()
 
             val state = session.sessionState.value
@@ -291,12 +243,9 @@ class MusicPlayerAppSessionTest {
     @Test
     fun togglePlayPause_pausesWhenPlaying_andResumesWhenPaused() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
-
             val track = RemoteFile(name = "test.mp3", path = "/test.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track))
-            session.playDirectoryTrack(directory, track)
+            session.playDirectoryTrack(testServer, directory, track)
             advanceUntilIdle()
 
             assertTrue(session.sessionState.value.isPlaying)
@@ -317,11 +266,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun sessionSkipToNext_updatesQueueCurrentIndexAndLoadsTrack() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             assertEquals(0, session.sessionState.value.queue.currentIndex)
@@ -342,10 +290,9 @@ class MusicPlayerAppSessionTest {
     @Test
     fun engineError_updatesErrorMessageAndState() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track))
-            session.playDirectoryTrack(directory, track)
+            session.playDirectoryTrack(testServer, directory, track)
             advanceUntilIdle()
 
             fakeEngine._playbackState.value = PlaybackState.Error("Network timeout")
@@ -359,26 +306,21 @@ class MusicPlayerAppSessionTest {
     @Test
     fun unsupportedRangeError_setsUnsupportedRangeFlagAndPausesPlayback_preservingQueueIndexAndPosition() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             // Simulate playback progressing to 45 seconds (45,000 ms)
             fakeEngine._currentPositionMs.value = 45_000L
             advanceUntilIdle()
 
-            // Trigger UnsupportedRangeReconnectionException via playerEngine playback error
-            val unsupportedException =
-                UnsupportedRangeReconnectionException(
-                    "Remote server does not support partial content (HTTP 200 returned on Range request)",
-                )
+            // Trigger UNSUPPORTED_RANGE via playerEngine playback error
             fakeEngine._playbackState.value =
                 PlaybackState.Error(
                     message = "Remote server does not support partial content (HTTP 200 returned on Range request)",
-                    cause = unsupportedException,
+                    kind = PlaybackErrorKind.UNSUPPORTED_RANGE,
                 )
             advanceUntilIdle()
 
@@ -393,23 +335,18 @@ class MusicPlayerAppSessionTest {
     @Test
     fun confirmUnsupportedRangeReplay_clearsUnsupportedRangeFlag_reloadsTrackFromBeginningAndPlays() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             fakeEngine._currentPositionMs.value = 60_000L
             advanceUntilIdle()
 
-            val unsupportedException =
-                UnsupportedRangeReconnectionException(
-                    "Remote server does not support partial content (HTTP 200 returned on Range request)",
-                )
             fakeEngine._playbackState.value =
                 PlaybackState.Error(
                     message = "Remote server does not support partial content (HTTP 200 returned on Range request)",
-                    cause = unsupportedException,
+                    kind = PlaybackErrorKind.UNSUPPORTED_RANGE,
                 )
             advanceUntilIdle()
 
@@ -428,23 +365,18 @@ class MusicPlayerAppSessionTest {
     @Test
     fun dismissUnsupportedRange_clearsUnsupportedRangeFlag_retainsCutOffPositionAndRemainsPaused() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             fakeEngine._currentPositionMs.value = 75_000L
             advanceUntilIdle()
 
-            val unsupportedException =
-                UnsupportedRangeReconnectionException(
-                    "Remote server does not support partial content (HTTP 200 returned on Range request)",
-                )
             fakeEngine._playbackState.value =
                 PlaybackState.Error(
                     message = "Remote server does not support partial content (HTTP 200 returned on Range request)",
-                    cause = unsupportedException,
+                    kind = PlaybackErrorKind.UNSUPPORTED_RANGE,
                 )
             advanceUntilIdle()
 
@@ -462,27 +394,22 @@ class MusicPlayerAppSessionTest {
         }
 
     @Test
-    fun unsupportedRangeError_recognizesNestedTypedCause() =
+    fun unsupportedRangeError_dispatchesStrictlyViaPlaybackErrorKind() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
-
-            // Nested causal chain: Exception -> IOException -> UnsupportedRangeReconnectionException
-            val rootException = UnsupportedRangeReconnectionException("HTTP 200 on Range")
-            val wrappedException = java.lang.RuntimeException("Playback failed", java.io.IOException("Stream error", rootException))
 
             fakeEngine._playbackState.value =
                 PlaybackState.Error(
                     message = "Unspecified playback error",
-                    cause = wrappedException,
+                    kind = PlaybackErrorKind.UNSUPPORTED_RANGE,
                 )
             advanceUntilIdle()
 
             assertTrue(
-                "Typed causal chain traversal must identify UnsupportedRangeReconnectionException",
+                "PlaybackErrorKind.UNSUPPORTED_RANGE must set isUnsupportedRange even with generic message",
                 session.sessionState.value.isUnsupportedRange,
             )
             assertEquals(PlaybackState.Paused, session.sessionState.value.playbackState)
@@ -491,18 +418,16 @@ class MusicPlayerAppSessionTest {
     @Test
     fun skipToNext_whenUnsupportedRangeActive_resetsFlagAndCancelsLingeringWatchdog() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
-            val unsupportedException = UnsupportedRangeReconnectionException("HTTP 200 on Range")
             fakeEngine._playbackState.value =
                 PlaybackState.Error(
                     message = "HTTP 200 on Range",
-                    cause = unsupportedException,
+                    kind = PlaybackErrorKind.UNSUPPORTED_RANGE,
                 )
             advanceUntilIdle()
 
@@ -522,57 +447,79 @@ class MusicPlayerAppSessionTest {
         }
 
     @Test
-    fun switchingActiveServer_resetsPlaybackQueueAndStopsPlayback() =
+    fun playingDirectoryOnOtherServer_updatesActiveServerAndReplacesQueue() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track))
-            session.playDirectoryTrack(directory, track)
+            session.playDirectoryTrack(testServer, directory, track)
             advanceUntilIdle()
 
             assertTrue(session.sessionState.value.hasTrack)
 
             val otherServer = WebDavServer(id = 2L, name = "Other", url = "http://example.com")
-            session.setActiveServer(otherServer)
+            val otherTrack = RemoteFile(name = "02.mp3", path = "/other/02.mp3")
+            val otherDirectory = RemoteDirectory(path = "/other/", name = "other", files = listOf(otherTrack))
+            session.playDirectoryTrack(otherServer, otherDirectory, otherTrack)
             advanceUntilIdle()
 
             val state = session.sessionState.value
             assertEquals(otherServer, state.activeServer)
-            assertTrue(state.queue.isEmpty)
-            assertTrue(state.isIdle)
-            assertEquals(1, fakeEngine.stopCount)
+            assertEquals(1, state.queue.size)
+            assertEquals("02.mp3", state.currentTrack?.title)
+            assertEquals(otherServer, fakeEngine.lastServer)
+            assertTrue(state.isPlaying)
         }
 
     @Test
-    fun switchingActiveServer_withResetPlaybackFalse_preservesOngoingPlaybackAndQueue() =
+    fun switchingBrowsingServer_preservesOngoingPlaylistPlaybackAndQueue() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
-            val track = RemoteFile(name = "01.mp3", path = "/01.mp3")
-            val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track))
-            session.playDirectoryTrack(directory, track)
-            advanceUntilIdle()
-
-            assertTrue(session.sessionState.value.hasTrack)
-
             val otherServer = WebDavServer(id = 2L, name = "Other", url = "http://example.com")
-            session.setActiveServer(otherServer, resetPlayback = false)
+            val serverRepo = MutableServerRepository(listOf(testServer, otherServer), initialActiveId = testServer.id)
+            val playlist = Playlist(id = 10L, name = "Roadtrip", createdAtMs = 1000L, updatedAtMs = 1000L, trackCount = 1)
+            val entry =
+                PlaylistTrackEntry(
+                    id = 1L,
+                    playlistId = 10L,
+                    serverId = testServer.id,
+                    remotePath = "/01.mp3",
+                    sortOrder = 0,
+                    title = "01.mp3",
+                    format = AudioFormat.MP3,
+                )
+            val playlistRepo = TestPlaylistRepository(mutableListOf(entry))
+            val dualSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = serverRepo,
+                    playlistRepository = playlistRepo,
+                    coroutineScope = sessionScope,
+                )
+
+            dualSession.playPlaylist(playlist, startIndex = 0)
             advanceUntilIdle()
 
-            val state = session.sessionState.value
-            assertEquals(otherServer, state.activeServer)
-            assertTrue("Queue must be preserved when resetPlayback is false", state.hasTrack)
+            assertTrue(dualSession.sessionState.value.hasTrack)
+            assertEquals(testServer, dualSession.sessionState.value.activeServer)
+
+            serverRepo.setActiveServer(otherServer.id)
+            advanceUntilIdle()
+
+            val state = dualSession.sessionState.value
+            assertEquals(testServer, state.activeServer)
+            assertTrue("Playlist queue must be preserved when browsing server changes", state.hasTrack)
             assertEquals("01.mp3", state.currentTrack?.title)
             assertEquals(0, fakeEngine.stopCount)
+
+            dualSession.release()
         }
 
     @Test
     fun playbackControls_dispatchToPlayerEngine() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             session.pause()
@@ -612,9 +559,6 @@ class MusicPlayerAppSessionTest {
     @Test
     fun cyclePlaybackMode_cyclesThroughAllModes() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
-
             assertEquals(PlaybackMode.LIST_LOOP, session.sessionState.value.playbackMode)
 
             // LIST_LOOP -> SINGLE_LOOP
@@ -636,12 +580,11 @@ class MusicPlayerAppSessionTest {
     @Test
     fun removeQueueTrack_removesNonActiveTrackAndKeepsCurrentTrack() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val track3 = RemoteFile(name = "03.mp3", path = "/03.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2, track3))
-            session.playDirectoryTrack(directory, track2) // Playing track 2 (index 1)
+            session.playDirectoryTrack(testServer, directory, track2) // Playing track 2 (index 1)
             advanceUntilIdle()
 
             assertEquals(1, session.sessionState.value.queue.currentIndex)
@@ -664,12 +607,11 @@ class MusicPlayerAppSessionTest {
     @Test
     fun removeQueueTrack_removesActiveTrack_andAdvancesToNext() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val track3 = RemoteFile(name = "03.mp3", path = "/03.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2, track3))
-            session.playDirectoryTrack(directory, track2) // Playing track 2 (index 1)
+            session.playDirectoryTrack(testServer, directory, track2) // Playing track 2 (index 1)
             advanceUntilIdle()
 
             // Remove current track (index 1)
@@ -685,10 +627,9 @@ class MusicPlayerAppSessionTest {
     @Test
     fun removeQueueTrack_removesOnlyTrack_stopsAndClearsQueue() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             assertEquals(1, session.sessionState.value.queue.size)
@@ -706,11 +647,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun playbackModeTransitions_listLoopWraparound() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track2) // index 1 (last track)
+            session.playDirectoryTrack(testServer, directory, track2) // index 1 (last track)
             advanceUntilIdle()
 
             session.setPlaybackMode(PlaybackMode.LIST_LOOP)
@@ -735,11 +675,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun playbackModeTransitions_singleLoopReplaysCurrentTrack() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1) // index 0
+            session.playDirectoryTrack(testServer, directory, track1) // index 0
             advanceUntilIdle()
 
             session.setPlaybackMode(PlaybackMode.SINGLE_LOOP)
@@ -760,12 +699,11 @@ class MusicPlayerAppSessionTest {
     @Test
     fun playbackModeTransitions_shuffleFollowsPermutation() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val track3 = RemoteFile(name = "03.mp3", path = "/03.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2, track3))
-            session.playDirectoryTrack(directory, track1) // index 0
+            session.playDirectoryTrack(testServer, directory, track1) // index 0
             advanceUntilIdle()
 
             session.setPlaybackMode(PlaybackMode.SHUFFLE)
@@ -807,12 +745,11 @@ class MusicPlayerAppSessionTest {
                     coroutineScope = sessionScope,
                 )
 
-            sessionWithRepo.setActiveServer(testServer)
             val file1 = RemoteFile(name = "song1.mp3", path = "/music/song1.mp3")
             val file2 = RemoteFile(name = "song2.flac", path = "/music/song2.flac")
             val dir = RemoteDirectory(path = "/music/", name = "music", files = listOf(file1, file2))
 
-            sessionWithRepo.playDirectoryTrack(dir, file1)
+            sessionWithRepo.playDirectoryTrack(testServer, dir, file1)
             advanceUntilIdle()
 
             // Initially tracks have file names
@@ -860,13 +797,12 @@ class MusicPlayerAppSessionTest {
                     coroutineScope = sessionScope,
                 )
 
-            sessionWithRepo.setActiveServer(testServer)
             val file1 = RemoteFile(name = "song1.mp3", path = "/music/song1.mp3")
             val file2 = RemoteFile(name = "song2.flac", path = "/music/song2.flac")
             val file3 = RemoteFile(name = "song3.wav", path = "/music/song3.wav")
             val dir = RemoteDirectory(path = "/music/", name = "music", files = listOf(file1, file2, file3))
 
-            sessionWithRepo.playDirectoryTrack(dir, file1)
+            sessionWithRepo.playDirectoryTrack(testServer, dir, file1)
             advanceUntilIdle()
 
             fakeEngine.updateTrackMetadataCalls = 0
@@ -932,11 +868,10 @@ class MusicPlayerAppSessionTest {
                     coroutineScope = sessionScope,
                 )
 
-            sessionWithRepo.setActiveServer(testServer)
             val file1 = RemoteFile(name = "song1.mp3", path = "/music/song1.mp3")
             val dir = RemoteDirectory(path = "/music/", name = "music", files = listOf(file1))
 
-            sessionWithRepo.playDirectoryTrack(dir, file1)
+            sessionWithRepo.playDirectoryTrack(testServer, dir, file1)
             advanceUntilIdle()
 
             // Decoder establishes true physical duration of 200_000L
@@ -999,12 +934,11 @@ class MusicPlayerAppSessionTest {
                     coroutineScope = sessionScope,
                 )
 
-            sessionWithRepo.setActiveServer(testServer)
             val file1 = RemoteFile(name = "song1.mp3", path = "/music/song1.mp3")
             val file2 = RemoteFile(name = "song2.flac", path = "/music/song2.flac")
             val dir = RemoteDirectory(path = "/music/", name = "music", files = listOf(file1, file2))
 
-            sessionWithRepo.playDirectoryTrack(dir, file1)
+            sessionWithRepo.playDirectoryTrack(testServer, dir, file1)
             advanceUntilIdle()
 
             // Verification: resolveMetadata must NOT be triggered during on-demand playback,
@@ -1032,12 +966,11 @@ class MusicPlayerAppSessionTest {
             val sessionWithLyrics =
                 MusicPlayerAppSessionImpl(
                     playerEngine = fakeEngine,
-                    serverRepository = null,
+                    serverRepository = TestServerRepository(listOf(testServer)),
                     trackMetadataRepository = fakeMetadataRepo,
                     coroutineScope = sessionScope,
                 )
 
-            sessionWithLyrics.setActiveServer(testServer)
             val track =
                 AudioTrack(
                     id = "1:/music/song1.mp3",
@@ -1115,10 +1048,9 @@ class MusicPlayerAppSessionTest {
     @Test
     fun highFrequencyProgressTicks_produceZeroEmissionsOnStructuralSessionStateStream() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val dir = RemoteDirectory(path = "/", name = "root", files = listOf(track))
-            session.playDirectoryTrack(dir, track)
+            session.playDirectoryTrack(testServer, dir, track)
             advanceUntilIdle()
 
             var sessionStateEmissions = 0
@@ -1152,10 +1084,9 @@ class MusicPlayerAppSessionTest {
     @Test
     fun playbackProgress_updatesPositionDurationAndBufferedProgress() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track = RemoteFile(name = "song.flac", path = "/song.flac")
             val dir = RemoteDirectory(path = "/", name = "root", files = listOf(track))
-            session.playDirectoryTrack(dir, track)
+            session.playDirectoryTrack(testServer, dir, track)
             advanceUntilIdle()
 
             fakeEngine._durationMs.value = 180000L
@@ -1174,10 +1105,9 @@ class MusicPlayerAppSessionTest {
     @Test
     fun seekTo_updatesProgressStreamDirectly() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val dir = RemoteDirectory(path = "/", name = "root", files = listOf(track))
-            session.playDirectoryTrack(dir, track)
+            session.playDirectoryTrack(testServer, dir, track)
             advanceUntilIdle()
 
             session.seekTo(42000L)
@@ -1236,9 +1166,12 @@ class MusicPlayerAppSessionTest {
     @Test
     fun physicalTrackPlayback_loadsNativeStreamDirectlyAndExposesNativeProgress() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
-
+            val localSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = TestServerRepository(listOf(testServer)),
+                    coroutineScope = sessionScope,
+                )
             val track =
                 AudioTrack(
                     id = "1:/Music/album.flac",
@@ -1252,7 +1185,7 @@ class MusicPlayerAppSessionTest {
                     format = AudioFormat.FLAC,
                 )
 
-            session.playTrack(track)
+            localSession.playTrack(track)
             advanceUntilIdle()
 
             // Physical engine loaded track directly starting at 0L
@@ -1260,7 +1193,7 @@ class MusicPlayerAppSessionTest {
             assertEquals("/Music/album.flac", fakeEngine.loadedTrack?.remotePath)
             assertEquals(0L, fakeEngine.lastStartPositionMs)
 
-            val state = session.sessionState.value
+            val state = localSession.sessionState.value
             assertEquals(1, state.queue.size)
             assertEquals(0, state.queue.currentIndex)
             assertEquals("album.flac", state.currentTrack?.title)
@@ -1270,19 +1203,19 @@ class MusicPlayerAppSessionTest {
             fakeEngine._currentPositionMs.value = 45_000L
             advanceUntilIdle()
 
-            val progress = session.playbackProgress.value
+            val progress = localSession.playbackProgress.value
             assertEquals(45_000L, progress.currentPositionMs)
             assertEquals(600_000L, progress.durationMs)
+            localSession.release()
         }
 
     @Test
     fun durationGuard_interceptsPrematureEof_andResumesInPlace() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             assertEquals(0, session.sessionState.value.queue.currentIndex)
@@ -1324,11 +1257,10 @@ class MusicPlayerAppSessionTest {
                     serverRepository = null,
                     coroutineScope = sessionScope,
                 )
-            testSession.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            testSession.playDirectoryTrack(directory, track1)
+            testSession.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             assertEquals(0, testSession.sessionState.value.queue.currentIndex)
@@ -1356,11 +1288,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun completionArbitration_tailReleaseAt95PercentOrAbove_advancesQueueDespiteInflatedDuration() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             assertEquals(0, session.sessionState.value.queue.currentIndex)
@@ -1384,11 +1315,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun completionArbitration_physicalMatch_advancesQueueEvenWhenProgressUnder95Percent() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             assertEquals(0, session.sessionState.value.queue.currentIndex)
@@ -1412,11 +1342,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun completionArbitration_singleLoop_replaysTrackFromZeroOn95PercentTailReleaseWithInflatedDuration() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             session.setPlaybackMode(PlaybackMode.SINGLE_LOOP)
@@ -1443,12 +1372,11 @@ class MusicPlayerAppSessionTest {
     @Test
     fun completionArbitration_shuffleMode_advancesToNextShuffledTrackOnNaturalCompletion() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val track3 = RemoteFile(name = "03.mp3", path = "/03.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2, track3))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             session.setPlaybackMode(PlaybackMode.SHUFFLE)
@@ -1472,11 +1400,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun durationGuard_allowsLegitimateCompletion_andAdvancesQueue() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             assertEquals(0, session.sessionState.value.queue.currentIndex)
@@ -1499,12 +1426,11 @@ class MusicPlayerAppSessionTest {
     @Test
     fun durationGuard_folderRing_loopsBackToBeginningAtEndOfQueue() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
             // Start at track 2 (last track)
-            session.playDirectoryTrack(directory, track2)
+            session.playDirectoryTrack(testServer, directory, track2)
             advanceUntilIdle()
 
             assertEquals(1, session.sessionState.value.queue.currentIndex)
@@ -1527,11 +1453,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun durationGuard_singleLoop_replaysTrackWhenLegitimatelyCompleted() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             session.setPlaybackMode(PlaybackMode.SINGLE_LOOP)
@@ -1551,11 +1476,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun adaptivePreroll_triggered_whenRemainingTimeWithin10Seconds_andNetworkHealthy() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             fakeEngine._durationMs.value = 100_000L
@@ -1571,11 +1495,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun adaptivePreroll_suppressed_whenRecentBufferingOccurred() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             // Mark recent buffering (5 seconds ago)
@@ -1593,11 +1516,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun adaptivePreroll_dynamicallyCancelled_whenBufferingOccursDuringPrerollWindow() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             fakeEngine._durationMs.value = 100_000L
@@ -1618,11 +1540,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun userPreemption_pauseAndSkip_instantlyCancelsPreroll() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             fakeEngine._durationMs.value = 100_000L
@@ -1644,10 +1565,9 @@ class MusicPlayerAppSessionTest {
     @Test
     fun weakNetwork_stateAndRetryFlag_exposedAndClearedOnResume() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             // 1. Enter buffering
@@ -1678,10 +1598,9 @@ class MusicPlayerAppSessionTest {
     @Test
     fun manualRetry_reconnectsInPlace_preservingCurrentPosition() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             session.seekTo(42_000L)
@@ -1701,11 +1620,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun bufferingWatchdog_exhaustsQuietWindow_flagsWeakNetworkAndManualRetry_preservingQueueState() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3", size = 1000)
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3", size = 2000)
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             // Seek playback to 35,000 ms
@@ -1792,10 +1710,9 @@ class MusicPlayerAppSessionTest {
     @Test
     fun pause_duringBuffering_cancelsWatchdog_andTransitionsToPausedWithoutGhostResumption() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3", size = 1000)
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             // Transition engine to Buffering state
@@ -1824,11 +1741,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun adaptivePreroll_cancelledBeforeMainThreadExecution_isSafelyDiscarded() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             // Simulate progress entering pre-roll window
@@ -1847,11 +1763,10 @@ class MusicPlayerAppSessionTest {
     @Test
     fun seamlessPreroll_trackTransitions_advancesQueueWithoutCallingLoadTrackIntoEngine() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track1, track2))
-            session.playDirectoryTrack(directory, track1)
+            session.playDirectoryTrack(testServer, directory, track1)
             advanceUntilIdle()
 
             assertEquals(0, session.sessionState.value.queue.currentIndex)
@@ -1956,7 +1871,12 @@ class MusicPlayerAppSessionTest {
     @Test
     fun audioFocus_transientLoss_pausesSession_andSetsFlag() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
+            val focusSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = TestServerRepository(listOf(testServer)),
+                    coroutineScope = sessionScope,
+                )
             val track =
                 AudioTrack(
                     id = "track-1",
@@ -1967,23 +1887,29 @@ class MusicPlayerAppSessionTest {
                     format = AudioFormat.MP3,
                     size = 10_000_000L,
                 )
-            session.playTrack(track)
+            focusSession.playTrack(track)
             advanceUntilIdle()
             fakeEngine._playbackState.value = PlaybackState.Playing
             advanceUntilIdle()
 
             // Transient focus loss (e.g. phone call)
-            session.onAudioFocusTransientLoss()
+            focusSession.onAudioFocusTransientLoss()
             advanceUntilIdle()
 
-            assertTrue("Flag must be set on transient focus loss", session.pausedByTransientAudioFocus)
+            assertTrue("Flag must be set on transient focus loss", focusSession.pausedByTransientAudioFocus)
             assertEquals(1, fakeEngine.pauseCount)
+            focusSession.release()
         }
 
     @Test
     fun audioFocus_ghostResumptionGuard_userPauseClearsFlag() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
+            val focusSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = TestServerRepository(listOf(testServer)),
+                    coroutineScope = sessionScope,
+                )
             val track =
                 AudioTrack(
                     id = "track-1",
@@ -1994,34 +1920,40 @@ class MusicPlayerAppSessionTest {
                     format = AudioFormat.MP3,
                     size = 10_000_000L,
                 )
-            session.playTrack(track)
+            focusSession.playTrack(track)
             advanceUntilIdle()
             fakeEngine._playbackState.value = PlaybackState.Playing
             advanceUntilIdle()
 
             // Call arrives -> transient focus loss
-            session.onAudioFocusTransientLoss()
+            focusSession.onAudioFocusTransientLoss()
             advanceUntilIdle()
-            assertTrue(session.pausedByTransientAudioFocus)
+            assertTrue(focusSession.pausedByTransientAudioFocus)
 
             // User explicitly pauses during the phone call
-            session.pause()
+            focusSession.pause()
             advanceUntilIdle()
-            assertFalse("User active pause must clear transient resumption flag", session.pausedByTransientAudioFocus)
+            assertFalse("User active pause must clear transient resumption flag", focusSession.pausedByTransientAudioFocus)
 
             val playCountBefore = fakeEngine.playCount
             // Call ends -> system grants focus back
-            session.onAudioFocusGain()
+            focusSession.onAudioFocusGain()
             advanceUntilIdle()
 
             assertEquals("Ghost resumption must be blocked", playCountBefore, fakeEngine.playCount)
-            assertFalse(session.pausedByTransientAudioFocus)
+            assertFalse(focusSession.pausedByTransientAudioFocus)
+            focusSession.release()
         }
 
     @Test
     fun audioFocus_ghostResumptionGuard_userToggleClearsFlag() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
+            val focusSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = TestServerRepository(listOf(testServer)),
+                    coroutineScope = sessionScope,
+                )
             val track =
                 AudioTrack(
                     id = "track-1",
@@ -2032,31 +1964,37 @@ class MusicPlayerAppSessionTest {
                     format = AudioFormat.MP3,
                     size = 10_000_000L,
                 )
-            session.playTrack(track)
+            focusSession.playTrack(track)
             advanceUntilIdle()
             fakeEngine._playbackState.value = PlaybackState.Playing
             advanceUntilIdle()
 
-            session.onAudioFocusTransientLoss()
+            focusSession.onAudioFocusTransientLoss()
             advanceUntilIdle()
-            assertTrue(session.pausedByTransientAudioFocus)
+            assertTrue(focusSession.pausedByTransientAudioFocus)
 
             // User triggers togglePlayPause during the phone call
-            session.togglePlayPause()
+            focusSession.togglePlayPause()
             advanceUntilIdle()
-            assertFalse("User active toggle must clear transient resumption flag", session.pausedByTransientAudioFocus)
+            assertFalse("User active toggle must clear transient resumption flag", focusSession.pausedByTransientAudioFocus)
 
             val playCountBefore = fakeEngine.playCount
-            session.onAudioFocusGain()
+            focusSession.onAudioFocusGain()
             advanceUntilIdle()
 
             assertEquals("Ghost resumption must be blocked", playCountBefore, fakeEngine.playCount)
+            focusSession.release()
         }
 
     @Test
     fun audioFocus_ghostResumptionGuard_userStopClearsFlag() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
+            val focusSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = TestServerRepository(listOf(testServer)),
+                    coroutineScope = sessionScope,
+                )
             val track =
                 AudioTrack(
                     id = "track-1",
@@ -2067,30 +2005,36 @@ class MusicPlayerAppSessionTest {
                     format = AudioFormat.MP3,
                     size = 10_000_000L,
                 )
-            session.playTrack(track)
+            focusSession.playTrack(track)
             advanceUntilIdle()
             fakeEngine._playbackState.value = PlaybackState.Playing
             advanceUntilIdle()
 
-            session.onAudioFocusTransientLoss()
+            focusSession.onAudioFocusTransientLoss()
             advanceUntilIdle()
-            assertTrue(session.pausedByTransientAudioFocus)
+            assertTrue(focusSession.pausedByTransientAudioFocus)
 
-            session.stop()
+            focusSession.stop()
             advanceUntilIdle()
-            assertFalse("User active stop must clear transient resumption flag", session.pausedByTransientAudioFocus)
+            assertFalse("User active stop must clear transient resumption flag", focusSession.pausedByTransientAudioFocus)
 
             val playCountBefore = fakeEngine.playCount
-            session.onAudioFocusGain()
+            focusSession.onAudioFocusGain()
             advanceUntilIdle()
 
             assertEquals("Ghost resumption must be blocked", playCountBefore, fakeEngine.playCount)
+            focusSession.release()
         }
 
     @Test
     fun audioFocus_ghostResumptionGuard_playDirectoryTrackClearsFlag() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
+            val focusSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = TestServerRepository(listOf(testServer)),
+                    coroutineScope = sessionScope,
+                )
             val track1 =
                 AudioTrack(
                     id = "track-1",
@@ -2111,31 +2055,37 @@ class MusicPlayerAppSessionTest {
                             RemoteFile(name = "2.mp3", path = "/music/2.mp3"),
                         ),
                 )
-            session.playTrack(track1)
+            focusSession.playTrack(track1)
             advanceUntilIdle()
             fakeEngine._playbackState.value = PlaybackState.Playing
             advanceUntilIdle()
 
             // Call interrupts -> transient loss sets flag
-            session.onAudioFocusTransientLoss()
+            focusSession.onAudioFocusTransientLoss()
             advanceUntilIdle()
-            assertTrue(session.pausedByTransientAudioFocus)
+            assertTrue(focusSession.pausedByTransientAudioFocus)
 
             // User starts playing a new directory track during call
-            session.playDirectoryTrack(dir, RemoteFile(name = "2.mp3", path = "/music/2.mp3"))
+            focusSession.playDirectoryTrack(testServer, dir, RemoteFile(name = "2.mp3", path = "/music/2.mp3"))
             advanceUntilIdle()
 
             // User active action MUST clear the transient resumption flag
             assertFalse(
                 "User active playDirectoryTrack must clear transient resumption flag",
-                session.pausedByTransientAudioFocus,
+                focusSession.pausedByTransientAudioFocus,
             )
+            focusSession.release()
         }
 
     @Test
     fun audioFocus_gain_resumesPlayback_whenFlagIsSet() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
+            val focusSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = TestServerRepository(listOf(testServer)),
+                    coroutineScope = sessionScope,
+                )
             val track =
                 AudioTrack(
                     id = "track-1",
@@ -2146,7 +2096,7 @@ class MusicPlayerAppSessionTest {
                     format = AudioFormat.MP3,
                     size = 10_000_000L,
                 )
-            session.playTrack(track)
+            focusSession.playTrack(track)
             advanceUntilIdle()
             fakeEngine._playbackState.value = PlaybackState.Playing
             advanceUntilIdle()
@@ -2154,22 +2104,28 @@ class MusicPlayerAppSessionTest {
             val initialPlayCount = fakeEngine.playCount
 
             // Transient loss -> pause
-            session.onAudioFocusTransientLoss()
+            focusSession.onAudioFocusTransientLoss()
             advanceUntilIdle()
-            assertTrue(session.pausedByTransientAudioFocus)
+            assertTrue(focusSession.pausedByTransientAudioFocus)
 
             // Call ends without user interaction -> focus gain
-            session.onAudioFocusGain()
+            focusSession.onAudioFocusGain()
             advanceUntilIdle()
 
-            assertFalse(session.pausedByTransientAudioFocus)
+            assertFalse(focusSession.pausedByTransientAudioFocus)
             assertEquals("Playback should resume smoothly", initialPlayCount + 1, fakeEngine.playCount)
+            focusSession.release()
         }
 
     @Test
     fun audioFocus_permanentLoss_pausesSession_andClearsFlag() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
+            val focusSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = TestServerRepository(listOf(testServer)),
+                    coroutineScope = sessionScope,
+                )
             val track =
                 AudioTrack(
                     id = "track-1",
@@ -2180,23 +2136,24 @@ class MusicPlayerAppSessionTest {
                     format = AudioFormat.MP3,
                     size = 10_000_000L,
                 )
-            session.playTrack(track)
+            focusSession.playTrack(track)
             advanceUntilIdle()
             fakeEngine._playbackState.value = PlaybackState.Playing
             advanceUntilIdle()
 
             // Permanent focus loss
-            session.onAudioFocusLoss()
+            focusSession.onAudioFocusLoss()
             advanceUntilIdle()
 
-            assertFalse(session.pausedByTransientAudioFocus)
+            assertFalse(focusSession.pausedByTransientAudioFocus)
             assertEquals(1, fakeEngine.pauseCount)
 
             // Regaining focus later should NOT resume
             val playCountBefore = fakeEngine.playCount
-            session.onAudioFocusGain()
+            focusSession.onAudioFocusGain()
             advanceUntilIdle()
             assertEquals(playCountBefore, fakeEngine.playCount)
+            focusSession.release()
         }
 
     @Test
@@ -2419,9 +2376,9 @@ class MusicPlayerAppSessionTest {
 
             assertEquals("Deleted Song", fakeEngine.loadedTrack?.title)
 
-            // Simulate 404 error
-            val http404Exception = java.io.FileNotFoundException("HTTP 404: Remote file not found")
-            fakeEngine._playbackState.value = PlaybackState.Error("HTTP 404 error", http404Exception)
+            // Simulate 404 error via PlaybackErrorKind.FILE_NOT_FOUND
+            fakeEngine._playbackState.value =
+                PlaybackState.Error("HTTP 404 error", kind = PlaybackErrorKind.FILE_NOT_FOUND)
             advanceUntilIdle()
 
             // Verify track 1 was reported unavailable to StorageReachabilityTracker, with ZERO writes to playlistRepo
@@ -2484,14 +2441,16 @@ class MusicPlayerAppSessionTest {
             advanceUntilIdle()
 
             // Track 1 fails with 404
-            fakeEngine._playbackState.value = PlaybackState.Error("404", java.io.FileNotFoundException("File not found 404"))
+            fakeEngine._playbackState.value =
+                PlaybackState.Error("404", kind = PlaybackErrorKind.FILE_NOT_FOUND)
             advanceUntilIdle()
 
             // Auto-skipped to Track 2
             assertEquals(1, playlistSession.sessionState.value.queue.currentIndex)
 
             // Track 2 also fails with 404
-            fakeEngine._playbackState.value = PlaybackState.Error("404", java.io.FileNotFoundException("File not found 404"))
+            fakeEngine._playbackState.value =
+                PlaybackState.Error("404", kind = PlaybackErrorKind.FILE_NOT_FOUND)
             advanceUntilIdle()
 
             // Both tracks failed: session stops gracefully at Error without infinite loop
@@ -2502,11 +2461,93 @@ class MusicPlayerAppSessionTest {
         }
 
     @Test
-    fun playTrack_singleTrack_setsAdHocQueueOrigin() =
+    fun streamAuthAndServerUnreachableErrors_dispatchViaPlaybackErrorKind_andUnknownDoesNotAutoSkip() =
         runTest(testDispatcher) {
-            session.setActiveServer(testServer)
+            session.release()
+            val playlist = Playlist(id = 501L, name = "ErrorKind歌单", createdAtMs = 1000L, updatedAtMs = 1000L, trackCount = 3)
+            val entry1 =
+                PlaylistTrackEntry(
+                    id = 61L,
+                    playlistId = 501L,
+                    serverId = testServer.id,
+                    remotePath = "/auth.mp3",
+                    sortOrder = 0,
+                    title = "Auth Fail",
+                    format = AudioFormat.MP3,
+                )
+            val entry2 =
+                PlaylistTrackEntry(
+                    id = 62L,
+                    playlistId = 501L,
+                    serverId = testServer.id,
+                    remotePath = "/unreachable.mp3",
+                    sortOrder = 1,
+                    title = "Server Down",
+                    format = AudioFormat.MP3,
+                )
+            val entry3 =
+                PlaylistTrackEntry(
+                    id = 63L,
+                    playlistId = 501L,
+                    serverId = testServer.id,
+                    remotePath = "/unknown.mp3",
+                    sortOrder = 2,
+                    title = "Unknown",
+                    format = AudioFormat.MP3,
+                )
+            val playlistRepo = TestPlaylistRepository(mutableListOf(entry1, entry2, entry3))
+            val serverRepo = TestServerRepository(listOf(testServer))
+            val fakeTracker = FakeStorageReachabilityTracker()
+
+            val playlistSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = serverRepo,
+                    playlistRepository = playlistRepo,
+                    storageReachabilityTracker = fakeTracker,
+                    coroutineScope = sessionScope,
+                )
+
+            playlistSession.playPlaylist(playlist, startIndex = 0)
             advanceUntilIdle()
 
+            // 1. AUTH_INVALID -> reports SERVER_CREDENTIAL_INVALID and skips to track 2
+            fakeEngine._playbackState.value = PlaybackState.Error("Generic error", kind = PlaybackErrorKind.AUTH_INVALID)
+            advanceUntilIdle()
+            assertEquals(1, playlistSession.sessionState.value.queue.currentIndex)
+            assertEquals(
+                testServer.id to InactiveReason.SERVER_CREDENTIAL_INVALID,
+                fakeTracker.reportedUnavailableServers[0],
+            )
+
+            // 2. SERVER_UNREACHABLE -> reports SERVER_UNREACHABLE and skips to track 3
+            fakeEngine._playbackState.value = PlaybackState.Error("Generic error", kind = PlaybackErrorKind.SERVER_UNREACHABLE)
+            advanceUntilIdle()
+            assertEquals(2, playlistSession.sessionState.value.queue.currentIndex)
+            assertEquals(
+                testServer.id to InactiveReason.SERVER_UNREACHABLE,
+                fakeTracker.reportedUnavailableServers[1],
+            )
+
+            // 3. UNKNOWN with "404" in message -> must NOT misclassify or auto-skip
+            fakeEngine._playbackState.value = PlaybackState.Error("404 in text only", kind = PlaybackErrorKind.UNKNOWN)
+            advanceUntilIdle()
+            assertEquals(2, playlistSession.sessionState.value.queue.currentIndex)
+            assertTrue(playlistSession.sessionState.value.playbackState is PlaybackState.Error)
+            assertTrue(playlistSession.sessionState.value.canManualRetry)
+
+            playlistSession.release()
+        }
+
+    @Test
+    fun playTrack_singleTrack_setsAdHocQueueOrigin() =
+        runTest(testDispatcher) {
+            val adHocSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = TestServerRepository(listOf(testServer)),
+                    coroutineScope = sessionScope,
+                )
             val track =
                 AudioTrack(
                     id = "1:/search/single.mp3",
@@ -2516,13 +2557,14 @@ class MusicPlayerAppSessionTest {
                     format = AudioFormat.MP3,
                 )
 
-            session.playTrack(track)
+            adHocSession.playTrack(track)
             advanceUntilIdle()
 
-            val state = session.sessionState.value
+            val state = adHocSession.sessionState.value
             assertEquals(1, state.queue.size)
             assertEquals(QueueOrigin.AD_HOC, state.queue.origin)
             assertTrue(state.queue.isAdHocQueue)
+            adHocSession.release()
         }
 
     @Test
@@ -2630,10 +2672,9 @@ class MusicPlayerAppSessionTest {
                     coroutineScope = sessionScope,
                     networkConnectivityObserver = fakeNetwork,
                 )
-            netSession.setActiveServer(testServer)
             val track = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track))
-            netSession.playDirectoryTrack(directory, track)
+            netSession.playDirectoryTrack(testServer, directory, track)
             advanceUntilIdle()
 
             // Simulate playback progressing to 20 seconds
@@ -2680,10 +2721,9 @@ class MusicPlayerAppSessionTest {
                     coroutineScope = sessionScope,
                     networkConnectivityObserver = fakeNetwork,
                 )
-            netSession.setActiveServer(testServer)
             val track = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track))
-            netSession.playDirectoryTrack(directory, track)
+            netSession.playDirectoryTrack(testServer, directory, track)
             advanceUntilIdle()
 
             // User explicitly pauses playback
@@ -2720,10 +2760,9 @@ class MusicPlayerAppSessionTest {
                     coroutineScope = sessionScope,
                     networkConnectivityObserver = fakeNetwork,
                 )
-            netSession.setActiveServer(testServer)
             val track = RemoteFile(name = "01.mp3", path = "/01.mp3")
             val directory = RemoteDirectory(path = "/", name = "root", files = listOf(track))
-            netSession.playDirectoryTrack(directory, track)
+            netSession.playDirectoryTrack(testServer, directory, track)
             advanceUntilIdle()
 
             // Becoming noisy pauses playback
@@ -2775,16 +2814,14 @@ class MusicPlayerAppSessionTest {
         }
 
     @Test
-    fun localTrack_playback_bypassesWatchdog_andReleasesWifiLockWhileRetainingWakeLock() =
+    fun localTrack_playback_bypassesWatchdog_andSynthesizesLocalServer() =
         runTest(testDispatcher) {
             val localEngine = FakeAudioPlayerEngine()
-            val fakeLockManager = FakeStreamingHardwareLockManager()
             val localSession =
                 MusicPlayerAppSessionImpl(
                     playerEngine = localEngine,
                     serverRepository = null,
                     coroutineScope = sessionScope,
-                    hardwareLockManager = fakeLockManager,
                 )
 
             val localTrack =
@@ -2800,9 +2837,7 @@ class MusicPlayerAppSessionTest {
             localSession.playTrack(localTrack)
             advanceUntilIdle()
 
-            // Verify local server synthesized and wakeLock held while wifiLock not held
-            assertTrue("WakeLock must be retained for local playback", fakeLockManager.isWakeLockHeld)
-            assertFalse("WifiLock must not be held for local playback", fakeLockManager.isWifiLockHeld)
+            // Verify local server synthesized
             assertEquals(
                 LOCAL_STORAGE_ID,
                 localSession.sessionState.value.activeServer
@@ -2830,9 +2865,8 @@ class MusicPlayerAppSessionTest {
         }
 
     @Test
-    fun skipping_fromLocalTrack_toWebDavTrack_reEnablesWifiLockAndWatchdog() =
+    fun skipping_fromLocalTrack_toWebDavTrack_reEnablesWatchdog() =
         runTest(testDispatcher) {
-            val fakeLockManager = FakeStreamingHardwareLockManager()
             val serverRepo = TestServerRepository(listOf(testServer))
 
             val playlist = Playlist(id = 100L, name = "Mixed", createdAtMs = 1000L, updatedAtMs = 1000L, trackCount = 2)
@@ -2866,23 +2900,14 @@ class MusicPlayerAppSessionTest {
                     serverRepository = serverRepo,
                     playlistRepository = playlistRepo,
                     coroutineScope = sessionScope,
-                    hardwareLockManager = fakeLockManager,
                 )
 
             mixedSession.playPlaylist(playlist, startIndex = 0)
             advanceUntilIdle()
 
-            // Track 0 (Local): WakeLock held, WifiLock released
-            assertTrue("WakeLock must be held on local track", fakeLockManager.isWakeLockHeld)
-            assertFalse("WifiLock must be released on local track", fakeLockManager.isWifiLockHeld)
-
             // Skip to Track 1 (WebDAV)
             mixedSession.skipToNext()
             advanceUntilIdle()
-
-            // Track 1 (WebDAV): WifiLock re-enabled alongside WakeLock
-            assertTrue("WakeLock must be held for WebDAV track", fakeLockManager.isWakeLockHeld)
-            assertTrue("WifiLock must be re-enabled for WebDAV track", fakeLockManager.isWifiLockHeld)
 
             // Buffering on WebDav track must trigger watchdog
             fakeEngine._playbackState.value = PlaybackState.Buffering
@@ -3021,5 +3046,234 @@ class MusicPlayerAppSessionTest {
             }
 
             mixedSession.release()
+        }
+
+    private class MutableServerRepository(
+        initialServers: List<WebDavServer>,
+        initialActiveId: Long? = initialServers.firstOrNull()?.id,
+    ) : com.webdav.player.domain.repository.ServerRepository {
+        private val serversFlow = MutableStateFlow(initialServers)
+        private val activeIdFlow = MutableStateFlow(initialActiveId)
+
+        override fun getAllServers(): Flow<List<WebDavServer>> = serversFlow
+
+        override fun getActiveServer(): Flow<WebDavServer?> =
+            activeIdFlow.map { id -> serversFlow.value.firstOrNull { it.id == id } }
+
+        override suspend fun getServerById(id: Long): WebDavServer? = serversFlow.value.firstOrNull { it.id == id }
+
+        override suspend fun saveServer(server: WebDavServer): Long {
+            serversFlow.value = serversFlow.value.filterNot { it.id == server.id } + server
+            return server.id
+        }
+
+        override suspend fun deleteServer(id: Long) {
+            serversFlow.value = serversFlow.value.filterNot { it.id == id }
+            if (activeIdFlow.value == id) {
+                activeIdFlow.value = serversFlow.value.firstOrNull()?.id
+            }
+        }
+
+        override suspend fun setActiveServer(id: Long) {
+            activeIdFlow.value = id
+        }
+    }
+
+    @Test
+    fun switchingBrowsingServerInRepository_doesNotOverwritePlaybackServerOrInterruptPlayback() =
+        runTest(testDispatcher) {
+            val server2 =
+                WebDavServer(
+                    id = 2L,
+                    name = "Office NAS",
+                    url = "http://192.168.1.200:8080/webdav",
+                    port = 8080,
+                    pathPrefix = "/webdav",
+                    username = "user",
+                    password = "pw",
+                )
+            val serverRepo = MutableServerRepository(listOf(testServer, server2), initialActiveId = testServer.id)
+            val dualSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = serverRepo,
+                    coroutineScope = sessionScope,
+                )
+            val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3", size = 1000L)
+            val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3", size = 2000L)
+            val dir = RemoteDirectory(path = "/Album/", name = "Album", files = listOf(track1, track2))
+
+            dualSession.playDirectoryTrack(testServer, dir, track1)
+            advanceUntilIdle()
+
+            assertEquals(testServer, dualSession.sessionState.value.activeServer)
+            assertEquals(2, dualSession.sessionState.value.queue.size)
+            assertTrue(dualSession.sessionState.value.isPlaying)
+
+            // Switch active browsing server in repository to server2
+            serverRepo.setActiveServer(server2.id)
+            advanceUntilIdle()
+
+            // Playback server, queue, engine server, and playing state must be completely untouched
+            assertEquals(testServer, dualSession.sessionState.value.activeServer)
+            assertEquals(testServer, fakeEngine.lastServer)
+            assertEquals(2, dualSession.sessionState.value.queue.size)
+            assertEquals("01.mp3", dualSession.sessionState.value.currentTrack?.title)
+            assertTrue(dualSession.sessionState.value.isPlaying)
+            assertEquals(0, fakeEngine.stopCount)
+
+            dualSession.release()
+        }
+
+    @Test
+    fun playDirectoryTrack_withExplicitServer_populatesQueueAndPlaysWithoutPriorSetActiveServer() =
+        runTest(testDispatcher) {
+            val server2 =
+                WebDavServer(
+                    id = 2L,
+                    name = "Explicit Server",
+                    url = "http://192.168.1.201:8080/webdav",
+                    port = 8080,
+                    pathPrefix = "/webdav",
+                    username = "user",
+                    password = "pw",
+                )
+            val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3", size = 1000L)
+            val track2 = RemoteFile(name = "02.flac", path = "/02.flac", size = 2000L)
+            val dir = RemoteDirectory(path = "/Music/", name = "Music", files = listOf(track1, track2))
+
+            session.playDirectoryTrack(server2, dir, track2)
+            advanceUntilIdle()
+
+            val state = session.sessionState.value
+            assertEquals(server2, state.activeServer)
+            assertEquals(2, state.queue.size)
+            assertEquals(1, state.queue.currentIndex)
+            assertEquals("02.flac", state.currentTrack?.title)
+            assertEquals(server2, fakeEngine.lastServer)
+            assertTrue(state.isPlaying)
+        }
+
+    @Test
+    fun deletingNonPlayingServer_doesNotStopPlaybackOrClearQueue() =
+        runTest(testDispatcher) {
+            val server2 =
+                WebDavServer(
+                    id = 2L,
+                    name = "Idle Server",
+                    url = "http://192.168.1.202:8080/webdav",
+                    port = 8080,
+                    pathPrefix = "/webdav",
+                    username = "user",
+                    password = "pw",
+                )
+            val serverRepo = MutableServerRepository(listOf(testServer, server2), initialActiveId = testServer.id)
+            val dualSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = serverRepo,
+                    coroutineScope = sessionScope,
+                )
+            val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3", size = 1000L)
+            val dir = RemoteDirectory(path = "/Album/", name = "Album", files = listOf(track1))
+
+            dualSession.playDirectoryTrack(testServer, dir, track1)
+            advanceUntilIdle()
+            assertTrue(dualSession.sessionState.value.isPlaying)
+
+            // Delete idle server2
+            serverRepo.deleteServer(server2.id)
+            advanceUntilIdle()
+
+            // Active playback on testServer must continue undisturbed
+            assertEquals(testServer, dualSession.sessionState.value.activeServer)
+            assertEquals(1, dualSession.sessionState.value.queue.size)
+            assertTrue(dualSession.sessionState.value.isPlaying)
+            assertEquals(0, fakeEngine.stopCount)
+
+            dualSession.release()
+        }
+
+    @Test
+    fun deletingCurrentlyPlayingRemoteServer_stopsPlaybackAndClearsQueueAndActiveServer() =
+        runTest(testDispatcher) {
+            val server2 =
+                WebDavServer(
+                    id = 2L,
+                    name = "Backup Server",
+                    url = "http://192.168.1.203:8080/webdav",
+                    port = 8080,
+                    pathPrefix = "/webdav",
+                    username = "user",
+                    password = "pw",
+                )
+            val serverRepo = MutableServerRepository(listOf(testServer, server2), initialActiveId = testServer.id)
+            val fakeStore = FakePlaybackSessionStore()
+            val dualSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = serverRepo,
+                    sessionStore = fakeStore,
+                    coroutineScope = sessionScope,
+                )
+            val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3", size = 1000L)
+            val dir = RemoteDirectory(path = "/Album/", name = "Album", files = listOf(track1))
+
+            dualSession.playDirectoryTrack(testServer, dir, track1)
+            advanceUntilIdle()
+            assertTrue(dualSession.sessionState.value.isPlaying)
+            assertEquals(1, dualSession.sessionState.value.queue.size)
+            assertEquals(testServer.id, fakeStore.savedSession?.activeServerId)
+
+            // Delete the currently playing remote server (testServer)
+            serverRepo.deleteServer(testServer.id)
+            advanceUntilIdle()
+
+            val state = dualSession.sessionState.value
+            assertTrue(fakeEngine.stopCount >= 1)
+            assertTrue(state.isIdle)
+            assertTrue(state.queue.isEmpty)
+            assertNull(state.activeServer)
+            assertNull(fakeStore.savedSession?.activeServerId)
+            assertTrue(fakeStore.savedSession?.queueTracks.orEmpty().isEmpty())
+            assertTrue(fakeStore.clearSessionCount >= 1)
+
+            dualSession.release()
+        }
+
+    @Test
+    fun deletingRemoteServer_whilePlayingLocalStorage_doesNotStopPlayback() =
+        runTest(testDispatcher) {
+            val localStorage = WebDavServer.createLocalStorage()
+            val serverRepo = MutableServerRepository(listOf(testServer), initialActiveId = LOCAL_STORAGE_ID)
+            val dualSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = serverRepo,
+                    coroutineScope = sessionScope,
+                )
+            val localTrack =
+                RemoteFile(
+                    name = "local.flac",
+                    path = "content://media/external/audio/1",
+                    size = 4000L,
+                )
+            val dir = RemoteDirectory(path = "/local/", name = "Local", serverId = LOCAL_STORAGE_ID, files = listOf(localTrack))
+
+            dualSession.playDirectoryTrack(localStorage, dir, localTrack)
+            advanceUntilIdle()
+            assertTrue(dualSession.sessionState.value.isPlaying)
+            assertEquals(LOCAL_STORAGE_ID, dualSession.sessionState.value.activeServer?.id)
+
+            // Delete remote testServer while playing local storage
+            serverRepo.deleteServer(testServer.id)
+            advanceUntilIdle()
+
+            assertTrue(dualSession.sessionState.value.isPlaying)
+            assertEquals(1, dualSession.sessionState.value.queue.size)
+            assertEquals(LOCAL_STORAGE_ID, dualSession.sessionState.value.activeServer?.id)
+            assertEquals(0, fakeEngine.stopCount)
+
+            dualSession.release()
         }
 }

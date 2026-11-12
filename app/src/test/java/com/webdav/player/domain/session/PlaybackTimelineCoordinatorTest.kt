@@ -1,35 +1,25 @@
 package com.webdav.player.domain.session
 
-import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
-import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackProgress
-import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlaybackState
-import com.webdav.player.domain.model.PlayerSessionState
-import com.webdav.player.domain.model.QueueOrigin
 import com.webdav.player.domain.model.WebDavServer
-import com.webdav.player.domain.player.FakeAudioPlayerEngine
-import com.webdav.player.domain.repository.PlaybackSessionStore
-import com.webdav.player.domain.repository.ServerRepository
-import com.webdav.player.domain.repository.TrackMetadataRepository
+import com.webdav.player.domain.player.AudioPlayerEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.util.concurrent.atomic.AtomicBoolean
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlaybackTimelineCoordinatorTest {
@@ -37,117 +27,33 @@ class PlaybackTimelineCoordinatorTest {
     private val coordinatorJob = SupervisorJob()
     private val coordinatorScope = CoroutineScope(testDispatcher + coordinatorJob)
 
-    private val fakeEngine = FakeAudioPlayerEngine()
-    private val sessionStateFlow = MutableStateFlow(PlayerSessionState())
-    private val playbackProgressFlow = MutableStateFlow(PlaybackProgress.ZERO)
-    private val isPrerollAppended = AtomicBoolean(false)
-
-    private val server1 =
-        WebDavServer(
-            id = 1L,
-            name = "Server 1",
-            url = "http://server1.test/webdav",
-            username = "user1",
-            password = "pass1",
-        )
-    private val server2 =
-        WebDavServer(
-            id = 2L,
-            name = "Server 2",
-            url = "http://server2.test/webdav",
-            username = "user2",
-            password = "pass2",
-        )
-
-    private val serverMap = mutableMapOf<Long, WebDavServer>(1L to server1, 2L to server2)
-
-    private val testServerRepo =
-        object : ServerRepository {
-            override fun getAllServers(): Flow<List<WebDavServer>> = flowOf(serverMap.values.toList())
-
-            override fun getActiveServer(): Flow<WebDavServer?> = flowOf(serverMap[1L])
-
-            override suspend fun getServerById(id: Long): WebDavServer? = serverMap[id]
-
-            override suspend fun saveServer(server: WebDavServer): Long = server.id
-
-            override suspend fun deleteServer(id: Long) {}
-
-            override suspend fun setActiveServer(id: Long) {}
-        }
-
-    private lateinit var queueManager: PlaybackQueueManager
-    private lateinit var faultTolerance: PlaybackFaultTolerance
-    private lateinit var persistenceCoordinator: SessionPersistenceCoordinator
+    private lateinit var engineStub: StreamEngineStub
     private lateinit var coordinator: PlaybackTimelineCoordinator
 
-    private val track1 =
-        AudioTrack(
-            id = "track-1",
-            serverId = 1L,
-            remotePath = "/music/song1.mp3",
-            title = "Song 1",
-            durationMs = 180_000L,
-            format = AudioFormat.MP3,
-            size = 4_000_000L,
-        )
-
-    private val track2 =
-        AudioTrack(
-            id = "track-2",
-            serverId = 2L,
-            remotePath = "/music/song2.mp3",
-            title = "Song 2",
-            durationMs = 210_000L,
-            format = AudioFormat.MP3,
-            size = 5_000_000L,
-        )
-
-    private val track3 =
-        AudioTrack(
-            id = "track-3",
-            serverId = 2L,
-            remotePath = "/music/song3.mp3",
-            title = "Song 3",
-            durationMs = 240_000L,
-            format = AudioFormat.MP3,
-            size = 6_000_000L,
-        )
+    private var fallbackDurationMs = 180_000L
+    private val observedStates = mutableListOf<PlaybackState>()
+    private var transitionCount = 0
+    private val observedProgress = mutableListOf<PlaybackProgress>()
+    private val observedDurations = mutableListOf<Long>()
 
     @Before
     fun setUp() {
-        queueManager = PlaybackQueueManager(sessionStateFlow, testServerRepo) {}
-        faultTolerance = PlaybackFaultTolerance(sessionStateFlow, fakeEngine, null, queueManager, coordinatorScope)
-        persistenceCoordinator =
-            SessionPersistenceCoordinator(
-                sessionStore = null,
-                serverRepository = testServerRepo,
-                trackMetadataRepository = null,
-                playerEngine = fakeEngine,
-                sessionStateFlow = sessionStateFlow,
-                playbackProgressFlow = playbackProgressFlow,
-                coroutineScope = coordinatorScope,
-                periodicDispatcher = testDispatcher,
-            )
+        engineStub = StreamEngineStub()
+        observedStates.clear()
+        transitionCount = 0
+        observedProgress.clear()
+        observedDurations.clear()
 
         coordinator =
             PlaybackTimelineCoordinator(
-                playerEngine = fakeEngine,
-                serverRepository = testServerRepo,
-                sessionStateFlow = sessionStateFlow,
-                playbackProgressFlow = playbackProgressFlow,
-                faultTolerance = faultTolerance,
-                queueManager = queueManager,
-                persistenceCoordinator = persistenceCoordinator,
+                playerEngine = engineStub,
                 coroutineScope = coordinatorScope,
                 progressDispatcher = testDispatcher,
-                isPrerollAppended = isPrerollAppended,
-                getHasStreamLoaded = { true },
-                clearPrerollIfActive = { isPrerollAppended.set(false) },
-                onRestoreSession = {},
-                onSetActiveServer = {},
-                onSkipToNext = {},
-                onTransitionToQueueIndex = { _, _ -> },
+                fallbackTrackDurationMs = { fallbackDurationMs },
+                onPlaybackStateChanged = { observedStates.add(it) },
+                onTrackTransition = { transitionCount++ },
+                onProgressUpdated = { observedProgress.add(it) },
+                onDurationChanged = { observedDurations.add(it) },
             )
         coordinator.startObservations()
     }
@@ -159,136 +65,106 @@ class PlaybackTimelineCoordinatorTest {
     }
 
     @Test
-    fun crossServerTrackTransition_atomicallyUpdatesSessionAndEngineActiveServer() =
+    fun forwardsPlaybackStateAndTrackTransitionsToCallbacks() =
         runTest(testDispatcher) {
-            val crossServerQueue =
-                PlaybackQueue(
-                    tracks = listOf(track1, track2),
-                    currentIndex = 0,
-                    origin = QueueOrigin.PLAYLIST,
-                )
-            sessionStateFlow.value =
-                PlayerSessionState(
-                    activeServer = server1,
-                    queue = crossServerQueue,
-                    playbackState = PlaybackState.Playing,
-                    durationMs = track1.durationMs,
-                )
-            fakeEngine.lastServer = server1
-            isPrerollAppended.set(true)
-
-            // Trigger natural track transition from track1 (server1) to track2 (server2)
-            fakeEngine.simulateTrackTransition()
+            engineStub.playbackState.value = PlaybackState.Buffering
+            advanceUntilIdle()
+            engineStub.playbackState.value = PlaybackState.Playing
+            advanceUntilIdle()
+            engineStub.trackTransitions.emit(Unit)
             advanceUntilIdle()
 
-            assertFalse("isPrerollAppended must reset on transition", isPrerollAppended.get())
-            val state = sessionStateFlow.value
-            assertEquals("Current queue index must advance to 1", 1, state.queue.currentIndex)
-            assertEquals("Active server in sessionState must update to server2", server2, state.activeServer)
-            assertEquals("Engine active server must update to server2", server2, fakeEngine.lastServer)
-            assertTrue("Engine setActiveServer must be called", fakeEngine.activeServerCalls > 0)
-            assertEquals("Progress current position must be reset to 0L", 0L, playbackProgressFlow.value.currentPositionMs)
-            assertEquals("Progress duration must match new track", track2.durationMs, playbackProgressFlow.value.durationMs)
+            assertTrue(observedStates.contains(PlaybackState.Buffering))
+            assertTrue(observedStates.contains(PlaybackState.Playing))
+            assertEquals(1, transitionCount)
         }
 
     @Test
-    fun sameServerTrackTransition_retainsActiveServerWithoutRedundantEngineServerCalls() =
+    fun progressPipeline_mapsWithFallbackDuration_andSuppressesWhileIdle() =
         runTest(testDispatcher) {
-            val sameServerQueue =
-                PlaybackQueue(
-                    tracks = listOf(track2, track3),
-                    currentIndex = 0,
-                    origin = QueueOrigin.PLAYLIST,
-                )
-            sessionStateFlow.value =
-                PlayerSessionState(
-                    activeServer = server2,
-                    queue = sameServerQueue,
-                    playbackState = PlaybackState.Playing,
-                    durationMs = track2.durationMs,
-                )
-            fakeEngine.lastServer = server2
-            val initialEngineServerCalls = fakeEngine.activeServerCalls
+            engineStub.playbackState.value = PlaybackState.Idle
+            engineStub.currentPositionMs.value = 10_000L
+            advanceUntilIdle()
+            assertTrue("Progress must not emit while engine is Idle", observedProgress.isEmpty())
 
-            fakeEngine.simulateTrackTransition()
+            engineStub.playbackState.value = PlaybackState.Playing
+            engineStub.currentPositionMs.value = 25_000L
+            engineStub.bufferedPositionMs.value = 60_000L
             advanceUntilIdle()
 
-            val state = sessionStateFlow.value
-            assertEquals(1, state.queue.currentIndex)
-            assertEquals(server2, state.activeServer)
-            assertEquals(server2, fakeEngine.lastServer)
-            assertEquals(
-                "Engine setActiveServer should not be invoked when server does not change",
-                initialEngineServerCalls,
-                fakeEngine.activeServerCalls,
-            )
+            assertEquals(PlaybackProgress(25_000L, 180_000L, 60_000L), observedProgress.last())
+
+            engineStub.durationMs.value = 210_000L
+            advanceUntilIdle()
+            assertEquals(PlaybackProgress(25_000L, 210_000L, 60_000L), observedProgress.last())
+            assertEquals(listOf(210_000L), observedDurations)
         }
 
     @Test
-    fun crossServerTransition_whenRepositoryFailsToResolve_maintainsPriorServerContext() =
+    fun cancelObservations_stopsAllStreamForwarding() =
         runTest(testDispatcher) {
-            val unknownServerTrack = track2.copy(serverId = 999L)
-            val queue =
-                PlaybackQueue(
-                    tracks = listOf(track1, unknownServerTrack),
-                    currentIndex = 0,
-                    origin = QueueOrigin.PLAYLIST,
-                )
-            sessionStateFlow.value =
-                PlayerSessionState(
-                    activeServer = server1,
-                    queue = queue,
-                    playbackState = PlaybackState.Playing,
-                    durationMs = track1.durationMs,
-                )
-            fakeEngine.lastServer = server1
-            val initialEngineServerCalls = fakeEngine.activeServerCalls
+            advanceUntilIdle()
+            coordinator.cancelObservations()
+            val statesBefore = observedStates.size
 
-            fakeEngine.simulateTrackTransition()
+            engineStub.playbackState.value = PlaybackState.Playing
+            engineStub.trackTransitions.emit(Unit)
+            engineStub.durationMs.value = 300_000L
             advanceUntilIdle()
 
-            val state = sessionStateFlow.value
-            assertEquals(1, state.queue.currentIndex)
-            assertEquals("Active server should remain server1 if server 999 not found", server1, state.activeServer)
-            assertEquals(server1, fakeEngine.lastServer)
-            assertEquals(initialEngineServerCalls, fakeEngine.activeServerCalls)
+            assertEquals(statesBefore, observedStates.size)
+            assertEquals(0, transitionCount)
+            assertTrue(observedDurations.isEmpty())
         }
 
     @Test
-    fun crossServerTrackTransition_toLocalTrack_resolvesLocalStorageAndPreservesBrowsingServer() =
-        runTest(testDispatcher) {
-            val localTrack =
-                AudioTrack(
-                    id = "0:content://media/external/audio/99",
-                    serverId = 0L,
-                    remotePath = "content://media/external/audio/99",
-                    title = "Local Track",
-                    durationMs = 150_000L,
-                    format = AudioFormat.FLAC,
-                )
-            val mixedQueue =
-                PlaybackQueue(
-                    tracks = listOf(track1, localTrack),
-                    currentIndex = 0,
-                    origin = QueueOrigin.PLAYLIST,
-                )
-            sessionStateFlow.value =
-                PlayerSessionState(
-                    activeServer = server1,
-                    browsingServer = server1,
-                    queue = mixedQueue,
-                    playbackState = PlaybackState.Playing,
-                    durationMs = track1.durationMs,
-                )
-            fakeEngine.lastServer = server1
+    fun mapEngineProgress_prefersPositiveEngineDuration_andFallsBackOtherwise() {
+        assertEquals(
+            PlaybackProgress(5_000L, 240_000L, 10_000L),
+            coordinator.mapEngineProgress(5_000L, 240_000L, 10_000L, fallbackDurationMs = 180_000L),
+        )
+        assertEquals(
+            PlaybackProgress(5_000L, 180_000L, 10_000L),
+            coordinator.mapEngineProgress(5_000L, 0L, 10_000L, fallbackDurationMs = 180_000L),
+        )
+    }
 
-            fakeEngine.simulateTrackTransition()
-            advanceUntilIdle()
+    private class StreamEngineStub : AudioPlayerEngine {
+        override val playbackState = MutableStateFlow<PlaybackState>(PlaybackState.Idle)
+        override val currentPositionMs = MutableStateFlow(0L)
+        override val durationMs = MutableStateFlow(0L)
+        override val bufferedPositionMs = MutableStateFlow(0L)
+        override val trackTransitions = MutableSharedFlow<Unit>()
 
-            val state = sessionStateFlow.value
-            assertEquals(1, state.queue.currentIndex)
-            assertEquals("Active server must switch to Local Storage (0L)", 0L, state.activeServer?.id)
-            assertEquals("Browsing server must remain server1 (1L)", server1, state.browsingServer)
-            assertEquals("Engine server must update to Local Storage (0L)", 0L, fakeEngine.lastServer?.id)
-        }
+        override fun loadTrack(
+            server: WebDavServer,
+            track: AudioTrack,
+            startPositionMs: Long,
+        ) {}
+
+        override fun prerollTrack(
+            server: WebDavServer,
+            track: AudioTrack,
+        ) {}
+
+        override fun clearPrerollTrack() {}
+
+        override fun updateTrackMetadata(track: AudioTrack) {}
+
+        override fun setActiveServer(server: WebDavServer) {}
+
+        override fun play() {}
+
+        override fun pause() {}
+
+        override fun seekTo(positionMs: Long) {}
+
+        override fun stop() {}
+
+        override fun release() {}
+
+        override fun setVolume(volume: Float) {}
+
+        override fun getVolume(): Float = 1f
+    }
 }

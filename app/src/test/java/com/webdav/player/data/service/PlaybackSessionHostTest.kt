@@ -9,9 +9,13 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.test.core.app.ApplicationProvider
+import com.webdav.player.data.player.Media3AudioPlayerEngine
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
+import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlaybackState
+import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.player.FakeAudioPlayerEngine
 import kotlinx.coroutines.Dispatchers
@@ -977,5 +981,213 @@ class PlaybackSessionHostTest {
 
         assertTrue("prewarmService must elevate foreground if actively playing", host.isForegroundActive)
         assertEquals(service, host.attachedService)
+    }
+
+    @Test
+    fun host_bindsAudioFocusPrePlayGate_requestsFocusAndBlocksPlaybackWhenDenied() {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
+
+        fakeEngine.loadTrack(testServer, testTrack)
+        testScope.runCurrent()
+
+        assertFalse("Engine must not set playWhenReady when focus is denied", fakeEngine.playWhenReady)
+        assertFalse(fakeEngine.playbackState.value is PlaybackState.Playing)
+        assertFalse(fakeEngine.playbackState.value is PlaybackState.Buffering)
+        assertFalse("WakeLock must remain released when focus is denied", host.hardwareLockManager.isWakeLockHeld)
+        assertFalse("WifiLock must remain released when focus is denied", host.hardwareLockManager.isWifiLockHeld)
+
+        shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+        fakeEngine.play()
+        testScope.runCurrent()
+
+        assertTrue("Engine must activate playWhenReady once focus is granted", fakeEngine.playWhenReady)
+        assertEquals(PlaybackState.Playing, fakeEngine.playbackState.value)
+        assertTrue("WakeLock must be acquired once playback starts", host.hardwareLockManager.isWakeLockHeld)
+        assertTrue("WifiLock must be acquired for remote playback", host.hardwareLockManager.isWifiLockHeld)
+    }
+
+    @Test
+    fun host_withMedia3Engine_blocksPlaybackWithoutBufferingWhenFocusDenied_andPlaysWhenGranted() {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val media3Engine = Media3AudioPlayerEngine(context)
+        val standaloneHost =
+            PlaybackSessionHost(
+                context = context,
+                engine = media3Engine,
+                audioFocusHandler = AudioFocusHandler(context),
+                coroutineScope = testScope,
+            )
+        try {
+            shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
+            media3Engine.loadTrack(testServer, testTrack)
+            org.robolectric.shadows.ShadowLooper
+                .idleMainLooper()
+            testScope.runCurrent()
+
+            assertFalse("Media3 playWhenReady must remain false when focus denied", media3Engine.playWhenReady)
+            assertFalse(media3Engine.playbackState.value is PlaybackState.Playing)
+            assertFalse(media3Engine.playbackState.value is PlaybackState.Buffering)
+            assertFalse(standaloneHost.hardwareLockManager.isWakeLockHeld)
+            assertFalse(standaloneHost.hardwareLockManager.isWifiLockHeld)
+
+            shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+            media3Engine.play()
+            org.robolectric.shadows.ShadowLooper
+                .idleMainLooper()
+            testScope.runCurrent()
+
+            assertTrue("Media3 playWhenReady must become true once focus granted", media3Engine.playWhenReady)
+            assertTrue(
+                media3Engine.playbackState.value is PlaybackState.Playing ||
+                    media3Engine.playbackState.value is PlaybackState.Buffering,
+            )
+            assertTrue(standaloneHost.hardwareLockManager.isWakeLockHeld)
+            assertTrue(standaloneHost.hardwareLockManager.isWifiLockHeld)
+        } finally {
+            standaloneHost.release()
+        }
+    }
+
+    @Test
+    fun hardwareLocks_localTrackAcquiresWakeLockOnly_remoteTrackAcquiresBoth_andTransitionsStaySymmetric() {
+        val localTrack =
+            AudioTrack(
+                id = "0:content://media/external/audio/1",
+                serverId = LOCAL_STORAGE_ID,
+                remotePath = "content://media/external/audio/1",
+                title = "Local Song",
+                format = AudioFormat.FLAC,
+                size = 5000L,
+            )
+        val remoteTrack = testTrack
+        val appSession =
+            com.webdav.player.domain.session.FakeMusicPlayerAppSession(
+                initialState =
+                    PlayerSessionState(
+                        queue = PlaybackQueue(listOf(localTrack, remoteTrack), 0),
+                        playbackState = PlaybackState.Playing,
+                    ),
+            )
+        host.bindAppSession(appSession)
+        testScope.runCurrent()
+
+        fakeEngine.customPlayWhenReady = true
+        host.handlePlaybackStateChanged(PlaybackState.Playing)
+        assertTrue("WakeLock must be held for local track", host.hardwareLockManager.isWakeLockHeld)
+        assertFalse("WifiLock must not be held for local track", host.hardwareLockManager.isWifiLockHeld)
+
+        // Transition to remote track while playing -> both locks held
+        appSession._sessionState.value =
+            appSession.sessionState.value.copy(
+                queue = PlaybackQueue(listOf(localTrack, remoteTrack), 1),
+            )
+        testScope.runCurrent()
+        assertTrue("WakeLock must be held for remote track", host.hardwareLockManager.isWakeLockHeld)
+        assertTrue("WifiLock must be acquired when switching to remote track", host.hardwareLockManager.isWifiLockHeld)
+
+        // Transition back to local track while playing -> WifiLock released, WakeLock retained
+        appSession._sessionState.value =
+            appSession.sessionState.value.copy(
+                queue = PlaybackQueue(listOf(localTrack, remoteTrack), 0),
+            )
+        testScope.runCurrent()
+        assertTrue("WakeLock must remain held on local track", host.hardwareLockManager.isWakeLockHeld)
+        assertFalse("WifiLock must be released when switching back to local track", host.hardwareLockManager.isWifiLockHeld)
+
+        // Pause -> all locks released
+        fakeEngine.customPlayWhenReady = false
+        host.handlePlaybackStateChanged(PlaybackState.Paused)
+        assertFalse(host.hardwareLockManager.isWakeLockHeld)
+        assertFalse(host.hardwareLockManager.isWifiLockHeld)
+    }
+
+    @Test
+    fun audioFocus_abandonedOnErrorEndedIdleAndDetachService_whilePreservedOnPaused() {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val shadowAudioManager = shadowOf(audioManager)
+
+        // 1. Paused preserves audio focus so AUDIOFOCUS_LOSS_TRANSIENT -> AUDIOFOCUS_GAIN auto-resumption works
+        assertTrue(host.audioFocusHandler.requestAudioFocus())
+        host.handlePlaybackStateChanged(PlaybackState.Playing)
+        host.handlePlaybackStateChanged(PlaybackState.Paused)
+        assertNull("Paused must preserve audio focus", shadowAudioManager.lastAbandonedAudioFocusRequest)
+
+        // 2. Error abandons audio focus
+        host.handlePlaybackStateChanged(PlaybackState.Error("Stream error"))
+        val errorAbandoned = shadowAudioManager.lastAbandonedAudioFocusRequest
+        assertNotNull("Error must abandon audio focus", errorAbandoned)
+
+        // 3. Ended abandons audio focus
+        assertTrue(host.audioFocusHandler.requestAudioFocus())
+        val reqForEnded = shadowAudioManager.lastAudioFocusRequest.audioFocusRequest
+        host.handlePlaybackStateChanged(PlaybackState.Playing)
+        host.handlePlaybackStateChanged(PlaybackState.Ended)
+        assertTrue(
+            "Ended must abandon the active audio focus request",
+            shadowAudioManager.lastAbandonedAudioFocusRequest === reqForEnded,
+        )
+
+        // 4. Idle abandons audio focus
+        assertTrue(host.audioFocusHandler.requestAudioFocus())
+        val reqForIdle = shadowAudioManager.lastAudioFocusRequest.audioFocusRequest
+        host.handlePlaybackStateChanged(PlaybackState.Playing)
+        host.handlePlaybackStateChanged(PlaybackState.Idle)
+        assertTrue(
+            "Idle must abandon the active audio focus request",
+            shadowAudioManager.lastAbandonedAudioFocusRequest === reqForIdle,
+        )
+
+        // 5. detachService abandons audio focus
+        assertTrue(host.audioFocusHandler.requestAudioFocus())
+        val reqForDetach = shadowAudioManager.lastAudioFocusRequest.audioFocusRequest
+        host.handlePlaybackStateChanged(PlaybackState.Playing)
+        host.detachService(service)
+        assertTrue(
+            "detachService must abandon the active audio focus request",
+            shadowAudioManager.lastAbandonedAudioFocusRequest === reqForDetach,
+        )
+    }
+
+    @Test
+    fun hardwareLocks_trackChangeDuringErrorOrIdleState_doesNotAcquireLocks() {
+        val secondTrack = testTrack.copy(id = "2", remotePath = "/track2.mp3", title = "Track 2")
+        val appSession =
+            com.webdav.player.domain.session.FakeMusicPlayerAppSession(
+                initialState =
+                    PlayerSessionState(
+                        queue = PlaybackQueue(listOf(testTrack, secondTrack), 0),
+                        playbackState = PlaybackState.Error("Stream failed"),
+                    ),
+            )
+        host.bindAppSession(appSession)
+        testScope.runCurrent()
+
+        // Simulate engine in Error state even if playWhenReady remained true
+        fakeEngine.customPlayWhenReady = true
+        fakeEngine._playbackState.value = PlaybackState.Error("Stream failed")
+        host.handlePlaybackStateChanged(PlaybackState.Error("Stream failed"))
+        assertFalse(host.hardwareLockManager.isWakeLockHeld)
+        assertFalse(host.hardwareLockManager.isWifiLockHeld)
+
+        // Track changes while in Error state -> must NOT re-acquire locks
+        appSession._sessionState.value =
+            appSession.sessionState.value.copy(
+                queue = PlaybackQueue(listOf(testTrack, secondTrack), 1),
+            )
+        testScope.runCurrent()
+        assertFalse("WakeLock must remain released on track change during Error", host.hardwareLockManager.isWakeLockHeld)
+        assertFalse("WifiLock must remain released on track change during Error", host.hardwareLockManager.isWifiLockHeld)
+
+        // Track changes while in Idle state -> must NOT re-acquire locks
+        fakeEngine._playbackState.value = PlaybackState.Idle
+        appSession._sessionState.value =
+            appSession.sessionState.value.copy(
+                playbackState = PlaybackState.Idle,
+                queue = PlaybackQueue(listOf(testTrack, secondTrack), 0),
+            )
+        testScope.runCurrent()
+        assertFalse("WakeLock must remain released on track change during Idle", host.hardwareLockManager.isWakeLockHeld)
+        assertFalse("WifiLock must remain released on track change during Idle", host.hardwareLockManager.isWifiLockHeld)
     }
 }

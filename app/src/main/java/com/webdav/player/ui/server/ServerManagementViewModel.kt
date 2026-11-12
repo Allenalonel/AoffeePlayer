@@ -28,6 +28,7 @@ data class ServerManagementUiState(
     val isAddEditDialogVisible: Boolean = false,
     val serverToEdit: WebDavServer? = null,
     val serverToDelete: WebDavServer? = null,
+    val isSaving: Boolean = false,
     val testingConnection: Boolean = false,
     val connectionTestResult: ConnectionResult? = null,
     val testingServerId: Long? = null,
@@ -55,6 +56,7 @@ class ServerManagementViewModel(
         val isAddEditDialogVisible: Boolean = false,
         val serverToEdit: WebDavServer? = null,
         val serverToDelete: WebDavServer? = null,
+        val isSaving: Boolean = false,
         val testingConnection: Boolean = false,
         val connectionTestResult: ConnectionResult? = null,
         val testingServerId: Long? = null,
@@ -79,6 +81,7 @@ class ServerManagementViewModel(
                 isAddEditDialogVisible = dialogState.isAddEditDialogVisible,
                 serverToEdit = dialogState.serverToEdit,
                 serverToDelete = dialogState.serverToDelete,
+                isSaving = dialogState.isSaving,
                 testingConnection = dialogState.testingConnection,
                 connectionTestResult = dialogState.connectionTestResult,
                 testingServerId = dialogState.testingServerId,
@@ -185,15 +188,37 @@ class ServerManagementViewModel(
     }
 
     fun onSaveServer(server: WebDavServer) {
+        if (_dialogAndActionState.value.isSaving) return
+        _dialogAndActionState.update { it.copy(isSaving = true) }
+
         viewModelScope.launch {
-            val savedId = repository.saveServer(server)
-            mediaLibraryRepository?.syncServer(server.copy(id = savedId), force = false)
+            val savedId =
+                try {
+                    repository.saveServer(server)
+                } catch (ce: kotlinx.coroutines.CancellationException) {
+                    _dialogAndActionState.update { it.copy(isSaving = false) }
+                    throw ce
+                } catch (e: Throwable) {
+                    _dialogAndActionState.update {
+                        it.copy(
+                            isSaving = false,
+                            userMessage = e.message ?: "保存服务器失败",
+                        )
+                    }
+                    return@launch
+                }
+
             _dialogAndActionState.update {
                 it.copy(
+                    isSaving = false,
                     isAddEditDialogVisible = false,
                     serverToEdit = null,
                     connectionTestResult = null,
                 )
+            }
+
+            viewModelScope.launch {
+                mediaLibraryRepository?.syncServer(server.copy(id = savedId), force = false)
             }
         }
     }

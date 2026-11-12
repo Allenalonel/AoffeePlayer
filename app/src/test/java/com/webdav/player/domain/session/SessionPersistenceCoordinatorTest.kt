@@ -14,6 +14,7 @@ import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.player.FakeAudioPlayerEngine
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -21,9 +22,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -328,11 +331,10 @@ class SessionPersistenceCoordinatorTest {
             // 1. Initial state: store save count is 0
             assertEquals(0, fakeStore.saveSessionCount)
 
-            // 2. Non-audio session changes (browsingServer, errorMessage, wasKilledBySystem)
+            // 2. Non-audio session changes (errorMessage, wasKilledBySystem)
             // do not invoke flush on their own
             sessionStateFlow.value =
                 sessionStateFlow.value.copy(
-                    browsingServer = testServer,
                     errorMessage = "Network warning",
                     wasKilledBySystem = false,
                 )
@@ -433,5 +435,79 @@ class SessionPersistenceCoordinatorTest {
             assertEquals("/covers/local.jpg", restoredTracks[0].coverThumbnailPath)
             assertEquals("Remote Symphony", restoredTracks[1].title)
             assertEquals("/covers/remote2.jpg", restoredTracks[1].coverThumbnailPath)
+        }
+
+    @Test
+    fun concurrentRestoreSessionCalls_areSerializedByMutexAndDoNotOverwriteActivePlayback() =
+        testScope.runTest {
+            val metadataGate = CompletableDeferred<Unit>()
+            var cachedMetadataLookupCount = 0
+            val suspendingMetadataRepo =
+                object : TrackMetadataRepository {
+                    override fun getAllMetadataFlow(serverId: Long): Flow<List<TrackMetadata>> = emptyFlow()
+
+                    override fun getMetadataForPathsFlow(
+                        serverId: Long,
+                        remotePaths: List<String>,
+                    ): Flow<List<TrackMetadata>> = emptyFlow()
+
+                    override fun getMetadataFlow(
+                        serverId: Long,
+                        remotePath: String,
+                    ): Flow<TrackMetadata?> = emptyFlow()
+
+                    override suspend fun getCachedMetadata(
+                        serverId: Long,
+                        remotePath: String,
+                    ): TrackMetadata? {
+                        cachedMetadataLookupCount++
+                        metadataGate.await()
+                        return TrackMetadata(
+                            serverId = serverId,
+                            remotePath = remotePath,
+                            title = "Restored Title",
+                        )
+                    }
+
+                    override suspend fun resolveMetadata(
+                        server: WebDavServer,
+                        files: List<RemoteFile>,
+                        forceRefresh: Boolean,
+                    ) {}
+
+                    override suspend fun resolveSingleTrackMetadata(
+                        server: WebDavServer,
+                        file: RemoteFile,
+                    ): TrackMetadata = TrackMetadata(serverId = server.id, remotePath = file.path, title = file.name)
+                }
+
+            val savedSession =
+                PlaybackSessionData(
+                    activeServerId = testServer.id,
+                    queueTracks = listOf(testTrack),
+                    currentTrackIndex = 0,
+                    positionMs = 45_000L,
+                    playbackMode = PlaybackMode.LIST_LOOP,
+                    cleanExit = true,
+                )
+            fakeStore.savedSession = savedSession
+
+            val coordinator = createCoordinator(metadataRepo = suspendingMetadataRepo)
+
+            val job1 = launch { coordinator.restoreSession() }
+            val job2 = launch { coordinator.restoreSession() }
+            runCurrent()
+
+            // Only the first restore call enters getCachedMetadata while the second awaits the mutex
+            assertEquals(1, cachedMetadataLookupCount)
+            assertFalse(coordinator.isRestored.value)
+
+            metadataGate.complete(Unit)
+            job1.join()
+            job2.join()
+
+            assertTrue(coordinator.isRestored.value)
+            assertEquals(1, cachedMetadataLookupCount)
+            assertEquals("Restored Title", sessionStateFlow.value.currentTrack?.title)
         }
 }

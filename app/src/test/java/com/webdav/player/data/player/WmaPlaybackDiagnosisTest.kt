@@ -103,12 +103,11 @@ class WmaPlaybackDiagnosisTest {
                     periodicDispatcher = testDispatcher,
                 )
 
-            session.setActiveServer(server)
             val file1 = RemoteFile(name = "01.wma", path = "/Music/01.wma", size = 1_000_000L)
             val file2 = RemoteFile(name = "02.wma", path = "/Music/02.wma", size = 1_000_000L)
             val dir = RemoteDirectory(path = "/Music", name = "Music", files = listOf(file1, file2))
 
-            session.playDirectoryTrack(dir, file1)
+            session.playDirectoryTrack(server, dir, file1)
             advanceUntilIdle()
 
             // Track 1 metadata duration was parsed as 123,100ms because 3,100ms preroll was not subtracted.

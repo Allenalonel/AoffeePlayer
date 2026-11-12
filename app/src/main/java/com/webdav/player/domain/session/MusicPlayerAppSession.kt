@@ -23,13 +23,6 @@ interface MusicPlayerAppSession {
     val isRestored: StateFlow<Boolean>
         get() = kotlinx.coroutines.flow.MutableStateFlow(true)
 
-    fun setActiveServer(server: WebDavServer?)
-
-    fun setActiveServer(
-        server: WebDavServer?,
-        resetPlayback: Boolean,
-    ) = setActiveServer(server)
-
     suspend fun restoreSession()
 
     suspend fun flushSession()
@@ -37,6 +30,7 @@ interface MusicPlayerAppSession {
     fun flushSessionAsync() {}
 
     fun playDirectoryTrack(
+        server: WebDavServer,
         directory: RemoteDirectory,
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata> = emptyMap(),

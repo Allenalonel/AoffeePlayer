@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Internal collaborator managing playback session persistence, periodic flushing,
@@ -43,6 +45,7 @@ internal class SessionPersistenceCoordinator(
     private val _isRestored = MutableStateFlow(sessionStore == null)
     val isRestored: StateFlow<Boolean> = _isRestored.asStateFlow()
 
+    private val restoreMutex = Mutex()
     private var periodicFlushJob: Job? = null
 
     fun markRestored() {
@@ -62,37 +65,40 @@ internal class SessionPersistenceCoordinator(
 
     suspend fun restoreSession() {
         val store = sessionStore ?: return
-        try {
-            val savedSession = store.getSavedSession() ?: return
-            val serverId = savedSession.activeServerId
+        restoreMutex.withLock {
+            if (_isRestored.value) return
+            try {
+                val savedSession = store.getSavedSession() ?: return
+                val serverId = savedSession.activeServerId
 
-            val server =
-                if (serverId != null) {
-                    serverRepository?.getServerById(serverId)
-                } else {
-                    null
+                val server =
+                    if (serverId != null) {
+                        serverRepository?.getServerById(serverId)
+                    } else {
+                        null
+                    }
+
+                // If server ID was specified but server no longer exists in repository, gracefully do not restore
+                if (serverId != null && server == null) {
+                    return
                 }
 
-            // If server ID was specified but server no longer exists in repository, gracefully do not restore
-            if (serverId != null && server == null) {
-                return
-            }
+                val current = sessionStateFlow.value
+                val active = current.activeServer
+                // If active server is already different from saved server, don't overwrite
+                if (active != null && server != null && active.id != server.id) {
+                    return
+                }
 
-            val current = sessionStateFlow.value
-            val active = current.activeServer
-            // If active server is already different from saved server, don't overwrite
-            if (active != null && server != null && active.id != server.id) {
-                return
-            }
+                // Don't overwrite if playback is actively happening
+                if (current.hasTrack && current.isPlaying) {
+                    return
+                }
 
-            // Don't overwrite if playback is actively happening
-            if (current.hasTrack && current.isPlaying) {
-                return
+                restoreSessionFromData(server, savedSession)
+            } finally {
+                _isRestored.value = true
             }
-
-            restoreSessionFromData(server, savedSession)
-        } finally {
-            _isRestored.value = true
         }
     }
 
@@ -156,7 +162,6 @@ internal class SessionPersistenceCoordinator(
         sessionStateFlow.update {
             it.copy(
                 activeServer = server ?: it.activeServer,
-                browsingServer = server ?: it.browsingServer ?: it.activeServer,
                 queue = finalQueue,
                 playbackState = restoredPlaybackState,
                 playbackMode = savedSession.playbackMode,
@@ -220,6 +225,16 @@ internal class SessionPersistenceCoordinator(
     fun flushSessionAsync() {
         coroutineScope.launch {
             flushSession()
+        }
+    }
+
+    fun flushCleanExitAsync(saveCurrentPosition: Boolean = false) {
+        coroutineScope.launch {
+            if (saveCurrentPosition) {
+                val pos = playerEngine.currentPositionMs.value
+                if (pos > 0L) savePosition(pos, isCleanExit = true)
+            }
+            flushSessionWithCleanExit(isCleanExit = true)
         }
     }
 

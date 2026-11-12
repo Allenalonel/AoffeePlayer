@@ -112,7 +112,6 @@ class DirectoryBrowserViewModelTest {
         fakeTrackMetadataRepository = FakeTrackMetadataRepository()
         fakeWebDavClient = FakeWebDavClient()
         fakeServerRepository.setActiveServerSync(sampleServer)
-        fakeMusicPlayerAppSession.setActiveServer(sampleServer)
         fakeMediaLibraryRepository = FakeMediaLibraryRepository(fakeTrackMetadataRepository)
 
         fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(rootDir))
@@ -178,7 +177,6 @@ class DirectoryBrowserViewModelTest {
     fun init_rendersImmediately_withoutWaitingForPlaybackSessionRestoration() =
         runTest(testDispatcher) {
             val unrestoredSession = FakeMusicPlayerAppSession(initialIsRestored = false)
-            unrestoredSession.setActiveServer(sampleServer)
 
             val vm =
                 DirectoryBrowserViewModel(
@@ -614,23 +612,43 @@ class DirectoryBrowserViewModelTest {
         }
 
     @Test
-    fun activeServerChange_inSession_updatesDirectoryBrowserState_unidirectionally() =
+    fun activeServerChange_inServerRepository_updatesDirectoryBrowser_andSessionChangeDoesNotOverride() =
         runTest {
             advanceUntilIdle()
             assertEquals(sampleServer, viewModel.uiState.value.activeServer)
 
             val server2 = WebDavServer(id = 2L, name = "Server 2", url = "http://server2.local", port = 80)
             val server2RootDir = RemoteDirectory(path = "/", name = "Server 2 Root")
+            fakeServerRepository.saveServer(server2)
             fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
 
-            // Active server changes in the session
-            fakeMusicPlayerAppSession.setActiveServer(server2)
+            // Changing playback server in session must NOT change browsing server in ViewModel
+            fakeMusicPlayerAppSession._sessionState.value =
+                fakeMusicPlayerAppSession._sessionState.value.copy(activeServer = server2)
+            advanceUntilIdle()
+            assertEquals(sampleServer, viewModel.uiState.value.activeServer)
+
+            // Changing browsing server in ServerRepository updates ViewModel
+            fakeServerRepository.setActiveServer(server2.id)
             advanceUntilIdle()
 
-            // ViewModel reflects the change unidirectionally from the session
             assertEquals(server2, viewModel.uiState.value.activeServer)
             assertEquals("/", viewModel.uiState.value.currentPath)
             assertEquals(server2RootDir, viewModel.uiState.value.currentDirectory)
+        }
+
+    @Test
+    fun onAudioTrackClicked_passesExplicitActiveServerToPlaybackSession() =
+        runTest {
+            advanceUntilIdle()
+            val audioFile = rootDir.files.first()
+
+            viewModel.onAudioTrackClicked(audioFile)
+            advanceUntilIdle()
+
+            assertEquals(sampleServer, fakeMusicPlayerAppSession.lastPlayServer)
+            assertEquals(rootDir, fakeMusicPlayerAppSession.lastPlayDirectory)
+            assertEquals(audioFile, fakeMusicPlayerAppSession.lastPlaySelectedFile)
         }
 
     @Test
@@ -763,7 +781,6 @@ class DirectoryBrowserViewModelTest {
                 )
             fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
 
-            fakeMusicPlayerAppSession.setActiveServer(server2)
             fakeServerRepository.setActiveServerSync(server2)
             advanceUntilIdle()
 
@@ -883,7 +900,6 @@ class DirectoryBrowserViewModelTest {
 
             // 2. Switch to server 2 -> enters server 2 root "/"
             fakeServerRepository.setActiveServerSync(server2)
-            fakeMusicPlayerAppSession.setActiveServer(server2)
             advanceUntilIdle()
             assertEquals(server2, viewModel.uiState.value.activeServer)
             assertEquals("/", viewModel.uiState.value.currentPath)
@@ -895,14 +911,12 @@ class DirectoryBrowserViewModelTest {
 
             // 4. Switch back to server 1 -> should remember /Music/Rock/!
             fakeServerRepository.setActiveServerSync(server1)
-            fakeMusicPlayerAppSession.setActiveServer(server1)
             advanceUntilIdle()
             assertEquals(server1, viewModel.uiState.value.activeServer)
             assertEquals("/Music/Rock/", viewModel.uiState.value.currentPath)
 
             // 5. Switch back to server 2 -> should remember /Pop/!
             fakeServerRepository.setActiveServerSync(server2)
-            fakeMusicPlayerAppSession.setActiveServer(server2)
             advanceUntilIdle()
             assertEquals(server2, viewModel.uiState.value.activeServer)
             assertEquals("/Pop/", viewModel.uiState.value.currentPath)
@@ -1070,7 +1084,6 @@ class DirectoryBrowserViewModelTest {
 
             // Switch to Server 2 -> track from Server 1 should no longer be active in browser
             fakeServerRepository.setActiveServerSync(server2)
-            fakeMusicPlayerAppSession.setActiveServer(server2)
             advanceUntilIdle()
 
             assertEquals(server2, viewModel.uiState.value.activeServer)
@@ -1079,7 +1092,6 @@ class DirectoryBrowserViewModelTest {
 
             // Switch back to Server 1 -> active track is recognized again
             fakeServerRepository.setActiveServerSync(sampleServer)
-            fakeMusicPlayerAppSession.setActiveServer(sampleServer)
             advanceUntilIdle()
 
             assertEquals(sampleServer, viewModel.uiState.value.activeServer)
@@ -1525,6 +1537,53 @@ class DirectoryBrowserViewModelTest {
                     ?.id,
             )
             assertEquals("/Music/Jazz/", viewModel.uiState.value.currentPath)
+        }
+
+    @Test
+    fun searchBar_directoryClick_switchesBrowsingServerWithoutTouchingPlaybackSessionOrQueue() =
+        runTest {
+            advanceUntilIdle()
+
+            val playingTrack =
+                AudioTrack(
+                    id = "1:/root_track.mp3",
+                    serverId = sampleServer.id,
+                    remotePath = "/root_track.mp3",
+                    title = "Root Track",
+                    format = AudioFormat.MP3,
+                )
+            fakeMusicPlayerAppSession._sessionState.value =
+                fakeMusicPlayerAppSession._sessionState.value.copy(
+                    activeServer = sampleServer,
+                    queue = PlaybackQueue(tracks = listOf(playingTrack), currentIndex = 0),
+                    playbackState = PlaybackState.Playing,
+                )
+
+            val server2 =
+                WebDavServer(
+                    id = 2L,
+                    name = "Office NAS",
+                    url = "http://192.168.1.100:8080/",
+                    username = "user",
+                    password = "pwd",
+                )
+            fakeServerRepository.saveServer(server2)
+            advanceUntilIdle()
+
+            val dirOnServer2 = RemoteDirectory(path = "/Music/Jazz/", name = "Jazz", serverId = 2L)
+            viewModel.onSearchActiveChanged(true)
+            viewModel.onSearchQueryChanged("Jazz")
+            viewModel.onSearchResultDirectoryClicked(dirOnServer2)
+            advanceUntilIdle()
+
+            assertEquals(2L, fakeServerRepository.getActiveServer().first()?.id)
+            assertEquals(2L, viewModel.uiState.value.activeServer?.id)
+            assertEquals("/Music/Jazz/", viewModel.uiState.value.currentPath)
+
+            // Playback session must NOT have its activeServer overwritten or queue cleared
+            assertEquals(sampleServer, fakeMusicPlayerAppSession.sessionState.value.activeServer)
+            assertEquals(1, fakeMusicPlayerAppSession.sessionState.value.queue.size)
+            assertEquals(0, fakeMusicPlayerAppSession.stopCount)
         }
 
     @Test

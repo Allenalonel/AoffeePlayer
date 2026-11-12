@@ -1,8 +1,8 @@
 package com.webdav.player.domain.session
 
 import androidx.annotation.VisibleForTesting
-import com.webdav.player.data.player.StreamingHardwareLockManager
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackQueue
@@ -21,16 +21,22 @@ import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import com.webdav.player.domain.storage.StorageReachabilityTracker
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -38,7 +44,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Domain playback session orchestrator managing queues, streaming resilience, and error state.
+ * Domain playback session orchestrator and single authoritative commit spine for
+ * session state, engine invocation, server resolution, reachability reporting, and persistence.
  */
 class MusicPlayerAppSessionImpl(
     private val playerEngine: AudioPlayerEngine,
@@ -54,72 +61,98 @@ class MusicPlayerAppSessionImpl(
         } ?: Dispatchers.Default,
     periodicDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val networkConnectivityObserver: NetworkConnectivityObserver? = null,
-    private val hardwareLockManager: StreamingHardwareLockManager? = null,
 ) : MusicPlayerAppSession {
     private val _sessionState = MutableStateFlow(PlayerSessionState())
     override val sessionState: StateFlow<PlayerSessionState> = _sessionState.asStateFlow()
-
     private val _playbackProgress = MutableStateFlow(PlaybackProgress.ZERO)
     override val playbackProgress: StateFlow<PlaybackProgress> = _playbackProgress.asStateFlow()
-
     private var hasStreamLoaded = false
 
-    private val persistenceCoordinator: SessionPersistenceCoordinator =
+    private val persistenceCoordinator =
         SessionPersistenceCoordinator(
-            sessionStore = sessionStore,
-            serverRepository = serverRepository,
-            trackMetadataRepository = trackMetadataRepository,
-            playerEngine = playerEngine,
-            sessionStateFlow = _sessionState,
-            playbackProgressFlow = _playbackProgress,
-            coroutineScope = coroutineScope,
-            periodicDispatcher = periodicDispatcher,
+            sessionStore,
+            serverRepository,
+            trackMetadataRepository,
+            playerEngine,
+            _sessionState,
+            _playbackProgress,
+            coroutineScope,
+            periodicDispatcher,
         )
     override val isRestored: StateFlow<Boolean> = persistenceCoordinator.isRestored
-
-    private val queueManager =
-        PlaybackQueueManager(_sessionState, serverRepository) { coroutineScope.launch { flushSession() } }
-    private val faultTolerance =
-        PlaybackFaultTolerance(_sessionState, playerEngine, storageReachabilityTracker, queueManager, coroutineScope)
+    private val queueManager = PlaybackQueueManager()
+    private val faultTolerance = PlaybackFaultTolerance(coroutineScope)
     private val metadataCoordinator = PlaybackMetadataCoordinator(trackMetadataRepository, playerEngine, _sessionState, coroutineScope)
 
     @VisibleForTesting val isPrerollAppended = AtomicBoolean(false)
-
-    private val timelineCoordinator: PlaybackTimelineCoordinator =
+    private val timelineCoordinator =
         PlaybackTimelineCoordinator(
-            playerEngine = playerEngine,
-            serverRepository = serverRepository,
-            sessionStateFlow = _sessionState,
-            playbackProgressFlow = _playbackProgress,
-            faultTolerance = faultTolerance,
-            queueManager = queueManager,
-            persistenceCoordinator = persistenceCoordinator,
-            coroutineScope = coroutineScope,
-            progressDispatcher = progressDispatcher,
-            isPrerollAppended = isPrerollAppended,
-            getHasStreamLoaded = { hasStreamLoaded },
-            clearPrerollIfActive = { clearPrerollIfActive() },
-            onRestoreSession = { restoreSession() },
-            onSetActiveServer = { setActiveServer(it, resetPlayback = false) },
-            onSkipToNext = { skipToNext() },
-            onTransitionToQueueIndex = { s, idx -> transitionToQueueIndex(s, idx) },
+            playerEngine,
+            coroutineScope,
+            progressDispatcher,
+            { _sessionState.value.currentTrack?.durationMs ?: 0L },
+            ::handlePlaybackStateChanged,
+            ::handleTrackTransition,
+            ::handleProgressUpdated,
+            ::handleDurationChanged,
         )
-
     private val _pausedByTransientAudioFocus = AtomicBoolean(false)
     override val pausedByTransientAudioFocus: Boolean get() = _pausedByTransientAudioFocus.get()
 
     @VisibleForTesting val lastBufferingTimestampMs: AtomicLong get() = faultTolerance.lastBufferingTimestampMs
 
-    private fun clearTransientAudioFocusFlag() = _pausedByTransientAudioFocus.set(false)
-
     private fun clearPrerollIfActive() {
         if (isPrerollAppended.compareAndSet(true, false)) playerEngine.clearPrerollTrack()
     }
 
-    private fun resetPlaybackState() {
-        clearPrerollIfActive()
-        stopPeriodicFlush()
-        hasStreamLoaded = false
+    private fun haltEngineAndClearProgress() {
+        resetPlaybackState()
+        faultTolerance.cancelWatchdog()
+        playerEngine.stop()
+        _playbackProgress.value = PlaybackProgress.ZERO
+    }
+
+    private fun canSkipTrack(track: AudioTrack): Boolean = queueManager.recordFailedTrack(track.id, _sessionState.value.queue.size)
+
+    private suspend fun resolveServerForTrack(
+        track: AudioTrack,
+        preferred: WebDavServer? = null,
+        fallback: WebDavServer? = _sessionState.value.activeServer,
+    ): WebDavServer? {
+        if (track.isLocal || track.serverId == LOCAL_STORAGE_ID) return WebDavServer.createLocalStorage()
+        if (preferred?.id == track.serverId) return preferred
+        if (fallback?.id == track.serverId) return fallback
+        val repo = serverRepository ?: return preferred ?: fallback
+        return try {
+            repo.getServerById(track.serverId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            null
+        } ?: preferred ?: fallback
+    }
+
+    private fun awaitRestoredAndRun(
+        requireTrack: Boolean = true,
+        action: () -> Unit,
+    ) {
+        if (isRestored.value || _sessionState.value.queue.isNotEmpty) return action()
+        coroutineScope.launch {
+            isRestored.first { it }
+            val ready = if (requireTrack) _sessionState.value.hasTrack else _sessionState.value.queue.isNotEmpty
+            if (ready) action()
+        }
+    }
+
+    private fun applyFaultDecision(decision: FaultDecision) {
+        if (decision is FaultDecision.PauseForUnsupportedRange) {
+            playerEngine.pause()
+            persistenceCoordinator.stopPeriodicFlush()
+        }
+        decision.unavailableTrack?.let { (s, p, r) -> storageReachabilityTracker?.reportTrackUnavailable(s, p, r) }
+        decision.unavailableServer?.let { (s, r) -> storageReachabilityTracker?.reportServerUnavailable(s, r) }
+        if (decision is FaultDecision.SkipTrack) return skipToNext()
+        if (decision !is FaultDecision.Ignored) _sessionState.update { faultTolerance.reduceStateForDecision(it, decision) }
     }
 
     private fun loadTrackIntoEngine(
@@ -128,78 +161,46 @@ class MusicPlayerAppSessionImpl(
         startPositionMs: Long = 0L,
     ) {
         clearKilledBySystemFlag()
-        clearTransientAudioFocusFlag()
-
-        val isLocalTrack = track.isLocal
-
-        if (isLocalTrack) {
-            faultTolerance.cancelWatchdog()
-            hardwareLockManager?.acquireWakeLockOnly()
-        } else {
-            hardwareLockManager?.acquireLocks()
-        }
+        _pausedByTransientAudioFocus.set(false)
+        if (track.isLocal) faultTolerance.cancelWatchdog()
 
         fun dispatch(target: WebDavServer) {
-            _sessionState.update { current ->
-                current.copy(
-                    activeServer = target,
-                    browsingServer = current.browsingServer ?: target,
-                )
-            }
+            _sessionState.update { it.copy(activeServer = target) }
             hasStreamLoaded = true
             try {
                 playerEngine.loadTrack(target, track, startPositionMs)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Throwable) {
-                faultTolerance.handleLoadException(e, track) { skipToNext() }
-                return
+                return applyFaultDecision(faultTolerance.handleLoadException(e, track, ::canSkipTrack))
             }
             coroutineScope.launch { flushSessionWithCleanExit(isCleanExit = false) }
         }
-        when {
-            isLocalTrack -> {
-                dispatch(WebDavServer.createLocalStorage())
+        val immediate =
+            when {
+                track.isLocal -> WebDavServer.createLocalStorage()
+                server != null && server.id == track.serverId -> server
+                serverRepository == null -> server
+                else -> null
             }
-
-            server != null && server.id == track.serverId -> {
-                dispatch(server)
-            }
-
-            serverRepository != null -> {
-                coroutineScope.launch {
-                    serverRepository.getServerById(track.serverId)?.let { dispatch(it) }
-                        ?: faultTolerance.handleServerUnavailable(track) { skipToNext() }
-                }
-            }
-
-            server != null -> {
-                dispatch(server)
-            }
-
-            else -> {
-                coroutineScope.launch { faultTolerance.handleServerUnavailable(track) { skipToNext() } }
-            }
+        if (immediate != null) return dispatch(immediate)
+        coroutineScope.launch {
+            resolveServerForTrack(track, server, server)?.let(::dispatch)
+                ?: applyFaultDecision(faultTolerance.handleServerUnavailable(track, ::canSkipTrack))
         }
     }
 
     private fun dispatchQueueLoad(
-        server: WebDavServer,
+        server: WebDavServer?,
         request: QueueLoadRequest,
     ) {
-        clearKilledBySystemFlag()
-        clearTransientAudioFocusFlag()
         faultTolerance.cancelWatchdog()
         persistenceCoordinator.markRestored()
         queueManager.clearFailedTracks()
         _playbackProgress.value = PlaybackProgress(0L, request.targetTrack.durationMs, 0L)
-        _sessionState.update {
-            it.copy(
-                queue = request.queue,
-                durationMs = request.targetTrack.durationMs,
-                errorMessage = null,
-            )
-        }
+        _sessionState.update { it.copy(queue = request.queue, durationMs = request.targetTrack.durationMs, errorMessage = null) }
         loadTrackIntoEngine(server, request.targetTrack, request.startPositionMs)
-        coroutineScope.launch { flushSession() }
+        flushSessionAsync()
     }
 
     private fun transitionToQueueIndex(
@@ -211,176 +212,225 @@ class MusicPlayerAppSessionImpl(
         val targetTrack = queue.tracks.getOrNull(targetIndex) ?: return
         _playbackProgress.value = PlaybackProgress(0L, targetTrack.durationMs, 0L)
         _sessionState.update {
-            it.copy(
-                queue = queue.copy(currentIndex = targetIndex),
-                durationMs = targetTrack.durationMs,
-                isUnsupportedRange = false,
-                isWeakNetwork = false,
-                canManualRetry = false,
-                isReconnecting = false,
-            )
+            it
+                .withClearedNetworkFlags(isUnsupportedRange = false)
+                .copy(queue = queue.copy(currentIndex = targetIndex), durationMs = targetTrack.durationMs)
         }
         coroutineScope.launch {
-            val effectiveServer = queueManager.resolveServerForTrack(targetTrack, server)
-            loadTrackIntoEngine(effectiveServer, targetTrack, 0L)
+            loadTrackIntoEngine(resolveServerForTrack(targetTrack, server), targetTrack, 0L)
             flushSession()
         }
     }
 
+    private fun advanceQueueToNext(server: WebDavServer?) {
+        val state = _sessionState.value
+        val next = queueManager.advanceToNext(state.queue, state.playbackMode) ?: return
+        next.reshuffledQueue?.let { q -> _sessionState.update { it.copy(queue = q) } }
+        transitionToQueueIndex(server, next.targetIndex)
+    }
+
+    private fun resetPlaybackState() {
+        clearPrerollIfActive()
+        persistenceCoordinator.stopPeriodicFlush()
+        hasStreamLoaded = false
+    }
+
+    private fun handlePlaybackStateChanged(state: PlaybackState) {
+        if (state is PlaybackState.Ended) return handlePlaybackEnded()
+        if (state is PlaybackState.Error) {
+            return applyFaultDecision(faultTolerance.handlePlaybackError(state, _sessionState.value.currentTrack, ::canSkipTrack))
+        }
+        if (state is PlaybackState.Buffering) {
+            clearPrerollIfActive()
+            faultTolerance.onBufferingStarted(_sessionState.value.currentTrack?.isLocal == true) { autoPause ->
+                if (autoPause) playerEngine.pause()
+                _sessionState.update { it.withWeakNetwork(true, autoPause, if (autoPause) PlaybackState.Paused else it.playbackState) }
+            }
+        } else if (state is PlaybackState.Playing) {
+            val decision = faultTolerance.onPlayingStarted(_sessionState.value)
+            if (decision.clearWeakNetworkFlags) _sessionState.update { it.withClearedNetworkFlags() }
+            decision.reachableServerId?.let { storageReachabilityTracker?.reportServerReachable(it) }
+            persistenceCoordinator.startPeriodicFlush()
+        } else {
+            faultTolerance.cancelWatchdog()
+            persistenceCoordinator.stopPeriodicFlush()
+        }
+        _sessionState.update { cur ->
+            val target = if (state is PlaybackState.Idle && cur.isPaused && cur.hasTrack && !hasStreamLoaded) cur.playbackState else state
+            cur.copy(playbackState = target)
+        }
+    }
+
+    private fun handlePlaybackEnded() {
+        isPrerollAppended.set(false)
+        val pos = playerEngine.currentPositionMs.value
+        val dur = playerEngine.durationMs.value
+        when (val decision = faultTolerance.evaluatePlaybackEnded(_sessionState.value, pos, dur)) {
+            is PlaybackEndedDecision.PrematureEof -> {
+                _sessionState.update { it.copy(playbackState = PlaybackState.Buffering) }
+                playerEngine.seekTo(decision.seekPositionMs)
+                playerEngine.play()
+            }
+            is PlaybackEndedDecision.Ended -> _sessionState.update { it.copy(playbackState = PlaybackState.Ended) }
+            is PlaybackEndedDecision.AdvanceQueue -> advanceQueueToNext(decision.server)
+            is PlaybackEndedDecision.SingleLoopReplay -> {
+                _playbackProgress.value = PlaybackProgress(0L, decision.durationMs, 0L)
+                playerEngine.seekTo(0L)
+                playerEngine.play()
+                flushSessionAsync()
+            }
+        }
+    }
+
+    private suspend fun handleTrackTransition() {
+        isPrerollAppended.set(false)
+        val state = _sessionState.value
+        val next = queueManager.advanceOnTrackTransition(state.queue, state.playbackMode) ?: return
+        val track = next.nextTrack
+        val cur = state.activeServer
+        val changed = cur == null || track.serverId != cur.id || track.isLocal != cur.isLocal
+        val resolved = if (changed) resolveServerForTrack(track, null, null)?.also(playerEngine::setActiveServer) else null
+        _playbackProgress.value = PlaybackProgress(0L, track.durationMs, 0L)
+        _sessionState.update { it.copy(queue = next.queue, durationMs = track.durationMs, activeServer = resolved ?: it.activeServer) }
+        persistenceCoordinator.flushSession()
+    }
+
+    private fun handleProgressUpdated(progress: PlaybackProgress) {
+        _playbackProgress.value = progress
+        val state = _sessionState.value
+        val plan = faultTolerance.evaluatePreroll(progress, state, isPrerollAppended.get())
+        if (plan !is PrerollPlan.ScheduleNext || !isPrerollAppended.compareAndSet(false, true)) return
+        val nextTrack = state.queue.tracks[queueManager.calculateNextQueueIndex(state.queue, state.playbackMode)]
+        coroutineScope.launch(Dispatchers.Main) {
+            val latest = _sessionState.value
+            if (isPrerollAppended.get() && latest.playbackState is PlaybackState.Playing &&
+                latest.currentTrack?.id == plan.expectedTrackId
+            ) {
+                val nextServer = resolveServerForTrack(nextTrack, plan.fallbackServer, plan.fallbackServer) ?: plan.fallbackServer
+                playerEngine.prerollTrack(nextServer, nextTrack)
+            } else {
+                isPrerollAppended.set(false)
+            }
+        }
+    }
+
+    private fun handleDurationChanged(durationMs: Long) =
+        _sessionState.update { it.copy(durationMs = durationMs, queue = queueManager.updateCurrentTrackDuration(it.queue, durationMs)) }
+
     private val networkObservationJob: Job? =
         networkConnectivityObserver?.let { observer ->
             coroutineScope.launch {
-                observer.networkStatus
-                    .map { it.isConnected }
-                    .distinctUntilChanged()
-                    .drop(1)
-                    .collect { isConnected ->
-                        if (isConnected) {
-                            faultTolerance.onNetworkRestored {
-                                resumeCurrentTrack()
-                            }
-                            storageReachabilityTracker?.triggerReachabilitySelfHealing()
-                        }
+                observer.networkStatus.map { it.isConnected }.distinctUntilChanged().drop(1).collect { isConnected ->
+                    if (!isConnected) return@collect
+                    if (faultTolerance.onNetworkRestored(_sessionState.value) == NetworkRestoreDecision.AutoResume) {
+                        _sessionState.update { it.withClearedNetworkFlags(errorMessage = null) }
+                        resumeCurrentTrack()
                     }
+                    storageReachabilityTracker?.triggerReachabilitySelfHealing()
+                }
             }
         }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val serverDeletionObservationJob: Job? =
+        serverRepository?.let { repo ->
+            coroutineScope.launch {
+                _sessionState
+                    .map { it.activeServer?.takeIf { s -> !s.isLocal }?.id }
+                    .distinctUntilChanged()
+                    .flatMapLatest { id ->
+                        id?.let { repo.getAllServers().catch { e -> if (e is CancellationException) throw e } }
+                            ?: emptyFlow()
+                    }.collect { handleServerListUpdated(it) }
+            }
+        }
+
+    private fun handleServerListUpdated(servers: List<WebDavServer>) {
+        val current = _sessionState.value
+        val active = current.activeServer ?: return
+        if (!active.isLocal && servers.none { it.id == active.id }) {
+            _sessionState.update { it.withClearedQueue(clearActiveServer = true) }
+            if (current.hasTrack || current.playbackState !is PlaybackState.Idle) {
+                stop()
+            } else {
+                flushSessionAsync()
+            }
+        }
+    }
+
     init {
+        coroutineScope.launch { restoreSession() }
         timelineCoordinator.startObservations()
         metadataCoordinator.startMetadataObservation()
         metadataCoordinator.startLyricsObservation()
     }
 
-    override fun setActiveServer(server: WebDavServer?) {
-        setActiveServer(server, resetPlayback = true)
-    }
-
-    override fun setActiveServer(
-        server: WebDavServer?,
-        resetPlayback: Boolean,
-    ) {
-        _sessionState.update { current ->
-            val currentBrowsing = current.browsingServer ?: current.activeServer
-            if (currentBrowsing?.id == server?.id && current.activeServer?.id == server?.id) {
-                return@update current.copy(activeServer = server, browsingServer = server)
-            }
-            if (server != null && current.hasTrack && !resetPlayback) {
-                // Do not disrupt ongoing playback or wipe queue when switching active browsing storage/server
-                return@update current.copy(
-                    activeServer = server,
-                    browsingServer = server,
-                )
-            }
-            if (current.queue.isPlaylistQueue) {
-                return@update current.copy(
-                    activeServer = server,
-                    browsingServer = server,
-                )
-            }
-
-            if (current.playbackState !is PlaybackState.Idle) playerEngine.stop()
-            resetPlaybackState()
-            _playbackProgress.value = PlaybackProgress.ZERO
-            current.copy(
-                activeServer = server,
-                browsingServer = server,
-                queue = PlaybackQueue.EMPTY,
-                playbackState = PlaybackState.Idle,
-                durationMs = 0L,
-                errorMessage = null,
-                lyrics = null,
-                isLoadingLyrics = false,
-            )
-        }
-        if (server != null) {
-            playerEngine.setActiveServer(server)
-        }
-    }
-
     override fun playDirectoryTrack(
+        server: WebDavServer,
         directory: RemoteDirectory,
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata>,
     ) {
-        val server = _sessionState.value.browsingServer ?: _sessionState.value.activeServer ?: return
-        val request = queueManager.buildDirectoryQueue(directory, selectedFile, initialMetadata, server = server) ?: return
-        dispatchQueueLoad(server, request)
-        metadataCoordinator.enrichQueueTracksFromCache(server, request.queue)
+        val req =
+            queueManager.buildDirectoryQueue(directory, selectedFile, initialMetadata, server, _sessionState.value.playbackMode) ?: return
+        dispatchQueueLoad(server, req)
+        metadataCoordinator.enrichQueueTracksFromCache(server, req.queue)
     }
 
     override fun playTrack(track: AudioTrack) {
         coroutineScope.launch {
-            val effectiveServer = queueManager.resolveServerForTrack(track) ?: return@launch
-            val request = queueManager.buildTrackQueue(track)
-            dispatchQueueLoad(effectiveServer, request)
+            val effectiveServer = resolveServerForTrack(track) ?: return@launch
+            dispatchQueueLoad(effectiveServer, queueManager.buildTrackQueue(track))
             metadataCoordinator.enrichSingleTrackMetadata(effectiveServer, track)
         }
     }
 
-    override fun playNext(track: AudioTrack) =
-        queueManager.playNext(track, _sessionState.value.activeServer != null || serverRepository != null) { playTrack(it) }
+    override fun playNext(track: AudioTrack) {
+        val current = _sessionState.value
+        if (current.activeServer == null && serverRepository == null) return
+        val decision = queueManager.playNext(current.queue, track)
+        if (decision is PlayNextDecision.PlayAsNew) return playTrack(decision.track)
+        if (decision is PlayNextDecision.QueueUpdated && current.activeServer != null) {
+            _sessionState.update { it.copy(queue = decision.queue) }
+            flushSessionAsync()
+        }
+    }
 
     override fun playNextAndAdvance(track: AudioTrack) {
-        queueManager.playNextAndAdvance(
-            track = track,
-            hasServerOrRepo = (_sessionState.value.activeServer != null || serverRepository != null),
-            onPlayTrack = { playTrack(it) },
-            onTransitionToIndex = { targetIndex -> transitionToQueueIndex(_sessionState.value.activeServer, targetIndex) },
-        )
+        val current = _sessionState.value
+        if (current.activeServer == null && serverRepository == null) return
+        val result = queueManager.playNextAndAdvance(current.queue, track)
+        if (result is PlayNextAndAdvanceResult.PlayAsNew) return playTrack(result.track)
+        if (result is PlayNextAndAdvanceResult.QueueUpdatedAndAdvance) {
+            _sessionState.update { it.copy(queue = result.queue) }
+            transitionToQueueIndex(current.activeServer, result.targetIndex)
+        }
     }
 
     private fun resumeCurrentTrack() {
         val current = _sessionState.value
-        val server = current.activeServer ?: return
-        val currentTrack = current.currentTrack ?: return
-        loadTrackIntoEngine(server, currentTrack, _playbackProgress.value.currentPositionMs)
+        loadTrackIntoEngine(current.activeServer ?: return, current.currentTrack ?: return, _playbackProgress.value.currentPositionMs)
     }
 
-    override fun togglePlayPause() {
-        if (!isRestored.value && _sessionState.value.queue.isEmpty) {
-            coroutineScope.launch {
-                restoreSession()
-                if (_sessionState.value.hasTrack) {
-                    if (_sessionState.value.isPlaying || _sessionState.value.isBuffering) pause() else play()
-                }
-            }
-            return
-        }
-        if (_sessionState.value.isPlaying || _sessionState.value.isBuffering) pause() else play()
-    }
+    private fun isPlayingOrBuffering(): Boolean = _sessionState.value.isPlaying || _sessionState.value.isBuffering
+
+    override fun togglePlayPause() = awaitRestoredAndRun(requireTrack = true) { if (isPlayingOrBuffering()) pause() else play() }
 
     override fun play() {
         clearKilledBySystemFlag()
-        clearTransientAudioFocusFlag()
-        if (!isRestored.value && _sessionState.value.queue.isEmpty) {
-            coroutineScope.launch {
-                restoreSession()
-                if (_sessionState.value.hasTrack) {
-                    playRestoredOrCurrent()
-                }
-            }
-            return
-        }
-        playRestoredOrCurrent()
-    }
-
-    private fun playRestoredOrCurrent() {
-        val current = _sessionState.value
-        if (current.isPaused) {
-            if ((!hasStreamLoaded || playerEngine.playbackState.value is PlaybackState.Idle) && current.currentTrack != null &&
-                current.activeServer != null
-            ) {
-                resumeCurrentTrack()
-            } else {
+        _pausedByTransientAudioFocus.set(false)
+        awaitRestoredAndRun(requireTrack = true) {
+            val cur = _sessionState.value
+            if (cur.isPaused && hasStreamLoaded && playerEngine.playbackState.value !is PlaybackState.Idle) {
                 playerEngine.play()
+            } else if (cur.hasTrack && cur.activeServer != null) {
+                resumeCurrentTrack()
             }
-        } else if (current.currentTrack != null && current.activeServer != null) {
-            resumeCurrentTrack()
         }
     }
 
     override fun pause() {
-        clearTransientAudioFocusFlag()
+        _pausedByTransientAudioFocus.set(false)
         pauseInternal()
     }
 
@@ -388,29 +438,14 @@ class MusicPlayerAppSessionImpl(
         clearPrerollIfActive()
         faultTolerance.cancelWatchdog()
         if (hasStreamLoaded) playerEngine.pause()
-        _sessionState.update {
-            it.copy(
-                isWeakNetwork = false,
-                canManualRetry = false,
-                isReconnecting = false,
-            )
-        }
-        coroutineScope.launch {
-            val pos = playerEngine.currentPositionMs.value
-            if (pos > 0L) {
-                persistenceCoordinator.savePosition(pos, isCleanExit = true)
-            }
-            flushSessionWithCleanExit(isCleanExit = true)
-        }
+        _sessionState.update { it.withClearedNetworkFlags() }
+        persistenceCoordinator.flushCleanExitAsync(saveCurrentPosition = true)
     }
 
     override fun onAudioFocusTransientLoss() {
-        if (_sessionState.value.isPlaying || _sessionState.value.isBuffering) {
-            _pausedByTransientAudioFocus.set(true)
-            pauseInternal()
-        } else {
-            _pausedByTransientAudioFocus.set(false)
-        }
+        val active = isPlayingOrBuffering()
+        _pausedByTransientAudioFocus.set(active)
+        if (active) pauseInternal()
     }
 
     override fun onAudioFocusGain() {
@@ -436,71 +471,35 @@ class MusicPlayerAppSessionImpl(
     ) {
         coroutineScope.launch {
             val entries = playlistRepository?.getTracksForPlaylist(playlist.id) ?: emptyList()
-            val request = queueManager.buildPlaylistQueue(entries, startIndex)
-            if (request == null) {
-                _sessionState.update { it.copy(queue = PlaybackQueue.EMPTY, errorMessage = null) }
-                return@launch
-            }
-            val target = request.targetTrack
-            val active = queueManager.resolveServerForTrack(target) ?: return@launch
-            dispatchQueueLoad(active, request)
+            val request =
+                queueManager.buildPlaylistQueue(entries, startIndex, _sessionState.value.playbackMode)
+                    ?: return@launch _sessionState.update { it.copy(queue = PlaybackQueue.EMPTY, errorMessage = null) }
+            dispatchQueueLoad(resolveServerForTrack(request.targetTrack), request)
         }
     }
 
     override fun skipToNext() {
-        clearTransientAudioFocusFlag()
+        _pausedByTransientAudioFocus.set(false)
         clearPrerollIfActive()
-        if (!isRestored.value && _sessionState.value.queue.isEmpty) {
-            coroutineScope.launch {
-                restoreSession()
-                if (!_sessionState.value.queue.isEmpty) {
-                    skipToNext()
-                }
-            }
-            return
-        }
-        val queue = _sessionState.value.queue
-        if (!queue.isEmpty) {
-            val mode = _sessionState.value.playbackMode
-            if (mode == PlaybackMode.SHUFFLE && queue.currentIndex >= queue.tracks.lastIndex) {
-                val reshuffled = queue.reshuffle()
-                _sessionState.update { it.copy(queue = reshuffled) }
-                transitionToQueueIndex(_sessionState.value.activeServer, 0)
-            } else {
-                transitionToQueueIndex(
-                    _sessionState.value.activeServer,
-                    queueManager.calculateNextQueueIndex(queue, mode),
-                )
-            }
-        }
+        awaitRestoredAndRun(requireTrack = false) { advanceQueueToNext(_sessionState.value.activeServer) }
     }
 
     override fun skipToPrevious() {
-        clearTransientAudioFocusFlag()
+        _pausedByTransientAudioFocus.set(false)
         clearPrerollIfActive()
-        if (!isRestored.value && _sessionState.value.queue.isEmpty) {
-            coroutineScope.launch {
-                restoreSession()
-                if (!_sessionState.value.queue.isEmpty) {
-                    skipToPrevious()
-                }
-            }
-            return
+        awaitRestoredAndRun(requireTrack = false) {
+            val queue = _sessionState.value.queue
+            if (queue.isEmpty) return@awaitRestoredAndRun
+            if (playerEngine.currentPositionMs.value > 3000L) return@awaitRestoredAndRun seekTo(0L)
+            transitionToQueueIndex(
+                _sessionState.value.activeServer,
+                queueManager.calculatePreviousQueueIndex(queue, _sessionState.value.playbackMode),
+            )
         }
-        val queue = _sessionState.value.queue
-        if (queue.isEmpty) return
-        if (playerEngine.currentPositionMs.value > 3000L) {
-            seekTo(0L)
-            return
-        }
-        transitionToQueueIndex(
-            _sessionState.value.activeServer,
-            queueManager.calculatePreviousQueueIndex(queue, _sessionState.value.playbackMode),
-        )
     }
 
     override fun playQueueIndex(index: Int) {
-        clearTransientAudioFocusFlag()
+        _pausedByTransientAudioFocus.set(false)
         clearPrerollIfActive()
         if (index in _sessionState.value.queue.tracks.indices) {
             queueManager.clearFailedTracks()
@@ -508,27 +507,32 @@ class MusicPlayerAppSessionImpl(
         }
     }
 
-    override fun cyclePlaybackMode() = queueManager.cyclePlaybackMode()
+    override fun cyclePlaybackMode() =
+        applyPlaybackModeUpdate(queueManager.cyclePlaybackMode(_sessionState.value.queue, _sessionState.value.playbackMode))
 
-    override fun setPlaybackMode(mode: PlaybackMode) = queueManager.setPlaybackMode(mode)
+    override fun setPlaybackMode(mode: PlaybackMode) =
+        applyPlaybackModeUpdate(queueManager.setPlaybackMode(_sessionState.value.queue, mode))
+
+    private fun applyPlaybackModeUpdate(update: PlaybackModeUpdate) {
+        _sessionState.update { it.copy(playbackMode = update.playbackMode, queue = update.queue) }
+        flushSessionAsync()
+    }
 
     override fun removeQueueTrack(index: Int) {
         clearPrerollIfActive()
-        queueManager.removeQueueTrack(
-            index = index,
-            onQueueCleared = {
-                resetPlaybackState()
-                playerEngine.stop()
-                _playbackProgress.value = PlaybackProgress.ZERO
-            },
-            onCurrentTrackChanged = { nextTrack ->
-                _playbackProgress.value = PlaybackProgress(0L, nextTrack.durationMs, 0L)
-                coroutineScope.launch {
-                    val effectiveServer = queueManager.resolveServerForTrack(nextTrack)
-                    effectiveServer?.let { loadTrackIntoEngine(it, nextTrack, 0L) }
-                }
-            },
-        )
+        val result = queueManager.removeQueueTrack(_sessionState.value.queue, index)
+        if (result is RemoveQueueTrackResult.Unchanged) return
+        if (result is RemoveQueueTrackResult.Cleared) {
+            _sessionState.update { it.withClearedQueue(playbackState = PlaybackState.Idle) }
+            haltEngineAndClearProgress()
+        } else if (result is RemoveQueueTrackResult.CurrentTrackChanged) {
+            _sessionState.update { it.copy(queue = result.queue, durationMs = result.nextTrack.durationMs) }
+            _playbackProgress.value = PlaybackProgress(0L, result.nextTrack.durationMs, 0L)
+            coroutineScope.launch { resolveServerForTrack(result.nextTrack)?.let { loadTrackIntoEngine(it, result.nextTrack, 0L) } }
+        } else if (result is RemoveQueueTrackResult.QueueUpdated) {
+            _sessionState.update { it.copy(queue = result.queue) }
+        }
+        flushSessionAsync()
     }
 
     override fun retryPlayback() {
@@ -541,23 +545,13 @@ class MusicPlayerAppSessionImpl(
     fun setWeakNetworkState(
         isWeakNetwork: Boolean,
         canManualRetry: Boolean,
-    ) = faultTolerance.setWeakNetworkState(isWeakNetwork, canManualRetry)
+    ) = _sessionState.update { it.withWeakNetwork(isWeakNetwork, canManualRetry) }
 
     override fun stop() {
-        clearTransientAudioFocusFlag()
-        resetPlaybackState()
-        faultTolerance.cancelWatchdog()
-        playerEngine.stop()
-        _playbackProgress.value = PlaybackProgress.ZERO
-        _sessionState.update {
-            it.copy(
-                playbackState = PlaybackState.Idle,
-                isWeakNetwork = false,
-                canManualRetry = false,
-                isReconnecting = false,
-            )
-        }
-        coroutineScope.launch { flushSessionWithCleanExit(isCleanExit = true) }
+        _pausedByTransientAudioFocus.set(false)
+        haltEngineAndClearProgress()
+        _sessionState.update { it.withClearedNetworkFlags(playbackState = PlaybackState.Idle) }
+        persistenceCoordinator.flushCleanExitAsync(saveCurrentPosition = false)
     }
 
     override fun clearKilledBySystemFlag() {
@@ -565,27 +559,25 @@ class MusicPlayerAppSessionImpl(
     }
 
     override fun confirmUnsupportedRangeReplay() {
-        faultTolerance.confirmUnsupportedRangeReplay onReplay@{
-            val server = _sessionState.value.activeServer ?: return@onReplay
-            val track = _sessionState.value.currentTrack ?: return@onReplay
-            _playbackProgress.value = PlaybackProgress(0L, track.durationMs, 0L)
-            loadTrackIntoEngine(server, track, 0L)
-        }
+        _sessionState.update { it.copy(isUnsupportedRange = false, errorMessage = null) }
+        val server = _sessionState.value.activeServer ?: return
+        val track = _sessionState.value.currentTrack ?: return
+        _playbackProgress.value = PlaybackProgress(0L, track.durationMs, 0L)
+        loadTrackIntoEngine(server, track, 0L)
     }
 
-    override fun dismissUnsupportedRange() = faultTolerance.dismissUnsupportedRange()
+    override fun dismissUnsupportedRange() = _sessionState.update { it.copy(isUnsupportedRange = false) }
 
     override fun release() {
         resetPlaybackState()
         timelineCoordinator.cancelObservations()
         networkObservationJob?.cancel()
+        serverDeletionObservationJob?.cancel()
         playerEngine.release()
         _playbackProgress.value = PlaybackProgress.ZERO
     }
 
     override fun flushSessionAsync() = persistenceCoordinator.flushSessionAsync()
-
-    private fun stopPeriodicFlush(): Unit = persistenceCoordinator.stopPeriodicFlush()
 
     override suspend fun restoreSession() = persistenceCoordinator.restoreSession()
 

@@ -24,6 +24,7 @@
 
 | 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 归档路径 |
 | :--- | :--- | :---: | :---: | :--- |
+| `purify-playback-session-seams` | 播控会话接缝纯化、双轨彻底切割与起播前音频焦点门控 (ADR-0041) | 6 | Completed | [`archive/purify-playback-session-seams/`](archive/purify-playback-session-seams/) |
 | `directory-file-sorting` | 媒体库目录排序策略与播控队列对齐体系 (ADR-0040) | 3 | Completed | [`archive/directory-file-sorting/`](archive/directory-file-sorting/) |
 | `purge-browsing-cursor-from-playback-session` | 从播控会话剥离浏览游标并收敛至媒体库深模块 (ADR-0039) | 4 | Completed | [`archive/purge-browsing-cursor-from-playback-session/`](archive/purge-browsing-cursor-from-playback-session/) |
 | `decouple-storage-reachability-from-playlist-repository` | 从歌单仓储解耦存储源连通性追踪器与内存响应式自愈体系 (ADR-0038) | 4 | Completed | [`archive/decouple-storage-reachability-from-playlist-repository/`](archive/decouple-storage-reachability-from-playlist-repository/) |

@@ -25,6 +25,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +50,7 @@ fun ServerEditDialog(
     onTestConnection: (WebDavServer) -> Unit,
     onSave: (WebDavServer) -> Unit,
     onDismiss: () -> Unit,
+    isSaving: Boolean = false,
 ) {
     var name by remember { mutableStateOf(serverToEdit?.name ?: "") }
     var url by remember { mutableStateOf(serverToEdit?.url ?: "") }
@@ -58,6 +60,16 @@ fun ServerEditDialog(
     var password by remember { mutableStateOf(serverToEdit?.password ?: "") }
     var allowSelfSigned by remember { mutableStateOf(serverToEdit?.allowSelfSigned ?: false) }
     var isPasswordVisible by remember { mutableStateOf(false) }
+    var saveClicked by remember(serverToEdit) { mutableStateOf(false) }
+    var wasSaving by remember(serverToEdit) { mutableStateOf(false) }
+    LaunchedEffect(isSaving) {
+        if (isSaving) {
+            wasSaving = true
+        } else if (wasSaving) {
+            wasSaving = false
+            saveClicked = false
+        }
+    }
 
     fun buildCandidate(): WebDavServer {
         val parsedPort = port.toIntOrNull() ?: if (url.startsWith("https://", ignoreCase = true)) 443 else 80
@@ -77,7 +89,7 @@ fun ServerEditDialog(
     val isInputValid = name.isNotBlank() && url.isNotBlank()
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isSaving) onDismiss() },
         modifier = Modifier.expressiveDialog(),
         title = {
             Text(
@@ -252,7 +264,7 @@ fun ServerEditDialog(
 
                 OutlinedButton(
                     onClick = { onTestConnection(buildCandidate()) },
-                    enabled = isInputValid && !testingConnection,
+                    enabled = isInputValid && !testingConnection && !isSaving,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("测试连接")
@@ -261,14 +273,22 @@ fun ServerEditDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onSave(buildCandidate()) },
-                enabled = isInputValid,
+                onClick = {
+                    if (!saveClicked && !isSaving) {
+                        saveClicked = true
+                        onSave(buildCandidate())
+                    }
+                },
+                enabled = isInputValid && !isSaving && !saveClicked,
             ) {
                 Text("保存")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isSaving && !saveClicked,
+            ) {
                 Text("取消")
             }
         },

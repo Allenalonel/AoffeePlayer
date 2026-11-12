@@ -3043,4 +3043,228 @@ class MusicPlayerAppSessionTest {
 
             mixedSession.release()
         }
+
+    private class MutableServerRepository(
+        initialServers: List<WebDavServer>,
+        initialActiveId: Long? = initialServers.firstOrNull()?.id,
+    ) : com.webdav.player.domain.repository.ServerRepository {
+        private val serversFlow = MutableStateFlow(initialServers)
+        private val activeIdFlow = MutableStateFlow(initialActiveId)
+
+        override fun getAllServers(): Flow<List<WebDavServer>> = serversFlow
+
+        override fun getActiveServer(): Flow<WebDavServer?> =
+            activeIdFlow.map { id -> serversFlow.value.firstOrNull { it.id == id } }
+
+        override suspend fun getServerById(id: Long): WebDavServer? = serversFlow.value.firstOrNull { it.id == id }
+
+        override suspend fun saveServer(server: WebDavServer): Long {
+            serversFlow.value = serversFlow.value.filterNot { it.id == server.id } + server
+            return server.id
+        }
+
+        override suspend fun deleteServer(id: Long) {
+            serversFlow.value = serversFlow.value.filterNot { it.id == id }
+            if (activeIdFlow.value == id) {
+                activeIdFlow.value = serversFlow.value.firstOrNull()?.id
+            }
+        }
+
+        override suspend fun setActiveServer(id: Long) {
+            activeIdFlow.value = id
+        }
+    }
+
+    @Test
+    fun switchingBrowsingServerInRepository_doesNotOverwritePlaybackServerOrInterruptPlayback() =
+        runTest(testDispatcher) {
+            val server2 =
+                WebDavServer(
+                    id = 2L,
+                    name = "Office NAS",
+                    url = "http://192.168.1.200:8080/webdav",
+                    port = 8080,
+                    pathPrefix = "/webdav",
+                    username = "user",
+                    password = "pw",
+                )
+            val serverRepo = MutableServerRepository(listOf(testServer, server2), initialActiveId = testServer.id)
+            val dualSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = serverRepo,
+                    coroutineScope = sessionScope,
+                )
+            val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3", size = 1000L)
+            val track2 = RemoteFile(name = "02.mp3", path = "/02.mp3", size = 2000L)
+            val dir = RemoteDirectory(path = "/Album/", name = "Album", files = listOf(track1, track2))
+
+            dualSession.setActiveServer(testServer)
+            dualSession.playDirectoryTrack(dir, track1)
+            advanceUntilIdle()
+
+            assertEquals(testServer, dualSession.sessionState.value.activeServer)
+            assertEquals(2, dualSession.sessionState.value.queue.size)
+            assertTrue(dualSession.sessionState.value.isPlaying)
+
+            // Switch active browsing server in repository to server2
+            serverRepo.setActiveServer(server2.id)
+            advanceUntilIdle()
+
+            // Playback server, queue, engine server, and playing state must be completely untouched
+            assertEquals(testServer, dualSession.sessionState.value.activeServer)
+            assertEquals(testServer, fakeEngine.lastServer)
+            assertEquals(2, dualSession.sessionState.value.queue.size)
+            assertEquals("01.mp3", dualSession.sessionState.value.currentTrack?.title)
+            assertTrue(dualSession.sessionState.value.isPlaying)
+            assertEquals(0, fakeEngine.stopCount)
+
+            dualSession.release()
+        }
+
+    @Test
+    fun playDirectoryTrack_withExplicitServer_populatesQueueAndPlaysWithoutPriorSetActiveServer() =
+        runTest(testDispatcher) {
+            val server2 =
+                WebDavServer(
+                    id = 2L,
+                    name = "Explicit Server",
+                    url = "http://192.168.1.201:8080/webdav",
+                    port = 8080,
+                    pathPrefix = "/webdav",
+                    username = "user",
+                    password = "pw",
+                )
+            val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3", size = 1000L)
+            val track2 = RemoteFile(name = "02.flac", path = "/02.flac", size = 2000L)
+            val dir = RemoteDirectory(path = "/Music/", name = "Music", files = listOf(track1, track2))
+
+            session.playDirectoryTrack(server2, dir, track2)
+            advanceUntilIdle()
+
+            val state = session.sessionState.value
+            assertEquals(server2, state.activeServer)
+            assertEquals(2, state.queue.size)
+            assertEquals(1, state.queue.currentIndex)
+            assertEquals("02.flac", state.currentTrack?.title)
+            assertEquals(server2, fakeEngine.lastServer)
+            assertTrue(state.isPlaying)
+        }
+
+    @Test
+    fun deletingNonPlayingServer_doesNotStopPlaybackOrClearQueue() =
+        runTest(testDispatcher) {
+            val server2 =
+                WebDavServer(
+                    id = 2L,
+                    name = "Idle Server",
+                    url = "http://192.168.1.202:8080/webdav",
+                    port = 8080,
+                    pathPrefix = "/webdav",
+                    username = "user",
+                    password = "pw",
+                )
+            val serverRepo = MutableServerRepository(listOf(testServer, server2), initialActiveId = testServer.id)
+            val dualSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = serverRepo,
+                    coroutineScope = sessionScope,
+                )
+            val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3", size = 1000L)
+            val dir = RemoteDirectory(path = "/Album/", name = "Album", files = listOf(track1))
+
+            dualSession.playDirectoryTrack(testServer, dir, track1)
+            advanceUntilIdle()
+            assertTrue(dualSession.sessionState.value.isPlaying)
+
+            // Delete idle server2
+            serverRepo.deleteServer(server2.id)
+            advanceUntilIdle()
+
+            // Active playback on testServer must continue undisturbed
+            assertEquals(testServer, dualSession.sessionState.value.activeServer)
+            assertEquals(1, dualSession.sessionState.value.queue.size)
+            assertTrue(dualSession.sessionState.value.isPlaying)
+            assertEquals(0, fakeEngine.stopCount)
+
+            dualSession.release()
+        }
+
+    @Test
+    fun deletingCurrentlyPlayingRemoteServer_stopsPlaybackAndClearsQueueAndActiveServer() =
+        runTest(testDispatcher) {
+            val server2 =
+                WebDavServer(
+                    id = 2L,
+                    name = "Backup Server",
+                    url = "http://192.168.1.203:8080/webdav",
+                    port = 8080,
+                    pathPrefix = "/webdav",
+                    username = "user",
+                    password = "pw",
+                )
+            val serverRepo = MutableServerRepository(listOf(testServer, server2), initialActiveId = testServer.id)
+            val dualSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = serverRepo,
+                    coroutineScope = sessionScope,
+                )
+            val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3", size = 1000L)
+            val dir = RemoteDirectory(path = "/Album/", name = "Album", files = listOf(track1))
+
+            dualSession.playDirectoryTrack(testServer, dir, track1)
+            advanceUntilIdle()
+            assertTrue(dualSession.sessionState.value.isPlaying)
+            assertEquals(1, dualSession.sessionState.value.queue.size)
+
+            // Delete the currently playing remote server (testServer)
+            serverRepo.deleteServer(testServer.id)
+            advanceUntilIdle()
+
+            val state = dualSession.sessionState.value
+            assertTrue(fakeEngine.stopCount >= 1)
+            assertTrue(state.isIdle)
+            assertTrue(state.queue.isEmpty)
+            assertNull(state.activeServer)
+
+            dualSession.release()
+        }
+
+    @Test
+    fun deletingRemoteServer_whilePlayingLocalStorage_doesNotStopPlayback() =
+        runTest(testDispatcher) {
+            val localStorage = WebDavServer.createLocalStorage()
+            val serverRepo = MutableServerRepository(listOf(testServer), initialActiveId = LOCAL_STORAGE_ID)
+            val dualSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = serverRepo,
+                    coroutineScope = sessionScope,
+                )
+            val localTrack =
+                RemoteFile(
+                    name = "local.flac",
+                    path = "content://media/external/audio/1",
+                    size = 4000L,
+                )
+            val dir = RemoteDirectory(path = "/local/", name = "Local", serverId = LOCAL_STORAGE_ID, files = listOf(localTrack))
+
+            dualSession.playDirectoryTrack(localStorage, dir, localTrack)
+            advanceUntilIdle()
+            assertTrue(dualSession.sessionState.value.isPlaying)
+            assertEquals(LOCAL_STORAGE_ID, dualSession.sessionState.value.activeServer?.id)
+
+            // Delete remote testServer while playing local storage
+            serverRepo.deleteServer(testServer.id)
+            advanceUntilIdle()
+
+            assertTrue(dualSession.sessionState.value.isPlaying)
+            assertEquals(1, dualSession.sessionState.value.queue.size)
+            assertEquals(LOCAL_STORAGE_ID, dualSession.sessionState.value.activeServer?.id)
+            assertEquals(0, fakeEngine.stopCount)
+
+            dualSession.release()
+        }
 }

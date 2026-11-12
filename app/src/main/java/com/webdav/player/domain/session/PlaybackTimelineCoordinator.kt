@@ -38,7 +38,6 @@ internal class PlaybackTimelineCoordinator(
     private val getHasStreamLoaded: () -> Boolean,
     private val clearPrerollIfActive: () -> Unit,
     private val onRestoreSession: suspend () -> Unit,
-    private val onSetActiveServer: (WebDavServer?) -> Unit,
     private val onSkipToNext: () -> Unit,
     private val onTransitionToQueueIndex: (WebDavServer?, Int) -> Unit,
 ) {
@@ -109,18 +108,6 @@ internal class PlaybackTimelineCoordinator(
                     onRestoreSession()
                 } finally {
                     persistenceCoordinator.markRestored()
-                }
-                if (serverRepository != null) {
-                    try {
-                        serverRepository.getActiveServer().collect { server ->
-                            val current = sessionStateFlow.value
-                            if (current.activeServer?.id != server?.id && !current.queue.isPlaylistQueue) {
-                                onSetActiveServer(server)
-                            }
-                        }
-                    } catch (e: Throwable) {
-                        // ignore during teardown
-                    }
                 }
             }
     }

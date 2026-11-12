@@ -37,6 +37,13 @@ interface MusicPlayerAppSession {
     fun flushSessionAsync() {}
 
     fun playDirectoryTrack(
+        server: WebDavServer,
+        directory: RemoteDirectory,
+        selectedFile: RemoteFile,
+        initialMetadata: Map<String, TrackMetadata> = emptyMap(),
+    )
+
+    fun playDirectoryTrack(
         directory: RemoteDirectory,
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata> = emptyMap(),

@@ -145,7 +145,6 @@ class PlaybackTimelineCoordinatorTest {
                 getHasStreamLoaded = { true },
                 clearPrerollIfActive = { isPrerollAppended.set(false) },
                 onRestoreSession = {},
-                onSetActiveServer = {},
                 onSkipToNext = {},
                 onTransitionToQueueIndex = { _, _ -> },
             )

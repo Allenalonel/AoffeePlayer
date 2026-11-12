@@ -704,4 +704,49 @@ class PackagingSeamVerificationTest {
             persistenceCoordinator.contains("serverLastDirectories"),
         )
     }
+
+    @Test
+    fun playbackSession_purgesBrowsingServerAndForbidsDataLayerImports() {
+        // 1. Zero .kt files under domain/session may import com.webdav.player.data.*
+        val domainSessionDir = File(sourceRoot, "domain/session")
+        assertTrue("domain/session directory must exist", domainSessionDir.exists())
+        val dataLayerImportRegex = Regex("""^import\s+com\.webdav\.player\.data\.""", RegexOption.MULTILINE)
+        val dataImportOffenders =
+            domainSessionDir
+                .walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .filter { dataLayerImportRegex.containsMatchIn(it.readText()) }
+                .map { it.name }
+                .toList()
+        assertTrue(
+            "domain.session must not import com.webdav.player.data.*: $dataImportOffenders",
+            dataImportOffenders.isEmpty(),
+        )
+
+        // 2. MusicPlayerAppSession, MusicPlayerAppSessionImpl, and PlayerSessionState must not declare or reference browsingServer or setActiveServer
+        listOf(
+            "domain/session/MusicPlayerAppSession.kt",
+            "domain/session/MusicPlayerAppSessionImpl.kt",
+            "domain/model/PlayerSessionState.kt",
+        ).forEach { relPath ->
+            val content = source(relPath)
+            assertFalse("$relPath must not declare or reference browsingServer", content.contains("browsingServer"))
+            assertFalse("$relPath must not declare or reference setActiveServer", content.contains("setActiveServer"))
+        }
+
+        // 3. MusicPlayerAppSession must not declare any playDirectoryTrack overload lacking server: WebDavServer
+        val sessionInterface = source("domain/session/MusicPlayerAppSession.kt")
+        val playDirDeclRegex = Regex("""\bfun\s+playDirectoryTrack\s*\(([^)]*)\)""", RegexOption.DOT_MATCHES_ALL)
+        val playDirOverloads = playDirDeclRegex.findAll(sessionInterface).toList()
+        assertTrue(
+            "MusicPlayerAppSession must declare explicit playDirectoryTrack",
+            playDirOverloads.isNotEmpty(),
+        )
+        assertTrue(
+            "MusicPlayerAppSession must not declare any playDirectoryTrack overload lacking server: WebDavServer",
+            playDirOverloads.all { match ->
+                Regex("""\bserver\s*:\s*WebDavServer\b""").containsMatchIn(match.groupValues[1])
+            },
+        )
+    }
 }

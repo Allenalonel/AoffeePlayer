@@ -51,10 +51,6 @@ class FakeMusicPlayerAppSession(
     var lastPlayedQueueIndex: Int? = null
     var removedQueueIndices = mutableListOf<Int>()
 
-    override fun setActiveServer(server: WebDavServer?) {
-        _sessionState.value = _sessionState.value.copy(activeServer = server, browsingServer = server)
-    }
-
     var restoreSessionCount = 0
     var flushSessionCount = 0
 
@@ -91,16 +87,8 @@ class FakeMusicPlayerAppSession(
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata>,
     ) {
-        lastPlayServer = server
-        playDirectoryTrack(directory, selectedFile, initialMetadata)
-    }
-
-    override fun playDirectoryTrack(
-        directory: RemoteDirectory,
-        selectedFile: RemoteFile,
-        initialMetadata: Map<String, TrackMetadata>,
-    ) {
         pausedByTransientAudioFocusInternal = false
+        lastPlayServer = server
         lastPlayDirectory = directory
         lastPlaySelectedFile = selectedFile
         lastPlayInitialMetadata = initialMetadata

@@ -211,7 +211,6 @@ internal class PlaybackTimelineCoordinator(
                                 queue = queue.copy(currentIndex = nextIndex),
                                 durationMs = nextTrack.durationMs,
                                 activeServer = resolvedServer ?: it.activeServer,
-                                browsingServer = it.browsingServer ?: resolvedServer ?: it.activeServer,
                             )
                         }
                         persistenceCoordinator.flushSession()

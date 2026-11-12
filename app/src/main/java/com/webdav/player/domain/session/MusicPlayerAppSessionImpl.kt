@@ -140,7 +140,7 @@ class MusicPlayerAppSessionImpl(
 
         fun dispatch(target: WebDavServer) {
             _sessionState.update { current ->
-                current.copy(activeServer = target, browsingServer = current.browsingServer ?: target)
+                current.copy(activeServer = target)
             }
             hasStreamLoaded = true
             try {
@@ -254,7 +254,6 @@ class MusicPlayerAppSessionImpl(
                             _sessionState.update {
                                 it.copy(
                                     activeServer = null,
-                                    browsingServer = if (it.browsingServer?.id == active.id) null else it.browsingServer,
                                     queue = PlaybackQueue.EMPTY,
                                     durationMs = 0L,
                                     lyrics = null,
@@ -272,42 +271,6 @@ class MusicPlayerAppSessionImpl(
         metadataCoordinator.startLyricsObservation()
     }
 
-    override fun setActiveServer(server: WebDavServer?) {
-        setActiveServer(server, resetPlayback = true)
-    }
-
-    override fun setActiveServer(
-        server: WebDavServer?,
-        resetPlayback: Boolean,
-    ) {
-        _sessionState.update { current ->
-            val currentBrowsing = current.browsingServer ?: current.activeServer
-            if (currentBrowsing?.id == server?.id && current.activeServer?.id == server?.id) {
-                return@update current.copy(activeServer = server, browsingServer = server)
-            }
-            if ((server != null && current.hasTrack && !resetPlayback) || current.queue.isPlaylistQueue) {
-                return@update current.copy(activeServer = server, browsingServer = server)
-            }
-
-            if (current.playbackState !is PlaybackState.Idle) playerEngine.stop()
-            resetPlaybackState()
-            _playbackProgress.value = PlaybackProgress.ZERO
-            current.copy(
-                activeServer = server,
-                browsingServer = server,
-                queue = PlaybackQueue.EMPTY,
-                playbackState = PlaybackState.Idle,
-                durationMs = 0L,
-                errorMessage = null,
-                lyrics = null,
-                isLoadingLyrics = false,
-            )
-        }
-        if (server != null) {
-            playerEngine.setActiveServer(server)
-        }
-    }
-
     override fun playDirectoryTrack(
         server: WebDavServer,
         directory: RemoteDirectory,
@@ -317,15 +280,6 @@ class MusicPlayerAppSessionImpl(
         val request = queueManager.buildDirectoryQueue(directory, selectedFile, initialMetadata, server = server) ?: return
         dispatchQueueLoad(server, request)
         metadataCoordinator.enrichQueueTracksFromCache(server, request.queue)
-    }
-
-    override fun playDirectoryTrack(
-        directory: RemoteDirectory,
-        selectedFile: RemoteFile,
-        initialMetadata: Map<String, TrackMetadata>,
-    ) {
-        val server = _sessionState.value.browsingServer ?: _sessionState.value.activeServer ?: return
-        playDirectoryTrack(server, directory, selectedFile, initialMetadata)
     }
 
     override fun playTrack(track: AudioTrack) {

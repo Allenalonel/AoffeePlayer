@@ -20,7 +20,7 @@ import java.net.UnknownHostException
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
-fun Throwable?.is404Exception(): Boolean {
+internal fun Throwable?.isFileNotFoundOrDeniedException(): Boolean {
     if (this == null) return false
     return generateSequence(this) { current -> current.cause?.takeIf { it !== current } }.any { cause ->
         cause is FileNotFoundException || cause is SecurityException
@@ -86,14 +86,6 @@ internal class PlaybackFaultTolerance(
         generateSequence(e) { current -> current.cause?.takeIf { it !== current } }.any { c ->
             c is ConnectException || c is UnknownHostException || c is SocketTimeoutException
         }
-
-    fun is404Error(state: PlaybackState.Error): Boolean = state.kind == PlaybackErrorKind.FILE_NOT_FOUND
-
-    fun isAuthError(state: PlaybackState.Error): Boolean = state.kind == PlaybackErrorKind.AUTH_INVALID
-
-    fun isServerUnreachableError(state: PlaybackState.Error): Boolean = state.kind == PlaybackErrorKind.SERVER_UNREACHABLE
-
-    fun isUnsupportedRangeError(state: PlaybackState.Error): Boolean = state.kind == PlaybackErrorKind.UNSUPPORTED_RANGE
 
     fun handle404Failure(
         track: AudioTrack?,
@@ -164,7 +156,7 @@ internal class PlaybackFaultTolerance(
         canSkip: (AudioTrack) -> Boolean = { false },
     ): FaultDecision =
         when {
-            e.is404Exception() -> handle404Failure(track, canSkip = canSkip)
+            e.isFileNotFoundOrDeniedException() -> handle404Failure(track, canSkip = canSkip)
             isServerUnreachableException(e) -> handleServerUnavailable(track, canSkip = canSkip)
             else -> FaultDecision.ShowError(PlaybackState.Error(e.message ?: "加载音频失败"))
         }

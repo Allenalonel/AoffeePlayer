@@ -109,7 +109,7 @@ class PlaybackSessionResumptionTest {
     }
 
     private fun createSession(
-        store: FakePlaybackSessionStore = fakeStore,
+        store: com.webdav.player.domain.repository.PlaybackSessionStore = fakeStore,
         metadataRepo: TrackMetadataRepository? = null,
     ): MusicPlayerAppSessionImpl =
         MusicPlayerAppSessionImpl(
@@ -1063,5 +1063,53 @@ class PlaybackSessionResumptionTest {
             assertTrue(session.sessionState.value.isPlaying)
             assertEquals(track2, fakeEngine.loadedTrack)
             assertEquals(42_000L, fakeEngine.lastStartPositionMs)
+        }
+
+    @Test
+    fun coldStart_concurrentExternalControlsBeforeRestoreCompletes_awaitRestorationWithoutCompetingRestoreCalls() =
+        runTest(testDispatcher) {
+            var getSavedSessionCalls = 0
+            val countingStore =
+                object : com.webdav.player.domain.repository.PlaybackSessionStore {
+                    override suspend fun saveSession(sessionData: PlaybackSessionData) {
+                        fakeStore.saveSession(sessionData)
+                    }
+
+                    override suspend fun savePosition(
+                        positionMs: Long,
+                        isCleanExit: Boolean,
+                    ) {
+                        fakeStore.savePosition(positionMs, isCleanExit)
+                    }
+
+                    override suspend fun getSavedSession(): PlaybackSessionData? {
+                        getSavedSessionCalls++
+                        return fakeStore.getSavedSession()
+                    }
+
+                    override suspend fun clearSession() {
+                        fakeStore.clearSession()
+                    }
+                }
+            fakeStore.savedSession =
+                PlaybackSessionData(
+                    activeServerId = 1L,
+                    queueTracks = listOf(track1, track2),
+                    currentTrackIndex = 0,
+                    positionMs = 12_000L,
+                    playbackMode = PlaybackMode.LIST_LOOP,
+                )
+
+            session = createSession(store = countingStore)
+            assertFalse(session.isRestored.value)
+
+            session.play()
+            session.skipToNext()
+            advanceUntilIdle()
+
+            assertTrue(session.isRestored.value)
+            assertEquals(1, getSavedSessionCalls)
+            assertEquals(1, session.sessionState.value.queue.currentIndex)
+            assertEquals(track2, fakeEngine.loadedTrack)
         }
 }

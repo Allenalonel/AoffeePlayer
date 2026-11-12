@@ -118,29 +118,18 @@ class PlaybackFaultToleranceTest {
         }
 
     @Test
-    fun errorClassification_accuratelyCategorizesByPlaybackErrorKindWithoutStringMatching() {
-        assertTrue(FileNotFoundException("missing").is404Exception())
-        assertTrue(SecurityException("revoked").is404Exception())
-        assertFalse(RuntimeException("HTTP 404 Not Found").is404Exception())
-
-        assertTrue(faultTolerance.is404Error(PlaybackState.Error("Error", kind = PlaybackErrorKind.FILE_NOT_FOUND)))
-        assertFalse(faultTolerance.is404Error(PlaybackState.Error("Resource 404 Not Found", cause = FileNotFoundException("404"))))
-
-        assertTrue(faultTolerance.isAuthError(PlaybackState.Error("Error", kind = PlaybackErrorKind.AUTH_INVALID)))
-        assertFalse(faultTolerance.isAuthError(PlaybackState.Error("401 Unauthorized / 403 Forbidden")))
+    fun exceptionHelpers_matchFileNotFoundSecurityAndUnreachableExceptionsWithoutStringMatching() {
+        assertTrue(FileNotFoundException("missing").isFileNotFoundOrDeniedException())
+        assertTrue(SecurityException("revoked").isFileNotFoundOrDeniedException())
+        assertFalse(RuntimeException("HTTP 404 Not Found").isFileNotFoundOrDeniedException())
 
         assertTrue(faultTolerance.isServerUnreachableException(ConnectException("Connection refused")))
         assertFalse(faultTolerance.isServerUnreachableException(RuntimeException("Connection refused")))
-        assertTrue(faultTolerance.isServerUnreachableError(PlaybackState.Error("Error", kind = PlaybackErrorKind.SERVER_UNREACHABLE)))
-        assertFalse(faultTolerance.isServerUnreachableError(PlaybackState.Error("ConnectException: Failed to connect")))
-
-        assertTrue(faultTolerance.isUnsupportedRangeError(PlaybackState.Error("Error", kind = PlaybackErrorKind.UNSUPPORTED_RANGE)))
-        assertFalse(faultTolerance.isUnsupportedRangeError(PlaybackState.Error("UnsupportedRangeReconnectionException")))
     }
 
     @Test
     fun handlePlaybackError_returnsPureFaultDecisionsByPlaybackErrorKind() {
-        val fileNotFound =
+        val fileNotFoundSkip =
             faultTolerance.handlePlaybackError(
                 state = PlaybackState.Error("Not found", kind = PlaybackErrorKind.FILE_NOT_FOUND),
                 currentTrack = t1,
@@ -148,7 +137,21 @@ class PlaybackFaultToleranceTest {
             )
         assertEquals(
             FaultDecision.SkipTrack(unavailableTrack = Triple(t1.serverId, t1.remotePath, InactiveReason.FILE_NOT_FOUND)),
-            fileNotFound,
+            fileNotFoundSkip,
+        )
+
+        val fileNotFoundShow =
+            faultTolerance.handlePlaybackError(
+                state = PlaybackState.Error("Not found", kind = PlaybackErrorKind.FILE_NOT_FOUND),
+                currentTrack = t1,
+                canSkip = { false },
+            )
+        assertEquals(
+            FaultDecision.ShowError(
+                error = PlaybackState.Error("Not found", kind = PlaybackErrorKind.FILE_NOT_FOUND),
+                unavailableTrack = Triple(t1.serverId, t1.remotePath, InactiveReason.FILE_NOT_FOUND),
+            ),
+            fileNotFoundShow,
         )
 
         val authSkip =
@@ -162,6 +165,31 @@ class PlaybackFaultToleranceTest {
             authSkip,
         )
 
+        val authShow =
+            faultTolerance.handlePlaybackError(
+                state = PlaybackState.Error("Auth failed", kind = PlaybackErrorKind.AUTH_INVALID),
+                currentTrack = t1,
+                canSkip = { false },
+            )
+        assertEquals(
+            FaultDecision.ShowError(
+                error = PlaybackState.Error("Auth failed", kind = PlaybackErrorKind.AUTH_INVALID),
+                unavailableServer = t1.serverId to InactiveReason.SERVER_CREDENTIAL_INVALID,
+            ),
+            authShow,
+        )
+
+        val unreachableSkip =
+            faultTolerance.handlePlaybackError(
+                state = PlaybackState.Error("Timeout", kind = PlaybackErrorKind.SERVER_UNREACHABLE),
+                currentTrack = t2,
+                canSkip = { true },
+            )
+        assertEquals(
+            FaultDecision.SkipTrack(unavailableServer = t2.serverId to InactiveReason.SERVER_UNREACHABLE),
+            unreachableSkip,
+        )
+
         val unreachableExhausted =
             faultTolerance.handlePlaybackError(
                 state = PlaybackState.Error("Timeout", kind = PlaybackErrorKind.SERVER_UNREACHABLE),
@@ -173,6 +201,14 @@ class PlaybackFaultToleranceTest {
         assertEquals(PlaybackErrorKind.SERVER_UNREACHABLE, err.error.kind)
         assertEquals(t2.serverId to InactiveReason.SERVER_UNREACHABLE, err.unavailableServer)
 
+        assertEquals(
+            FaultDecision.Ignored,
+            faultTolerance.handlePlaybackError(
+                state = PlaybackState.Error("Timeout", kind = PlaybackErrorKind.SERVER_UNREACHABLE),
+                currentTrack = null,
+            ),
+        )
+
         val rangeDecision =
             faultTolerance.handlePlaybackError(
                 state = PlaybackState.Error("Range unsupported", kind = PlaybackErrorKind.UNSUPPORTED_RANGE),
@@ -180,10 +216,20 @@ class PlaybackFaultToleranceTest {
             )
         assertEquals(FaultDecision.PauseForUnsupportedRange, rangeDecision)
 
+        // String-only messages with UNKNOWN kind must never be misclassified as 404/Auth/Unreachable/Range
+        listOf(
+            "Resource 404 Not Found",
+            "401 Unauthorized / 403 Forbidden",
+            "ConnectException: Failed to connect",
+            "UnsupportedRangeReconnectionException",
+        ).forEach { messageOnly ->
+            val unknownState = PlaybackState.Error(messageOnly, kind = PlaybackErrorKind.UNKNOWN)
+            val unknownDecision = faultTolerance.handlePlaybackError(unknownState, currentTrack = t1, canSkip = { true })
+            assertEquals(FaultDecision.RetryableError(unknownState), unknownDecision)
+        }
+
         val unknownState = PlaybackState.Error("HTTP 404 in message only", kind = PlaybackErrorKind.UNKNOWN)
         val unknownDecision = faultTolerance.handlePlaybackError(unknownState, currentTrack = t1)
-        assertEquals(FaultDecision.RetryableError(unknownState), unknownDecision)
-
         val reduced = faultTolerance.reduceStateForDecision(PlayerSessionState(), unknownDecision)
         assertEquals(unknownState, reduced.playbackState)
         assertTrue(reduced.isWeakNetwork)

@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -137,7 +138,7 @@ class MusicPlayerAppSessionImpl(
     ) {
         if (isRestored.value || _sessionState.value.queue.isNotEmpty) return action()
         coroutineScope.launch {
-            restoreSession()
+            isRestored.first { it }
             val ready = if (requireTrack) _sessionState.value.hasTrack else _sessionState.value.queue.isNotEmpty
             if (ready) action()
         }
@@ -348,8 +349,12 @@ class MusicPlayerAppSessionImpl(
         val current = _sessionState.value
         val active = current.activeServer ?: return
         if (!active.isLocal && servers.none { it.id == active.id }) {
-            if (current.hasTrack || current.playbackState !is PlaybackState.Idle) stop()
             _sessionState.update { it.withClearedQueue(clearActiveServer = true) }
+            if (current.hasTrack || current.playbackState !is PlaybackState.Idle) {
+                stop()
+            } else {
+                flushSessionAsync()
+            }
         }
     }
 

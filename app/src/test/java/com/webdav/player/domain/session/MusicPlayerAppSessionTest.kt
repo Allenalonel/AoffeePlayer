@@ -3208,10 +3208,12 @@ class MusicPlayerAppSessionTest {
                     password = "pw",
                 )
             val serverRepo = MutableServerRepository(listOf(testServer, server2), initialActiveId = testServer.id)
+            val fakeStore = FakePlaybackSessionStore()
             val dualSession =
                 MusicPlayerAppSessionImpl(
                     playerEngine = fakeEngine,
                     serverRepository = serverRepo,
+                    sessionStore = fakeStore,
                     coroutineScope = sessionScope,
                 )
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3", size = 1000L)
@@ -3221,6 +3223,7 @@ class MusicPlayerAppSessionTest {
             advanceUntilIdle()
             assertTrue(dualSession.sessionState.value.isPlaying)
             assertEquals(1, dualSession.sessionState.value.queue.size)
+            assertEquals(testServer.id, fakeStore.savedSession?.activeServerId)
 
             // Delete the currently playing remote server (testServer)
             serverRepo.deleteServer(testServer.id)
@@ -3231,6 +3234,9 @@ class MusicPlayerAppSessionTest {
             assertTrue(state.isIdle)
             assertTrue(state.queue.isEmpty)
             assertNull(state.activeServer)
+            assertNull(fakeStore.savedSession?.activeServerId)
+            assertTrue(fakeStore.savedSession?.queueTracks.orEmpty().isEmpty())
+            assertTrue(fakeStore.clearSessionCount >= 1)
 
             dualSession.release()
         }

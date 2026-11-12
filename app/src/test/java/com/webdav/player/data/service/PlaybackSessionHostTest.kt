@@ -1101,4 +1101,93 @@ class PlaybackSessionHostTest {
         assertFalse(host.hardwareLockManager.isWakeLockHeld)
         assertFalse(host.hardwareLockManager.isWifiLockHeld)
     }
+
+    @Test
+    fun audioFocus_abandonedOnErrorEndedIdleAndDetachService_whilePreservedOnPaused() {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val shadowAudioManager = shadowOf(audioManager)
+
+        // 1. Paused preserves audio focus so AUDIOFOCUS_LOSS_TRANSIENT -> AUDIOFOCUS_GAIN auto-resumption works
+        assertTrue(host.audioFocusHandler.requestAudioFocus())
+        host.handlePlaybackStateChanged(PlaybackState.Playing)
+        host.handlePlaybackStateChanged(PlaybackState.Paused)
+        assertNull("Paused must preserve audio focus", shadowAudioManager.lastAbandonedAudioFocusRequest)
+
+        // 2. Error abandons audio focus
+        host.handlePlaybackStateChanged(PlaybackState.Error("Stream error"))
+        val errorAbandoned = shadowAudioManager.lastAbandonedAudioFocusRequest
+        assertNotNull("Error must abandon audio focus", errorAbandoned)
+
+        // 3. Ended abandons audio focus
+        assertTrue(host.audioFocusHandler.requestAudioFocus())
+        val reqForEnded = shadowAudioManager.lastAudioFocusRequest.audioFocusRequest
+        host.handlePlaybackStateChanged(PlaybackState.Playing)
+        host.handlePlaybackStateChanged(PlaybackState.Ended)
+        assertTrue(
+            "Ended must abandon the active audio focus request",
+            shadowAudioManager.lastAbandonedAudioFocusRequest === reqForEnded,
+        )
+
+        // 4. Idle abandons audio focus
+        assertTrue(host.audioFocusHandler.requestAudioFocus())
+        val reqForIdle = shadowAudioManager.lastAudioFocusRequest.audioFocusRequest
+        host.handlePlaybackStateChanged(PlaybackState.Playing)
+        host.handlePlaybackStateChanged(PlaybackState.Idle)
+        assertTrue(
+            "Idle must abandon the active audio focus request",
+            shadowAudioManager.lastAbandonedAudioFocusRequest === reqForIdle,
+        )
+
+        // 5. detachService abandons audio focus
+        assertTrue(host.audioFocusHandler.requestAudioFocus())
+        val reqForDetach = shadowAudioManager.lastAudioFocusRequest.audioFocusRequest
+        host.handlePlaybackStateChanged(PlaybackState.Playing)
+        host.detachService(service)
+        assertTrue(
+            "detachService must abandon the active audio focus request",
+            shadowAudioManager.lastAbandonedAudioFocusRequest === reqForDetach,
+        )
+    }
+
+    @Test
+    fun hardwareLocks_trackChangeDuringErrorOrIdleState_doesNotAcquireLocks() {
+        val secondTrack = testTrack.copy(id = "2", remotePath = "/track2.mp3", title = "Track 2")
+        val appSession =
+            com.webdav.player.domain.session.FakeMusicPlayerAppSession(
+                initialState =
+                    PlayerSessionState(
+                        queue = PlaybackQueue(listOf(testTrack, secondTrack), 0),
+                        playbackState = PlaybackState.Error("Stream failed"),
+                    ),
+            )
+        host.bindAppSession(appSession)
+        testScope.runCurrent()
+
+        // Simulate engine in Error state even if playWhenReady remained true
+        fakeEngine.customPlayWhenReady = true
+        fakeEngine._playbackState.value = PlaybackState.Error("Stream failed")
+        host.handlePlaybackStateChanged(PlaybackState.Error("Stream failed"))
+        assertFalse(host.hardwareLockManager.isWakeLockHeld)
+        assertFalse(host.hardwareLockManager.isWifiLockHeld)
+
+        // Track changes while in Error state -> must NOT re-acquire locks
+        appSession._sessionState.value =
+            appSession.sessionState.value.copy(
+                queue = PlaybackQueue(listOf(testTrack, secondTrack), 1),
+            )
+        testScope.runCurrent()
+        assertFalse("WakeLock must remain released on track change during Error", host.hardwareLockManager.isWakeLockHeld)
+        assertFalse("WifiLock must remain released on track change during Error", host.hardwareLockManager.isWifiLockHeld)
+
+        // Track changes while in Idle state -> must NOT re-acquire locks
+        fakeEngine._playbackState.value = PlaybackState.Idle
+        appSession._sessionState.value =
+            appSession.sessionState.value.copy(
+                playbackState = PlaybackState.Idle,
+                queue = PlaybackQueue(listOf(testTrack, secondTrack), 0),
+            )
+        testScope.runCurrent()
+        assertFalse("WakeLock must remain released on track change during Idle", host.hardwareLockManager.isWakeLockHeld)
+        assertFalse("WifiLock must remain released on track change during Idle", host.hardwareLockManager.isWifiLockHeld)
+    }
 }

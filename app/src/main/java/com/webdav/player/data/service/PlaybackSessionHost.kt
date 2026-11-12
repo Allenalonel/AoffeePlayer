@@ -209,22 +209,30 @@ class PlaybackSessionHost(
     }
 
     private fun observeAppSessionTrackChanges(session: MusicPlayerAppSession) {
-        coroutineScope.launch {
-            session.sessionState
-                .map { it.currentTrack?.let { t -> t.serverId to t.id } }
-                .distinctUntilChanged()
-                .collect {
-                    val currentTrack = session.sessionState.value.currentTrack
-                    val isPlaying = session.sessionState.value.isPlaying || playerEngine.playWhenReady
-                    if (isPlaying && currentTrack != null) {
-                        val isLocal = currentTrack.isLocal
-                        if (isLocal) {
-                            hardwareLockManager.acquireWakeLockOnly()
-                        } else {
-                            hardwareLockManager.acquireLocks()
+        trackObserverJob?.cancel()
+        trackObserverJob =
+            coroutineScope.launch {
+                session.sessionState
+                    .map { it.currentTrack?.let { t -> t.serverId to t.id } }
+                    .distinctUntilChanged()
+                    .collect {
+                        val currentTrack = session.sessionState.value.currentTrack
+                        val engineState = playerEngine.playbackState.value
+                        val isActivelyPlaying =
+                            session.sessionState.value.isPlaying ||
+                                (playerEngine.playWhenReady && (engineState is PlaybackState.Playing || engineState is PlaybackState.Buffering))
+                        if (isActivelyPlaying && currentTrack != null) {
+                            acquireLocksForTrack(currentTrack.isLocal)
                         }
                     }
-                }
+            }
+    }
+
+    private fun acquireLocksForTrack(isLocal: Boolean) {
+        if (isLocal) {
+            hardwareLockManager.acquireWakeLockOnly()
+        } else {
+            hardwareLockManager.acquireLocks()
         }
     }
 
@@ -245,6 +253,7 @@ class PlaybackSessionHost(
     private var hasPlaybackStarted: Boolean = false
 
     private var stateObserverJob: Job? = null
+    private var trackObserverJob: Job? = null
     private var demotionJob: Job? = null
 
     val isDemotionPending: Boolean
@@ -313,11 +322,7 @@ class PlaybackSessionHost(
 
         when (state) {
             is PlaybackState.Playing -> {
-                if (isLocalTrack) {
-                    hardwareLockManager.acquireWakeLockOnly()
-                } else {
-                    hardwareLockManager.acquireLocks()
-                }
+                acquireLocksForTrack(isLocalTrack)
                 cancelDemotionTimer()
                 hasPlaybackStarted = true
                 registerBecomingNoisyReceiver()
@@ -326,11 +331,7 @@ class PlaybackSessionHost(
 
             is PlaybackState.Buffering -> {
                 if (playerEngine.playWhenReady) {
-                    if (isLocalTrack) {
-                        hardwareLockManager.acquireWakeLockOnly()
-                    } else {
-                        hardwareLockManager.acquireLocks()
-                    }
+                    acquireLocksForTrack(isLocalTrack)
                     cancelDemotionTimer()
                     hasPlaybackStarted = true
                     registerBecomingNoisyReceiver()
@@ -352,6 +353,7 @@ class PlaybackSessionHost(
                 hardwareLockManager.releaseLocks()
                 unregisterBecomingNoisyReceiver()
                 cancelDemotionTimer()
+                audioFocusHandler.abandonAudioFocus()
                 demoteForeground(removeNotification = false, playbackState = state)
             }
 
@@ -359,6 +361,7 @@ class PlaybackSessionHost(
                 hardwareLockManager.releaseLocks()
                 unregisterBecomingNoisyReceiver()
                 cancelDemotionTimer()
+                audioFocusHandler.abandonAudioFocus()
                 if (hasPlaybackStarted) {
                     hasPlaybackStarted = false
                     demoteForeground(removeNotification = true, playbackState = state)
@@ -369,6 +372,7 @@ class PlaybackSessionHost(
                 hardwareLockManager.releaseLocks()
                 unregisterBecomingNoisyReceiver()
                 cancelDemotionTimer()
+                audioFocusHandler.abandonAudioFocus()
                 hasPlaybackStarted = false
                 demoteForeground(removeNotification = true, playbackState = state)
             }
@@ -414,6 +418,7 @@ class PlaybackSessionHost(
             hardwareLockManager.releaseLocks()
             cancelDemotionTimer()
             unregisterBecomingNoisyReceiver()
+            audioFocusHandler.abandonAudioFocus()
             this.attachedService = null
             this.isForegroundActive = false
             this.isElevationPendingRef.set(false)
@@ -541,6 +546,8 @@ class PlaybackSessionHost(
         unregisterBecomingNoisyReceiver()
         stateObserverJob?.cancel()
         stateObserverJob = null
+        trackObserverJob?.cancel()
+        trackObserverJob = null
         hasPlaybackStarted = false
         audioFocusHandler.abandonAudioFocus()
         playerEngine.setPrePlayGate(null)

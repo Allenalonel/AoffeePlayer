@@ -2,7 +2,6 @@ package com.webdav.player.domain.model
 
 data class PlayerSessionState(
     val activeServer: WebDavServer? = null,
-    val browsingServer: WebDavServer? = activeServer,
     val queue: PlaybackQueue = PlaybackQueue.EMPTY,
     val playbackState: PlaybackState = PlaybackState.Idle,
     val playbackMode: PlaybackMode = PlaybackMode.LIST_LOOP,

@@ -156,7 +156,6 @@ internal class SessionPersistenceCoordinator(
         sessionStateFlow.update {
             it.copy(
                 activeServer = server ?: it.activeServer,
-                browsingServer = server ?: it.browsingServer ?: it.activeServer,
                 queue = finalQueue,
                 playbackState = restoredPlaybackState,
                 playbackMode = savedSession.playbackMode,

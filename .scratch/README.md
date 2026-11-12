@@ -14,7 +14,9 @@
 
 ## 活跃任务 (Active)
 
-当前无活跃任务。所有功能特性与技术债务重构均已结项并归档至 [`archive/`](archive/)。
+| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 路径 |
+| :--- | :--- | :---: | :---: | :--- |
+| `purify-playback-session-seams` | 播控会话接缝纯化、双轨彻底切割与起播前音频焦点门控 (ADR-0041) | 6 | `ready-for-agent` | [`purify-playback-session-seams/spec.md`](purify-playback-session-seams/spec.md) |
 
 ---
 

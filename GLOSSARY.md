@@ -123,8 +123,12 @@ _Avoid_: Insert Track, Priority Queue, Jump Queue
 _Avoid_: Queue Type, Play Source, List Kind
 
 **Playback Session**:
-统筹全局播放状态、队列流转、跨源凭据切换与播控指令流转的唯一应用级会话门面。
+统筹全局播放状态、队列流转、跨源在播凭据与播控指令流转的唯一应用级会话门面，与媒体库 `Browsing Storage` 完全正交隔离。
 _Avoid_: Player Controller, Engine Wrapper, Media Manager
+
+**Audio Focus**:
+应用在设备系统混音仲裁中所持有的发声独占与瞬态让渡契约，区分来电等瞬态打断（可依据用户是否手动干预决定挂断后自动续播）与永久让渡。
+_Avoid_: Focus Lock, Sound Priority, Mixer Ownership
 
 ### Playlists, Indexing & Session
 

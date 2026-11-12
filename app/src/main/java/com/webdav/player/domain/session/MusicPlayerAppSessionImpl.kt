@@ -20,16 +20,21 @@ import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import com.webdav.player.domain.storage.StorageReachabilityTracker
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -226,26 +231,38 @@ class MusicPlayerAppSessionImpl(
             }
         }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private val serverDeletionObservationJob: Job? =
         serverRepository?.let { repo ->
             coroutineScope.launch {
-                repo.getAllServers().collect { servers ->
-                    val current = _sessionState.value
-                    val active = current.activeServer
-                    if (active != null && !active.isLocal && servers.none { it.id == active.id }) {
-                        if (current.hasTrack || current.playbackState !is PlaybackState.Idle) stop()
-                        _sessionState.update {
-                            it.copy(
-                                activeServer = null,
-                                browsingServer = if (it.browsingServer?.id == active.id) null else it.browsingServer,
-                                queue = PlaybackQueue.EMPTY,
-                                durationMs = 0L,
-                                lyrics = null,
-                                isLoadingLyrics = false,
-                            )
+                _sessionState
+                    .map { it.activeServer?.takeIf { s -> !s.isLocal }?.id }
+                    .distinctUntilChanged()
+                    .flatMapLatest { activeId ->
+                        if (activeId == null) {
+                            emptyFlow()
+                        } else {
+                            repo.getAllServers().catch { e ->
+                                if (e is CancellationException) throw e
+                            }
+                        }
+                    }.collect { servers ->
+                        val current = _sessionState.value
+                        val active = current.activeServer
+                        if (active != null && !active.isLocal && servers.none { it.id == active.id }) {
+                            if (current.hasTrack || current.playbackState !is PlaybackState.Idle) stop()
+                            _sessionState.update {
+                                it.copy(
+                                    activeServer = null,
+                                    browsingServer = if (it.browsingServer?.id == active.id) null else it.browsingServer,
+                                    queue = PlaybackQueue.EMPTY,
+                                    durationMs = 0L,
+                                    lyrics = null,
+                                    isLoadingLyrics = false,
+                                )
+                            }
                         }
                     }
-                }
             }
         }
 

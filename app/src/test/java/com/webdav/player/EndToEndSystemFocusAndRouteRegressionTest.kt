@@ -55,6 +55,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.android.controller.ServiceController
 import org.robolectric.shadows.ShadowLooper
 import java.nio.ByteBuffer
@@ -695,5 +696,107 @@ class EndToEndSystemFocusAndRouteRegressionTest {
             runCurrent()
             ShadowLooper.idleMainLooper()
             assertEquals(PlaybackState.Playing, appSession.sessionState.value.playbackState)
+        }
+
+    @Test
+    fun prePlayFocusGate_deniesAudioFocus_blocksEnginePlaybackAndLocks_untilSystemGrantsFocus() =
+        runTest(testDispatcher) {
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            appSession.setActiveServer(testServer)
+            advanceUntilIdle()
+
+            // 1. System rejects Audio Focus (e.g. active phone call)
+            shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
+            appSession.playDirectoryTrack(sampleDirectory, sampleAudioFile)
+            advanceUntilIdle()
+
+            assertFalse("Engine must not activate playWhenReady when focus denied", fakeEngine.playWhenReady)
+            assertEquals(PlaybackState.Paused, appSession.sessionState.value.playbackState)
+            assertFalse("WakeLock must remain released when focus denied", host.hardwareLockManager.isWakeLockHeld)
+            assertFalse("WifiLock must remain released when focus denied", host.hardwareLockManager.isWifiLockHeld)
+
+            // 2. System grants Audio Focus -> user retries play()
+            shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+            appSession.play()
+            advanceUntilIdle()
+
+            assertTrue("Engine playWhenReady must activate once focus granted", fakeEngine.playWhenReady)
+            assertEquals(PlaybackState.Playing, appSession.sessionState.value.playbackState)
+            assertTrue(host.hardwareLockManager.isWakeLockHeld)
+            assertTrue(host.hardwareLockManager.isWifiLockHeld)
+
+            // 3. System ducking leaves mixing to Android system without double-ducking engine volume
+            host.audioFocusHandler.handleFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK)
+            runCurrent()
+            assertTrue(host.audioFocusHandler.isDucked)
+            assertEquals(1.0f, fakeEngine.getVolume(), 0.001f)
+            assertEquals(PlaybackState.Playing, appSession.sessionState.value.playbackState)
+
+            host.audioFocusHandler.handleFocusChange(AudioManager.AUDIOFOCUS_GAIN)
+            runCurrent()
+            assertFalse(host.audioFocusHandler.isDucked)
+        }
+
+    @Test
+    fun prePlayFocusGate_withMedia3EngineAndSession_blocksPlaybackWithoutBuffering_andPlaysWhenGranted() =
+        runTest(testDispatcher) {
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            val media3Engine = Media3AudioPlayerEngine(context)
+            val mediaHost =
+                PlaybackSessionHost(
+                    context = context,
+                    engine = media3Engine,
+                    audioFocusHandler = AudioFocusHandler(context),
+                    coroutineScope = hostScope,
+                )
+            val mediaSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = media3Engine,
+                    serverRepository = serverRepository,
+                    sessionStore = sessionStore,
+                    coroutineScope = sessionScope,
+                    progressDispatcher = testDispatcher,
+                )
+            mediaHost.bindAppSession(mediaSession)
+            try {
+                val track =
+                    AudioTrack(
+                        id = "1:/music/Track01.flac",
+                        serverId = testServer.id,
+                        remotePath = "/music/Track01.flac",
+                        title = "Track01.flac",
+                        format = AudioFormat.FLAC,
+                        size = 45_000_000L,
+                    )
+
+                shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
+                mediaSession.playTrack(track)
+                runCurrent()
+                ShadowLooper.idleMainLooper()
+                runCurrent()
+
+                assertFalse("Media3 playWhenReady must stay false when focus denied", media3Engine.playWhenReady)
+                assertFalse(media3Engine.playbackState.value is PlaybackState.Playing)
+                assertFalse(media3Engine.playbackState.value is PlaybackState.Buffering)
+                assertFalse(mediaHost.hardwareLockManager.isWakeLockHeld)
+                assertFalse(mediaHost.hardwareLockManager.isWifiLockHeld)
+
+                shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+                mediaSession.play()
+                runCurrent()
+                ShadowLooper.idleMainLooper()
+                runCurrent()
+
+                assertTrue("Media3 playWhenReady must become true once focus granted", media3Engine.playWhenReady)
+                assertTrue(
+                    media3Engine.playbackState.value is PlaybackState.Playing ||
+                        media3Engine.playbackState.value is PlaybackState.Buffering,
+                )
+                assertTrue(mediaHost.hardwareLockManager.isWakeLockHeld)
+                assertTrue(mediaHost.hardwareLockManager.isWifiLockHeld)
+            } finally {
+                mediaSession.release()
+                mediaHost.release()
+            }
         }
 }

@@ -42,6 +42,9 @@ class FakeAudioPlayerEngine : AudioPlayerEngine {
     var released = false
     private var currentVolume: Float = 1.0f
 
+    var prePlayGate: (() -> Boolean)? = null
+        private set
+
     var isPrerollActive: Boolean = false
     var prerolledTrack: AudioTrack? = null
     var clearPrerollCount = 0
@@ -60,6 +63,12 @@ class FakeAudioPlayerEngine : AudioPlayerEngine {
         lastStartPositionMs = startPositionMs
         _currentPositionMs.value = startPositionMs
         _durationMs.value = track.durationMs
+        if (prePlayGate?.invoke() == false) {
+            customPlayWhenReady = false
+            _playbackState.value = PlaybackState.Paused
+            return
+        }
+        customPlayWhenReady = true
         _playbackState.value = PlaybackState.Playing
     }
 
@@ -90,7 +99,18 @@ class FakeAudioPlayerEngine : AudioPlayerEngine {
         lastServer = server
     }
 
+    override fun setPrePlayGate(gate: (() -> Boolean)?) {
+        prePlayGate = gate
+    }
+
     override fun play() {
+        if (prePlayGate?.invoke() == false) {
+            customPlayWhenReady = false
+            if (_playbackState.value is PlaybackState.Playing || _playbackState.value is PlaybackState.Buffering) {
+                _playbackState.value = PlaybackState.Paused
+            }
+            return
+        }
         playCount++
         customPlayWhenReady = true
         _playbackState.value = PlaybackState.Playing

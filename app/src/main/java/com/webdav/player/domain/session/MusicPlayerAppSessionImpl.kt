@@ -1,7 +1,6 @@
 package com.webdav.player.domain.session
 
 import androidx.annotation.VisibleForTesting
-import com.webdav.player.data.player.StreamingHardwareLockManager
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackProgress
@@ -54,7 +53,6 @@ class MusicPlayerAppSessionImpl(
         } ?: Dispatchers.Default,
     periodicDispatcher: CoroutineDispatcher = Dispatchers.Default,
     private val networkConnectivityObserver: NetworkConnectivityObserver? = null,
-    private val hardwareLockManager: StreamingHardwareLockManager? = null,
 ) : MusicPlayerAppSession {
     private val _sessionState = MutableStateFlow(PlayerSessionState())
     override val sessionState: StateFlow<PlayerSessionState> = _sessionState.asStateFlow()
@@ -134,9 +132,6 @@ class MusicPlayerAppSessionImpl(
 
         if (isLocalTrack) {
             faultTolerance.cancelWatchdog()
-            hardwareLockManager?.acquireWakeLockOnly()
-        } else {
-            hardwareLockManager?.acquireLocks()
         }
 
         fun dispatch(target: WebDavServer) {

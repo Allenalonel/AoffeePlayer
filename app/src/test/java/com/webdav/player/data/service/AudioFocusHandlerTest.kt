@@ -16,6 +16,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 
 @RunWith(RobolectricTestRunner::class)
 class AudioFocusHandlerTest {
@@ -183,6 +184,15 @@ class AudioFocusHandlerTest {
         focusHandler.abandonAudioFocus()
         assertFalse(focusHandler.isDucked)
         assertFalse(focusHandler.resumeOnFocusGain)
+    }
+
+    @Test
+    fun requestAudioFocus_returnsFalse_whenSystemDeniesFocus() {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
+
+        val granted = focusHandler.requestAudioFocus()
+        assertFalse(granted)
     }
 
     @Test

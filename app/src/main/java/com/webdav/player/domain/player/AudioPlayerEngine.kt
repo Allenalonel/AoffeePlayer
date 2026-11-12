@@ -32,6 +32,8 @@ interface AudioPlayerEngine {
 
     fun setActiveServer(server: WebDavServer)
 
+    fun setPrePlayGate(gate: (() -> Boolean)?) {}
+
     fun play()
 
     fun pause()

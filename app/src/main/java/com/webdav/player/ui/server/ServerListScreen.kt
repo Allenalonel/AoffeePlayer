@@ -234,6 +234,7 @@ fun ServerListScreen(
                     onTestConnection = { viewModel.onTestConnection(it) },
                     onSave = { viewModel.onSaveServer(it) },
                     onDismiss = { viewModel.onDismissAddEditDialog() },
+                    isSaving = uiState.isSaving,
                 )
             }
 

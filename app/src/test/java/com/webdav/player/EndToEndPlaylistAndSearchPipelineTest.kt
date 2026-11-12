@@ -13,6 +13,7 @@ import com.webdav.player.data.repository.PlaylistRepositoryImpl
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.InactiveReason
+import com.webdav.player.domain.model.PlaybackErrorKind
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.QueueOrigin
@@ -356,7 +357,11 @@ class EndToEndPlaylistAndSearchPipelineTest {
 
             // Simulate stream 404 failure on track 1
             fakeEngine._playbackState.value =
-                PlaybackState.Error("HTTP 404 error", FileNotFoundException("HTTP 404: Remote file not found"))
+                PlaybackState.Error(
+                    "HTTP 404 error",
+                    FileNotFoundException("HTTP 404: Remote file not found"),
+                    kind = PlaybackErrorKind.FILE_NOT_FOUND,
+                )
             
             // Session catches 404, marks track inactive, and automatically self-heals by advancing to track 2!
             val stateAfterHealing = session.sessionState.first { it.queue.currentIndex == 1 && it.activeServer?.id == server2.id }

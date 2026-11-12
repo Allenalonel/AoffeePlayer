@@ -1,6 +1,5 @@
 package com.webdav.player.domain.session
 
-import com.webdav.player.data.player.UnsupportedRangeReconnectionException
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
@@ -9,6 +8,7 @@ import com.webdav.player.domain.model.InactiveReason
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.NetworkStatus
+import com.webdav.player.domain.model.PlaybackErrorKind
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackQueue
@@ -341,15 +341,11 @@ class MusicPlayerAppSessionTest {
             fakeEngine._currentPositionMs.value = 45_000L
             advanceUntilIdle()
 
-            // Trigger UnsupportedRangeReconnectionException via playerEngine playback error
-            val unsupportedException =
-                UnsupportedRangeReconnectionException(
-                    "Remote server does not support partial content (HTTP 200 returned on Range request)",
-                )
+            // Trigger UNSUPPORTED_RANGE via playerEngine playback error
             fakeEngine._playbackState.value =
                 PlaybackState.Error(
                     message = "Remote server does not support partial content (HTTP 200 returned on Range request)",
-                    cause = unsupportedException,
+                    kind = PlaybackErrorKind.UNSUPPORTED_RANGE,
                 )
             advanceUntilIdle()
 
@@ -373,14 +369,10 @@ class MusicPlayerAppSessionTest {
             fakeEngine._currentPositionMs.value = 60_000L
             advanceUntilIdle()
 
-            val unsupportedException =
-                UnsupportedRangeReconnectionException(
-                    "Remote server does not support partial content (HTTP 200 returned on Range request)",
-                )
             fakeEngine._playbackState.value =
                 PlaybackState.Error(
                     message = "Remote server does not support partial content (HTTP 200 returned on Range request)",
-                    cause = unsupportedException,
+                    kind = PlaybackErrorKind.UNSUPPORTED_RANGE,
                 )
             advanceUntilIdle()
 
@@ -408,14 +400,10 @@ class MusicPlayerAppSessionTest {
             fakeEngine._currentPositionMs.value = 75_000L
             advanceUntilIdle()
 
-            val unsupportedException =
-                UnsupportedRangeReconnectionException(
-                    "Remote server does not support partial content (HTTP 200 returned on Range request)",
-                )
             fakeEngine._playbackState.value =
                 PlaybackState.Error(
                     message = "Remote server does not support partial content (HTTP 200 returned on Range request)",
-                    cause = unsupportedException,
+                    kind = PlaybackErrorKind.UNSUPPORTED_RANGE,
                 )
             advanceUntilIdle()
 
@@ -433,7 +421,7 @@ class MusicPlayerAppSessionTest {
         }
 
     @Test
-    fun unsupportedRangeError_recognizesNestedTypedCause() =
+    fun unsupportedRangeError_dispatchesStrictlyViaPlaybackErrorKind() =
         runTest(testDispatcher) {
             session.setActiveServer(testServer)
             val track1 = RemoteFile(name = "01.mp3", path = "/01.mp3")
@@ -441,19 +429,15 @@ class MusicPlayerAppSessionTest {
             session.playDirectoryTrack(directory, track1)
             advanceUntilIdle()
 
-            // Nested causal chain: Exception -> IOException -> UnsupportedRangeReconnectionException
-            val rootException = UnsupportedRangeReconnectionException("HTTP 200 on Range")
-            val wrappedException = java.lang.RuntimeException("Playback failed", java.io.IOException("Stream error", rootException))
-
             fakeEngine._playbackState.value =
                 PlaybackState.Error(
                     message = "Unspecified playback error",
-                    cause = wrappedException,
+                    kind = PlaybackErrorKind.UNSUPPORTED_RANGE,
                 )
             advanceUntilIdle()
 
             assertTrue(
-                "Typed causal chain traversal must identify UnsupportedRangeReconnectionException",
+                "PlaybackErrorKind.UNSUPPORTED_RANGE must set isUnsupportedRange even with generic message",
                 session.sessionState.value.isUnsupportedRange,
             )
             assertEquals(PlaybackState.Paused, session.sessionState.value.playbackState)
@@ -469,11 +453,10 @@ class MusicPlayerAppSessionTest {
             session.playDirectoryTrack(directory, track1)
             advanceUntilIdle()
 
-            val unsupportedException = UnsupportedRangeReconnectionException("HTTP 200 on Range")
             fakeEngine._playbackState.value =
                 PlaybackState.Error(
                     message = "HTTP 200 on Range",
-                    cause = unsupportedException,
+                    kind = PlaybackErrorKind.UNSUPPORTED_RANGE,
                 )
             advanceUntilIdle()
 
@@ -2390,9 +2373,9 @@ class MusicPlayerAppSessionTest {
 
             assertEquals("Deleted Song", fakeEngine.loadedTrack?.title)
 
-            // Simulate 404 error
-            val http404Exception = java.io.FileNotFoundException("HTTP 404: Remote file not found")
-            fakeEngine._playbackState.value = PlaybackState.Error("HTTP 404 error", http404Exception)
+            // Simulate 404 error via PlaybackErrorKind.FILE_NOT_FOUND
+            fakeEngine._playbackState.value =
+                PlaybackState.Error("HTTP 404 error", kind = PlaybackErrorKind.FILE_NOT_FOUND)
             advanceUntilIdle()
 
             // Verify track 1 was reported unavailable to StorageReachabilityTracker, with ZERO writes to playlistRepo
@@ -2455,19 +2438,100 @@ class MusicPlayerAppSessionTest {
             advanceUntilIdle()
 
             // Track 1 fails with 404
-            fakeEngine._playbackState.value = PlaybackState.Error("404", java.io.FileNotFoundException("File not found 404"))
+            fakeEngine._playbackState.value =
+                PlaybackState.Error("404", kind = PlaybackErrorKind.FILE_NOT_FOUND)
             advanceUntilIdle()
 
             // Auto-skipped to Track 2
             assertEquals(1, playlistSession.sessionState.value.queue.currentIndex)
 
             // Track 2 also fails with 404
-            fakeEngine._playbackState.value = PlaybackState.Error("404", java.io.FileNotFoundException("File not found 404"))
+            fakeEngine._playbackState.value =
+                PlaybackState.Error("404", kind = PlaybackErrorKind.FILE_NOT_FOUND)
             advanceUntilIdle()
 
             // Both tracks failed: session stops gracefully at Error without infinite loop
             assertTrue(playlistSession.sessionState.value.playbackState is PlaybackState.Error)
             assertEquals("404", playlistSession.sessionState.value.errorMessage)
+
+            playlistSession.release()
+        }
+
+    @Test
+    fun streamAuthAndServerUnreachableErrors_dispatchViaPlaybackErrorKind_andUnknownDoesNotAutoSkip() =
+        runTest(testDispatcher) {
+            session.release()
+            val playlist = Playlist(id = 501L, name = "ErrorKind歌单", createdAtMs = 1000L, updatedAtMs = 1000L, trackCount = 3)
+            val entry1 =
+                PlaylistTrackEntry(
+                    id = 61L,
+                    playlistId = 501L,
+                    serverId = testServer.id,
+                    remotePath = "/auth.mp3",
+                    sortOrder = 0,
+                    title = "Auth Fail",
+                    format = AudioFormat.MP3,
+                )
+            val entry2 =
+                PlaylistTrackEntry(
+                    id = 62L,
+                    playlistId = 501L,
+                    serverId = testServer.id,
+                    remotePath = "/unreachable.mp3",
+                    sortOrder = 1,
+                    title = "Server Down",
+                    format = AudioFormat.MP3,
+                )
+            val entry3 =
+                PlaylistTrackEntry(
+                    id = 63L,
+                    playlistId = 501L,
+                    serverId = testServer.id,
+                    remotePath = "/unknown.mp3",
+                    sortOrder = 2,
+                    title = "Unknown",
+                    format = AudioFormat.MP3,
+                )
+            val playlistRepo = TestPlaylistRepository(mutableListOf(entry1, entry2, entry3))
+            val serverRepo = TestServerRepository(listOf(testServer))
+            val fakeTracker = FakeStorageReachabilityTracker()
+
+            val playlistSession =
+                MusicPlayerAppSessionImpl(
+                    playerEngine = fakeEngine,
+                    serverRepository = serverRepo,
+                    playlistRepository = playlistRepo,
+                    storageReachabilityTracker = fakeTracker,
+                    coroutineScope = sessionScope,
+                )
+
+            playlistSession.playPlaylist(playlist, startIndex = 0)
+            advanceUntilIdle()
+
+            // 1. AUTH_INVALID -> reports SERVER_CREDENTIAL_INVALID and skips to track 2
+            fakeEngine._playbackState.value = PlaybackState.Error("Generic error", kind = PlaybackErrorKind.AUTH_INVALID)
+            advanceUntilIdle()
+            assertEquals(1, playlistSession.sessionState.value.queue.currentIndex)
+            assertEquals(
+                testServer.id to InactiveReason.SERVER_CREDENTIAL_INVALID,
+                fakeTracker.reportedUnavailableServers[0],
+            )
+
+            // 2. SERVER_UNREACHABLE -> reports SERVER_UNREACHABLE and skips to track 3
+            fakeEngine._playbackState.value = PlaybackState.Error("Generic error", kind = PlaybackErrorKind.SERVER_UNREACHABLE)
+            advanceUntilIdle()
+            assertEquals(2, playlistSession.sessionState.value.queue.currentIndex)
+            assertEquals(
+                testServer.id to InactiveReason.SERVER_UNREACHABLE,
+                fakeTracker.reportedUnavailableServers[1],
+            )
+
+            // 3. UNKNOWN with "404" in message -> must NOT misclassify or auto-skip
+            fakeEngine._playbackState.value = PlaybackState.Error("404 in text only", kind = PlaybackErrorKind.UNKNOWN)
+            advanceUntilIdle()
+            assertEquals(2, playlistSession.sessionState.value.queue.currentIndex)
+            assertTrue(playlistSession.sessionState.value.playbackState is PlaybackState.Error)
+            assertTrue(playlistSession.sessionState.value.canManualRetry)
 
             playlistSession.release()
         }

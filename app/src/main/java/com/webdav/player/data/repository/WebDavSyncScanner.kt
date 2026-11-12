@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -118,7 +119,42 @@ class WebDavSyncScanner(
             val semaphore = Semaphore(concurrencyLimit)
             val channel = Channel<DirectoryWorkItem>(Channel.UNLIMITED)
             val activeTasks = AtomicInteger(0)
+            val queuedPaths = ConcurrentHashMap.newKeySet<String>()
 
+            suspend fun enqueueDirectory(
+                path: String,
+                lastModified: Long = 0L,
+                etag: String? = null,
+            ) {
+                val norm = RemoteDirectory.normalizePath(path)
+                if (queuedPaths.add(norm)) {
+                    totalDiscoveredDirs.incrementAndGet()
+                    activeTasks.incrementAndGet()
+                    channel.send(
+                        DirectoryWorkItem(
+                            path = norm,
+                            lastModified = lastModified,
+                            etag = etag,
+                        ),
+                    )
+                }
+            }
+
+            suspend fun enqueueUnscannedDescendantsIfRoot(currentPath: String) {
+                if (!force && currentPath == normalizedRoot) {
+                    val unscannedPaths = directorySyncCheckpointDao.getUnscannedPaths(server.id)
+                    for (unscanned in unscannedPaths) {
+                        val normUnscanned = RemoteDirectory.normalizePath(unscanned)
+                        if (normUnscanned.startsWith(normalizedRoot) &&
+                            !isExcludedDirectory(normUnscanned.trimEnd('/').substringAfterLast('/'))
+                        ) {
+                            enqueueDirectory(normUnscanned)
+                        }
+                    }
+                }
+            }
+
+            queuedPaths.add(normalizedRoot)
             activeTasks.incrementAndGet()
             channel.send(DirectoryWorkItem(path = normalizedRoot))
 
@@ -133,7 +169,7 @@ class WebDavSyncScanner(
                                     // 1. Checkpoint skip check prior to network call if timestamp or etag is already known
                                     if (!force) {
                                         val checkpoint = directorySyncCheckpointDao.getCheckpoint(server.id, item.path)
-                                        if (checkpoint != null) {
+                                        if (checkpoint != null && checkpoint.isScanned) {
                                             val etagMatches =
                                                 item.etag != null && checkpoint.etag != null && item.etag == checkpoint.etag
                                             val timestampMatches =
@@ -173,7 +209,7 @@ class WebDavSyncScanner(
                                             if (!force) {
                                                 val checkpoint =
                                                     directorySyncCheckpointDao.getCheckpoint(server.id, item.path)
-                                                if (checkpoint != null) {
+                                                if (checkpoint != null && checkpoint.isScanned) {
                                                     val etagMatches =
                                                         remoteDir.etag != null && checkpoint.etag != null &&
                                                             remoteDir.etag == checkpoint.etag
@@ -184,17 +220,14 @@ class WebDavSyncScanner(
                                                         directoriesSkipped.incrementAndGet()
                                                         for (subDir in remoteDir.subDirectories) {
                                                             if (!isExcludedDirectory(subDir.name)) {
-                                                                totalDiscoveredDirs.incrementAndGet()
-                                                                activeTasks.incrementAndGet()
-                                                                channel.send(
-                                                                    DirectoryWorkItem(
-                                                                        path = RemoteDirectory.normalizePath(subDir.path),
-                                                                        lastModified = subDir.lastModified,
-                                                                        etag = subDir.etag,
-                                                                    ),
+                                                                enqueueDirectory(
+                                                                    path = subDir.path,
+                                                                    lastModified = subDir.lastModified,
+                                                                    etag = subDir.etag,
                                                                 )
                                                             }
                                                         }
+                                                        enqueueUnscannedDescendantsIfRoot(item.path)
                                                         emitProgress(item.path)
                                                         continue
                                                     }
@@ -265,6 +298,7 @@ class WebDavSyncScanner(
                                                     lastModified = effectiveLastMod,
                                                     etag = effectiveEtag,
                                                     lastScannedMs = System.currentTimeMillis(),
+                                                    isScanned = true,
                                                 ),
                                             )
 
@@ -273,16 +307,13 @@ class WebDavSyncScanner(
                                                 if (isExcludedDirectory(subDir.name)) {
                                                     continue
                                                 }
-                                                totalDiscoveredDirs.incrementAndGet()
-                                                activeTasks.incrementAndGet()
-                                                channel.send(
-                                                    DirectoryWorkItem(
-                                                        path = RemoteDirectory.normalizePath(subDir.path),
-                                                        lastModified = subDir.lastModified,
-                                                        etag = subDir.etag,
-                                                    ),
+                                                enqueueDirectory(
+                                                    path = subDir.path,
+                                                    lastModified = subDir.lastModified,
+                                                    etag = subDir.etag,
                                                 )
                                             }
+                                            enqueueUnscannedDescendantsIfRoot(item.path)
 
                                             emitProgress(item.path)
                                         }

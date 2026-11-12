@@ -94,7 +94,7 @@ class LocalStorageIndexScanner(
 
                 if (!force && current.lastModified > 0L) {
                     val checkpoint = checkpointDao.getCheckpoint(LOCAL_STORAGE_ID, current.path)
-                    if (checkpoint != null && checkpoint.lastModified == current.lastModified) {
+                    if (checkpoint != null && checkpoint.isScanned && checkpoint.lastModified == current.lastModified) {
                         continue
                     }
                 }
@@ -183,6 +183,7 @@ class LocalStorageIndexScanner(
                         lastModified = current.lastModified,
                         etag = null,
                         lastScannedMs = System.currentTimeMillis(),
+                        isScanned = true,
                     ),
                 )
             }

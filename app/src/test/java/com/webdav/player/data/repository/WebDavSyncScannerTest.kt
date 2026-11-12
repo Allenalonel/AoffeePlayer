@@ -610,4 +610,75 @@ class WebDavSyncScannerTest {
             assertTrue("Must visit '/Pop/'", fakeClient.visitedPaths.contains("/Pop/"))
             assertFalse("Must never visit '/dav/' as root", fakeClient.visitedPaths.contains("/dav/"))
         }
+
+    @Test
+    fun sync_doesNotSkipDirectoriesWhoseCheckpointHasIsScannedFalse() =
+        runTest {
+            val jayDir =
+                RemoteDirectory(
+                    path = "/Baidu/Jay/",
+                    name = "Jay",
+                    lastModified = 2000L,
+                    etag = "etag-jay",
+                    files =
+                        listOf(
+                            RemoteFile(
+                                name = "SunnyDay.flac",
+                                path = "/Baidu/Jay/SunnyDay.flac",
+                                size = 30_000_000L,
+                                fileType = RemoteFileType.Audio(AudioFormat.FLAC),
+                            ),
+                        ),
+                )
+            val baiduDir =
+                RemoteDirectory(
+                    path = "/Baidu/",
+                    name = "Baidu",
+                    lastModified = 1000L,
+                    etag = "etag-baidu",
+                    subDirectories = listOf(jayDir),
+                )
+            val rootDir =
+                RemoteDirectory(
+                    path = "/",
+                    name = "/",
+                    lastModified = 500L,
+                    etag = "etag-root",
+                    subDirectories = listOf(baiduDir),
+                )
+            fakeClient.directoryTree["/"] = rootDir
+            fakeClient.directoryTree["/Baidu/"] = baiduDir
+            fakeClient.directoryTree["/Baidu/Jay/"] = jayDir
+
+            // Simulate pre-existing discovered-only checkpoints (isScanned = false) with matching ETag/timestamp
+            checkpointDao.insertAll(
+                listOf(
+                    com.webdav.player.data.local.DirectorySyncCheckpointEntity(
+                        serverId = testServer.id,
+                        path = "/",
+                        lastModified = 500L,
+                        etag = "etag-root",
+                        lastScannedMs = 100L,
+                        isScanned = false,
+                    ),
+                    com.webdav.player.data.local.DirectorySyncCheckpointEntity(
+                        serverId = testServer.id,
+                        path = "/Baidu/",
+                        lastModified = 1000L,
+                        etag = "etag-baidu",
+                        lastScannedMs = 100L,
+                        isScanned = false,
+                    ),
+                ),
+            )
+
+            val result = scanner.sync(testServer, force = false) as LibrarySyncResult.Success
+            assertEquals(3, result.directoriesScanned)
+            assertEquals(0, result.directoriesSkipped)
+            assertEquals(1, result.totalTracksIndexed)
+            assertTrue(fakeClient.visitedPaths.contains("/Baidu/"))
+            assertTrue(fakeClient.visitedPaths.contains("/Baidu/Jay/"))
+            assertTrue(checkpointDao.getCheckpoint(testServer.id, "/Baidu/")?.isScanned == true)
+            assertTrue(checkpointDao.getCheckpoint(testServer.id, "/Baidu/Jay/")?.isScanned == true)
+        }
 }

@@ -66,7 +66,6 @@ class MediaLibraryRepositoryImpl internal constructor(
     searchHistoryStore: InternalSearchHistoryStore? = null,
     browsingCursorStore: InternalBrowsingCursorStore? = null,
 ) : MediaLibraryRepository {
-
     companion object {
         private const val MAX_MEMORY_CACHE_SIZE = 100
     }
@@ -83,12 +82,22 @@ class MediaLibraryRepositoryImpl internal constructor(
     private val webDavSyncScanner: WebDavSyncScanner? =
         webDavSyncScanner ?: if (mediaTrackIndexDao != null && directorySyncCheckpointDao != null) {
             WebDavSyncScanner(webDavClient, mediaTrackIndexDao, directorySyncCheckpointDao, ioDispatcher)
-        } else null
+        } else {
+            null
+        }
 
     private val localStorageIndexScanner: LocalStorageIndexScanner? =
         localStorageIndexScanner ?: if (context != null && mediaTrackIndexDao != null && directorySyncCheckpointDao != null) {
-            LocalStorageIndexScanner(context, mediaTrackIndexDao, directorySyncCheckpointDao, localStorageFolderDao, ioDispatcher = ioDispatcher)
-        } else null
+            LocalStorageIndexScanner(
+                context,
+                mediaTrackIndexDao,
+                directorySyncCheckpointDao,
+                localStorageFolderDao,
+                ioDispatcher = ioDispatcher,
+            )
+        } else {
+            null
+        }
 
     // Internalized search collaborators
     private val searchCoordinator: MediaLibrarySearchCoordinator =
@@ -104,7 +113,10 @@ class MediaLibraryRepositoryImpl internal constructor(
     private val _syncState = MutableStateFlow<LibrarySyncState>(LibrarySyncState.Idle)
     private val _syncStatesByServer = MutableStateFlow<Map<Long, LibrarySyncState>>(emptyMap())
 
-    private fun updateSyncState(serverId: Long, state: LibrarySyncState) {
+    private fun updateSyncState(
+        serverId: Long,
+        state: LibrarySyncState,
+    ) {
         _syncState.value = state
         _syncStatesByServer.update { it + (serverId to state) }
     }
@@ -116,83 +128,86 @@ class MediaLibraryRepositoryImpl internal constructor(
     override suspend fun getCachedDirectory(
         server: WebDavServer,
         path: String,
-    ): RemoteDirectory? = withContext(ioDispatcher) {
-        val normalizedPath = RemoteDirectory.normalizePath(path)
-        val cacheKey = "${server.id}:$normalizedPath"
+    ): RemoteDirectory? =
+        withContext(ioDispatcher) {
+            val normalizedPath = RemoteDirectory.normalizePath(path)
+            val cacheKey = "${server.id}:$normalizedPath"
 
-        // 1. Check authoritative L1 memory cache
-        val inMemory = synchronized(cacheLock) { memoryCache[cacheKey] }
-        if (inMemory != null) return@withContext inMemory
+            // 1. Check authoritative L1 memory cache
+            val inMemory = synchronized(cacheLock) { memoryCache[cacheKey] }
+            if (inMemory != null) return@withContext inMemory
 
-        // 2. Check L2 Room persistent cache
-        val cachedEntity = directoryCacheDao?.getCache(server.id, normalizedPath)
-        if (cachedEntity != null) {
-            val deserialized = RemoteDirectoryJsonSerializer.deserialize(cachedEntity.dataJson)
-            if (deserialized != null) {
-                synchronized(cacheLock) { memoryCache[cacheKey] = deserialized }
-                return@withContext deserialized
+            // 2. Check L2 Room persistent cache
+            val cachedEntity = directoryCacheDao?.getCache(server.id, normalizedPath)
+            if (cachedEntity != null) {
+                val deserialized = RemoteDirectoryJsonSerializer.deserialize(cachedEntity.dataJson)
+                if (deserialized != null) {
+                    synchronized(cacheLock) { memoryCache[cacheKey] = deserialized }
+                    return@withContext deserialized
+                }
             }
-        }
 
-        null
-    }
+            null
+        }
 
     override fun observeDirectoryContent(
         server: WebDavServer,
         path: String,
         forceRefresh: Boolean,
-    ): Flow<DirectoryContent> = flow {
-        val normalizedPath = RemoteDirectory.normalizePath(path)
-        val cachedDir = if (!forceRefresh) getCachedDirectory(server, normalizedPath) else null
+    ): Flow<DirectoryContent> =
+        flow {
+            val normalizedPath = RemoteDirectory.normalizePath(path)
+            val cachedDir = if (!forceRefresh) getCachedDirectory(server, normalizedPath) else null
 
-        // 1. Cache hit emission (0ms)
-        if (cachedDir != null) {
-            val initialMeta = getCachedMetadataMap(server.id, cachedDir)
-            emit(DirectoryContent(directory = cachedDir, metadataMap = initialMeta, isEnriching = true))
-        }
-
-        val isLocal = server.isLocal || server.id == LOCAL_STORAGE_ID || normalizedPath.startsWith("/local/")
-        if (isLocal) {
-            observeLocalDirectoryContent(server, normalizedPath, cachedDir, forceRefresh)
-            return@flow
-        }
-
-        // 2. WebDAV Remote Query
-        val remoteResult = try {
-            webDavClient.listDirectory(server, normalizedPath)
-        } catch (ce: CancellationException) {
-            throw ce
-        } catch (e: Exception) {
-            ListDirectoryResult.Failure(e.message ?: "Unknown error")
-        }
-
-        when (remoteResult) {
-            is ListDirectoryResult.Success -> {
-                val remoteDir = remoteResult.directory
-                val remoteDiffersFromCache = (cachedDir == null || remoteDir != cachedDir)
-
-                if (remoteDiffersFromCache) {
-                    persistCache(server.id, normalizedPath, remoteDir)
-                    val currentMeta = getCachedMetadataMap(server.id, remoteDir)
-                    emit(DirectoryContent(directory = remoteDir, metadataMap = currentMeta, isEnriching = true))
-                }
-
-                // 3. Background enrichment
-                val enriched = enrichDirectoryContent(server, remoteDir, forceRefresh)
-                emit(enriched)
+            // 1. Cache hit emission (0ms)
+            if (cachedDir != null) {
+                val initialMeta = getCachedMetadataMap(server.id, cachedDir)
+                emit(DirectoryContent(directory = cachedDir, metadataMap = initialMeta, isEnriching = true))
             }
 
-            is ListDirectoryResult.Failure -> {
-                if (cachedDir != null && !forceRefresh) {
-                    // Suppress transient network failure and finish enrichment lifecycle cleanly
-                    val finalMeta = getCachedMetadataMap(server.id, cachedDir)
-                    emit(DirectoryContent(directory = cachedDir, metadataMap = finalMeta, isEnriching = false))
-                } else {
-                    throw IllegalStateException(remoteResult.message)
+            val isLocal = server.isLocal || server.id == LOCAL_STORAGE_ID || normalizedPath.startsWith("/local/")
+            if (isLocal) {
+                observeLocalDirectoryContent(server, normalizedPath, cachedDir, forceRefresh)
+                return@flow
+            }
+
+            // 2. WebDAV Remote Query
+            val remoteResult =
+                try {
+                    webDavClient.listDirectory(server, normalizedPath)
+                } catch (ce: CancellationException) {
+                    throw ce
+                } catch (e: Exception) {
+                    ListDirectoryResult.Failure(e.message ?: "Unknown error")
+                }
+
+            when (remoteResult) {
+                is ListDirectoryResult.Success -> {
+                    val remoteDir = remoteResult.directory
+                    val remoteDiffersFromCache = (cachedDir == null || remoteDir != cachedDir)
+
+                    if (remoteDiffersFromCache) {
+                        persistCache(server.id, normalizedPath, remoteDir)
+                        val currentMeta = getCachedMetadataMap(server.id, remoteDir)
+                        emit(DirectoryContent(directory = remoteDir, metadataMap = currentMeta, isEnriching = true))
+                    }
+
+                    // 3. Background enrichment
+                    val enriched = enrichDirectoryContent(server, remoteDir, forceRefresh)
+                    emit(enriched)
+                }
+
+                is ListDirectoryResult.Failure -> {
+                    if (cachedDir != null && !forceRefresh) {
+                        // Suppress transient network failure and finish enrichment lifecycle cleanly
+                        val finalMeta = getCachedMetadataMap(server.id, cachedDir)
+                        emit(DirectoryContent(directory = cachedDir, metadataMap = finalMeta, isEnriching = false))
+                    } else {
+                        throw IllegalStateException(remoteResult.message)
+                    }
                 }
             }
-        }
-    }.flowOn(ioDispatcher)
+        }.flowOn(ioDispatcher)
 
     private suspend fun FlowCollector<DirectoryContent>.observeLocalDirectoryContent(
         server: WebDavServer,
@@ -200,16 +215,18 @@ class MediaLibraryRepositoryImpl internal constructor(
         cachedDir: RemoteDirectory?,
         forceRefresh: Boolean,
     ) {
-        val resolver = localStorageDirectoryResolver
-            ?: throw IllegalStateException("LocalStorageDirectoryResolver is not configured")
+        val resolver =
+            localStorageDirectoryResolver
+                ?: throw IllegalStateException("LocalStorageDirectoryResolver is not configured")
 
-        val localResult = try {
-            resolver.resolve(normalizedPath)
-        } catch (ce: CancellationException) {
-            throw ce
-        } catch (_: Exception) {
-            null
-        }
+        val localResult =
+            try {
+                resolver.resolve(normalizedPath)
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (_: Exception) {
+                null
+            }
 
         if (localResult != null) {
             val remoteDir = localResult.directory
@@ -227,12 +244,13 @@ class MediaLibraryRepositoryImpl internal constructor(
                 )
             }
 
-            val enriched = enrichDirectoryContent(
-                server = server,
-                directory = remoteDir,
-                forceRefresh = forceRefresh,
-                resolvedMetadataMap = localResult.metadataMap,
-            )
+            val enriched =
+                enrichDirectoryContent(
+                    server = server,
+                    directory = remoteDir,
+                    forceRefresh = forceRefresh,
+                    resolvedMetadataMap = localResult.metadataMap,
+                )
             emit(enriched)
         } else {
             if (cachedDir != null && !forceRefresh) {
@@ -251,9 +269,10 @@ class MediaLibraryRepositoryImpl internal constructor(
         val audioFiles = directory.files.filter { it.isAudio }
         val repo = trackMetadataRepository ?: return emptyMap()
         if (audioFiles.isEmpty()) return emptyMap()
-        return audioFiles.mapNotNull { file ->
-            repo.getCachedMetadata(serverId, file.path)?.let { file.path to it }
-        }.toMap()
+        return audioFiles
+            .mapNotNull { file ->
+                repo.getCachedMetadata(serverId, file.path)?.let { file.path to it }
+            }.toMap()
     }
 
     private suspend fun enrichDirectoryContent(
@@ -274,25 +293,33 @@ class MediaLibraryRepositoryImpl internal constructor(
         }
 
         val cachedMetadata = getCachedMetadataMap(server.id, directory)
-        val metadataMap = when {
-            resolvedMetadataMap == null -> cachedMetadata
-            cachedMetadata.isEmpty() -> resolvedMetadataMap
-            else -> {
-                val merged = resolvedMetadataMap.toMutableMap()
-                for ((path, cached) in cachedMetadata) {
-                    val fallback = resolvedMetadataMap[path]
-                    merged[path] = if (fallback != null) {
-                        cached.copy(
-                            coverThumbnailPath = cached.coverThumbnailPath ?: fallback.coverThumbnailPath,
-                            lyrics = cached.lyrics ?: fallback.lyrics,
-                        )
-                    } else {
-                        cached
-                    }
+        val metadataMap =
+            when {
+                resolvedMetadataMap == null -> {
+                    cachedMetadata
                 }
-                merged
+
+                cachedMetadata.isEmpty() -> {
+                    resolvedMetadataMap
+                }
+
+                else -> {
+                    val merged = resolvedMetadataMap.toMutableMap()
+                    for ((path, cached) in cachedMetadata) {
+                        val fallback = resolvedMetadataMap[path]
+                        merged[path] =
+                            if (fallback != null) {
+                                cached.copy(
+                                    coverThumbnailPath = cached.coverThumbnailPath ?: fallback.coverThumbnailPath,
+                                    lyrics = cached.lyrics ?: fallback.lyrics,
+                                )
+                            } else {
+                                cached
+                            }
+                    }
+                    merged
+                }
             }
-        }
 
         return DirectoryContent(directory = directory, metadataMap = metadataMap, isEnriching = false)
     }
@@ -331,29 +358,32 @@ class MediaLibraryRepositoryImpl internal constructor(
         val indexDao = mediaTrackIndexDao ?: return
         val isLocal = serverId == LOCAL_STORAGE_ID || normalizedPath.startsWith("/local/")
         val effectiveServerId = if (isLocal) LOCAL_STORAGE_ID else serverId
-        val discoveredTracks = directory.files.mapNotNull { file ->
-            val audioFormat = (file.fileType as? RemoteFileType.Audio)?.format
-                ?: AudioFormat.fromFileName(file.name)
-            if (file.isAudio || audioFormat != null) {
-                val format = audioFormat ?: AudioFormat.MP3
-                val parsed = MediaFilenameParser.parse(file.name)
-                val lastMod = file.lastModified?.toLongOrNull()
-                    ?: WebDavXmlParser.parseHttpDate(file.lastModified)
-                MediaTrackIndexEntity(
-                    serverId = effectiveServerId,
-                    remotePath = file.path,
-                    fileName = file.name,
-                    fileSize = file.size,
-                    lastModified = lastMod,
-                    format = format.extension.uppercase(),
-                    parentPath = normalizedPath,
-                    parsedTitle = parsed.title,
-                    parsedArtist = parsed.artist,
-                )
-            } else {
-                null
+        val discoveredTracks =
+            directory.files.mapNotNull { file ->
+                val audioFormat =
+                    (file.fileType as? RemoteFileType.Audio)?.format
+                        ?: AudioFormat.fromFileName(file.name)
+                if (file.isAudio || audioFormat != null) {
+                    val format = audioFormat ?: AudioFormat.MP3
+                    val parsed = MediaFilenameParser.parse(file.name)
+                    val lastMod =
+                        file.lastModified?.toLongOrNull()
+                            ?: WebDavXmlParser.parseHttpDate(file.lastModified)
+                    MediaTrackIndexEntity(
+                        serverId = effectiveServerId,
+                        remotePath = file.path,
+                        fileName = file.name,
+                        fileSize = file.size,
+                        lastModified = lastMod,
+                        format = format.extension.uppercase(),
+                        parentPath = normalizedPath,
+                        parsedTitle = parsed.title,
+                        parsedArtist = parsed.artist,
+                    )
+                } else {
+                    null
+                }
             }
-        }
         try {
             if (discoveredTracks.isNotEmpty()) {
                 indexDao.upsertTracks(discoveredTracks)
@@ -381,24 +411,26 @@ class MediaLibraryRepositoryImpl internal constructor(
         val effectiveServerId = if (isLocal) LOCAL_STORAGE_ID else serverId
         val now = System.currentTimeMillis()
         try {
-            cpDao.upsertCheckpoint(
+            cpDao.insertIfAbsent(
                 DirectorySyncCheckpointEntity(
                     serverId = effectiveServerId,
                     path = normalizedPath,
                     lastModified = directory.lastModified,
                     etag = directory.etag,
                     lastScannedMs = now,
+                    isScanned = false,
                 ),
             )
             for (sub in directory.subDirectories) {
                 val subPath = RemoteDirectory.normalizePath(sub.path)
-                cpDao.upsertCheckpoint(
+                cpDao.insertIfAbsent(
                     DirectorySyncCheckpointEntity(
                         serverId = effectiveServerId,
                         path = subPath,
-                        lastModified = sub.lastModified,
-                        etag = sub.etag,
+                        lastModified = 0L,
+                        etag = null,
                         lastScannedMs = now,
+                        isScanned = false,
                     ),
                 )
             }
@@ -445,76 +477,82 @@ class MediaLibraryRepositoryImpl internal constructor(
     override suspend fun syncServer(
         server: WebDavServer,
         force: Boolean,
-    ): LibrarySyncResult = withContext(ioDispatcher) {
-        if (server.isLocal || server.id == LOCAL_STORAGE_ID) {
-            updateSyncState(
-                LOCAL_STORAGE_ID,
-                LibrarySyncState.Scanning(progress = 0f, currentPath = "local", tracksFound = 0),
-            )
-            try {
-                val count = localStorageIndexScanner?.indexAllMountedFolders(
-                    force = force,
-                    onProgress = { updateSyncState(LOCAL_STORAGE_ID, it) },
-                ) ?: 0
-                val total = mediaTrackIndexDao?.countByServerId(LOCAL_STORAGE_ID) ?: count
-                val state = LibrarySyncState.Completed(totalTracks = total)
-                updateSyncState(LOCAL_STORAGE_ID, state)
-                LibrarySyncResult.Success(totalTracksIndexed = count)
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (e: Exception) {
-                val errorMsg = e.message ?: "Local storage scan failed"
-                updateSyncState(LOCAL_STORAGE_ID, LibrarySyncState.Failed(errorMsg))
-                LibrarySyncResult.Error(errorMsg, e)
-            }
-        } else {
-            if (webDavSyncScanner != null) {
+    ): LibrarySyncResult =
+        withContext(ioDispatcher) {
+            if (server.isLocal || server.id == LOCAL_STORAGE_ID) {
                 updateSyncState(
-                    server.id,
-                    LibrarySyncState.Scanning(progress = 0f, currentPath = "/", tracksFound = 0),
+                    LOCAL_STORAGE_ID,
+                    LibrarySyncState.Scanning(progress = 0f, currentPath = "local", tracksFound = 0),
                 )
                 try {
-                    val result = webDavSyncScanner.sync(
-                        server = server,
-                        force = force,
-                        onProgress = { updateSyncState(server.id, it) },
-                    )
-                    when (result) {
-                        is LibrarySyncResult.Success -> {
-                            val total = mediaTrackIndexDao?.countByServerId(server.id)
-                                ?: result.totalTracksIndexed
-                            updateSyncState(server.id, LibrarySyncState.Completed(totalTracks = total))
-                        }
-                        is LibrarySyncResult.Error -> {
-                            updateSyncState(server.id, LibrarySyncState.Failed(result.message))
-                        }
-                    }
-                    result
+                    val count =
+                        localStorageIndexScanner?.indexAllMountedFolders(
+                            force = force,
+                            onProgress = { updateSyncState(LOCAL_STORAGE_ID, it) },
+                        ) ?: 0
+                    val total = mediaTrackIndexDao?.countByServerId(LOCAL_STORAGE_ID) ?: count
+                    val state = LibrarySyncState.Completed(totalTracks = total)
+                    updateSyncState(LOCAL_STORAGE_ID, state)
+                    LibrarySyncResult.Success(totalTracksIndexed = count)
                 } catch (ce: CancellationException) {
                     throw ce
                 } catch (e: Exception) {
-                    val errorMsg = e.message ?: "WebDAV sync failed"
-                    updateSyncState(server.id, LibrarySyncState.Failed(errorMsg))
+                    val errorMsg = e.message ?: "Local storage scan failed"
+                    updateSyncState(LOCAL_STORAGE_ID, LibrarySyncState.Failed(errorMsg))
                     LibrarySyncResult.Error(errorMsg, e)
                 }
             } else {
-                LibrarySyncResult.Success(totalTracksIndexed = 0)
+                if (webDavSyncScanner != null) {
+                    updateSyncState(
+                        server.id,
+                        LibrarySyncState.Scanning(progress = 0f, currentPath = "/", tracksFound = 0),
+                    )
+                    try {
+                        val result =
+                            webDavSyncScanner.sync(
+                                server = server,
+                                force = force,
+                                onProgress = { updateSyncState(server.id, it) },
+                            )
+                        when (result) {
+                            is LibrarySyncResult.Success -> {
+                                val total =
+                                    mediaTrackIndexDao?.countByServerId(server.id)
+                                        ?: result.totalTracksIndexed
+                                updateSyncState(server.id, LibrarySyncState.Completed(totalTracks = total))
+                            }
+
+                            is LibrarySyncResult.Error -> {
+                                updateSyncState(server.id, LibrarySyncState.Failed(result.message))
+                            }
+                        }
+                        result
+                    } catch (ce: CancellationException) {
+                        throw ce
+                    } catch (e: Exception) {
+                        val errorMsg = e.message ?: "WebDAV sync failed"
+                        updateSyncState(server.id, LibrarySyncState.Failed(errorMsg))
+                        LibrarySyncResult.Error(errorMsg, e)
+                    }
+                } else {
+                    LibrarySyncResult.Success(totalTracksIndexed = 0)
+                }
             }
         }
-    }
 
-    override suspend fun rebuildIndex(server: WebDavServer): LibrarySyncResult = withContext(ioDispatcher) {
-        val targetServerId = if (server.isLocal || server.id == LOCAL_STORAGE_ID) LOCAL_STORAGE_ID else server.id
-        try {
-            directorySyncCheckpointDao?.deleteByServerId(targetServerId)
-            mediaTrackIndexDao?.deleteByServerId(targetServerId)
-        } catch (ce: CancellationException) {
-            throw ce
-        } catch (_: Exception) {
-            // Non-fatal
+    override suspend fun rebuildIndex(server: WebDavServer): LibrarySyncResult =
+        withContext(ioDispatcher) {
+            val targetServerId = if (server.isLocal || server.id == LOCAL_STORAGE_ID) LOCAL_STORAGE_ID else server.id
+            try {
+                directorySyncCheckpointDao?.deleteByServerId(targetServerId)
+                mediaTrackIndexDao?.deleteByServerId(targetServerId)
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (_: Exception) {
+                // Non-fatal
+            }
+            syncServer(server, force = true)
         }
-        syncServer(server, force = true)
-    }
 
     // =========================================================================
     // Search History Management (Delegated to InternalSearchHistoryStore)
@@ -534,7 +572,10 @@ class MediaLibraryRepositoryImpl internal constructor(
 
     override fun getLastBrowsingPath(serverId: Long): String = browsingCursorStore.getLastBrowsingPath(serverId)
 
-    override fun setLastBrowsingPath(serverId: Long, path: String) {
+    override fun setLastBrowsingPath(
+        serverId: Long,
+        path: String,
+    ) {
         browsingCursorStore.setLastBrowsingPath(serverId, path)
     }
 
@@ -569,22 +610,24 @@ class MediaLibraryRepositoryImpl internal constructor(
 
     override suspend fun clearLocalFolderData(uriString: String) {
         withContext(ioDispatcher) {
-            val localRoot = try {
-                LocalStorageIndexScanner.buildLocalRootPath(uriString)
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (_: Exception) {
-                ""
-            }
-            synchronized(cacheLock) {
-                val keysToRemove = memoryCache.keys.filter { key ->
-                    key.startsWith("$LOCAL_STORAGE_ID:") && (
-                        (localRoot.isNotEmpty() && key.contains(localRoot)) ||
-                            key.contains(uriString) ||
-                            key == "$LOCAL_STORAGE_ID:/" ||
-                            key == "$LOCAL_STORAGE_ID:/local/"
-                    )
+            val localRoot =
+                try {
+                    LocalStorageIndexScanner.buildLocalRootPath(uriString)
+                } catch (ce: CancellationException) {
+                    throw ce
+                } catch (_: Exception) {
+                    ""
                 }
+            synchronized(cacheLock) {
+                val keysToRemove =
+                    memoryCache.keys.filter { key ->
+                        key.startsWith("$LOCAL_STORAGE_ID:") && (
+                            (localRoot.isNotEmpty() && key.contains(localRoot)) ||
+                                key.contains(uriString) ||
+                                key == "$LOCAL_STORAGE_ID:/" ||
+                                key == "$LOCAL_STORAGE_ID:/local/"
+                        )
+                    }
                 keysToRemove.forEach { memoryCache.remove(it) }
             }
             if (localRoot.isNotEmpty()) {

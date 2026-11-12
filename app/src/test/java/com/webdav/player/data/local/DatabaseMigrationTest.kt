@@ -434,8 +434,12 @@ class DatabaseMigrationTest {
                                     )
                                     """.trimIndent(),
                                 )
-                                db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId` ON `playlist_tracks` (`playlistId`)")
-                                db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId_sortOrder` ON `playlist_tracks` (`playlistId`, `sortOrder`)")
+                                db.execSQL(
+                                    "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId` ON `playlist_tracks` (`playlistId`)",
+                                )
+                                db.execSQL(
+                                    "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId_sortOrder` ON `playlist_tracks` (`playlistId`, `sortOrder`)",
+                                )
 
                                 db.execSQL(
                                     """
@@ -454,11 +458,21 @@ class DatabaseMigrationTest {
                                     )
                                     """.trimIndent(),
                                 )
-                                db.execSQL("CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_fileName` ON `media_track_index` (`serverId`, `fileName`)")
-                                db.execSQL("CREATE INDEX IF NOT EXISTS `index_media_track_index_fileName` ON `media_track_index` (`fileName`)")
-                                db.execSQL("CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_remotePath` ON `media_track_index` (`serverId`, `remotePath`)")
-                                db.execSQL("CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedTitle` ON `media_track_index` (`parsedTitle`)")
-                                db.execSQL("CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedArtist` ON `media_track_index` (`parsedArtist`)")
+                                db.execSQL(
+                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_fileName` ON `media_track_index` (`serverId`, `fileName`)",
+                                )
+                                db.execSQL(
+                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_fileName` ON `media_track_index` (`fileName`)",
+                                )
+                                db.execSQL(
+                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_remotePath` ON `media_track_index` (`serverId`, `remotePath`)",
+                                )
+                                db.execSQL(
+                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedTitle` ON `media_track_index` (`parsedTitle`)",
+                                )
+                                db.execSQL(
+                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedArtist` ON `media_track_index` (`parsedArtist`)",
+                                )
                             }
 
                             override fun onUpgrade(
@@ -675,6 +689,119 @@ class DatabaseMigrationTest {
         assertTrue(cursorWriteTest.moveToFirst())
         assertEquals("Song 3", cursorWriteTest.getString(0))
         cursorWriteTest.close()
+
+        db.close()
+    }
+
+    @Test
+    fun migration_8_to_9_addsIsScannedAndPurgesPreV9CheckpointsPreservingMediaIndex() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val dbFile = context.getDatabasePath("test_migration_v9.db")
+        dbFile.delete()
+
+        val openHelper =
+            FrameworkSQLiteOpenHelperFactory().create(
+                androidx.sqlite.db.SupportSQLiteOpenHelper.Configuration
+                    .builder(context)
+                    .name("test_migration_v9.db")
+                    .callback(
+                        object : androidx.sqlite.db.SupportSQLiteOpenHelper.Callback(8) {
+                            override fun onCreate(db: SupportSQLiteDatabase) {
+                                db.execSQL(
+                                    """
+                                    CREATE TABLE IF NOT EXISTS `media_track_index` (
+                                        `serverId` INTEGER NOT NULL,
+                                        `remotePath` TEXT NOT NULL,
+                                        `fileName` TEXT NOT NULL,
+                                        `fileSize` INTEGER NOT NULL,
+                                        `lastModified` INTEGER NOT NULL,
+                                        `format` TEXT NOT NULL,
+                                        `parentPath` TEXT NOT NULL,
+                                        `parsedTitle` TEXT NOT NULL,
+                                        `parsedArtist` TEXT,
+                                        PRIMARY KEY(`serverId`, `remotePath`)
+                                    )
+                                    """.trimIndent(),
+                                )
+                                db.execSQL(
+                                    """
+                                    CREATE TABLE IF NOT EXISTS `directory_sync_checkpoint` (
+                                        `serverId` INTEGER NOT NULL,
+                                        `path` TEXT NOT NULL,
+                                        `lastModified` INTEGER NOT NULL,
+                                        `etag` TEXT,
+                                        `lastScannedMs` INTEGER NOT NULL,
+                                        PRIMARY KEY(`serverId`, `path`)
+                                    )
+                                    """.trimIndent(),
+                                )
+                                db.execSQL(
+                                    "CREATE INDEX IF NOT EXISTS `index_directory_sync_checkpoint_serverId` ON `directory_sync_checkpoint` (`serverId`)",
+                                )
+                                db.execSQL(
+                                    "CREATE INDEX IF NOT EXISTS `index_directory_sync_checkpoint_serverId_path` ON `directory_sync_checkpoint` (`serverId`, `path`)",
+                                )
+                            }
+
+                            override fun onUpgrade(
+                                db: SupportSQLiteDatabase,
+                                oldVersion: Int,
+                                newVersion: Int,
+                            ) {}
+                        },
+                    ).build(),
+            )
+
+        val db = openHelper.writableDatabase
+
+        // Pre-v9 indexed track (must remain untouched)
+        db.execSQL(
+            """
+            INSERT INTO media_track_index (serverId, remotePath, fileName, fileSize, lastModified, format, parentPath, parsedTitle, parsedArtist)
+            VALUES (0, 'content://media/local/1', 'local.flac', 1000, 1000, 'FLAC', '/local/Music/', 'Local Song', 'Local Artist')
+            """.trimIndent(),
+        )
+        // Pre-v9 poisoned checkpoint written for unvisited subdirectory
+        db.execSQL(
+            """
+            INSERT INTO directory_sync_checkpoint (serverId, path, lastModified, etag, lastScannedMs)
+            VALUES (1, '/百度/', 1794304800000, 'etag-baidu', 1794304800000)
+            """.trimIndent(),
+        )
+
+        AppDatabase.MIGRATION_8_9.migrate(db)
+
+        // Verify media_track_index preserved
+        val cursorTracks = db.query("SELECT parsedTitle FROM media_track_index WHERE serverId = 0")
+        assertTrue(cursorTracks.moveToFirst())
+        assertEquals("Local Song", cursorTracks.getString(0))
+        cursorTracks.close()
+
+        // Verify pre-v9 checkpoints purged so unvisited subtrees rescan on next launch
+        val cursorCp = db.query("SELECT COUNT(*) FROM directory_sync_checkpoint")
+        assertTrue(cursorCp.moveToFirst())
+        assertEquals(0, cursorCp.getInt(0))
+        cursorCp.close()
+
+        // Verify isScanned column exists with default 1 and accepts 0/1 writes
+        val cursorCols = db.query("PRAGMA table_info('directory_sync_checkpoint')")
+        val cols = mutableListOf<String>()
+        while (cursorCols.moveToNext()) {
+            cols.add(cursorCols.getString(1))
+        }
+        cursorCols.close()
+        assertTrue("isScanned column must exist", cols.contains("isScanned"))
+
+        db.execSQL(
+            """
+            INSERT INTO directory_sync_checkpoint (serverId, path, lastModified, etag, lastScannedMs, isScanned)
+            VALUES (1, '/百度/', 0, null, 2000, 0)
+            """.trimIndent(),
+        )
+        val cursorNew = db.query("SELECT isScanned FROM directory_sync_checkpoint WHERE serverId = 1 AND path = '/百度/'")
+        assertTrue(cursorNew.moveToFirst())
+        assertEquals(0, cursorNew.getInt(0))
+        cursorNew.close()
 
         db.close()
     }

@@ -130,6 +130,34 @@ class DirectoryBrowserSyncTest {
         }
 
     @Test
+    fun onSearchActiveChanged_retriesSyncWhenFailedOrCompletedEmpty_andSkipsWhenPopulated() =
+        runTest {
+            advanceUntilIdle()
+            assertEquals(1, fakeMediaLibraryRepository.syncServerCalls.size)
+
+            // Completed with 50 tracks -> opening search does not trigger redundant sync
+            fakeMediaLibraryRepository.syncStateFlow.value = LibrarySyncState.Completed(totalTracks = 50)
+            advanceUntilIdle()
+            viewModel.onSearchActiveChanged(true)
+            advanceUntilIdle()
+            assertEquals(1, fakeMediaLibraryRepository.syncServerCalls.size)
+
+            // Failed state -> opening search triggers incremental retry
+            fakeMediaLibraryRepository.syncStateFlow.value = LibrarySyncState.Failed("timeout")
+            advanceUntilIdle()
+            viewModel.onSearchActiveChanged(true)
+            advanceUntilIdle()
+            assertEquals(2, fakeMediaLibraryRepository.syncServerCalls.size)
+
+            // Completed with 0 tracks -> opening search triggers incremental retry
+            fakeMediaLibraryRepository.syncStateFlow.value = LibrarySyncState.Completed(totalTracks = 0)
+            advanceUntilIdle()
+            viewModel.onSearchActiveChanged(true)
+            advanceUntilIdle()
+            assertEquals(3, fakeMediaLibraryRepository.syncServerCalls.size)
+        }
+
+    @Test
     fun onSearchResultTrackClicked_insertsTrackNextAndAdvancesPlayback() =
         runTest {
             advanceUntilIdle()

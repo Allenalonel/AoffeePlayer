@@ -17,11 +17,17 @@ interface DirectorySyncCheckpointDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(checkpoints: List<DirectorySyncCheckpointEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfAbsent(checkpoint: DirectorySyncCheckpointEntity)
+
     @Query("SELECT * FROM directory_sync_checkpoint WHERE serverId = :serverId AND path = :path LIMIT 1")
     suspend fun getCheckpoint(
         serverId: Long,
         path: String,
     ): DirectorySyncCheckpointEntity?
+
+    @Query("SELECT path FROM directory_sync_checkpoint WHERE serverId = :serverId AND isScanned = 0")
+    suspend fun getUnscannedPaths(serverId: Long): List<String>
 
     @Query("SELECT * FROM directory_sync_checkpoint WHERE serverId = :serverId")
     suspend fun getCheckpointsByServerId(serverId: Long): List<DirectorySyncCheckpointEntity>

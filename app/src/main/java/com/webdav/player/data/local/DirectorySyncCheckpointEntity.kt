@@ -1,5 +1,6 @@
 package com.webdav.player.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 
@@ -17,4 +18,6 @@ data class DirectorySyncCheckpointEntity(
     val lastModified: Long,
     val etag: String?,
     val lastScannedMs: Long,
+    @ColumnInfo(defaultValue = "1")
+    val isScanned: Boolean = true,
 )

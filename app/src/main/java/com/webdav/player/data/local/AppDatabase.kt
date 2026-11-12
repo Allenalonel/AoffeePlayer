@@ -18,7 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MediaTrackIndexEntity::class,
         DirectorySyncCheckpointEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -268,6 +268,17 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        val MIGRATION_8_9 =
+            object : Migration(8, 9) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "ALTER TABLE `directory_sync_checkpoint` ADD COLUMN `isScanned` INTEGER NOT NULL DEFAULT 1",
+                    )
+                    // Purge pre-v9 checkpoints so previously skipped unvisited subdirectories are rescanned cleanly
+                    db.execSQL("DELETE FROM `directory_sync_checkpoint`")
+                }
+            }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance =
@@ -276,7 +287,7 @@ abstract class AppDatabase : RoomDatabase() {
                             context.applicationContext,
                             AppDatabase::class.java,
                             "webdav_player.db",
-                        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                         .fallbackToDestructiveMigration()
                         .build()
                 INSTANCE = instance

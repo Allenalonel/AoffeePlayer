@@ -9,6 +9,7 @@ import com.webdav.player.data.local.DirectoryCacheEntity
 import com.webdav.player.data.local.DirectorySyncCheckpointDao
 import com.webdav.player.data.local.DirectorySyncCheckpointEntity
 import com.webdav.player.data.local.LocalStorageFolderDao
+import com.webdav.player.data.local.LocalStorageFolderEntity
 import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.local.MediaTrackIndexEntity
 import com.webdav.player.data.local.RemoteDirectoryJsonSerializer
@@ -21,7 +22,6 @@ import com.webdav.player.domain.model.DirectorySortOrder
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LibrarySyncState
 import com.webdav.player.domain.model.ListDirectoryResult
-import com.webdav.player.data.local.LocalStorageFolderEntity
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
@@ -29,7 +29,6 @@ import com.webdav.player.domain.model.SortDirection
 import com.webdav.player.domain.model.SortField
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
-import kotlinx.coroutines.runBlocking
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -38,6 +37,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -54,7 +54,6 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class MediaLibraryRepositoryTest {
-
     private lateinit var context: Context
     private lateinit var database: AppDatabase
     private lateinit var directoryCacheDao: DirectoryCacheDao
@@ -89,7 +88,8 @@ class MediaLibraryRepositoryTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         database =
-            Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+            Room
+                .inMemoryDatabaseBuilder(context, AppDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
 
@@ -116,24 +116,26 @@ class MediaLibraryRepositoryTest {
                 localStorageFolderDao = localStorageFolderDao,
             )
 
-        repository = MediaLibraryRepositoryImpl(
-            webDavClient = fakeWebDavClient,
-            directoryCacheDao = directoryCacheDao,
-            trackMetadataDao = trackMetadataDao,
-            mediaTrackIndexDao = mediaTrackIndexDao,
-            directorySyncCheckpointDao = checkpointDao,
-            trackMetadataRepository = fakeTrackMetadataRepository,
-            localStorageDirectoryResolver = localResolver,
-            localStorageFolderDao = localStorageFolderDao,
-            context = context,
-        )
+        repository =
+            MediaLibraryRepositoryImpl(
+                webDavClient = fakeWebDavClient,
+                directoryCacheDao = directoryCacheDao,
+                trackMetadataDao = trackMetadataDao,
+                mediaTrackIndexDao = mediaTrackIndexDao,
+                directorySyncCheckpointDao = checkpointDao,
+                trackMetadataRepository = fakeTrackMetadataRepository,
+                localStorageDirectoryResolver = localResolver,
+                localStorageFolderDao = localStorageFolderDao,
+                context = context,
+            )
         repository.clearSearchHistory()
     }
 
     @After
     fun tearDown() {
         repository.clearSearchHistory()
-        context.getSharedPreferences(InternalBrowsingCursorStore.DEFAULT_PREFS_NAME, Context.MODE_PRIVATE)
+        context
+            .getSharedPreferences(InternalBrowsingCursorStore.DEFAULT_PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .clear()
             .commit()
@@ -147,17 +149,19 @@ class MediaLibraryRepositoryTest {
     @Test
     fun observeDirectoryContent_withCacheMiss_emitsInitialEnriching_thenEnrichedFinished() =
         runTest {
-            val audioFile = RemoteFile(
-                name = "song.mp3",
-                path = "/music/song.mp3",
-                size = 1024L,
-                fileType = RemoteFileType.Audio(AudioFormat.MP3),
-            )
-            val dir = RemoteDirectory(
-                path = "/music/",
-                name = "music",
-                files = listOf(audioFile),
-            )
+            val audioFile =
+                RemoteFile(
+                    name = "song.mp3",
+                    path = "/music/song.mp3",
+                    size = 1024L,
+                    fileType = RemoteFileType.Audio(AudioFormat.MP3),
+                )
+            val dir =
+                RemoteDirectory(
+                    path = "/music/",
+                    name = "music",
+                    files = listOf(audioFile),
+                )
             fakeWebDavClient.results["/music/"] = ListDirectoryResult.Success(dir)
 
             val emissions = repository.observeDirectoryContent(testServer, "/music/").toList()
@@ -317,30 +321,34 @@ class MediaLibraryRepositoryTest {
     @Test
     fun observeDirectoryContent_writesThroughAudioTracksToMediaTrackIndex() =
         runTest {
-            val audio1 = RemoteFile(
-                name = "Artist - Track1.flac",
-                path = "/music/Artist - Track1.flac",
-                size = 15000000L,
-                lastModified = "1672531200000",
-                fileType = RemoteFileType.Audio(AudioFormat.FLAC),
-            )
-            val audio2 = RemoteFile(
-                name = "Track2.mp3",
-                path = "/music/Track2.mp3",
-                size = 5000000L,
-                fileType = RemoteFileType.Audio(AudioFormat.MP3),
-            )
-            val textFile = RemoteFile(
-                name = "notes.txt",
-                path = "/music/notes.txt",
-                size = 100L,
-                fileType = RemoteFileType.Other,
-            )
-            val dir = RemoteDirectory(
-                path = "/music/",
-                name = "music",
-                files = listOf(audio1, audio2, textFile),
-            )
+            val audio1 =
+                RemoteFile(
+                    name = "Artist - Track1.flac",
+                    path = "/music/Artist - Track1.flac",
+                    size = 15000000L,
+                    lastModified = "1672531200000",
+                    fileType = RemoteFileType.Audio(AudioFormat.FLAC),
+                )
+            val audio2 =
+                RemoteFile(
+                    name = "Track2.mp3",
+                    path = "/music/Track2.mp3",
+                    size = 5000000L,
+                    fileType = RemoteFileType.Audio(AudioFormat.MP3),
+                )
+            val textFile =
+                RemoteFile(
+                    name = "notes.txt",
+                    path = "/music/notes.txt",
+                    size = 100L,
+                    fileType = RemoteFileType.Other,
+                )
+            val dir =
+                RemoteDirectory(
+                    path = "/music/",
+                    name = "music",
+                    files = listOf(audio1, audio2, textFile),
+                )
             fakeWebDavClient.results["/music/"] = ListDirectoryResult.Success(dir)
 
             repository.observeDirectoryContent(testServer, "/music/").toList()
@@ -400,21 +408,143 @@ class MediaLibraryRepositoryTest {
 
             repository.observeDirectoryContent(testServer, "/music/").toList()
 
-            // Verify parent directory checkpoint was written
+            // Verify parent directory checkpoint was written as discovered-only (isScanned = false)
             val parentCp = checkpointDao.getCheckpoint(testServer.id, "/music/")
             assertNotNull(parentCp)
             assertEquals("etag-root", parentCp?.etag)
+            assertFalse("Browsing directory must not mark subtree as fully scanned", parentCp?.isScanned ?: true)
 
-            // Verify subdirectories checkpoints were written
+            // Verify subdirectories checkpoints were written as discovered-only (isScanned = false)
             val rockCp = checkpointDao.getCheckpoint(testServer.id, "/music/Rock/")
             assertNotNull("Subdirectory Rock must have checkpoint written", rockCp)
+            assertFalse("Unvisited subdirectory Rock must have isScanned = false", rockCp?.isScanned ?: true)
 
             val popCp = checkpointDao.getCheckpoint(testServer.id, "/music/Pop/")
             assertNotNull("Subdirectory Pop must have checkpoint written", popCp)
+            assertFalse("Unvisited subdirectory Pop must have isScanned = false", popCp?.isScanned ?: true)
 
             // Verify they are immediately searchable via repository.search
             val searchResult = repository.search("Rock", testServer.id).first()
             assertTrue(searchResult.matchedDirectories.any { it.name == "Rock" && it.path == "/music/Rock/" })
+        }
+
+    @Test
+    fun browsingRootWithSubdirEtags_doesNotPreventSyncServerFromIndexingUncachedSubdirectoriesAndTracks() =
+        runTest {
+            val jayDir =
+                RemoteDirectory(
+                    path = "/百度/周杰伦/",
+                    name = "周杰伦",
+                    lastModified = 1794304800000L,
+                    etag = "etag-jay",
+                    files =
+                        listOf(
+                            RemoteFile(
+                                name = "周杰伦 - 晴天.flac",
+                                path = "/百度/周杰伦/周杰伦 - 晴天.flac",
+                                size = 30_000_000L,
+                                fileType = RemoteFileType.Audio(AudioFormat.FLAC),
+                            ),
+                        ),
+                )
+            val baiduDir =
+                RemoteDirectory(
+                    path = "/百度/",
+                    name = "百度",
+                    lastModified = 1794304800000L,
+                    etag = "etag-baidu",
+                    subDirectories = listOf(jayDir),
+                )
+            val rootDir =
+                RemoteDirectory(
+                    path = "/",
+                    name = "/",
+                    lastModified = 1794304800000L,
+                    etag = "etag-root",
+                    subDirectories =
+                        listOf(
+                            RemoteDirectory(
+                                path = "/百度/",
+                                name = "百度",
+                                lastModified = 1794304800000L,
+                                etag = "etag-baidu",
+                            ),
+                        ),
+                )
+
+            fakeWebDavClient.results["/"] = ListDirectoryResult.Success(rootDir)
+            fakeWebDavClient.results["/百度/"] = ListDirectoryResult.Success(baiduDir)
+            fakeWebDavClient.results["/百度/周杰伦/"] = ListDirectoryResult.Success(jayDir)
+
+            // 1. User browses root "/" first (writes through discovered checkpoints)
+            repository.observeDirectoryContent(testServer, "/", forceRefresh = true).toList()
+
+            // 2. Background incremental sync runs (force = false)
+            repository.syncServer(testServer, force = false)
+
+            // 3. Uncached nested directory and song matching "周杰伦" must now be searchable
+            val searchResult = repository.search("周杰伦", testServer.id).first()
+            assertTrue(
+                "Uncached directory 周杰伦 must be searchable after sync, got=${searchResult.matchedDirectories}",
+                searchResult.matchedDirectories.any { it.name == "周杰伦" && it.path == "/百度/周杰伦/" },
+            )
+            assertTrue(
+                "Uncached track 晴天 must be searchable after sync, got=${searchResult.matchedTracks}",
+                searchResult.matchedTracks.any { it.remotePath == "/百度/周杰伦/周杰伦 - 晴天.flac" },
+            )
+        }
+
+    @Test
+    fun browsingDirectoryAfterFullSync_preservesExistingScannedCheckpoints() =
+        runTest {
+            val subDir =
+                RemoteDirectory(
+                    path = "/music/Rock/",
+                    name = "Rock",
+                    lastModified = 2000L,
+                    etag = "etag-rock",
+                )
+            val rootDir =
+                RemoteDirectory(
+                    path = "/",
+                    name = "/",
+                    lastModified = 1000L,
+                    etag = "etag-root",
+                    subDirectories = listOf(subDir),
+                )
+            fakeWebDavClient.results["/"] = ListDirectoryResult.Success(rootDir)
+            fakeWebDavClient.results["/music/Rock/"] = ListDirectoryResult.Success(subDir)
+
+            // Scanner writes real scanned checkpoint (isScanned = true)
+            checkpointDao.upsertCheckpoint(
+                DirectorySyncCheckpointEntity(
+                    serverId = testServer.id,
+                    path = "/music/Rock/",
+                    lastModified = 2000L,
+                    etag = "etag-rock",
+                    lastScannedMs = 5000L,
+                    isScanned = true,
+                ),
+            )
+
+            // Browsing parent directory must not downgrade or clobber existing scanned checkpoint
+            fakeWebDavClient.results["/music/"] =
+                ListDirectoryResult.Success(
+                    RemoteDirectory(
+                        path = "/music/",
+                        name = "music",
+                        subDirectories = listOf(subDir),
+                        lastModified = 1000L,
+                        etag = "etag-music",
+                    ),
+                )
+            repository.observeDirectoryContent(testServer, "/music/", forceRefresh = true).toList()
+
+            val rockCp = checkpointDao.getCheckpoint(testServer.id, "/music/Rock/")
+            assertNotNull(rockCp)
+            assertTrue("Existing scanned checkpoint must remain isScanned = true", rockCp?.isScanned == true)
+            assertEquals("etag-rock", rockCp?.etag)
+            assertEquals(2000L, rockCp?.lastModified)
         }
 
     // =========================================================================
@@ -699,9 +829,10 @@ class MediaLibraryRepositoryTest {
     fun syncServer_forWebDav_emitsScanningAndCompleted() =
         runTest {
             val audio = RemoteFile(name = "Song.mp3", path = "/music/Song.mp3")
-            fakeWebDavClient.results["/music/"] = ListDirectoryResult.Success(
-                RemoteDirectory(path = "/music/", name = "music", files = listOf(audio))
-            )
+            fakeWebDavClient.results["/music/"] =
+                ListDirectoryResult.Success(
+                    RemoteDirectory(path = "/music/", name = "music", files = listOf(audio)),
+                )
 
             val syncResult = repository.syncServer(testServer)
             assertTrue(syncResult is com.webdav.player.domain.model.LibrarySyncResult.Success)
@@ -756,9 +887,10 @@ class MediaLibraryRepositoryTest {
 
             // Setup fresh scan directory
             val freshAudio = RemoteFile(name = "fresh.mp3", path = "/music/fresh.mp3")
-            fakeWebDavClient.results["/music/"] = ListDirectoryResult.Success(
-                RemoteDirectory(path = "/music/", name = "music", files = listOf(freshAudio))
-            )
+            fakeWebDavClient.results["/music/"] =
+                ListDirectoryResult.Success(
+                    RemoteDirectory(path = "/music/", name = "music", files = listOf(freshAudio)),
+                )
 
             val rebuildResult = repository.rebuildIndex(testServer)
             assertTrue(rebuildResult is com.webdav.player.domain.model.LibrarySyncResult.Success)
@@ -851,10 +983,10 @@ class MediaLibraryRepositoryTest {
             repository.observeDirectoryContent(secondServer, "/remote/").toList()
 
             checkpointDao.upsertCheckpoint(
-                DirectorySyncCheckpointEntity(serverId = 1L, path = "/music/", lastModified = 1L, etag = "e1", lastScannedMs = 1L)
+                DirectorySyncCheckpointEntity(serverId = 1L, path = "/music/", lastModified = 1L, etag = "e1", lastScannedMs = 1L),
             )
             checkpointDao.upsertCheckpoint(
-                DirectorySyncCheckpointEntity(serverId = 2L, path = "/remote/", lastModified = 2L, etag = "e2", lastScannedMs = 2L)
+                DirectorySyncCheckpointEntity(serverId = 2L, path = "/remote/", lastModified = 2L, etag = "e2", lastScannedMs = 2L),
             )
 
             // Wipe Server 1
@@ -913,7 +1045,10 @@ class MediaLibraryRepositoryTest {
 
             repository.clearLocalFolderData(uriString)
 
-            assertTrue("Local track index for folder must be deleted", mediaTrackIndexDao.getTracksByParentPath(LOCAL_STORAGE_ID, localPrefix).isEmpty())
+            assertTrue(
+                "Local track index for folder must be deleted",
+                mediaTrackIndexDao.getTracksByParentPath(LOCAL_STORAGE_ID, localPrefix).isEmpty(),
+            )
             assertNull("Local checkpoint for folder must be deleted", checkpointDao.getCheckpoint(LOCAL_STORAGE_ID, localPrefix))
             assertNull("Local directory cache must be cleared", directoryCacheDao.getCache(LOCAL_STORAGE_ID, localPrefix))
         }
@@ -932,20 +1067,22 @@ class MediaLibraryRepositoryTest {
     @Test(expected = CancellationException::class)
     fun syncServer_rethrowsCancellationException() =
         runTest {
-            val deferred = async {
-                coroutineContext.cancel(CancellationException("Sync cancelled"))
-                repository.syncServer(testServer)
-            }
+            val deferred =
+                async {
+                    coroutineContext.cancel(CancellationException("Sync cancelled"))
+                    repository.syncServer(testServer)
+                }
             deferred.await()
         }
 
     @Test(expected = CancellationException::class)
     fun rebuildIndex_rethrowsCancellationException() =
         runTest {
-            val deferred = async {
-                coroutineContext.cancel(CancellationException("Rebuild cancelled"))
-                repository.rebuildIndex(testServer)
-            }
+            val deferred =
+                async {
+                    coroutineContext.cancel(CancellationException("Rebuild cancelled"))
+                    repository.rebuildIndex(testServer)
+                }
             deferred.await()
         }
 
@@ -967,17 +1104,18 @@ class MediaLibraryRepositoryTest {
         repository.setLastBrowsingPath(testServer.id, path)
         assertEquals(path, repository.getLastBrowsingPath(testServer.id))
 
-        val secondRepo = MediaLibraryRepositoryImpl(
-            webDavClient = fakeWebDavClient,
-            directoryCacheDao = directoryCacheDao,
-            trackMetadataDao = trackMetadataDao,
-            mediaTrackIndexDao = mediaTrackIndexDao,
-            directorySyncCheckpointDao = checkpointDao,
-            trackMetadataRepository = fakeTrackMetadataRepository,
-            localStorageDirectoryResolver = localResolver,
-            localStorageFolderDao = localStorageFolderDao,
-            context = context,
-        )
+        val secondRepo =
+            MediaLibraryRepositoryImpl(
+                webDavClient = fakeWebDavClient,
+                directoryCacheDao = directoryCacheDao,
+                trackMetadataDao = trackMetadataDao,
+                mediaTrackIndexDao = mediaTrackIndexDao,
+                directorySyncCheckpointDao = checkpointDao,
+                trackMetadataRepository = fakeTrackMetadataRepository,
+                localStorageDirectoryResolver = localResolver,
+                localStorageFolderDao = localStorageFolderDao,
+                context = context,
+            )
         assertEquals(path, secondRepo.getLastBrowsingPath(testServer.id))
     }
 
@@ -1040,17 +1178,18 @@ class MediaLibraryRepositoryTest {
         repository.setDirectorySortOrder(newOrder)
         assertEquals(newOrder, repository.getDirectorySortOrder())
 
-        val secondRepo = MediaLibraryRepositoryImpl(
-            webDavClient = fakeWebDavClient,
-            directoryCacheDao = directoryCacheDao,
-            trackMetadataDao = trackMetadataDao,
-            mediaTrackIndexDao = mediaTrackIndexDao,
-            directorySyncCheckpointDao = checkpointDao,
-            trackMetadataRepository = fakeTrackMetadataRepository,
-            localStorageDirectoryResolver = localResolver,
-            localStorageFolderDao = localStorageFolderDao,
-            context = context,
-        )
+        val secondRepo =
+            MediaLibraryRepositoryImpl(
+                webDavClient = fakeWebDavClient,
+                directoryCacheDao = directoryCacheDao,
+                trackMetadataDao = trackMetadataDao,
+                mediaTrackIndexDao = mediaTrackIndexDao,
+                directorySyncCheckpointDao = checkpointDao,
+                trackMetadataRepository = fakeTrackMetadataRepository,
+                localStorageDirectoryResolver = localResolver,
+                localStorageFolderDao = localStorageFolderDao,
+                context = context,
+            )
         assertEquals(newOrder, secondRepo.getDirectorySortOrder())
     }
 
@@ -1133,7 +1272,15 @@ class MediaLibraryRepositoryTest {
         ): TrackMetadata? = cachedMetadata["$serverId:$remotePath"]
 
         override fun getAllMetadataFlow(serverId: Long): Flow<List<TrackMetadata>> = flowOf(emptyList())
-        override fun getMetadataForPathsFlow(serverId: Long, remotePaths: List<String>): Flow<List<TrackMetadata>> = flowOf(emptyList())
-        override fun getMetadataFlow(serverId: Long, remotePath: String): Flow<TrackMetadata?> = flowOf(cachedMetadata["$serverId:$remotePath"])
+
+        override fun getMetadataForPathsFlow(
+            serverId: Long,
+            remotePaths: List<String>,
+        ): Flow<List<TrackMetadata>> = flowOf(emptyList())
+
+        override fun getMetadataFlow(
+            serverId: Long,
+            remotePath: String,
+        ): Flow<TrackMetadata?> = flowOf(cachedMetadata["$serverId:$remotePath"])
     }
 }

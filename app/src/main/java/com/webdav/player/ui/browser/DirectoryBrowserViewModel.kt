@@ -305,7 +305,12 @@ class DirectoryBrowserViewModel(
         } else {
             _uiState.update { it.copy(isSearchActive = true) }
             val server = _uiState.value.activeServer
-            if (server != null && _uiState.value.syncState is LibrarySyncState.Idle) {
+            val currentSync = _uiState.value.syncState
+            val shouldTriggerSync =
+                currentSync is LibrarySyncState.Idle ||
+                    currentSync is LibrarySyncState.Failed ||
+                    (currentSync is LibrarySyncState.Completed && currentSync.totalTracks == 0)
+            if (server != null && shouldTriggerSync) {
                 viewModelScope.launch {
                     mediaLibraryRepository.syncServer(server, force = false)
                 }

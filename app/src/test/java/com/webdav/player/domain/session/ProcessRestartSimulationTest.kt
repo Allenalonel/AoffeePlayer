@@ -147,7 +147,6 @@ class ProcessRestartSimulationTest {
                     sessionStore = sessionStore,
                     coroutineScope = process1Scope,
                 )
-            session1.setActiveServer(testServer)
 
             val rockDir =
                 RemoteDirectory(
@@ -162,7 +161,7 @@ class ProcessRestartSimulationTest {
                 )
 
             // User plays track 2 (index 1) in the directory
-            session1.playDirectoryTrack(rockDir, rockDir.files[1])
+            session1.playDirectoryTrack(testServer, rockDir, rockDir.files[1])
             runCurrent()
 
             // User seeks to 48000ms and switches playback mode to SINGLE_LOOP
@@ -335,7 +334,6 @@ class ProcessRestartSimulationTest {
                     sessionStore = sessionStore,
                     coroutineScope = process1Scope,
                 )
-            session1.setActiveServer(testServer)
 
             val rockDir =
                 RemoteDirectory(
@@ -350,7 +348,7 @@ class ProcessRestartSimulationTest {
                 )
 
             // 1. User starts playing track 1 ("01-Intro.mp3", index 0)
-            session1.playDirectoryTrack(rockDir, rockDir.files[0])
+            session1.playDirectoryTrack(testServer, rockDir, rockDir.files[0])
             runCurrent()
             testDispatcher.scheduler.advanceUntilIdle()
 
@@ -418,7 +416,6 @@ class ProcessRestartSimulationTest {
                     sessionStore = sessionStore,
                     coroutineScope = process1Scope,
                 )
-            session1.setActiveServer(testServer)
 
             // Start playing Track 2
             session1.playTrack(track2)

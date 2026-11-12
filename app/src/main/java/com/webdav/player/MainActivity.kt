@@ -408,7 +408,6 @@ class MainActivity : ComponentActivity() {
                                                     },
                                                     onSelectServerAndNavigate = { server ->
                                                         serverViewModel.onSelectActiveServer(server.id)
-                                                        appContainer.musicPlayerAppSession.setActiveServer(server, resetPlayback = false)
                                                         coordinator.onServerCardClicked(server, onResetToRoot = {
                                                             if (browserViewModel.uiState.value.activeServer
                                                                     ?.id == server.id

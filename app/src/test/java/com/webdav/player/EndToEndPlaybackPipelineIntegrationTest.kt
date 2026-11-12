@@ -308,11 +308,8 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
-            advanceUntilIdle()
-
             // User taps 01-Symphony.flac to play directory
-            appSession.playDirectoryTrack(directory, flacFile)
+            appSession.playDirectoryTrack(testServer, directory, flacFile)
             advanceUntilIdle()
 
             // Step 4: Verify queue and session state
@@ -658,8 +655,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
 
             try {
                 // 1. Launch -> WebDAV stream starts -> host elevates foreground and acquires both locks
-                appSession.setActiveServer(testServer)
-                appSession.playDirectoryTrack(directory, file1)
+                appSession.playDirectoryTrack(testServer, directory, file1)
                 settle()
                 assertEquals("01.flac", fakeEngine.loadedTrack?.title)
                 assertEquals(PlaybackState.Playing, appSession.sessionState.value.playbackState)
@@ -755,8 +751,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
-            appSession.playDirectoryTrack(sampleDirectory, sampleFile1)
+            appSession.playDirectoryTrack(testServer, sampleDirectory, sampleFile1)
             advanceUntilIdle()
 
             // Track emissions on both reactive streams
@@ -1237,8 +1232,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
-            appSession.playDirectoryTrack(directory, remoteFile, mapOf(remoteFile.path to resolvedMeta))
+            appSession.playDirectoryTrack(testServer, directory, remoteFile, mapOf(remoteFile.path to resolvedMeta))
             advanceUntilIdle()
 
             val currentTrack = appSession.sessionState.value.currentTrack
@@ -1397,8 +1391,8 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
             appSession.playDirectoryTrack(
+                testServer,
                 directory,
                 file1,
                 mapOf(file1.path to meta1, file2.path to meta2!!),
@@ -1526,8 +1520,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
-            appSession.playDirectoryTrack(directory, karaokeFile)
+            appSession.playDirectoryTrack(testServer, directory, karaokeFile)
             advanceUntilIdle()
 
             // Wait for lyrics to resolve from MockWebServer
@@ -1688,8 +1681,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
-            appSession.playDirectoryTrack(directory, file1)
+            appSession.playDirectoryTrack(testServer, directory, file1)
             advanceUntilIdle()
 
             // Wait for lyrics to load
@@ -1856,8 +1848,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 }
 
             try {
-                appSession.setActiveServer(testServer)
-                appSession.playDirectoryTrack(directory, file1)
+                appSession.playDirectoryTrack(testServer, directory, file1)
                 runCurrent()
                 shadowOf(android.os.Looper.getMainLooper()).idle()
                 runCurrent()

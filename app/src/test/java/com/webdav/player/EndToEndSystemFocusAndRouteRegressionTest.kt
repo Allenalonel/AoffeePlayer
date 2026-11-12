@@ -209,11 +209,8 @@ class EndToEndSystemFocusAndRouteRegressionTest {
     @Test
     fun bufferingBecomingNoisy_unplugHeadphonesDuringBuffering_interceptsAndSafelyDegradesToPaused() =
         runTest(testDispatcher) {
-            appSession.setActiveServer(testServer)
-            advanceUntilIdle()
-
             // 1. User starts playing a track from remote directory
-            appSession.playDirectoryTrack(sampleDirectory, sampleAudioFile)
+            appSession.playDirectoryTrack(testServer, sampleDirectory, sampleAudioFile)
             advanceUntilIdle()
 
             // 2. Underlying stream enters Buffering state with playWhenReady = true
@@ -277,11 +274,8 @@ class EndToEndSystemFocusAndRouteRegressionTest {
     @Test
     fun ghostResumptionGuard_incomingCall_userPausesInNotification_callEnds_blocksGhostResumption() =
         runTest(testDispatcher) {
-            appSession.setActiveServer(testServer)
-            advanceUntilIdle()
-
             // 1. Actively playing music
-            appSession.playDirectoryTrack(sampleDirectory, sampleAudioFile)
+            appSession.playDirectoryTrack(testServer, sampleDirectory, sampleAudioFile)
             advanceUntilIdle()
             assertEquals(PlaybackState.Playing, appSession.sessionState.value.playbackState)
             val playCountInitial = fakeEngine.playCount
@@ -326,11 +320,8 @@ class EndToEndSystemFocusAndRouteRegressionTest {
     @Test
     fun transientFocusLoss_withoutUserIntervention_automaticallyResumesPlayback() =
         runTest(testDispatcher) {
-            appSession.setActiveServer(testServer)
-            advanceUntilIdle()
-
             // 1. Actively playing
-            appSession.playDirectoryTrack(sampleDirectory, sampleAudioFile)
+            appSession.playDirectoryTrack(testServer, sampleDirectory, sampleAudioFile)
             advanceUntilIdle()
             val playCountBefore = fakeEngine.playCount
 
@@ -362,11 +353,8 @@ class EndToEndSystemFocusAndRouteRegressionTest {
     @Test
     fun permanentAudioFocusLoss_pausesSession_abandonsFocus_andIgnoresSubsequentFocusGain() =
         runTest(testDispatcher) {
-            appSession.setActiveServer(testServer)
-            advanceUntilIdle()
-
             // 1. Actively playing
-            appSession.playDirectoryTrack(sampleDirectory, sampleAudioFile)
+            appSession.playDirectoryTrack(testServer, sampleDirectory, sampleAudioFile)
             advanceUntilIdle()
             assertEquals(PlaybackState.Playing, appSession.sessionState.value.playbackState)
             val playCountBefore = fakeEngine.playCount
@@ -634,11 +622,8 @@ class EndToEndSystemFocusAndRouteRegressionTest {
     @Test
     fun multiBoundaryAcousticJitter_racingInterruptionAndRoutingEvents_convergesSafely() =
         runTest(testDispatcher) {
-            appSession.setActiveServer(testServer)
-            advanceUntilIdle()
-
             // 1. Start playback and enter Buffering state
-            appSession.playDirectoryTrack(sampleDirectory, sampleAudioFile)
+            appSession.playDirectoryTrack(testServer, sampleDirectory, sampleAudioFile)
             advanceUntilIdle()
 
             fakeEngine.customPlayWhenReady = true
@@ -702,12 +687,10 @@ class EndToEndSystemFocusAndRouteRegressionTest {
     fun prePlayFocusGate_deniesAudioFocus_blocksEnginePlaybackAndLocks_untilSystemGrantsFocus() =
         runTest(testDispatcher) {
             val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            appSession.setActiveServer(testServer)
-            advanceUntilIdle()
 
             // 1. System rejects Audio Focus (e.g. active phone call)
             shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
-            appSession.playDirectoryTrack(sampleDirectory, sampleAudioFile)
+            appSession.playDirectoryTrack(testServer, sampleDirectory, sampleAudioFile)
             advanceUntilIdle()
 
             assertFalse("Engine must not activate playWhenReady when focus denied", fakeEngine.playWhenReady)

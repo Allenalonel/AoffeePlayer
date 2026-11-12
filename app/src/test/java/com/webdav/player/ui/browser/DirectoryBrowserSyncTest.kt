@@ -62,7 +62,6 @@ class DirectoryBrowserSyncTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         fakeMusicPlayerAppSession = FakeMusicPlayerAppSession()
-        fakeMusicPlayerAppSession.setActiveServer(sampleServer)
         fakeMediaLibraryRepository =
             FakeMediaLibraryRepository().apply {
                 defaultDirectoryFallback = true

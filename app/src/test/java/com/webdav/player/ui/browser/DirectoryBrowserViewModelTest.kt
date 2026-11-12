@@ -112,7 +112,6 @@ class DirectoryBrowserViewModelTest {
         fakeTrackMetadataRepository = FakeTrackMetadataRepository()
         fakeWebDavClient = FakeWebDavClient()
         fakeServerRepository.setActiveServerSync(sampleServer)
-        fakeMusicPlayerAppSession.setActiveServer(sampleServer)
         fakeMediaLibraryRepository = FakeMediaLibraryRepository(fakeTrackMetadataRepository)
 
         fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(rootDir))
@@ -178,7 +177,6 @@ class DirectoryBrowserViewModelTest {
     fun init_rendersImmediately_withoutWaitingForPlaybackSessionRestoration() =
         runTest(testDispatcher) {
             val unrestoredSession = FakeMusicPlayerAppSession(initialIsRestored = false)
-            unrestoredSession.setActiveServer(sampleServer)
 
             val vm =
                 DirectoryBrowserViewModel(
@@ -625,7 +623,8 @@ class DirectoryBrowserViewModelTest {
             fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
 
             // Changing playback server in session must NOT change browsing server in ViewModel
-            fakeMusicPlayerAppSession.setActiveServer(server2)
+            fakeMusicPlayerAppSession._sessionState.value =
+                fakeMusicPlayerAppSession._sessionState.value.copy(activeServer = server2)
             advanceUntilIdle()
             assertEquals(sampleServer, viewModel.uiState.value.activeServer)
 
@@ -782,7 +781,6 @@ class DirectoryBrowserViewModelTest {
                 )
             fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
 
-            fakeMusicPlayerAppSession.setActiveServer(server2)
             fakeServerRepository.setActiveServerSync(server2)
             advanceUntilIdle()
 
@@ -902,7 +900,6 @@ class DirectoryBrowserViewModelTest {
 
             // 2. Switch to server 2 -> enters server 2 root "/"
             fakeServerRepository.setActiveServerSync(server2)
-            fakeMusicPlayerAppSession.setActiveServer(server2)
             advanceUntilIdle()
             assertEquals(server2, viewModel.uiState.value.activeServer)
             assertEquals("/", viewModel.uiState.value.currentPath)
@@ -914,14 +911,12 @@ class DirectoryBrowserViewModelTest {
 
             // 4. Switch back to server 1 -> should remember /Music/Rock/!
             fakeServerRepository.setActiveServerSync(server1)
-            fakeMusicPlayerAppSession.setActiveServer(server1)
             advanceUntilIdle()
             assertEquals(server1, viewModel.uiState.value.activeServer)
             assertEquals("/Music/Rock/", viewModel.uiState.value.currentPath)
 
             // 5. Switch back to server 2 -> should remember /Pop/!
             fakeServerRepository.setActiveServerSync(server2)
-            fakeMusicPlayerAppSession.setActiveServer(server2)
             advanceUntilIdle()
             assertEquals(server2, viewModel.uiState.value.activeServer)
             assertEquals("/Pop/", viewModel.uiState.value.currentPath)
@@ -1089,7 +1084,6 @@ class DirectoryBrowserViewModelTest {
 
             // Switch to Server 2 -> track from Server 1 should no longer be active in browser
             fakeServerRepository.setActiveServerSync(server2)
-            fakeMusicPlayerAppSession.setActiveServer(server2)
             advanceUntilIdle()
 
             assertEquals(server2, viewModel.uiState.value.activeServer)
@@ -1098,7 +1092,6 @@ class DirectoryBrowserViewModelTest {
 
             // Switch back to Server 1 -> active track is recognized again
             fakeServerRepository.setActiveServerSync(sampleServer)
-            fakeMusicPlayerAppSession.setActiveServer(sampleServer)
             advanceUntilIdle()
 
             assertEquals(sampleServer, viewModel.uiState.value.activeServer)
@@ -1562,7 +1555,6 @@ class DirectoryBrowserViewModelTest {
             fakeMusicPlayerAppSession._sessionState.value =
                 fakeMusicPlayerAppSession._sessionState.value.copy(
                     activeServer = sampleServer,
-                    browsingServer = sampleServer,
                     queue = PlaybackQueue(tracks = listOf(playingTrack), currentIndex = 0),
                     playbackState = PlaybackState.Playing,
                 )

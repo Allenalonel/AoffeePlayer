@@ -254,7 +254,7 @@ class PlaybackTimelineCoordinatorTest {
         }
 
     @Test
-    fun crossServerTrackTransition_toLocalTrack_resolvesLocalStorageAndPreservesBrowsingServer() =
+    fun crossServerTrackTransition_toLocalTrack_resolvesLocalStorage() =
         runTest(testDispatcher) {
             val localTrack =
                 AudioTrack(
@@ -274,7 +274,6 @@ class PlaybackTimelineCoordinatorTest {
             sessionStateFlow.value =
                 PlayerSessionState(
                     activeServer = server1,
-                    browsingServer = server1,
                     queue = mixedQueue,
                     playbackState = PlaybackState.Playing,
                     durationMs = track1.durationMs,
@@ -287,7 +286,6 @@ class PlaybackTimelineCoordinatorTest {
             val state = sessionStateFlow.value
             assertEquals(1, state.queue.currentIndex)
             assertEquals("Active server must switch to Local Storage (0L)", 0L, state.activeServer?.id)
-            assertEquals("Browsing server must remain server1 (1L)", server1, state.browsingServer)
             assertEquals("Engine server must update to Local Storage (0L)", 0L, fakeEngine.lastServer?.id)
         }
 }

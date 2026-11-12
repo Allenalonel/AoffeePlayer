@@ -1,8 +1,8 @@
 package com.webdav.player.domain.session
 
-import com.webdav.player.data.player.UnsupportedRangeReconnectionException
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.InactiveReason
+import com.webdav.player.domain.model.PlaybackErrorKind
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
@@ -17,20 +17,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.FileNotFoundException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 fun Throwable?.is404Exception(): Boolean {
     if (this == null) return false
-    val causes = generateSequence(this) { it.cause }
-    return causes.any { cause ->
-        (cause is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException && cause.responseCode == 404) ||
-            (cause is java.io.FileNotFoundException) ||
-            (cause is java.lang.SecurityException) ||
-            (cause is androidx.media3.datasource.ContentDataSource.ContentDataSourceException) ||
-            (cause.message?.contains("404") == true) ||
-            (cause.message?.contains("FileNotFound", ignoreCase = true) == true)
-    } || (message?.contains("404") == true) || (message?.contains("FileNotFound", ignoreCase = true) == true)
+    return generateSequence(this) { current -> current.cause?.takeIf { it !== current } }.any { cause ->
+        cause is FileNotFoundException || cause is SecurityException
+    }
 }
 
 /**
@@ -130,54 +128,20 @@ internal class PlaybackFaultTolerance(
         return false
     }
 
-    fun isAuthException(e: Throwable): Boolean {
-        val causes = generateSequence(e) { it.cause }
-        return causes.any { c ->
-            (c is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException && (c.responseCode == 401 || c.responseCode == 403)) ||
-                c.message?.contains("401") == true ||
-                c.message?.contains("403") == true ||
-                c.message?.contains("Unauthorized", ignoreCase = true) == true ||
-                c.message?.contains("Forbidden", ignoreCase = true) == true
+    fun isServerUnreachableException(e: Throwable): Boolean =
+        generateSequence(e) { current -> current.cause?.takeIf { it !== current } }.any { c ->
+            c is ConnectException ||
+                c is UnknownHostException ||
+                c is SocketTimeoutException
         }
-    }
 
-    fun isServerUnreachableException(e: Throwable): Boolean {
-        val causes = generateSequence(e) { it.cause }
-        return causes.any { c ->
-            c is java.net.ConnectException ||
-                c is java.net.UnknownHostException ||
-                c is java.net.SocketTimeoutException ||
-                c.message?.contains("Connection refused", ignoreCase = true) == true ||
-                c.message?.contains("Failed to connect", ignoreCase = true) == true
-        }
-    }
+    fun is404Error(state: PlaybackState.Error): Boolean = state.kind == PlaybackErrorKind.FILE_NOT_FOUND
 
-    fun is404Error(state: PlaybackState.Error): Boolean = state.cause.is404Exception() || state.message.contains("404")
+    fun isAuthError(state: PlaybackState.Error): Boolean = state.kind == PlaybackErrorKind.AUTH_INVALID
 
-    fun isAuthError(state: PlaybackState.Error): Boolean {
-        val cause = state.cause
-        if (cause != null && isAuthException(cause)) return true
-        return state.message.contains("401") ||
-            state.message.contains("403") ||
-            state.message.contains("Unauthorized", ignoreCase = true) ||
-            state.message.contains("Forbidden", ignoreCase = true)
-    }
+    fun isServerUnreachableError(state: PlaybackState.Error): Boolean = state.kind == PlaybackErrorKind.SERVER_UNREACHABLE
 
-    fun isServerUnreachableError(state: PlaybackState.Error): Boolean {
-        val cause = state.cause
-        if (cause != null && isServerUnreachableException(cause)) return true
-        return state.message.contains("ConnectException") ||
-            state.message.contains("Connection refused", ignoreCase = true)
-    }
-
-    fun isUnsupportedRangeError(state: PlaybackState.Error): Boolean {
-        val hasTypedCause =
-            generateSequence<Throwable>(state.cause) { it.cause }.any {
-                it is UnsupportedRangeReconnectionException
-            }
-        if (hasTypedCause) return true
-        return state.message.contains("UnsupportedRangeReconnectionException", ignoreCase = true)
-    }
+    fun isUnsupportedRangeError(state: PlaybackState.Error): Boolean = state.kind == PlaybackErrorKind.UNSUPPORTED_RANGE
 
     fun handle404Failure(
         track: AudioTrack?,
@@ -199,7 +163,7 @@ internal class PlaybackFaultTolerance(
             val msg = errorMessage ?: "音频文件已被重命名或删除"
             sessionStateFlow.update {
                 it.copy(
-                    playbackState = PlaybackState.Error(msg),
+                    playbackState = PlaybackState.Error(msg, kind = PlaybackErrorKind.FILE_NOT_FOUND),
                     errorMessage = msg,
                     canManualRetry = false,
                     isWeakNetwork = false,
@@ -228,7 +192,7 @@ internal class PlaybackFaultTolerance(
             val msg = errorMessage ?: "服务器认证凭据失效"
             sessionStateFlow.update {
                 it.copy(
-                    playbackState = PlaybackState.Error(msg),
+                    playbackState = PlaybackState.Error(msg, kind = PlaybackErrorKind.AUTH_INVALID),
                     errorMessage = msg,
                     canManualRetry = false,
                     isWeakNetwork = false,
@@ -249,7 +213,7 @@ internal class PlaybackFaultTolerance(
         } else {
             sessionStateFlow.update {
                 it.copy(
-                    playbackState = PlaybackState.Error("所属服务器无法连接"),
+                    playbackState = PlaybackState.Error("所属服务器无法连接", kind = PlaybackErrorKind.SERVER_UNREACHABLE),
                     errorMessage = "所属服务器无法连接",
                     canManualRetry = false,
                     isWeakNetwork = false,
@@ -263,35 +227,44 @@ internal class PlaybackFaultTolerance(
         currentTrack: AudioTrack?,
         onUnsupportedRange: () -> Unit,
         onSkipToNext: () -> Unit,
-    ): Boolean {
-        if (isUnsupportedRangeError(state)) {
-            sessionStateFlow.update { it.copy(playbackState = PlaybackState.Paused, isUnsupportedRange = true) }
-            onUnsupportedRange()
-            return true
-        } else if (is404Error(state)) {
-            handle404Failure(currentTrack, state.message, onSkipToNext)
-            return true
-        } else if (isAuthError(state)) {
-            handleAuthFailure(currentTrack, state.message, onSkipToNext)
-            return true
-        } else if (isServerUnreachableError(state)) {
-            if (currentTrack != null) {
-                handleServerUnavailable(currentTrack, onSkipToNext)
+    ): Boolean =
+        when (state.kind) {
+            PlaybackErrorKind.UNSUPPORTED_RANGE -> {
+                sessionStateFlow.update { it.copy(playbackState = PlaybackState.Paused, isUnsupportedRange = true) }
+                onUnsupportedRange()
+                true
             }
-            return true
-        } else {
-            sessionStateFlow.update {
-                it.copy(
-                    playbackState = state,
-                    errorMessage = state.message,
-                    isWeakNetwork = true,
-                    canManualRetry = true,
-                    isReconnecting = false,
-                )
+
+            PlaybackErrorKind.FILE_NOT_FOUND -> {
+                handle404Failure(currentTrack, state.message, onSkipToNext)
+                true
             }
-            return false
+
+            PlaybackErrorKind.AUTH_INVALID -> {
+                handleAuthFailure(currentTrack, state.message, onSkipToNext)
+                true
+            }
+
+            PlaybackErrorKind.SERVER_UNREACHABLE -> {
+                if (currentTrack != null) {
+                    handleServerUnavailable(currentTrack, onSkipToNext)
+                }
+                true
+            }
+
+            PlaybackErrorKind.UNKNOWN -> {
+                sessionStateFlow.update {
+                    it.copy(
+                        playbackState = state,
+                        errorMessage = state.message,
+                        isWeakNetwork = true,
+                        canManualRetry = true,
+                        isReconnecting = false,
+                    )
+                }
+                false
+            }
         }
-    }
 
     fun handleLoadException(
         e: Throwable,
@@ -300,8 +273,6 @@ internal class PlaybackFaultTolerance(
     ) {
         if (e.is404Exception()) {
             handle404Failure(track, onSkipToNext = onSkipToNext)
-        } else if (isAuthException(e)) {
-            handleAuthFailure(track, onSkipToNext = onSkipToNext)
         } else if (isServerUnreachableException(e)) {
             handleServerUnavailable(track, onSkipToNext = onSkipToNext)
         } else {

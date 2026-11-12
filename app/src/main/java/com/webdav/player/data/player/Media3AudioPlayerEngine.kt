@@ -14,8 +14,10 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.ContentDataSource
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -25,6 +27,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.ExtractorsFactory
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.PlaybackErrorKind
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.player.AudioPlayerEngine
@@ -41,6 +44,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileNotFoundException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 
@@ -534,9 +541,48 @@ class Media3AudioPlayerEngine internal constructor(
 
     @VisibleForTesting
     internal fun toPlaybackError(error: PlaybackException): PlaybackState.Error {
-        val unsupportedRangeCause =
-            generateSequence<Throwable>(error) { it.cause }
-                .firstOrNull { it is UnsupportedRangeReconnectionException }
+        var unsupportedRangeCause: UnsupportedRangeReconnectionException? = null
+        var kind = PlaybackErrorKind.UNKNOWN
+        for (cause in generateSequence<Throwable>(error) { current -> current.cause?.takeIf { it !== current } }) {
+            val matchedKind =
+                when {
+                    cause is UnsupportedRangeReconnectionException -> {
+                        if (unsupportedRangeCause == null) unsupportedRangeCause = cause
+                        PlaybackErrorKind.UNSUPPORTED_RANGE
+                    }
+
+                    cause is HttpDataSource.InvalidResponseCodeException && cause.responseCode == 404 -> {
+                        PlaybackErrorKind.FILE_NOT_FOUND
+                    }
+
+                    cause is FileNotFoundException ||
+                        cause is ContentDataSource.ContentDataSourceException ||
+                        cause is SecurityException -> {
+                        PlaybackErrorKind.FILE_NOT_FOUND
+                    }
+
+                    cause is HttpDataSource.InvalidResponseCodeException &&
+                        (cause.responseCode == 401 || cause.responseCode == 403) -> {
+                        PlaybackErrorKind.AUTH_INVALID
+                    }
+
+                    cause is ConnectException ||
+                        cause is UnknownHostException ||
+                        cause is SocketTimeoutException -> {
+                        PlaybackErrorKind.SERVER_UNREACHABLE
+                    }
+
+                    else -> {
+                        null
+                    }
+                }
+            if (kind == PlaybackErrorKind.UNKNOWN && matchedKind != null) {
+                kind = matchedKind
+            }
+        }
+        if (kind == PlaybackErrorKind.UNKNOWN && error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND) {
+            kind = PlaybackErrorKind.FILE_NOT_FOUND
+        }
         val message =
             unsupportedRangeCause?.message
                 ?: error.localizedMessage
@@ -544,6 +590,7 @@ class Media3AudioPlayerEngine internal constructor(
         return PlaybackState.Error(
             message = message,
             cause = error,
+            kind = kind,
         )
     }
 

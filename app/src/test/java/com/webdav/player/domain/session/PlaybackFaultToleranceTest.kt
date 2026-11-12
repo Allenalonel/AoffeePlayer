@@ -1,9 +1,9 @@
 package com.webdav.player.domain.session
 
-import com.webdav.player.data.player.UnsupportedRangeReconnectionException
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.InactiveReason
+import com.webdav.player.domain.model.PlaybackErrorKind
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlaybackState
@@ -124,18 +124,100 @@ class PlaybackFaultToleranceTest {
         }
 
     @Test
-    fun errorClassification_accuratelyCategorizesExceptions() {
-        assertTrue(FileNotFoundException("File missing 404").is404Exception())
-        assertTrue(faultTolerance.is404Error(PlaybackState.Error("Resource 404 Not Found")))
+    fun errorClassification_accuratelyCategorizesByPlaybackErrorKindWithoutStringMatching() {
+        assertTrue(FileNotFoundException("missing").is404Exception())
+        assertTrue(SecurityException("revoked").is404Exception())
+        assertFalse(RuntimeException("HTTP 404 Not Found").is404Exception())
 
-        assertTrue(faultTolerance.isAuthException(RuntimeException("HTTP 401 Unauthorized")))
-        assertTrue(faultTolerance.isAuthError(PlaybackState.Error("403 Forbidden")))
+        assertTrue(faultTolerance.is404Error(PlaybackState.Error("Error", kind = PlaybackErrorKind.FILE_NOT_FOUND)))
+        assertFalse(faultTolerance.is404Error(PlaybackState.Error("Resource 404 Not Found", cause = FileNotFoundException("404"))))
+
+        assertTrue(faultTolerance.isAuthError(PlaybackState.Error("Error", kind = PlaybackErrorKind.AUTH_INVALID)))
+        assertFalse(faultTolerance.isAuthError(PlaybackState.Error("401 Unauthorized / 403 Forbidden")))
 
         assertTrue(faultTolerance.isServerUnreachableException(ConnectException("Connection refused")))
-        assertTrue(faultTolerance.isServerUnreachableError(PlaybackState.Error("ConnectException: Failed to connect")))
+        assertFalse(faultTolerance.isServerUnreachableException(RuntimeException("Connection refused")))
+        assertTrue(faultTolerance.isServerUnreachableError(PlaybackState.Error("Error", kind = PlaybackErrorKind.SERVER_UNREACHABLE)))
+        assertFalse(faultTolerance.isServerUnreachableError(PlaybackState.Error("ConnectException: Failed to connect")))
 
-        val rangeEx = UnsupportedRangeReconnectionException("Range not supported")
-        assertTrue(faultTolerance.isUnsupportedRangeError(PlaybackState.Error("UnsupportedRangeReconnectionException", cause = rangeEx)))
+        assertTrue(faultTolerance.isUnsupportedRangeError(PlaybackState.Error("Error", kind = PlaybackErrorKind.UNSUPPORTED_RANGE)))
+        assertFalse(faultTolerance.isUnsupportedRangeError(PlaybackState.Error("UnsupportedRangeReconnectionException")))
+    }
+
+    @Test
+    fun handlePlaybackError_dispatchesByPlaybackErrorKind() {
+        var skippedCount = 0
+        var unsupportedRangeCallbacks = 0
+
+        assertTrue(
+            faultTolerance.handlePlaybackError(
+                state = PlaybackState.Error("Not found", kind = PlaybackErrorKind.FILE_NOT_FOUND),
+                currentTrack = t1,
+                onUnsupportedRange = { unsupportedRangeCallbacks++ },
+                onSkipToNext = { skippedCount++ },
+            ),
+        )
+        assertEquals(1, skippedCount)
+        assertEquals(
+            Triple(t1.serverId, t1.remotePath, InactiveReason.FILE_NOT_FOUND),
+            fakeStorageReachabilityTracker.reportedUnavailableTracks.last(),
+        )
+
+        assertTrue(
+            faultTolerance.handlePlaybackError(
+                state = PlaybackState.Error("Auth failed", kind = PlaybackErrorKind.AUTH_INVALID),
+                currentTrack = t1,
+                onUnsupportedRange = { unsupportedRangeCallbacks++ },
+                onSkipToNext = { skippedCount++ },
+            ),
+        )
+        assertEquals(2, skippedCount)
+        assertEquals(
+            t1.serverId to InactiveReason.SERVER_CREDENTIAL_INVALID,
+            fakeStorageReachabilityTracker.reportedUnavailableServers.last(),
+        )
+
+        assertTrue(
+            faultTolerance.handlePlaybackError(
+                state = PlaybackState.Error("Timeout", kind = PlaybackErrorKind.SERVER_UNREACHABLE),
+                currentTrack = t2,
+                onUnsupportedRange = { unsupportedRangeCallbacks++ },
+                onSkipToNext = { skippedCount++ },
+            ),
+        )
+        assertEquals(2, skippedCount) // all 2 tracks now failed -> queue exhausted
+        assertEquals(
+            t2.serverId to InactiveReason.SERVER_UNREACHABLE,
+            fakeStorageReachabilityTracker.reportedUnavailableServers.last(),
+        )
+        assertEquals(
+            PlaybackErrorKind.SERVER_UNREACHABLE,
+            (sessionStateFlow.value.playbackState as PlaybackState.Error).kind,
+        )
+
+        assertTrue(
+            faultTolerance.handlePlaybackError(
+                state = PlaybackState.Error("Range unsupported", kind = PlaybackErrorKind.UNSUPPORTED_RANGE),
+                currentTrack = t1,
+                onUnsupportedRange = { unsupportedRangeCallbacks++ },
+                onSkipToNext = { skippedCount++ },
+            ),
+        )
+        assertEquals(1, unsupportedRangeCallbacks)
+        assertEquals(PlaybackState.Paused, sessionStateFlow.value.playbackState)
+        assertTrue(sessionStateFlow.value.isUnsupportedRange)
+
+        assertFalse(
+            faultTolerance.handlePlaybackError(
+                state = PlaybackState.Error("HTTP 404 in message only", kind = PlaybackErrorKind.UNKNOWN),
+                currentTrack = t1,
+                onUnsupportedRange = { unsupportedRangeCallbacks++ },
+                onSkipToNext = { skippedCount++ },
+            ),
+        )
+        assertEquals(PlaybackErrorKind.UNKNOWN, (sessionStateFlow.value.playbackState as PlaybackState.Error).kind)
+        assertTrue(sessionStateFlow.value.isWeakNetwork)
+        assertTrue(sessionStateFlow.value.canManualRetry)
     }
 
     @Test

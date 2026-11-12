@@ -18,6 +18,7 @@ import androidx.media3.exoplayer.audio.ForwardingAudioSink
 import androidx.test.core.app.ApplicationProvider
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
+import com.webdav.player.domain.model.PlaybackErrorKind
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.WebDavServer
 import kotlinx.coroutines.launch
@@ -902,6 +903,90 @@ class Media3AudioPlayerEngineTest {
             val errorState = testEngine.toPlaybackError(wrappedEx)
             assertEquals("HTTP 200 on Range", errorState.message)
             assertEquals(wrappedEx, errorState.cause)
+            assertEquals(PlaybackErrorKind.UNSUPPORTED_RANGE, errorState.kind)
+        } finally {
+            testEngine.release()
+        }
+    }
+
+    @Test
+    fun onPlayerError_classifiesCausalChainIntoPlaybackErrorKind() {
+        val basePlayer = ExoPlayer.Builder(context).build()
+        val controllablePlayer = TestControllablePlayer(basePlayer)
+        val testEngine = Media3AudioPlayerEngine(context, customPlayer = controllablePlayer)
+        val dataSpec =
+            androidx.media3.datasource.DataSpec
+                .Builder()
+                .setUri("http://127.0.0.1:8080/dav/test.mp3")
+                .build()
+
+        fun emitAndCaptureKind(cause: Throwable): PlaybackErrorKind {
+            val playbackEx =
+                androidx.media3.common.PlaybackException(
+                    "Stream failed",
+                    java.io.IOException("Wrapped", cause),
+                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+                )
+            controllablePlayer.notifyPlayerError(playbackEx)
+            ShadowLooper.idleMainLooper()
+            val state = testEngine.playbackState.value as PlaybackState.Error
+            return state.kind
+        }
+
+        try {
+            val http404 =
+                androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException(
+                    404,
+                    "Not Found",
+                    null,
+                    emptyMap(),
+                    dataSpec,
+                    byteArrayOf(),
+                )
+            assertEquals(PlaybackErrorKind.FILE_NOT_FOUND, emitAndCaptureKind(http404))
+            assertEquals(PlaybackErrorKind.FILE_NOT_FOUND, emitAndCaptureKind(java.io.FileNotFoundException("missing")))
+            assertEquals(
+                PlaybackErrorKind.FILE_NOT_FOUND,
+                emitAndCaptureKind(
+                    androidx.media3.datasource.ContentDataSource.ContentDataSourceException(
+                        java.io.IOException("content missing"),
+                        androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
+                    ),
+                ),
+            )
+            assertEquals(PlaybackErrorKind.FILE_NOT_FOUND, emitAndCaptureKind(SecurityException("SAF revoked")))
+
+            val http401 =
+                androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException(
+                    401,
+                    "Unauthorized",
+                    null,
+                    emptyMap(),
+                    dataSpec,
+                    byteArrayOf(),
+                )
+            val http403 =
+                androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException(
+                    403,
+                    "Forbidden",
+                    null,
+                    emptyMap(),
+                    dataSpec,
+                    byteArrayOf(),
+                )
+            assertEquals(PlaybackErrorKind.AUTH_INVALID, emitAndCaptureKind(http401))
+            assertEquals(PlaybackErrorKind.AUTH_INVALID, emitAndCaptureKind(http403))
+
+            assertEquals(PlaybackErrorKind.SERVER_UNREACHABLE, emitAndCaptureKind(java.net.ConnectException("refused")))
+            assertEquals(PlaybackErrorKind.SERVER_UNREACHABLE, emitAndCaptureKind(java.net.UnknownHostException("dns failed")))
+            assertEquals(PlaybackErrorKind.SERVER_UNREACHABLE, emitAndCaptureKind(java.net.SocketTimeoutException("timed out")))
+
+            assertEquals(
+                PlaybackErrorKind.UNSUPPORTED_RANGE,
+                emitAndCaptureKind(UnsupportedRangeReconnectionException("HTTP 200 on Range")),
+            )
+
+            assertEquals(PlaybackErrorKind.UNKNOWN, emitAndCaptureKind(IllegalStateException("Decoder failure")))
         } finally {
             testEngine.release()
         }

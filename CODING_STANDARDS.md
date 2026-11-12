@@ -4,7 +4,7 @@
 1. **Standards 轴**：严格对照本法典六大章节硬约束与 Fowler 代码坏味道基线（杜绝神秘命名、重复代码、依恋情结、数据泥团、基本类型偏执、发散式变化与中间人等），违背法典者一票否决；
 2. **Spec 轴**：严格对照工单验收条件，杜绝需求遗漏与越界重构（Scope Creep）。
 
-机械包接缝与防僵尸类规则由 `PackagingSeamVerificationTest` 自动化持续保证。
+机械包接缝、防僵尸类、Room 迁移禁退化及编译/格式基线由 `PackagingSeamVerificationTest`、`DatabaseMigrationTest` 与 `./gradlew ktlintCheck` 自动化持续保证；本法典仅保留需人工/审查判断的工程约束。
 
 ---
 
@@ -41,6 +41,8 @@
   底层 `Player` 实例（`ExoPlayer`）的方法调用（如 `prepare`、`play`、`pause`、`seekTo`、`setMediaSource`）必须严格收敛运行在引擎创建时的应用主 Looper 线程（`applicationLooper` / `Dispatchers.Main.immediate`）；严禁在后台协程（`Dispatchers.IO` 或 `Dispatchers.Default`）中跨线程直调播放器实例，跨协程交互必须通过 `runOnApplicationLooper` 派发执行。
 - **Lifecycle-Aware StateFlow Collection (UI 状态流生命周期安全收集铁律)**:
   Compose UI 表现层消费 ViewModel 或应用会话层暴露的 `StateFlow` 时，必须强制使用 `collectAsStateWithLifecycle()`（默认处于 `Lifecycle.State.STARTED` 时收集）；严禁在表现层直接调用裸 `collectAsState()`，确保退入后台或处于 Backstack 时立即挂起消费管道，杜绝后台重组与电量隐性消耗。
+- **Interactive UI Mutation & Asynchronous Background Sync Decoupling (交互式写操作与后台同步解耦法则)**:
+  所有保存、添加、确认类交互动作，在本地轻量持久化（Room / DataStore）完成后必须立即收敛 UI 状态（关闭弹窗、退出加载态）；耗时的网络请求、全库扫描或增量同步（如 `syncServer`）必须在独立协程中异步触发，严禁阻塞界面返回。同时提交入口必须在 ViewModel 状态机（如 `isSaving`）与 Compose 按钮交互态双层持有防重入锁，杜绝持久化窗口期连点导致重复写入。
 
 ---
 

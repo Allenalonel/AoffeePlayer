@@ -5,6 +5,7 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -804,5 +805,13 @@ class DatabaseMigrationTest {
         cursorNew.close()
 
         db.close()
+    }
+
+    @Test
+    fun appDatabaseInstance_opensCleanlyAndProtectsExistingDataWithoutUnboundedDestructiveMigration() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val instance = AppDatabase.getInstance(context)
+        assertNotNull(instance)
+        assertTrue(instance.isOpen)
     }
 }

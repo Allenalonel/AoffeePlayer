@@ -16,10 +16,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaylistTrackEntity::class,
         LocalStorageFolderEntity::class,
         MediaTrackIndexEntity::class,
-        DirectorySyncCheckpointEntity::class,
+        DirectorySyncCheckpointEntity::class
     ],
     version = 9,
-    exportSchema = false,
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun webDavServerDao(): WebDavServerDao
@@ -52,7 +52,7 @@ abstract class AppDatabase : RoomDatabase() {
                             `lastUpdatedMs` INTEGER NOT NULL,
                             PRIMARY KEY(`serverId`, `path`)
                         )
-                        """.trimIndent(),
+                        """.trimIndent()
                     )
                     db.execSQL("CREATE INDEX IF NOT EXISTS `index_directory_cache_serverId` ON `directory_cache` (`serverId`)")
                     db.execSQL("CREATE INDEX IF NOT EXISTS `index_directory_cache_serverId_path` ON `directory_cache` (`serverId`, `path`)")
@@ -70,7 +70,7 @@ abstract class AppDatabase : RoomDatabase() {
                             `createdAtMs` INTEGER NOT NULL,
                             `updatedAtMs` INTEGER NOT NULL
                         )
-                        """.trimIndent(),
+                        """.trimIndent()
                     )
                     db.execSQL(
                         """
@@ -93,11 +93,11 @@ abstract class AppDatabase : RoomDatabase() {
                             `inactiveReason` TEXT,
                             FOREIGN KEY(`playlistId`) REFERENCES `playlists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
                         )
-                        """.trimIndent(),
+                        """.trimIndent()
                     )
                     db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId` ON `playlist_tracks` (`playlistId`)")
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId_sortOrder` ON `playlist_tracks` (`playlistId`, `sortOrder`)",
+                        "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId_sortOrder` ON `playlist_tracks` (`playlistId`, `sortOrder`)"
                     )
                     db.execSQL("CREATE INDEX IF NOT EXISTS `index_directory_cache_path` ON `directory_cache` (`path`)")
                     db.execSQL("CREATE INDEX IF NOT EXISTS `index_track_metadata_title` ON `track_metadata` (`title`)")
@@ -118,7 +118,7 @@ abstract class AppDatabase : RoomDatabase() {
                             `dateAdded` INTEGER NOT NULL,
                             PRIMARY KEY(`uriString`)
                         )
-                        """.trimIndent(),
+                        """.trimIndent()
                     )
                 }
             }
@@ -141,22 +141,22 @@ abstract class AppDatabase : RoomDatabase() {
                             `parsedArtist` TEXT,
                             PRIMARY KEY(`serverId`, `remotePath`)
                         )
-                        """.trimIndent(),
+                        """.trimIndent()
                     )
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_fileName` ON `media_track_index` (`serverId`, `fileName`)",
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_fileName` ON `media_track_index` (`serverId`, `fileName`)"
                     )
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_fileName` ON `media_track_index` (`fileName`)",
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_fileName` ON `media_track_index` (`fileName`)"
                     )
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_remotePath` ON `media_track_index` (`serverId`, `remotePath`)",
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_remotePath` ON `media_track_index` (`serverId`, `remotePath`)"
                     )
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedTitle` ON `media_track_index` (`parsedTitle`)",
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedTitle` ON `media_track_index` (`parsedTitle`)"
                     )
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedArtist` ON `media_track_index` (`parsedArtist`)",
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedArtist` ON `media_track_index` (`parsedArtist`)"
                     )
                     db.execSQL(
                         """
@@ -168,13 +168,13 @@ abstract class AppDatabase : RoomDatabase() {
                             `lastScannedMs` INTEGER NOT NULL,
                             PRIMARY KEY(`serverId`, `path`)
                         )
-                        """.trimIndent(),
+                        """.trimIndent()
                     )
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_directory_sync_checkpoint_serverId` ON `directory_sync_checkpoint` (`serverId`)",
+                        "CREATE INDEX IF NOT EXISTS `index_directory_sync_checkpoint_serverId` ON `directory_sync_checkpoint` (`serverId`)"
                     )
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_directory_sync_checkpoint_serverId_path` ON `directory_sync_checkpoint` (`serverId`, `path`)",
+                        "CREATE INDEX IF NOT EXISTS `index_directory_sync_checkpoint_serverId_path` ON `directory_sync_checkpoint` (`serverId`, `path`)"
                     )
                 }
             }
@@ -202,7 +202,7 @@ abstract class AppDatabase : RoomDatabase() {
                             `inactiveReason` TEXT,
                             FOREIGN KEY(`playlistId`) REFERENCES `playlists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
                         )
-                        """.trimIndent(),
+                        """.trimIndent()
                     )
                     db.execSQL(
                         """
@@ -212,13 +212,13 @@ abstract class AppDatabase : RoomDatabase() {
                         SELECT `id`, `playlistId`, `serverId`, `remotePath`, `sortOrder`, `title`, `artist`, `album`, `durationMs`, `size`, `format`, `coverThumbnailPath`, `isInactive`, `inactiveReason`
                         FROM `playlist_tracks`
                         WHERE `remotePath` NOT LIKE '%#cue_%' AND `virtualTrackId` IS NULL
-                        """.trimIndent(),
+                        """.trimIndent()
                     )
                     db.execSQL("DROP TABLE `playlist_tracks`")
                     db.execSQL("ALTER TABLE `playlist_tracks_new` RENAME TO `playlist_tracks`")
                     db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId` ON `playlist_tracks` (`playlistId`)")
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId_sortOrder` ON `playlist_tracks` (`playlistId`, `sortOrder`)",
+                        "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId_sortOrder` ON `playlist_tracks` (`playlistId`, `sortOrder`)"
                     )
 
                     // Recreate media_track_index without isCue, purging isCue = 1 and #cue_ rows
@@ -236,7 +236,7 @@ abstract class AppDatabase : RoomDatabase() {
                             `parsedArtist` TEXT,
                             PRIMARY KEY(`serverId`, `remotePath`)
                         )
-                        """.trimIndent(),
+                        """.trimIndent()
                     )
                     db.execSQL(
                         """
@@ -246,24 +246,24 @@ abstract class AppDatabase : RoomDatabase() {
                         SELECT `serverId`, `remotePath`, `fileName`, `fileSize`, `lastModified`, `format`, `parentPath`, `parsedTitle`, `parsedArtist`
                         FROM `media_track_index`
                         WHERE `isCue` = 0 AND `remotePath` NOT LIKE '%#cue_%'
-                        """.trimIndent(),
+                        """.trimIndent()
                     )
                     db.execSQL("DROP TABLE `media_track_index`")
                     db.execSQL("ALTER TABLE `media_track_index_new` RENAME TO `media_track_index`")
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_fileName` ON `media_track_index` (`serverId`, `fileName`)",
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_fileName` ON `media_track_index` (`serverId`, `fileName`)"
                     )
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_fileName` ON `media_track_index` (`fileName`)",
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_fileName` ON `media_track_index` (`fileName`)"
                     )
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_remotePath` ON `media_track_index` (`serverId`, `remotePath`)",
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_remotePath` ON `media_track_index` (`serverId`, `remotePath`)"
                     )
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedTitle` ON `media_track_index` (`parsedTitle`)",
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedTitle` ON `media_track_index` (`parsedTitle`)"
                     )
                     db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedArtist` ON `media_track_index` (`parsedArtist`)",
+                        "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedArtist` ON `media_track_index` (`parsedArtist`)"
                     )
                 }
             }
@@ -272,7 +272,7 @@ abstract class AppDatabase : RoomDatabase() {
             object : Migration(8, 9) {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     db.execSQL(
-                        "ALTER TABLE `directory_sync_checkpoint` ADD COLUMN `isScanned` INTEGER NOT NULL DEFAULT 1",
+                        "ALTER TABLE `directory_sync_checkpoint` ADD COLUMN `isScanned` INTEGER NOT NULL DEFAULT 1"
                     )
                     // Purge pre-v9 checkpoints so previously skipped unvisited subdirectories are rescanned cleanly
                     db.execSQL("DELETE FROM `directory_sync_checkpoint`")
@@ -286,9 +286,9 @@ abstract class AppDatabase : RoomDatabase() {
                         .databaseBuilder(
                             context.applicationContext,
                             AppDatabase::class.java,
-                            "webdav_player.db",
+                            "webdav_player.db"
                         ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
-                        .fallbackToDestructiveMigration()
+                        .fallbackToDestructiveMigrationFrom(1, 2)
                         .build()
                 INSTANCE = instance
                 instance

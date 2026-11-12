@@ -752,4 +752,17 @@ class PackagingSeamVerificationTest {
             },
         )
     }
+
+    @Test
+    fun appDatabase_forbidsUnboundedDestructiveMigration() {
+        val appDatabaseSource = source("data/local/AppDatabase.kt")
+        assertFalse(
+            "AppDatabase must not call bare fallbackToDestructiveMigration() to protect user assets",
+            Regex("""\.fallbackToDestructiveMigration\(\s*\)""").containsMatchIn(appDatabaseSource),
+        )
+        assertTrue(
+            "AppDatabase must specify exportSchema = true for Room schema history",
+            Regex("""\bexportSchema\s*=\s*true\b""").containsMatchIn(appDatabaseSource),
+        )
+    }
 }

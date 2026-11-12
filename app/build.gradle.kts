@@ -6,6 +6,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+    id("org.jlleitschuh.gradle.ktlint")
 }
 
 android {
@@ -48,7 +49,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
+                "proguard-rules.pro"
             )
         }
     }
@@ -91,11 +92,20 @@ android {
                 it.jvmArgs(
                     "--add-opens=java.base/java.io=ALL-UNNAMED",
                     "--add-opens=java.base/java.lang=ALL-UNNAMED",
-                    "--add-opens=java.base/java.util=ALL-UNNAMED",
+                    "--add-opens=java.base/java.util=ALL-UNNAMED"
                 )
             }
         }
     }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+ktlint {
+    android.set(true)
+    baseline.set(file("config/ktlint/baseline.xml"))
 }
 
 dependencies {
@@ -172,7 +182,7 @@ tasks.register("verifyReleasePackaging") {
                 "lib/arm64-v8a/libavformat.so",
                 "lib/arm64-v8a/libavutil.so",
                 "lib/arm64-v8a/libffmpegJNI.so",
-                "lib/arm64-v8a/libswresample.so",
+                "lib/arm64-v8a/libswresample.so"
             )
 
         val apkSize = apkFile.length()
@@ -221,22 +231,22 @@ tasks.register("verifyReleasePackaging") {
                 "Total APK size:        $apkSize bytes (${String.format(
                     Locale.US,
                     "%.2f",
-                    apkSize / 1024.0 / 1024.0,
-                )} MB) [Budget: <= 7.5 MB]",
+                    apkSize / 1024.0 / 1024.0
+                )} MB) [Budget: <= 7.5 MB]"
             )
             println(
                 "classes.dex size:      ${dex.size} bytes (${String.format(
                     Locale.US,
                     "%.2f",
-                    dex.size / 1024.0 / 1024.0,
-                )} MB) [Budget: <= 4.25 MB]",
+                    dex.size / 1024.0 / 1024.0
+                )} MB) [Budget: <= 4.25 MB]"
             )
             println(
                 "classes.dex deflated:  ${dex.compressedSize} bytes (${String.format(
                     Locale.US,
                     "%.2f",
-                    dex.compressedSize / 1024.0 / 1024.0,
-                )} MB)",
+                    dex.compressedSize / 1024.0 / 1024.0
+                )} MB)"
             )
             println("Native architecture:   lib/arm64-v8a/ only (5 libraries, 0 32-bit)")
             println("============================================================")

@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+
+echo "=== [Pre-Push Hook] Running ktlintCheck and PackagingSeamVerificationTest ==="
+./gradlew ktlintCheck testDebugUnitTest --tests "*PackagingSeamVerificationTest*" --console=plain
+echo "=== [Pre-Push Hook] Verification Passed ==="

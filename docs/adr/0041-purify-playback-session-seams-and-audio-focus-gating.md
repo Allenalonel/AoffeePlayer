@@ -32,7 +32,7 @@ Accepted (Amends ADR-0023 and ADR-0035)
 - `PlaybackTimelineCoordinator` 移除对 `ServerRepository.getActiveServer()` 的监听；`MusicPlayerAppSessionImpl` 仅轻量监听服务器列表，**仅当当前在播服务器被删除时**自动触发 `stop()` 并清理该源队列，删其余源或切换浏览源对在播会话零干扰。
 
 ### 4. 会话内部纯决策协作者与单一状态提交主干
-- 恪守 ADR-0023 单文件 600 行上限，将 `PlaybackQueueManager` 与 `PlaybackFaultTolerance` 纯化为无副作用的纯状态/决策模块（不持有 `MutableStateFlow`，不直接调用 `AudioPlayerEngine`），返回显式状态变换与动作指令；
+- 遵循 `CODING_STANDARDS.md` §1 职责内聚与内部接缝原则，将 `PlaybackQueueManager` 与 `PlaybackFaultTolerance` 纯化为无副作用的纯状态/决策模块（不持有 `MutableStateFlow`，不直接调用 `AudioPlayerEngine`），返回显式状态变换与动作指令；
 - 瘦身 `PlaybackTimelineCoordinator`，消除 7 闭包回调网；冷启动 `isRestored` 等待门控与 `resolveServerForTrack` 统一收敛至 `MusicPlayerAppSessionImpl` 单一调度主干；
 - 在 `PackagingSeamVerificationTest` 中补充架构铁律校验：严禁 `domain.session` 反向 `import` `data.*`。
 

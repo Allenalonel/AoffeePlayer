@@ -8,6 +8,7 @@ Accepted (Amended by ADR 0034 and ADR 0035: CUE virtual timeline purged; dual-tr
 > - **现行法典**: 技术约束以根目录 `CODING_STANDARDS.md` 为唯一权威终审。
 > - **CUE 废除 (ADR-0034)**: 正文中提及的 `VirtualTimelineEngine` 及 CUE 虚拟分轨会话还原已被 ADR-0034 彻底物理移除。
 > - **双轨源解耦 (ADR-0035)**: 会话持久化与状态机已按浏览源与在播源双轨彻底解耦。
+> - **行数硬上限废止 (`CODING_STANDARDS.md` §1)**: 下文第 3、4 节提及的“600 行以内 / 600 行熔断线”已废止；是否拆分协作者统一按职责内聚与正交子领域/构造依赖复杂度判断。
 
 ## Context
 
@@ -52,11 +53,11 @@ Accepted (Amended by ADR 0034 and ADR 0035: CUE virtual timeline purged; dual-tr
 - `MusicPlayerAppSessionImpl` 不再直接编写持久化序列化代码或队列算法，转为作为轻量中枢协调器：
   - 持有底层的 `AudioPlayerEngine`、`VirtualTimelineEngine` 以及上述 4 个内部协作者；
   - 专职做意图派发与底层事件到 `PlayerSessionState` / `PlaybackProgress` 的响应式映射；
-  - 核心实现类代码行数由 2,149 行削减至 **600 行以内**（目标 ~550 行）。
+  - ~~核心实现类代码行数由 2,149 行削减至 **600 行以内**（目标 ~550 行）。~~ *(单文件 600 行硬上限已由 `CODING_STANDARDS.md` §1 废止)*
 
 ### 4. 确立内部接缝规范（Internal Seam Discipline）
 - 正式在项目规范中设立铁律：深模块是对外接口属性，绝非单文件膨胀的借口；
-- 核心业务实现类严格执行 **600 行熔断线**，承载 2 个以上正交职责时强制要求引入内部私有协作者。
+- ~~核心业务实现类严格执行 **600 行熔断线**，~~承载 2 个以上正交职责时强制要求引入内部私有协作者（具体判断标准详见 `CODING_STANDARDS.md` §1）。
 
 ## Consequences
 

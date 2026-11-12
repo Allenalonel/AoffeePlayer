@@ -11,7 +11,7 @@
 ## 1. Module Depth, Packaging Seams & Test Surface Discipline (模块深度、包接缝与测试表面纪律)
 
 - **Module Depth & Zero Artificial Fragmentation (职责内聚与严禁伪碎片化)**:
-  - **高内聚守恒**：对于单一职责的高内聚模块（如 `AsfExtractor` 的解复用、`LrcParser` 的歌词规整、内聚的复杂 Compose 容器），即便达到 400–600+ 行亦应保持在单文件中。
+  - **高内聚守恒**：对于单一职责的高内聚模块（如 `AsfExtractor` 的解复用、`LrcParser` 的歌词规整、内聚的复杂 Compose 容器），即便达到 400–600+ 行亦应保持在单文件中，不设任何单文件固定行数硬上限（历史 `ADR-0023` 的 600 行熔断线已废止）。
   - **内部接缝解耦**：当单个类累积 2 个以上正交子领域或 6 个以上非相关构造依赖时，提炼包级私有（`internal`）协作者并隐藏在窄公共接口之后。
   - **严禁伪碎片化**：严禁将 150–400 行的内聚组件拆成单调用者的卫星碎片文件（如 `*Collaborators.kt` 或 30 行转发壳），严禁通过伪压缩掩饰模块内部复杂度。
 - **Streaming Playback Seam & Zero Reverse Coupling (播放引擎单向隔离铁律)**:

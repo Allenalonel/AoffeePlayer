@@ -1272,4 +1272,146 @@ class Media3AudioPlayerEngineTest {
             coverFile.delete()
         }
     }
+
+    private class GateSpyPlayer(
+        wrapped: Player,
+    ) : ForwardingPlayer(wrapped) {
+        var prepareCalls = 0
+        var playCalls = 0
+
+        override fun prepare() {
+            prepareCalls++
+            super.prepare()
+        }
+
+        override fun play() {
+            playCalls++
+            super.play()
+        }
+    }
+
+    @Test
+    fun loadTrack_whenPrePlayGateDenies_doesNotPrepareOrStartPlayback_andLaterPlayPreparesAndPlaysWhenGranted() {
+        val basePlayer = ExoPlayer.Builder(context).build()
+        val spyPlayer = GateSpyPlayer(basePlayer)
+        val gatedEngine = Media3AudioPlayerEngine(context, customPlayer = spyPlayer)
+        var allowPlay = false
+        gatedEngine.setPrePlayGate { allowPlay }
+        try {
+            gatedEngine.loadTrack(testServer, track1, startPositionMs = 2000L)
+            ShadowLooper.idleMainLooper()
+
+            assertEquals("Gate denial must skip prepare() to avoid network buffering", 0, spyPlayer.prepareCalls)
+            assertEquals("Gate denial must not invoke player.play()", 0, spyPlayer.playCalls)
+            assertFalse("playWhenReady must remain false when gate denies", gatedEngine.playWhenReady)
+            assertFalse(gatedEngine.playbackState.value is PlaybackState.Playing)
+            assertFalse(gatedEngine.playbackState.value is PlaybackState.Buffering)
+            assertEquals(1, spyPlayer.mediaItemCount)
+
+            allowPlay = true
+            gatedEngine.play()
+            ShadowLooper.idleMainLooper()
+
+            assertEquals("Later play() when gate grants must prepare unprepared track", 1, spyPlayer.prepareCalls)
+            assertEquals("Later play() when gate grants must invoke player.play()", 1, spyPlayer.playCalls)
+            assertTrue(gatedEngine.playWhenReady)
+            assertTrue(
+                gatedEngine.playbackState.value is PlaybackState.Playing ||
+                    gatedEngine.playbackState.value is PlaybackState.Buffering,
+            )
+        } finally {
+            gatedEngine.release()
+        }
+    }
+
+    @Test
+    fun play_whenPrePlayGateDeniesAfterPause_keepsPausedWithoutCallingPlayerPlay_andResumesWhenGranted() {
+        val basePlayer = ExoPlayer.Builder(context).build()
+        val spyPlayer = GateSpyPlayer(basePlayer)
+        val gatedEngine = Media3AudioPlayerEngine(context, customPlayer = spyPlayer)
+        var allowPlay = true
+        gatedEngine.setPrePlayGate { allowPlay }
+        try {
+            gatedEngine.loadTrack(testServer, track1)
+            ShadowLooper.idleMainLooper()
+            gatedEngine.pause()
+            ShadowLooper.idleMainLooper()
+            assertEquals(PlaybackState.Paused, gatedEngine.playbackState.value)
+
+            val playCallsBefore = spyPlayer.playCalls
+            allowPlay = false
+            gatedEngine.play()
+            ShadowLooper.idleMainLooper()
+
+            assertEquals("player.play() must not be called when gate denies", playCallsBefore, spyPlayer.playCalls)
+            assertFalse(gatedEngine.playWhenReady)
+            assertEquals(PlaybackState.Paused, gatedEngine.playbackState.value)
+
+            allowPlay = true
+            gatedEngine.play()
+            ShadowLooper.idleMainLooper()
+
+            assertEquals(playCallsBefore + 1, spyPlayer.playCalls)
+            assertTrue(gatedEngine.playWhenReady)
+            assertTrue(
+                gatedEngine.playbackState.value is PlaybackState.Playing ||
+                    gatedEngine.playbackState.value is PlaybackState.Buffering,
+            )
+        } finally {
+            gatedEngine.release()
+        }
+    }
+
+    @Test
+    fun loadTrack_whileActive_whenPrePlayGateDenies_stopsPreviousPlaybackWithoutPreparingNewTrack() {
+        val basePlayer = ExoPlayer.Builder(context).build()
+        val spyPlayer = GateSpyPlayer(basePlayer)
+        val gatedEngine = Media3AudioPlayerEngine(context, customPlayer = spyPlayer)
+        var allowPlay = true
+        gatedEngine.setPrePlayGate { allowPlay }
+        try {
+            gatedEngine.loadTrack(testServer, track1)
+            ShadowLooper.idleMainLooper()
+
+            val prepareCallsBefore = spyPlayer.prepareCalls
+            val playCallsBefore = spyPlayer.playCalls
+            allowPlay = false
+            gatedEngine.loadTrack(testServer, track2)
+            ShadowLooper.idleMainLooper()
+
+            assertEquals(prepareCallsBefore, spyPlayer.prepareCalls)
+            assertEquals(playCallsBefore, spyPlayer.playCalls)
+            assertFalse(gatedEngine.playWhenReady)
+            assertEquals(PlaybackState.Idle, gatedEngine.playbackState.value)
+            assertEquals(1, spyPlayer.mediaItemCount)
+        } finally {
+            gatedEngine.release()
+        }
+    }
+
+    @Test
+    fun prePlayGate_isEvaluatedOnApplicationLooper_whenInvokedFromBackgroundThread() {
+        val testEngine = Media3AudioPlayerEngine(context)
+        val evaluatedOnMainLooper = mutableListOf<Boolean>()
+        testEngine.setPrePlayGate {
+            evaluatedOnMainLooper += (android.os.Looper.myLooper() == android.os.Looper.getMainLooper())
+            false
+        }
+        try {
+            val worker =
+                Thread {
+                    testEngine.loadTrack(testServer, track1)
+                    testEngine.play()
+                }
+            worker.start()
+            worker.join()
+
+            assertTrue("Gate must not be evaluated off the application looper", evaluatedOnMainLooper.isEmpty())
+            ShadowLooper.idleMainLooper()
+            assertEquals(listOf(true, true), evaluatedOnMainLooper)
+            assertFalse(testEngine.playWhenReady)
+        } finally {
+            testEngine.release()
+        }
+    }
 }

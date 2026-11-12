@@ -164,7 +164,6 @@ class WebDavApplication :
                 playlistRepository = playlistRepository,
                 storageReachabilityTracker = storageReachabilityTracker,
                 networkConnectivityObserver = networkConnectivityObserver,
-                hardwareLockManager = sessionHost.hardwareLockManager,
             )
         sessionHost.bindAppSession(musicPlayerAppSession)
     }

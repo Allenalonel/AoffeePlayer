@@ -1,6 +1,5 @@
 package com.webdav.player.domain.session
 
-import com.webdav.player.data.player.StreamingHardwareLockManager
 import com.webdav.player.data.player.UnsupportedRangeReconnectionException
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
@@ -64,34 +63,6 @@ class MusicPlayerAppSessionTest {
     private lateinit var sessionJob: kotlinx.coroutines.CompletableJob
     private lateinit var sessionScope: kotlinx.coroutines.CoroutineScope
     private lateinit var session: MusicPlayerAppSessionImpl
-
-    private class FakeStreamingHardwareLockManager : StreamingHardwareLockManager {
-        override var isWakeLockHeld: Boolean = false
-        override var isWifiLockHeld: Boolean = false
-
-        override fun acquireLocks() {
-            isWakeLockHeld = true
-            isWifiLockHeld = true
-        }
-
-        override fun acquireWakeLockOnly() {
-            isWakeLockHeld = true
-            isWifiLockHeld = false
-        }
-
-        override fun releaseWifiLock() {
-            isWifiLockHeld = false
-        }
-
-        override fun releaseLocks() {
-            isWakeLockHeld = false
-            isWifiLockHeld = false
-        }
-
-        override fun release() {
-            releaseLocks()
-        }
-    }
 
     private val testServer =
         WebDavServer(
@@ -2775,16 +2746,14 @@ class MusicPlayerAppSessionTest {
         }
 
     @Test
-    fun localTrack_playback_bypassesWatchdog_andReleasesWifiLockWhileRetainingWakeLock() =
+    fun localTrack_playback_bypassesWatchdog_andSynthesizesLocalServer() =
         runTest(testDispatcher) {
             val localEngine = FakeAudioPlayerEngine()
-            val fakeLockManager = FakeStreamingHardwareLockManager()
             val localSession =
                 MusicPlayerAppSessionImpl(
                     playerEngine = localEngine,
                     serverRepository = null,
                     coroutineScope = sessionScope,
-                    hardwareLockManager = fakeLockManager,
                 )
 
             val localTrack =
@@ -2800,9 +2769,7 @@ class MusicPlayerAppSessionTest {
             localSession.playTrack(localTrack)
             advanceUntilIdle()
 
-            // Verify local server synthesized and wakeLock held while wifiLock not held
-            assertTrue("WakeLock must be retained for local playback", fakeLockManager.isWakeLockHeld)
-            assertFalse("WifiLock must not be held for local playback", fakeLockManager.isWifiLockHeld)
+            // Verify local server synthesized
             assertEquals(
                 LOCAL_STORAGE_ID,
                 localSession.sessionState.value.activeServer
@@ -2830,9 +2797,8 @@ class MusicPlayerAppSessionTest {
         }
 
     @Test
-    fun skipping_fromLocalTrack_toWebDavTrack_reEnablesWifiLockAndWatchdog() =
+    fun skipping_fromLocalTrack_toWebDavTrack_reEnablesWatchdog() =
         runTest(testDispatcher) {
-            val fakeLockManager = FakeStreamingHardwareLockManager()
             val serverRepo = TestServerRepository(listOf(testServer))
 
             val playlist = Playlist(id = 100L, name = "Mixed", createdAtMs = 1000L, updatedAtMs = 1000L, trackCount = 2)
@@ -2866,23 +2832,14 @@ class MusicPlayerAppSessionTest {
                     serverRepository = serverRepo,
                     playlistRepository = playlistRepo,
                     coroutineScope = sessionScope,
-                    hardwareLockManager = fakeLockManager,
                 )
 
             mixedSession.playPlaylist(playlist, startIndex = 0)
             advanceUntilIdle()
 
-            // Track 0 (Local): WakeLock held, WifiLock released
-            assertTrue("WakeLock must be held on local track", fakeLockManager.isWakeLockHeld)
-            assertFalse("WifiLock must be released on local track", fakeLockManager.isWifiLockHeld)
-
             // Skip to Track 1 (WebDAV)
             mixedSession.skipToNext()
             advanceUntilIdle()
-
-            // Track 1 (WebDAV): WifiLock re-enabled alongside WakeLock
-            assertTrue("WakeLock must be held for WebDAV track", fakeLockManager.isWakeLockHeld)
-            assertTrue("WifiLock must be re-enabled for WebDAV track", fakeLockManager.isWifiLockHeld)
 
             // Buffering on WebDav track must trigger watchdog
             fakeEngine._playbackState.value = PlaybackState.Buffering

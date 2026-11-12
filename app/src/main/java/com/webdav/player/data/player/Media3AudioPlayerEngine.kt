@@ -185,6 +185,13 @@ class Media3AudioPlayerEngine internal constructor(
     @Volatile
     private var currentVolume: Float = 1.0f
 
+    @Volatile
+    private var prePlayGate: (() -> Boolean)? = null
+
+    override fun setPrePlayGate(gate: (() -> Boolean)?) {
+        prePlayGate = gate
+    }
+
     private fun runOnApplicationLooper(action: () -> Unit) {
         val applicationLooper =
             try {
@@ -329,6 +336,14 @@ class Media3AudioPlayerEngine internal constructor(
             _currentPositionMs.value = startPositionMs
             _durationMs.value = if (track.durationMs > 0L) track.durationMs else 0L
 
+            val canPlay = prePlayGate?.invoke() != false
+            if (!canPlay) {
+                player.playWhenReady = false
+                if (player.playbackState != Player.STATE_IDLE) {
+                    player.stop()
+                }
+            }
+
             if (player is ExoPlayer) {
                 val mediaSource = mediaSourceBuilder.createMediaSource(server, track)
                 player.setMediaSource(mediaSource, startPositionMs)
@@ -336,13 +351,28 @@ class Media3AudioPlayerEngine internal constructor(
                 val mediaItem = mediaSourceBuilder.createMediaItem(server, track)
                 player.setMediaItem(mediaItem, startPositionMs)
             }
-            player.prepare()
-            player.play()
+
+            if (canPlay) {
+                player.prepare()
+                player.play()
+            } else {
+                player.playWhenReady = false
+                updatePlaybackState()
+            }
         }
     }
 
     override fun play() {
         runOnApplicationLooper {
+            val canPlay = prePlayGate?.invoke() != false
+            if (!canPlay) {
+                player.playWhenReady = false
+                updatePlaybackState()
+                return@runOnApplicationLooper
+            }
+            if (player.playbackState == Player.STATE_IDLE && player.mediaItemCount > 0) {
+                player.prepare()
+            }
             player.play()
         }
     }

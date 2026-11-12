@@ -291,6 +291,7 @@ class PlaybackSessionHost(
     }
 
     init {
+        playerEngine.setPrePlayGate { audioFocusHandler.requestAudioFocus() }
         basePlayer.addListener(playlistMetadataBridgeListener)
         observePlaybackState()
     }
@@ -542,6 +543,7 @@ class PlaybackSessionHost(
         stateObserverJob = null
         hasPlaybackStarted = false
         audioFocusHandler.abandonAudioFocus()
+        playerEngine.setPrePlayGate(null)
         attachedService?.unregisterSession(mediaSession)
         basePlayer.removeListener(playlistMetadataBridgeListener)
         sessionListeners.clear()

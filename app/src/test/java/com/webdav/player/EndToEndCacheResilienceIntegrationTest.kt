@@ -366,7 +366,6 @@ class EndToEndCacheResilienceIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
             mediaLibraryRepository.setLastBrowsingPath(testServer.id, "/Music/Classics/")
             advanceUntilIdle()
 
@@ -661,7 +660,6 @@ class EndToEndCacheResilienceIntegrationTest {
                     progressDispatcher = testDispatcher,
                 )
 
-            appSession.setActiveServer(testServer)
             mediaLibraryRepository.setLastBrowsingPath(testServer.id, "/Music/Acoustic/")
             advanceUntilIdle()
 
@@ -675,7 +673,20 @@ class EndToEndCacheResilienceIntegrationTest {
             val collectedStates = mutableListOf<com.webdav.player.ui.browser.DirectoryBrowserUiState>()
             val stateCollectorJob = launch { viewModel.uiState.toList(collectedStates) }
 
-            advanceUntilIdle()
+            var initAttempts = 0
+            while (
+                (
+                    viewModel.uiState.value.currentPath != "/Music/Acoustic/" ||
+                        viewModel.uiState.value.isLoading ||
+                        viewModel.uiState.value.isRefreshing
+                ) &&
+                initAttempts < 100
+            ) {
+                advanceTimeBy(50L)
+                advanceUntilIdle()
+                Thread.sleep(10)
+                initAttempts++
+            }
 
             // Verify initial UI state has no artwork
             val stateBeforeRefresh = viewModel.uiState.value

@@ -328,11 +328,10 @@ class SessionPersistenceCoordinatorTest {
             // 1. Initial state: store save count is 0
             assertEquals(0, fakeStore.saveSessionCount)
 
-            // 2. Non-audio session changes (browsingServer, errorMessage, wasKilledBySystem)
+            // 2. Non-audio session changes (errorMessage, wasKilledBySystem)
             // do not invoke flush on their own
             sessionStateFlow.value =
                 sessionStateFlow.value.copy(
-                    browsingServer = testServer,
                     errorMessage = "Network warning",
                     wasKilledBySystem = false,
                 )

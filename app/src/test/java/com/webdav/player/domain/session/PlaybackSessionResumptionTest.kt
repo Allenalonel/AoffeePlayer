@@ -309,8 +309,6 @@ class PlaybackSessionResumptionTest {
     fun flushSession_persistsQueueAndAllFields() =
         runTest(testDispatcher) {
             session = createSession()
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
 
             val directory =
                 RemoteDirectory(
@@ -322,7 +320,7 @@ class PlaybackSessionResumptionTest {
                             RemoteFile(name = "track2.flac", path = "/Music/Jazz/track2.flac", size = 25000000L),
                         ),
                 )
-            session.playDirectoryTrack(directory, directory.files[1])
+            session.playDirectoryTrack(testServer, directory, directory.files[1])
             fakeEngine.seekTo(42000L)
             session.setPlaybackMode(PlaybackMode.SHUFFLE)
             runCurrent()
@@ -352,8 +350,6 @@ class PlaybackSessionResumptionTest {
                     coroutineScope = sessionScope,
                     periodicDispatcher = testDispatcher,
                 )
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
 
             val directory =
                 RemoteDirectory(
@@ -364,7 +360,7 @@ class PlaybackSessionResumptionTest {
                             RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L),
                         ),
                 )
-            session.playDirectoryTrack(directory, directory.files[0])
+            session.playDirectoryTrack(testServer, directory, directory.files[0])
             runCurrent()
 
             fakeEngine.seekTo(15000L)
@@ -385,8 +381,6 @@ class PlaybackSessionResumptionTest {
     fun skipToNext_automaticallyPersistsUpdatedTrackIndexToSessionStore() =
         runTest(testDispatcher) {
             session = createSession()
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
 
             val directory =
                 RemoteDirectory(
@@ -399,7 +393,7 @@ class PlaybackSessionResumptionTest {
                         ),
                 )
             // 1. User starts playing track 1
-            session.playDirectoryTrack(directory, directory.files[0])
+            session.playDirectoryTrack(testServer, directory, directory.files[0])
             runCurrent()
             assertEquals(0, session.sessionState.value.queue.currentIndex)
             assertEquals(0, fakeStore.savedSession?.currentTrackIndex)
@@ -419,8 +413,6 @@ class PlaybackSessionResumptionTest {
     fun skipToPrevious_automaticallyPersistsUpdatedTrackIndexToSessionStore() =
         runTest(testDispatcher) {
             session = createSession()
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
 
             val directory =
                 RemoteDirectory(
@@ -433,7 +425,7 @@ class PlaybackSessionResumptionTest {
                         ),
                 )
             // Start playing track 2 (index 1)
-            session.playDirectoryTrack(directory, directory.files[1])
+            session.playDirectoryTrack(testServer, directory, directory.files[1])
             runCurrent()
             assertEquals(1, fakeStore.savedSession?.currentTrackIndex)
 
@@ -449,8 +441,6 @@ class PlaybackSessionResumptionTest {
     fun playQueueIndex_automaticallyPersistsUpdatedTrackIndexToSessionStore() =
         runTest(testDispatcher) {
             session = createSession()
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
 
             val directory =
                 RemoteDirectory(
@@ -463,7 +453,7 @@ class PlaybackSessionResumptionTest {
                             RemoteFile(name = "track3.mp3", path = "/Music/Jazz/track3.mp3", size = 12000000L),
                         ),
                 )
-            session.playDirectoryTrack(directory, directory.files[0])
+            session.playDirectoryTrack(testServer, directory, directory.files[0])
             runCurrent()
             assertEquals(0, fakeStore.savedSession?.currentTrackIndex)
 
@@ -479,8 +469,6 @@ class PlaybackSessionResumptionTest {
     fun seekTo_immediatelyPersistsUpdatedPositionToStore() =
         runTest(testDispatcher) {
             session = createSession()
-            session.setActiveServer(testServer)
-            advanceUntilIdle()
 
             val directory =
                 RemoteDirectory(
@@ -492,7 +480,7 @@ class PlaybackSessionResumptionTest {
                             RemoteFile(name = "track2.flac", path = "/Music/Jazz/track2.flac", size = 25000000L),
                         ),
                 )
-            session.playDirectoryTrack(directory, directory.files[0])
+            session.playDirectoryTrack(testServer, directory, directory.files[0])
             runCurrent()
             assertEquals(0L, fakeStore.savedSession?.positionMs)
 
@@ -544,7 +532,7 @@ class PlaybackSessionResumptionTest {
             advanceUntilIdle()
 
             val state = session.sessionState.value
-            assertNotNull(state.activeServer) // From fakeServerRepo default server
+            assertNull(state.activeServer) // Browsing server does not populate playback activeServer
             assertTrue(state.queue.isEmpty)
             assertTrue(state.isIdle)
             assertEquals(0L, session.playbackProgress.value.currentPositionMs)
@@ -1028,7 +1016,6 @@ class PlaybackSessionResumptionTest {
     fun flushSession_whilePlayingPhysicalTrack_persistsDirectNativeOffset() =
         runTest(testDispatcher) {
             session = createSession()
-            session.setActiveServer(testServer)
             advanceUntilIdle()
 
             session.playTrack(darkSideTrack)

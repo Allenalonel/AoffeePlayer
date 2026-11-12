@@ -161,12 +161,8 @@ class EndToEndMusicPlayerPipelineTest {
     @Test
     fun e2e_audioStreamingAndPlaybackStatePropagation() =
         runTest(testDispatcher) {
-            // Set active server
-            session.setActiveServer(sampleServer)
-            advanceUntilIdle()
-
             // 1. User starts playback of FLAC track from directory
-            session.playDirectoryTrack(sampleDirectory, flacFile)
+            session.playDirectoryTrack(sampleServer, sampleDirectory, flacFile)
             advanceUntilIdle()
 
             // Verify Engine received correct parameters
@@ -194,8 +190,7 @@ class EndToEndMusicPlayerPipelineTest {
     @Test
     fun e2e_backgroundPlaybackAndMediaSessionLockScreenControls() =
         runTest(testDispatcher) {
-            session.setActiveServer(sampleServer)
-            session.playDirectoryTrack(sampleDirectory, flacFile)
+            session.playDirectoryTrack(sampleServer, sampleDirectory, flacFile)
             advanceUntilIdle()
 
             // Verify currently Playing
@@ -244,8 +239,7 @@ class EndToEndMusicPlayerPipelineTest {
     @Test
     fun e2e_sessionPersistenceAndColdResumptionAcrossProcessLifecycle() =
         runTest(testDispatcher) {
-            session.setActiveServer(sampleServer)
-            session.playDirectoryTrack(sampleDirectory, mp3File)
+            session.playDirectoryTrack(sampleServer, sampleDirectory, mp3File)
             advanceUntilIdle()
 
             fakeEngine._currentPositionMs.value = 45000L

@@ -35,7 +35,7 @@
 | **0019** | [Streamline Playback Pipeline and Consolidate Session Host](0019-streamline-playback-pipeline-and-consolidate-session-host.md) | `Amended` | 凭据统一由 ADR-0035 队列管理器解析 |
 | **0020** | [跨服务器本地歌单与增量曲库即时搜索](0020-cross-server-playlists-and-incremental-library-search.md) | `Amended` | CUE 由 ADR-0034 废除，搜索由 ADR-0033 升级 |
 | **0021** | [深层 CUE 解析器下沉与消除网络客户端泄漏](0021-deepen-cue-sheet-resolver-and-purge-network-leakage.md) | **`Superseded`** | **已被 ADR-0034 彻底全盘废除与物理清除** |
-| **0022** | [歌单仓储加深与下沉连通性及封面自愈](0022-deepen-playlist-repository-with-reachability-and-artwork-self-healing.md) | `Amended` | 歌单自愈探活下沉；连通性管理由 ADR-0038 解耦至 StorageReachabilityTracker |
+| **0022** | [歌单仓储加深与下沉连通性及封面自愈](0022-deepen-playlist-repository-with-reachability-and-artwork-self-healing.md) | `Amended` | 连通性由 ADR-0038 解耦；封面存活性自愈由 ADR-0042 收归 TrackMetadataRepository |
 | **0023** | [播放会话内部接缝化与解构上帝类](0023-internal-seams-and-session-decomposition.md) | `Amended` | CUE 由 ADR-0034 清除，双轨源由 ADR-0035 解耦；纯决策化由 ADR-0041 收敛 |
 | **0024** | [下沉目录富化与搜索历史至仓储层并轻量化视图模型](0024-deepen-directory-and-search-repositories-and-slim-viewmodel.md) | **`Superseded`** | **已被 ADR-0036 彻底取代并升格为 MediaLibraryRepository** |
 | **0025** | [深化播放引擎与收敛仓储层](0025-deepen-player-engine-and-consolidate-repositories.md) | `Amended` | 废除硬外键；CUE 骨架由 ADR-0034 清除 |
@@ -56,3 +56,4 @@
 | **0039** | [从播控会话剥离浏览游标并收敛至媒体库深模块](0039-purge-browsing-cursor-from-playback-session.md) | `Accepted` | 消除目录切换 DataStore 刷盘风暴，彻底落实 ADR-0035 终局解耦 |
 | **0040** | [媒体库目录排序策略与播控队列对齐架构](0040-directory-sort-order-and-queue-alignment.md) | `Accepted` | 确定自然排序、文件夹置顶、表现层实时重排与播控队列强对齐不变量 |
 | **0041** | [播控会话接缝纯化、双轨彻底切割与起播前音频焦点门控](0041-purify-playback-session-seams-and-audio-focus-gating.md) | `Accepted` | 组合包 A 终局共识：Host 焦点门控、PlaybackErrorKind、切除浏览态与纯决策会话 |
+| **0042** | [TrackIdentity 规范化、伴生清单两阶段收拢与跨源封面批量自愈](0042-track-identity-companion-manifest-and-metadata-healing-consolidation.md) | `Accepted` | 组合包 B 终局共识：TrackIdentity、Room v10 双列歌词、前缀级联与跨源批量自愈 |

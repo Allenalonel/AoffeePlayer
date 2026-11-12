@@ -14,7 +14,9 @@
 
 ## 活跃任务 (Active)
 
-当前无活跃任务。所有功能特性与技术债务重构均已结项并归档至 [`archive/`](archive/)。
+| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 路径 |
+| :--- | :--- | :---: | :---: | :--- |
+| `track-identity-and-metadata-healing-consolidation` | TrackIdentity 规范化、伴生清单两阶段收拢与跨源封面批量自愈 (ADR-0042) | 6 | `ready-for-agent` | [`track-identity-and-metadata-healing-consolidation/`](track-identity-and-metadata-healing-consolidation/) |
 
 ---
 

@@ -41,7 +41,7 @@ _Avoid_: Host, Cloud, Remote Drive
 _Avoid_: Remote Path, Cue Album, Cue Folder, Virtual Album
 
 **Companion Manifest**:
-与音频曲目同目录存放的外置伴生资源集合（包含同目录封面图像与同名伴生歌词文件），作为音轨标签信息的保真补充源。
+与音频曲目同目录存放的外置伴生资源集合（包含目录共享封面图像与同名伴生歌词文件），作为音轨标签的优先级补充源：歌词解析严格遵循外置伴生优先、内嵌保底，封面解析遵循内嵌优先、目录共享封面保底，且严格按逻辑目录作用域隔离。
 _Avoid_: Extra Files, Sidecar Assets, Folder Icon, Album Photo
 
 **Directory Cache**:
@@ -53,7 +53,7 @@ _Avoid_: Folder Cache, File Index, Offline Copy
 _Avoid_: Directory Tree, File Catalog, Music Store, Media Browser
 
 **Storage Cascade Invalidation**:
-当远程 WebDAV 服务器被删除或本地目录被解绑时，由存储源生命周期单向触发的多级缓存、同步检查点与音轨检索索引的确定性同步级联清理契约。
+由存储源生命周期单向触发的同步级联清理契约：删除远程 WebDAV 服务器时清除该源全量目录缓存、索引、检查点、浏览游标及专属元数据与封面缓存；解绑单个本地挂载目录时仅按该目录树前缀精确清理目录缓存、索引、检查点与游标，同时保留曲目元数据快照以保护跨源歌单中的失效条目展示。
 _Avoid_: Cache Flush, Delete Hook, Cleanup Listener, Clear Storage
 
 **Path Presentation**:
@@ -61,7 +61,7 @@ _Avoid_: Cache Flush, Delete Hook, Cleanup Listener, Clear Storage
 _Avoid_: Raw URI, Document ID, Content Link
 
 **Cover Art Liveness Healing**:
-当歌单或持久化缓存中记录的封面文件在磁盘物理丢失或前缀失配时，自动检测并对齐媒体库权威元数据或重新按需提取的存活性自愈机制。
+当歌单或持久化缓存中记录的封面文件在磁盘物理丢失或失配时，跨远程 WebDAV 与本地存储一视同仁地批量校验并对齐权威元数据或触发后台重提取的自愈机制，并受存储源连通性门控以避免离线曲目引发探测风暴。
 _Avoid_: Image Fixer, Cover Rescan, Thumbnail Rebind
 
 **Browsing Cursor**:
@@ -145,8 +145,8 @@ _Avoid_: Disabled Song, Dead Link, Error Item
 _Avoid_: Error Code, Fault Flag, Inactive Status
 
 **Track Identity**:
-音频曲目在跨源体系中的物理唯一复合标识，由所属存储源与物理路径共同确定，用于跨源排重与状态映射。
-_Avoid_: Track UUID, Composite ID, Track Key
+音频曲目在跨源体系中唯一的规范复合标识，由所属存储源与物理路径共同确定并内建本地存储身份单向钳制规则，作为媒体库、歌单、连通性追踪与元数据仓储共用的排重与状态映射基准。
+_Avoid_: Track UUID, Composite ID, Track Key, Raw Path Prefix
 
 **Sync Checkpoint**:
 存储源目录增量同步时记录的变更特征快照，用于识别并跳过未变更的目录子树。

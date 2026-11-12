@@ -7,7 +7,7 @@
 - **只读增量特例**：在遵循全局只读模式前提下，仅当通过 `domain-modeling` 达成领域或架构共识时，特例放行内联沉淀至领域文档（`GLOSSARY.md`、`docs/adr/`、`.scratch/`）；业务源码（`app/src/`）与构建脚本保持绝对只读。
 - **真理源权威层级（Precedence Hierarchy）**：
   `CODING_STANDARDS.md`（最高架构法典） > `GLOSSARY.md` / 有效 ADR（消费准则详见 `docs/agents/domain.md`） > 历史实现代码。
-- **代码审查标准**：遵循 Matt Pocock 双轴审查体系（Standards 轴严格对照 `CODING_STANDARDS.md` 与 Fowler 坏味道；Spec 轴严格对照工单验收条件，杜绝遗漏与越界重构）。
+- **代码审查标准**：遵循 Matt Pocock 双轴审查体系（Standards 轴严格对照 `CODING_STANDARDS.md` 与 Fowler 坏味道；Spec 轴严格对照工单验收条件，杜绝遗漏与越界重构）。由于只读 `reviewer` 子代理无 shell 且 `watchdog_diff` 无法直接检查已提交历史，在触发 `code-review` 前，主代理必须预先将 `git diff <base>...HEAD` 与 `git log <base>..HEAD --oneline` 导出至 `.tmp/review/` 并向子代理传递文件指针；并发审查统一使用 `async: true` 启动。
 - **本地工单看板**：
   工单管理与状态流转遵循 `docs/agents/issue-tracker.md` 与 `docs/agents/triage-labels.md`，活跃工单维护在 `.scratch/`，结项后移入 `.scratch/archive/`。
 

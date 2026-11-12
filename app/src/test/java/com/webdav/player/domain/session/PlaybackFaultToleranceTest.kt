@@ -5,16 +5,14 @@ import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.InactiveReason
 import com.webdav.player.domain.model.PlaybackErrorKind
 import com.webdav.player.domain.model.PlaybackMode
+import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
-import com.webdav.player.domain.player.FakeAudioPlayerEngine
-import com.webdav.player.domain.storage.FakeStorageReachabilityTracker
+import com.webdav.player.domain.model.WebDavServer
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -33,11 +31,16 @@ class PlaybackFaultToleranceTest {
     private val testDispatcher = StandardTestDispatcher()
     private val testScope = TestScope(testDispatcher + SupervisorJob())
 
-    private lateinit var fakeEngine: FakeAudioPlayerEngine
-    private lateinit var sessionStateFlow: MutableStateFlow<PlayerSessionState>
-    private lateinit var queueManager: PlaybackQueueManager
     private lateinit var faultTolerance: PlaybackFaultTolerance
-    private lateinit var fakeStorageReachabilityTracker: FakeStorageReachabilityTracker
+
+    private val testServer =
+        WebDavServer(
+            id = 1L,
+            name = "NAS",
+            url = "http://nas.local/webdav",
+            username = "u",
+            password = "p",
+        )
 
     private val t1 =
         AudioTrack(
@@ -61,24 +64,7 @@ class PlaybackFaultToleranceTest {
 
     @Before
     fun setUp() {
-        fakeEngine = FakeAudioPlayerEngine()
-        fakeStorageReachabilityTracker = FakeStorageReachabilityTracker()
-        sessionStateFlow =
-            MutableStateFlow(
-                PlayerSessionState(
-                    queue = PlaybackQueue(listOf(t1, t2), currentIndex = 0),
-                    playbackMode = PlaybackMode.LIST_LOOP,
-                ),
-            )
-        queueManager = PlaybackQueueManager(sessionStateFlow)
-        faultTolerance =
-            PlaybackFaultTolerance(
-                sessionStateFlow = sessionStateFlow,
-                playerEngine = fakeEngine,
-                storageReachabilityTracker = fakeStorageReachabilityTracker,
-                queueManager = queueManager,
-                coroutineScope = testScope,
-            )
+        faultTolerance = PlaybackFaultTolerance(coroutineScope = testScope)
     }
 
     @After
@@ -87,40 +73,48 @@ class PlaybackFaultToleranceTest {
     }
 
     @Test
-    fun bufferingWatchdog_triggersWeakNetworkAt15sAndPausesAt30s() =
+    fun bufferingWatchdog_triggersWeakNetworkAt15sAndAutoPauseAt30s() =
         testScope.runTest {
-            faultTolerance.onBufferingStarted()
+            val timeoutEvents = mutableListOf<Boolean>()
+            faultTolerance.onBufferingStarted(isLocalTrack = false) { autoPause ->
+                timeoutEvents.add(autoPause)
+            }
 
-            // 14 seconds: nothing triggered yet
             advanceTimeBy(14_000L)
-            assertFalse(sessionStateFlow.value.isWeakNetwork)
-            assertFalse(sessionStateFlow.value.canManualRetry)
+            assertTrue(timeoutEvents.isEmpty())
 
-            // 15 seconds: weak network flag set, reconnecting
             advanceTimeBy(1_500L)
-            assertTrue(sessionStateFlow.value.isWeakNetwork)
-            assertTrue(sessionStateFlow.value.isReconnecting)
-            assertFalse(sessionStateFlow.value.canManualRetry)
+            assertEquals(listOf(false), timeoutEvents)
 
-            // 30 seconds total: engine paused, manual retry enabled
             advanceTimeBy(15_000L)
-            assertTrue(sessionStateFlow.value.isWeakNetwork)
-            assertTrue(sessionStateFlow.value.canManualRetry)
-            assertEquals(PlaybackState.Paused, sessionStateFlow.value.playbackState)
-            assertEquals(1, fakeEngine.pauseCount)
+            assertEquals(listOf(false, true), timeoutEvents)
         }
 
     @Test
-    fun onPlayingStarted_resetsWatchdogAndWeakNetworkFlags() =
+    fun bufferingWatchdog_ignoredForLocalTracks_andCancelledOnPlayingStarted() =
         testScope.runTest {
-            faultTolerance.onBufferingStarted()
-            advanceTimeBy(16_000L)
-            assertTrue(sessionStateFlow.value.isWeakNetwork)
+            val timeoutEvents = mutableListOf<Boolean>()
+            faultTolerance.onBufferingStarted(isLocalTrack = true) { timeoutEvents.add(it) }
+            advanceTimeBy(35_000L)
+            assertTrue(timeoutEvents.isEmpty())
 
-            faultTolerance.onPlayingStarted()
-            assertFalse(sessionStateFlow.value.isWeakNetwork)
-            assertFalse(sessionStateFlow.value.canManualRetry)
-            assertFalse(sessionStateFlow.value.isReconnecting)
+            faultTolerance.onBufferingStarted(isLocalTrack = false) { timeoutEvents.add(it) }
+            advanceTimeBy(16_000L)
+            assertEquals(listOf(false), timeoutEvents)
+
+            val playingDecision =
+                faultTolerance.onPlayingStarted(
+                    PlayerSessionState(
+                        queue = PlaybackQueue(listOf(t1, t2), currentIndex = 0),
+                        isWeakNetwork = true,
+                        isReconnecting = true,
+                    ),
+                )
+            assertTrue(playingDecision.clearWeakNetworkFlags)
+            assertEquals(t1.serverId, playingDecision.reachableServerId)
+
+            advanceTimeBy(20_000L)
+            assertEquals(listOf(false), timeoutEvents)
         }
 
     @Test
@@ -145,263 +139,186 @@ class PlaybackFaultToleranceTest {
     }
 
     @Test
-    fun handlePlaybackError_dispatchesByPlaybackErrorKind() {
-        var skippedCount = 0
-        var unsupportedRangeCallbacks = 0
-
-        assertTrue(
+    fun handlePlaybackError_returnsPureFaultDecisionsByPlaybackErrorKind() {
+        val fileNotFound =
             faultTolerance.handlePlaybackError(
                 state = PlaybackState.Error("Not found", kind = PlaybackErrorKind.FILE_NOT_FOUND),
                 currentTrack = t1,
-                onUnsupportedRange = { unsupportedRangeCallbacks++ },
-                onSkipToNext = { skippedCount++ },
-            ),
-        )
-        assertEquals(1, skippedCount)
+                canSkip = { true },
+            )
         assertEquals(
-            Triple(t1.serverId, t1.remotePath, InactiveReason.FILE_NOT_FOUND),
-            fakeStorageReachabilityTracker.reportedUnavailableTracks.last(),
+            FaultDecision.SkipTrack(unavailableTrack = Triple(t1.serverId, t1.remotePath, InactiveReason.FILE_NOT_FOUND)),
+            fileNotFound,
         )
 
-        assertTrue(
+        val authSkip =
             faultTolerance.handlePlaybackError(
                 state = PlaybackState.Error("Auth failed", kind = PlaybackErrorKind.AUTH_INVALID),
                 currentTrack = t1,
-                onUnsupportedRange = { unsupportedRangeCallbacks++ },
-                onSkipToNext = { skippedCount++ },
-            ),
-        )
-        assertEquals(2, skippedCount)
+                canSkip = { true },
+            )
         assertEquals(
-            t1.serverId to InactiveReason.SERVER_CREDENTIAL_INVALID,
-            fakeStorageReachabilityTracker.reportedUnavailableServers.last(),
+            FaultDecision.SkipTrack(unavailableServer = t1.serverId to InactiveReason.SERVER_CREDENTIAL_INVALID),
+            authSkip,
         )
 
-        assertTrue(
+        val unreachableExhausted =
             faultTolerance.handlePlaybackError(
                 state = PlaybackState.Error("Timeout", kind = PlaybackErrorKind.SERVER_UNREACHABLE),
                 currentTrack = t2,
-                onUnsupportedRange = { unsupportedRangeCallbacks++ },
-                onSkipToNext = { skippedCount++ },
-            ),
-        )
-        assertEquals(2, skippedCount) // all 2 tracks now failed -> queue exhausted
-        assertEquals(
-            t2.serverId to InactiveReason.SERVER_UNREACHABLE,
-            fakeStorageReachabilityTracker.reportedUnavailableServers.last(),
-        )
-        assertEquals(
-            PlaybackErrorKind.SERVER_UNREACHABLE,
-            (sessionStateFlow.value.playbackState as PlaybackState.Error).kind,
-        )
+                canSkip = { false },
+            )
+        assertTrue(unreachableExhausted is FaultDecision.ShowError)
+        val err = unreachableExhausted as FaultDecision.ShowError
+        assertEquals(PlaybackErrorKind.SERVER_UNREACHABLE, err.error.kind)
+        assertEquals(t2.serverId to InactiveReason.SERVER_UNREACHABLE, err.unavailableServer)
 
-        assertTrue(
+        val rangeDecision =
             faultTolerance.handlePlaybackError(
                 state = PlaybackState.Error("Range unsupported", kind = PlaybackErrorKind.UNSUPPORTED_RANGE),
                 currentTrack = t1,
-                onUnsupportedRange = { unsupportedRangeCallbacks++ },
-                onSkipToNext = { skippedCount++ },
-            ),
-        )
-        assertEquals(1, unsupportedRangeCallbacks)
-        assertEquals(PlaybackState.Paused, sessionStateFlow.value.playbackState)
-        assertTrue(sessionStateFlow.value.isUnsupportedRange)
+            )
+        assertEquals(FaultDecision.PauseForUnsupportedRange, rangeDecision)
 
-        assertFalse(
-            faultTolerance.handlePlaybackError(
-                state = PlaybackState.Error("HTTP 404 in message only", kind = PlaybackErrorKind.UNKNOWN),
-                currentTrack = t1,
-                onUnsupportedRange = { unsupportedRangeCallbacks++ },
-                onSkipToNext = { skippedCount++ },
-            ),
-        )
-        assertEquals(PlaybackErrorKind.UNKNOWN, (sessionStateFlow.value.playbackState as PlaybackState.Error).kind)
-        assertTrue(sessionStateFlow.value.isWeakNetwork)
-        assertTrue(sessionStateFlow.value.canManualRetry)
+        val unknownState = PlaybackState.Error("HTTP 404 in message only", kind = PlaybackErrorKind.UNKNOWN)
+        val unknownDecision = faultTolerance.handlePlaybackError(unknownState, currentTrack = t1)
+        assertEquals(FaultDecision.RetryableError(unknownState), unknownDecision)
+
+        val reduced = faultTolerance.reduceStateForDecision(PlayerSessionState(), unknownDecision)
+        assertEquals(unknownState, reduced.playbackState)
+        assertTrue(reduced.isWeakNetwork)
+        assertTrue(reduced.canManualRetry)
     }
 
     @Test
-    fun handle404Failure_marksInactiveAndSkipsWhenQueueAvailable() {
-        var skipped = false
-        faultTolerance.handle404Failure(t1, "Missing file") { skipped = true }
-
-        assertTrue(skipped)
-        assertEquals(1, fakeStorageReachabilityTracker.reportedUnavailableTracks.size)
+    fun handleLoadException_mapsExceptionsToFaultDecisions() {
+        val notFound = faultTolerance.handleLoadException(FileNotFoundException("gone"), t1) { true }
         assertEquals(
-            Triple(t1.serverId, t1.remotePath, InactiveReason.FILE_NOT_FOUND),
-            fakeStorageReachabilityTracker.reportedUnavailableTracks[0],
+            FaultDecision.SkipTrack(unavailableTrack = Triple(t1.serverId, t1.remotePath, InactiveReason.FILE_NOT_FOUND)),
+            notFound,
         )
+
+        val unreachable = faultTolerance.handleLoadException(ConnectException("refused"), t1) { false }
+        assertTrue(unreachable is FaultDecision.ShowError)
+        assertEquals(PlaybackErrorKind.SERVER_UNREACHABLE, (unreachable as FaultDecision.ShowError).error.kind)
+
+        val generic = faultTolerance.handleLoadException(IllegalStateException("bad stream"), t1)
+        assertTrue(generic is FaultDecision.ShowError)
+        assertEquals("bad stream", (generic as FaultDecision.ShowError).error.message)
     }
 
     @Test
-    fun handleAuthFailure_reportsServerUnavailable() {
-        var skipped = false
-        faultTolerance.handleAuthFailure(t1, "Auth error") { skipped = true }
-
-        assertTrue(skipped)
-        assertEquals(1, fakeStorageReachabilityTracker.reportedUnavailableServers.size)
-        assertEquals(
-            t1.serverId to InactiveReason.SERVER_CREDENTIAL_INVALID,
-            fakeStorageReachabilityTracker.reportedUnavailableServers[0],
-        )
+    fun handle404Failure_returnsErrorDecisionWhenQueueExhausted() {
+        val decision = faultTolerance.handle404Failure(t2, "File deleted") { false }
+        assertTrue(decision is FaultDecision.ShowError)
+        val showError = decision as FaultDecision.ShowError
+        assertEquals("File deleted", showError.error.message)
+        assertEquals(PlaybackErrorKind.FILE_NOT_FOUND, showError.error.kind)
+        assertEquals(Triple(t2.serverId, t2.remotePath, InactiveReason.FILE_NOT_FOUND), showError.unavailableTrack)
     }
 
     @Test
-    fun handle404Failure_setsErrorStateWhenQueueExhausted() {
-        // Mark both tracks failed
-        queueManager.recordFailedTrack(t1.id, 2)
-        var skipped = false
-        faultTolerance.handle404Failure(t2, "File deleted") { skipped = true }
-
-        assertFalse(skipped)
-        assertTrue(sessionStateFlow.value.playbackState is PlaybackState.Error)
-        assertEquals("File deleted", sessionStateFlow.value.errorMessage)
-    }
-
-    @Test
-    fun unsupportedRangeDialogue_dismissAndConfirm() {
-        sessionStateFlow.update { it.copy(isUnsupportedRange = true) }
-
-        faultTolerance.dismissUnsupportedRange()
-        assertFalse(sessionStateFlow.value.isUnsupportedRange)
-
-        sessionStateFlow.update { it.copy(isUnsupportedRange = true, errorMessage = "Range error") }
-        var replayCalled = false
-        faultTolerance.confirmUnsupportedRangeReplay { replayCalled = true }
-
-        assertFalse(sessionStateFlow.value.isUnsupportedRange)
-        assertEquals(null, sessionStateFlow.value.errorMessage)
-        assertTrue(replayCalled)
-    }
-
-    @Test
-    fun prematureEofArbitration_differentiatesGenuineCompletionFromPrematureCutoff() {
-        // Genuine completion by physical tolerance: within 5000ms
+    fun prematureEofAndEvaluatePlaybackEnded_coverAllOutcomes() {
         assertFalse(faultTolerance.isPrematureEof(currentPos = 196_000L, duration = 200_000L))
-
-        // Genuine completion by 95% progress threshold
         assertFalse(faultTolerance.isPrematureEof(currentPos = 191_000L, duration = 200_000L))
-
-        // Premature EOF: cut off at 50%
         assertTrue(faultTolerance.isPrematureEof(currentPos = 100_000L, duration = 200_000L))
+
+        val baseState =
+            PlayerSessionState(
+                activeServer = testServer,
+                queue = PlaybackQueue(listOf(t1, t2), currentIndex = 0),
+                playbackMode = PlaybackMode.LIST_LOOP,
+                durationMs = 200_000L,
+            )
+
+        assertEquals(
+            PlaybackEndedDecision.PrematureEof(100_000L),
+            faultTolerance.evaluatePlaybackEnded(baseState, currentPos = 100_000L, engineDurationMs = 200_000L),
+        )
+        assertEquals(
+            PlaybackEndedDecision.AdvanceQueue(testServer),
+            faultTolerance.evaluatePlaybackEnded(baseState, currentPos = 198_000L, engineDurationMs = 200_000L),
+        )
+        assertEquals(
+            PlaybackEndedDecision.SingleLoopReplay(200_000L),
+            faultTolerance.evaluatePlaybackEnded(
+                baseState.copy(playbackMode = PlaybackMode.SINGLE_LOOP),
+                currentPos = 198_000L,
+                engineDurationMs = 200_000L,
+            ),
+        )
+        assertEquals(
+            PlaybackEndedDecision.Ended,
+            faultTolerance.evaluatePlaybackEnded(
+                baseState.copy(queue = PlaybackQueue.EMPTY),
+                currentPos = 198_000L,
+                engineDurationMs = 200_000L,
+            ),
+        )
     }
 
     @Test
-    fun onNetworkRestored_whenSuspendedInWeakNetwork_triggersAutoResumeAndClearsFlags() {
-        sessionStateFlow.update {
-            it.copy(
+    fun onNetworkRestored_evaluatesAutoResumeStrictly() {
+        val suspendedState =
+            PlayerSessionState(
+                queue = PlaybackQueue(listOf(t1, t2), currentIndex = 0),
                 isWeakNetwork = true,
                 canManualRetry = true,
                 isReconnecting = true,
                 errorMessage = "Network timed out",
             )
-        }
-        var autoResumeCalled = false
-        val result =
-            faultTolerance.onNetworkRestored {
-                autoResumeCalled = true
-            }
+        assertEquals(NetworkRestoreDecision.AutoResume, faultTolerance.onNetworkRestored(suspendedState))
 
-        assertTrue(result)
-        assertTrue(autoResumeCalled)
-        assertFalse(sessionStateFlow.value.isWeakNetwork)
-        assertFalse(sessionStateFlow.value.canManualRetry)
-        assertFalse(sessionStateFlow.value.isReconnecting)
-        assertEquals(null, sessionStateFlow.value.errorMessage)
-    }
-
-    @Test
-    fun onNetworkRestored_whenUserPaused_suppressesAutoResume() {
-        sessionStateFlow.update {
-            it.copy(
-                playbackState = PlaybackState.Paused,
-                isWeakNetwork = false,
-                canManualRetry = false,
-            )
-        }
-        var autoResumeCalled = false
-        val result =
-            faultTolerance.onNetworkRestored {
-                autoResumeCalled = true
-            }
-
-        assertFalse(result)
-        assertFalse(autoResumeCalled)
-    }
-
-    @Test
-    fun onNetworkRestored_whenNoTrackInQueue_suppressesAutoResume() {
-        sessionStateFlow.update {
-            it.copy(
-                queue = PlaybackQueue.EMPTY,
-                isWeakNetwork = true,
-                canManualRetry = true,
-            )
-        }
-        var autoResumeCalled = false
-        val result =
-            faultTolerance.onNetworkRestored {
-                autoResumeCalled = true
-            }
-
-        assertFalse(result)
-        assertFalse(autoResumeCalled)
-    }
-
-    @Test
-    fun onNetworkRestored_whenWeakNetworkWithoutRetry_suppressesAutoResume() {
-        sessionStateFlow.update {
-            it.copy(
-                isWeakNetwork = true,
-                canManualRetry = false,
-            )
-        }
-        var autoResumeCalled = false
-        val result =
-            faultTolerance.onNetworkRestored {
-                autoResumeCalled = true
-            }
-
-        assertFalse(result)
-        assertFalse(autoResumeCalled)
-    }
-
-    @Test
-    fun handleServerUnavailable_marksBothTrackAndServerInactive() {
-        faultTolerance.handleServerUnavailable(t1) {}
-
-        assertEquals(1, fakeStorageReachabilityTracker.reportedUnavailableServers.size)
         assertEquals(
-            t1.serverId to InactiveReason.SERVER_UNREACHABLE,
-            fakeStorageReachabilityTracker.reportedUnavailableServers[0],
+            NetworkRestoreDecision.Ignore,
+            faultTolerance.onNetworkRestored(
+                suspendedState.copy(playbackState = PlaybackState.Paused, isWeakNetwork = false, canManualRetry = false),
+            ),
+        )
+        assertEquals(
+            NetworkRestoreDecision.Ignore,
+            faultTolerance.onNetworkRestored(suspendedState.copy(queue = PlaybackQueue.EMPTY)),
+        )
+        assertEquals(
+            NetworkRestoreDecision.Ignore,
+            faultTolerance.onNetworkRestored(suspendedState.copy(canManualRetry = false)),
         )
     }
 
     @Test
-    fun onPlayingStarted_clearsServerUnreachableStatusForCurrentTrack() =
-        testScope.runTest {
-            sessionStateFlow.update {
-                it.copy(
-                    queue = PlaybackQueue(listOf(t1), currentIndex = 0),
-                    isWeakNetwork = true,
-                    canManualRetry = true,
-                )
-            }
+    fun evaluatePreroll_schedulesOnlyWhenPlayingHealthyAndWithinTriggerWindow() {
+        val playingState =
+            PlayerSessionState(
+                activeServer = testServer,
+                queue = PlaybackQueue(listOf(t1, t2), currentIndex = 0),
+                playbackState = PlaybackState.Playing,
+                playbackMode = PlaybackMode.LIST_LOOP,
+            )
+        val inWindow = PlaybackProgress(currentPositionMs = 192_000L, durationMs = 200_000L, bufferedPositionMs = 195_000L)
 
-            faultTolerance.onPlayingStarted()
-            testScope.testScheduler.advanceUntilIdle()
-
-            assertTrue(fakeStorageReachabilityTracker.reportedReachableServers.contains(t1.serverId))
-            val current = sessionStateFlow.value
-            assertFalse(current.isWeakNetwork)
-            assertFalse(current.canManualRetry)
-        }
-
-    @Test
-    fun playbackFaultTolerance_hasNoPlaylistRepositoryDependency() {
-        val constructors = PlaybackFaultTolerance::class.java.declaredConstructors
-        assertTrue(constructors.none { constructor ->
-            constructor.parameterTypes.any { it.name.contains("PlaylistRepository") }
-        })
+        assertEquals(
+            PrerollPlan.ScheduleNext(expectedTrackId = t1.id, fallbackServer = testServer),
+            faultTolerance.evaluatePreroll(inWindow, playingState, isPrerollAlreadyAppended = false),
+        )
+        assertEquals(
+            PrerollPlan.None,
+            faultTolerance.evaluatePreroll(inWindow, playingState, isPrerollAlreadyAppended = true),
+        )
+        assertEquals(
+            PrerollPlan.None,
+            faultTolerance.evaluatePreroll(
+                PlaybackProgress(currentPositionMs = 100_000L, durationMs = 200_000L, bufferedPositionMs = 120_000L),
+                playingState,
+                isPrerollAlreadyAppended = false,
+            ),
+        )
+        assertEquals(
+            PrerollPlan.None,
+            faultTolerance.evaluatePreroll(
+                inWindow,
+                playingState.copy(playbackState = PlaybackState.Paused),
+                isPrerollAlreadyAppended = false,
+            ),
+        )
     }
 }

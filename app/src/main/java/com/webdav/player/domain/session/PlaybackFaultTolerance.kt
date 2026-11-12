@@ -4,17 +4,13 @@ import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.InactiveReason
 import com.webdav.player.domain.model.PlaybackErrorKind
 import com.webdav.player.domain.model.PlaybackMode
+import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.model.WebDavServer
-import com.webdav.player.domain.model.isLocal
-import com.webdav.player.domain.player.AudioPlayerEngine
-import com.webdav.player.domain.storage.StorageReachabilityTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.FileNotFoundException
@@ -32,46 +28,30 @@ fun Throwable?.is404Exception(): Boolean {
 }
 
 /**
- * Internal collaborator managing stream buffering watchdog timers, error classification,
- * dead-track skip handling, premature EOF arbitration, and unsupported Range replay dialogues.
+ * Pure domain decision & buffering watchdog scheduler for streaming fault tolerance,
+ * dead-track skip decisions, premature EOF arbitration, and adaptive pre-roll planning.
  */
 internal class PlaybackFaultTolerance(
-    private val sessionStateFlow: MutableStateFlow<PlayerSessionState>,
-    private val playerEngine: AudioPlayerEngine,
-    private val storageReachabilityTracker: StorageReachabilityTracker?,
-    private val queueManager: PlaybackQueueManager,
     private val coroutineScope: CoroutineScope,
 ) {
     val bufferingWatchdogJobRef = AtomicReference<Job?>(null)
     val lastBufferingTimestampMs = AtomicLong(0L)
 
-    fun onBufferingStarted() {
-        val currentTrack = sessionStateFlow.value.currentTrack
-        val isLocalTrack = currentTrack?.isLocal == true
-        if (isLocalTrack) {
-            return
-        }
-
+    fun onBufferingStarted(
+        isLocalTrack: Boolean,
+        onTimeout: (autoPause: Boolean) -> Unit,
+    ) {
+        if (isLocalTrack) return
         lastBufferingTimestampMs.set(System.currentTimeMillis())
         if (bufferingWatchdogJobRef.get()?.isActive != true) {
             val job =
                 coroutineScope.launch {
                     delay(WATCHDOG_WEAK_NETWORK_TIMEOUT_MS)
                     if (isActive) {
-                        sessionStateFlow.update {
-                            it.copy(isWeakNetwork = true, canManualRetry = false, isReconnecting = true)
-                        }
+                        onTimeout(false)
                         delay(WATCHDOG_AUTO_PAUSE_TIMEOUT_MS)
                         if (isActive) {
-                            playerEngine.pause()
-                            sessionStateFlow.update {
-                                it.copy(
-                                    playbackState = PlaybackState.Paused,
-                                    isWeakNetwork = true,
-                                    canManualRetry = true,
-                                    isReconnecting = true,
-                                )
-                            }
+                            onTimeout(true)
                         }
                     }
                 }
@@ -79,18 +59,13 @@ internal class PlaybackFaultTolerance(
         }
     }
 
-    fun onPlayingStarted() {
+    fun onPlayingStarted(state: PlayerSessionState): PlayingStartedDecision {
         cancelWatchdog()
-        val current = sessionStateFlow.value
-        if (current.isWeakNetwork || current.canManualRetry || current.isReconnecting) {
-            sessionStateFlow.update {
-                it.copy(isWeakNetwork = false, canManualRetry = false, isReconnecting = false)
-            }
-        }
-        val currentTrack = current.currentTrack
-        if (currentTrack != null) {
-            storageReachabilityTracker?.reportServerReachable(currentTrack.serverId)
-        }
+        val clearFlags = state.isWeakNetwork || state.canManualRetry || state.isReconnecting
+        return PlayingStartedDecision(
+            clearWeakNetworkFlags = clearFlags,
+            reachableServerId = state.currentTrack?.serverId,
+        )
     }
 
     fun cancelWatchdog() {
@@ -100,39 +75,16 @@ internal class PlaybackFaultTolerance(
     fun isHealthyNetwork(quietPeriodMs: Long = HEALTHY_NETWORK_QUIET_PERIOD_MS): Boolean =
         (System.currentTimeMillis() - lastBufferingTimestampMs.get()) >= quietPeriodMs
 
-    fun setWeakNetworkState(
-        isWeakNetwork: Boolean,
-        canManualRetry: Boolean,
-    ) {
-        sessionStateFlow.update {
-            it.copy(isWeakNetwork = isWeakNetwork, canManualRetry = canManualRetry, isReconnecting = isWeakNetwork)
-        }
-    }
-
-    fun onNetworkRestored(onAutoResume: () -> Unit): Boolean {
-        val current = sessionStateFlow.value
-        val canResume = current.isWeakNetwork && current.canManualRetry && current.hasTrack
-        if (canResume) {
-            cancelWatchdog()
-            sessionStateFlow.update {
-                it.copy(
-                    isWeakNetwork = false,
-                    canManualRetry = false,
-                    isReconnecting = false,
-                    errorMessage = null,
-                )
-            }
-            onAutoResume()
-            return true
-        }
-        return false
+    fun onNetworkRestored(state: PlayerSessionState): NetworkRestoreDecision {
+        val canResume = state.isWeakNetwork && state.canManualRetry && state.hasTrack
+        if (!canResume) return NetworkRestoreDecision.Ignore
+        cancelWatchdog()
+        return NetworkRestoreDecision.AutoResume
     }
 
     fun isServerUnreachableException(e: Throwable): Boolean =
         generateSequence(e) { current -> current.cause?.takeIf { it !== current } }.any { c ->
-            c is ConnectException ||
-                c is UnknownHostException ||
-                c is SocketTimeoutException
+            c is ConnectException || c is UnknownHostException || c is SocketTimeoutException
         }
 
     fun is404Error(state: PlaybackState.Error): Boolean = state.kind == PlaybackErrorKind.FILE_NOT_FOUND
@@ -146,155 +98,76 @@ internal class PlaybackFaultTolerance(
     fun handle404Failure(
         track: AudioTrack?,
         errorMessage: String? = null,
-        onSkipToNext: () -> Unit,
-    ) {
+        canSkip: (AudioTrack) -> Boolean = { false },
+    ): FaultDecision {
         cancelWatchdog()
-        val queueSize = sessionStateFlow.value.queue.size
-        val shouldSkip =
-            if (track != null) {
-                storageReachabilityTracker?.reportTrackUnavailable(track.serverId, track.remotePath, InactiveReason.FILE_NOT_FOUND)
-                queueManager.recordFailedTrack(track.id, queueSize)
-            } else {
-                false
-            }
-        if (shouldSkip) {
-            onSkipToNext()
-        } else {
-            val msg = errorMessage ?: "音频文件已被重命名或删除"
-            sessionStateFlow.update {
-                it.copy(
-                    playbackState = PlaybackState.Error(msg, kind = PlaybackErrorKind.FILE_NOT_FOUND),
-                    errorMessage = msg,
-                    canManualRetry = false,
-                    isWeakNetwork = false,
-                )
-            }
+        val unavailableTrack = track?.let { Triple(it.serverId, it.remotePath, InactiveReason.FILE_NOT_FOUND) }
+        if (track != null && canSkip(track)) {
+            return FaultDecision.SkipTrack(unavailableTrack = unavailableTrack)
         }
+        val msg = errorMessage ?: "音频文件已被重命名或删除"
+        return FaultDecision.ShowError(
+            error = PlaybackState.Error(msg, kind = PlaybackErrorKind.FILE_NOT_FOUND),
+            unavailableTrack = unavailableTrack,
+        )
     }
 
     fun handleAuthFailure(
         track: AudioTrack?,
         errorMessage: String? = null,
-        onSkipToNext: () -> Unit,
-    ) {
+        canSkip: (AudioTrack) -> Boolean = { false },
+    ): FaultDecision {
         cancelWatchdog()
-        val queueSize = sessionStateFlow.value.queue.size
-        val shouldSkip =
-            if (track != null) {
-                storageReachabilityTracker?.reportServerUnavailable(track.serverId, InactiveReason.SERVER_CREDENTIAL_INVALID)
-                queueManager.recordFailedTrack(track.id, queueSize)
-            } else {
-                false
-            }
-        if (shouldSkip) {
-            onSkipToNext()
-        } else {
-            val msg = errorMessage ?: "服务器认证凭据失效"
-            sessionStateFlow.update {
-                it.copy(
-                    playbackState = PlaybackState.Error(msg, kind = PlaybackErrorKind.AUTH_INVALID),
-                    errorMessage = msg,
-                    canManualRetry = false,
-                    isWeakNetwork = false,
-                )
-            }
+        val unavailableServer = track?.let { it.serverId to InactiveReason.SERVER_CREDENTIAL_INVALID }
+        if (track != null && canSkip(track)) {
+            return FaultDecision.SkipTrack(unavailableServer = unavailableServer)
         }
+        val msg = errorMessage ?: "服务器认证凭据失效"
+        return FaultDecision.ShowError(
+            error = PlaybackState.Error(msg, kind = PlaybackErrorKind.AUTH_INVALID),
+            unavailableServer = unavailableServer,
+        )
     }
 
     fun handleServerUnavailable(
         track: AudioTrack,
-        onSkipToNext: () -> Unit,
-    ) {
+        canSkip: (AudioTrack) -> Boolean = { false },
+    ): FaultDecision {
         cancelWatchdog()
-        storageReachabilityTracker?.reportServerUnavailable(track.serverId, InactiveReason.SERVER_UNREACHABLE)
-        val queueSize = sessionStateFlow.value.queue.size
-        if (queueManager.recordFailedTrack(track.id, queueSize)) {
-            onSkipToNext()
+        val unavailableServer = track.serverId to InactiveReason.SERVER_UNREACHABLE
+        return if (canSkip(track)) {
+            FaultDecision.SkipTrack(unavailableServer = unavailableServer)
         } else {
-            sessionStateFlow.update {
-                it.copy(
-                    playbackState = PlaybackState.Error("所属服务器无法连接", kind = PlaybackErrorKind.SERVER_UNREACHABLE),
-                    errorMessage = "所属服务器无法连接",
-                    canManualRetry = false,
-                    isWeakNetwork = false,
-                )
-            }
+            FaultDecision.ShowError(
+                error = PlaybackState.Error("所属服务器无法连接", kind = PlaybackErrorKind.SERVER_UNREACHABLE),
+                unavailableServer = unavailableServer,
+            )
         }
     }
 
     fun handlePlaybackError(
         state: PlaybackState.Error,
         currentTrack: AudioTrack?,
-        onUnsupportedRange: () -> Unit,
-        onSkipToNext: () -> Unit,
-    ): Boolean =
+        canSkip: (AudioTrack) -> Boolean = { false },
+    ): FaultDecision =
         when (state.kind) {
-            PlaybackErrorKind.UNSUPPORTED_RANGE -> {
-                sessionStateFlow.update { it.copy(playbackState = PlaybackState.Paused, isUnsupportedRange = true) }
-                onUnsupportedRange()
-                true
-            }
-
-            PlaybackErrorKind.FILE_NOT_FOUND -> {
-                handle404Failure(currentTrack, state.message, onSkipToNext)
-                true
-            }
-
-            PlaybackErrorKind.AUTH_INVALID -> {
-                handleAuthFailure(currentTrack, state.message, onSkipToNext)
-                true
-            }
-
-            PlaybackErrorKind.SERVER_UNREACHABLE -> {
-                if (currentTrack != null) {
-                    handleServerUnavailable(currentTrack, onSkipToNext)
-                }
-                true
-            }
-
-            PlaybackErrorKind.UNKNOWN -> {
-                sessionStateFlow.update {
-                    it.copy(
-                        playbackState = state,
-                        errorMessage = state.message,
-                        isWeakNetwork = true,
-                        canManualRetry = true,
-                        isReconnecting = false,
-                    )
-                }
-                false
-            }
+            PlaybackErrorKind.UNSUPPORTED_RANGE -> FaultDecision.PauseForUnsupportedRange
+            PlaybackErrorKind.FILE_NOT_FOUND -> handle404Failure(currentTrack, state.message, canSkip)
+            PlaybackErrorKind.AUTH_INVALID -> handleAuthFailure(currentTrack, state.message, canSkip)
+            PlaybackErrorKind.SERVER_UNREACHABLE -> currentTrack?.let { handleServerUnavailable(it, canSkip) } ?: FaultDecision.Ignored
+            PlaybackErrorKind.UNKNOWN -> FaultDecision.RetryableError(state)
         }
 
     fun handleLoadException(
         e: Throwable,
         track: AudioTrack,
-        onSkipToNext: () -> Unit,
-    ) {
-        if (e.is404Exception()) {
-            handle404Failure(track, onSkipToNext = onSkipToNext)
-        } else if (isServerUnreachableException(e)) {
-            handleServerUnavailable(track, onSkipToNext = onSkipToNext)
-        } else {
-            sessionStateFlow.update {
-                it.copy(
-                    playbackState = PlaybackState.Error(e.message ?: "加载音频失败"),
-                    errorMessage = e.message ?: "加载音频失败",
-                    canManualRetry = false,
-                    isWeakNetwork = false,
-                )
-            }
+        canSkip: (AudioTrack) -> Boolean = { false },
+    ): FaultDecision =
+        when {
+            e.is404Exception() -> handle404Failure(track, canSkip = canSkip)
+            isServerUnreachableException(e) -> handleServerUnavailable(track, canSkip = canSkip)
+            else -> FaultDecision.ShowError(PlaybackState.Error(e.message ?: "加载音频失败"))
         }
-    }
-
-    fun dismissUnsupportedRange() {
-        sessionStateFlow.update { it.copy(isUnsupportedRange = false) }
-    }
-
-    fun confirmUnsupportedRangeReplay(onReplay: () -> Unit) {
-        sessionStateFlow.update { it.copy(isUnsupportedRange = false, errorMessage = null) }
-        onReplay()
-    }
 
     fun isPrematureEof(
         currentPos: Long,
@@ -306,45 +179,80 @@ internal class PlaybackFaultTolerance(
         return !isPhysicalMatch && !isProgressMatch
     }
 
-    fun checkAndTriggerAdaptivePreroll(
-        progress: com.webdav.player.domain.model.PlaybackProgress,
-        queue: com.webdav.player.domain.model.PlaybackQueue,
-        playbackMode: com.webdav.player.domain.model.PlaybackMode,
-        activeServer: com.webdav.player.domain.model.WebDavServer?,
-        currentTrackId: String?,
-        isPrerollAppended: java.util.concurrent.atomic.AtomicBoolean,
-        onPreroll: (server: com.webdav.player.domain.model.WebDavServer, track: AudioTrack) -> Unit,
-    ) {
-        if (isPrerollAppended.get() || queue.tracks.size <= 1) return
-        if (playbackMode == PlaybackMode.SHUFFLE && queue.currentIndex >= queue.tracks.lastIndex) return
+    fun evaluatePreroll(
+        progress: PlaybackProgress,
+        state: PlayerSessionState,
+        isPrerollAlreadyAppended: Boolean,
+    ): PrerollPlan {
+        if (isPrerollAlreadyAppended || state.queue.tracks.size <= 1) return PrerollPlan.None
+        if (state.playbackMode == PlaybackMode.SHUFFLE && state.queue.currentIndex >= state.queue.tracks.lastIndex) {
+            return PrerollPlan.None
+        }
         val remainingMs = progress.durationMs - progress.currentPositionMs
+        if (remainingMs !in 1..PREROLL_TRIGGER_WINDOW_MS) return PrerollPlan.None
+        if (state.playbackState !is PlaybackState.Playing) return PrerollPlan.None
+        if (!isHealthyNetwork(HEALTHY_NETWORK_QUIET_PERIOD_MS)) return PrerollPlan.None
+        val server = state.activeServer ?: return PrerollPlan.None
+        return PrerollPlan.ScheduleNext(
+            expectedTrackId = state.currentTrack?.id,
+            fallbackServer = server,
+        )
+    }
 
-        if (remainingMs in 1..PREROLL_TRIGGER_WINDOW_MS) {
-            val isPlaying = sessionStateFlow.value.playbackState is PlaybackState.Playing
-            if (isPlaying && isHealthyNetwork(HEALTHY_NETWORK_QUIET_PERIOD_MS)) {
-                if (isPrerollAppended.compareAndSet(false, true)) {
-                    val server =
-                        activeServer ?: run {
-                            isPrerollAppended.set(false)
-                            return
-                        }
-                    val nextIndex = queueManager.calculateNextQueueIndex(queue, playbackMode)
-                    val nextTrack = queue.tracks[nextIndex]
-                    coroutineScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                        if (isPrerollAppended.get() &&
-                            sessionStateFlow.value.playbackState is PlaybackState.Playing &&
-                            sessionStateFlow.value.currentTrack?.id == currentTrackId
-                        ) {
-                            val nextServer = queueManager.resolveServerForTrack(nextTrack, server, server) ?: server
-                            onPreroll(nextServer, nextTrack)
-                        } else {
-                            isPrerollAppended.set(false)
-                        }
-                    }
-                }
-            }
+    fun evaluatePlaybackEnded(
+        state: PlayerSessionState,
+        currentPos: Long,
+        engineDurationMs: Long,
+    ): PlaybackEndedDecision {
+        val duration = engineDurationMs.takeIf { it > 0L } ?: state.currentTrack?.durationMs ?: state.durationMs
+        if (isPrematureEof(currentPos, duration)) {
+            return PlaybackEndedDecision.PrematureEof(currentPos)
+        }
+        val server = state.activeServer
+        if (server == null || state.queue.isEmpty) {
+            return PlaybackEndedDecision.Ended
+        }
+        return if (state.playbackMode == PlaybackMode.SINGLE_LOOP) {
+            PlaybackEndedDecision.SingleLoopReplay(duration)
+        } else {
+            PlaybackEndedDecision.AdvanceQueue(server)
         }
     }
+
+    fun reduceStateForDecision(
+        current: PlayerSessionState,
+        decision: FaultDecision,
+    ): PlayerSessionState =
+        when (decision) {
+            is FaultDecision.PauseForUnsupportedRange -> {
+                current.copy(playbackState = PlaybackState.Paused, isUnsupportedRange = true)
+            }
+
+            is FaultDecision.ShowError -> {
+                current.copy(
+                    playbackState = decision.error,
+                    errorMessage = decision.error.message,
+                    canManualRetry = false,
+                    isWeakNetwork = false,
+                )
+            }
+
+            is FaultDecision.RetryableError -> {
+                current.copy(
+                    playbackState = decision.error,
+                    errorMessage = decision.error.message,
+                    isWeakNetwork = true,
+                    canManualRetry = true,
+                    isReconnecting = false,
+                )
+            }
+
+            is FaultDecision.SkipTrack,
+            is FaultDecision.Ignored,
+            -> {
+                current
+            }
+        }
 
     companion object {
         const val PREROLL_TRIGGER_WINDOW_MS: Long = 10_000L
@@ -354,4 +262,63 @@ internal class PlaybackFaultTolerance(
         const val COMPLETION_PROGRESS_THRESHOLD: Double = 0.95
         const val HEALTHY_NETWORK_QUIET_PERIOD_MS: Long = 30_000L
     }
+}
+
+internal data class PlayingStartedDecision(
+    val clearWeakNetworkFlags: Boolean,
+    val reachableServerId: Long?,
+)
+
+internal enum class NetworkRestoreDecision {
+    Ignore,
+    AutoResume,
+}
+
+internal sealed interface FaultDecision {
+    val unavailableTrack: Triple<Long, String, InactiveReason>? get() = null
+    val unavailableServer: Pair<Long, InactiveReason>? get() = null
+
+    data object PauseForUnsupportedRange : FaultDecision
+
+    data object Ignored : FaultDecision
+
+    data class SkipTrack(
+        override val unavailableTrack: Triple<Long, String, InactiveReason>? = null,
+        override val unavailableServer: Pair<Long, InactiveReason>? = null,
+    ) : FaultDecision
+
+    data class ShowError(
+        val error: PlaybackState.Error,
+        override val unavailableTrack: Triple<Long, String, InactiveReason>? = null,
+        override val unavailableServer: Pair<Long, InactiveReason>? = null,
+    ) : FaultDecision
+
+    data class RetryableError(
+        val error: PlaybackState.Error,
+    ) : FaultDecision
+}
+
+internal sealed interface PrerollPlan {
+    data object None : PrerollPlan
+
+    data class ScheduleNext(
+        val expectedTrackId: String?,
+        val fallbackServer: WebDavServer,
+    ) : PrerollPlan
+}
+
+internal sealed interface PlaybackEndedDecision {
+    data class PrematureEof(
+        val seekPositionMs: Long,
+    ) : PlaybackEndedDecision
+
+    data object Ended : PlaybackEndedDecision
+
+    data class SingleLoopReplay(
+        val durationMs: Long,
+    ) : PlaybackEndedDecision
+
+    data class AdvanceQueue(
+        val server: WebDavServer,
+    ) : PlaybackEndedDecision
 }

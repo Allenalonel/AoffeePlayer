@@ -222,6 +222,16 @@ internal class SessionPersistenceCoordinator(
         }
     }
 
+    fun flushCleanExitAsync(saveCurrentPosition: Boolean = false) {
+        coroutineScope.launch {
+            if (saveCurrentPosition) {
+                val pos = playerEngine.currentPositionMs.value
+                if (pos > 0L) savePosition(pos, isCleanExit = true)
+            }
+            flushSessionWithCleanExit(isCleanExit = true)
+        }
+    }
+
     fun startPeriodicFlush() {
         if (sessionStore == null || periodicFlushJob?.isActive == true) return
         periodicFlushJob =

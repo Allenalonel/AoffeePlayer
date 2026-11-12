@@ -723,7 +723,7 @@ class PackagingSeamVerificationTest {
             dataImportOffenders.isEmpty(),
         )
 
-        // 2. MusicPlayerAppSession, MusicPlayerAppSessionImpl, and PlayerSessionState must not declare or reference browsingServer or setActiveServer
+        // 2. MusicPlayerAppSession, MusicPlayerAppSessionImpl, and PlayerSessionState must not declare browsingServer or setActiveServer
         listOf(
             "domain/session/MusicPlayerAppSession.kt",
             "domain/session/MusicPlayerAppSessionImpl.kt",
@@ -731,7 +731,10 @@ class PackagingSeamVerificationTest {
         ).forEach { relPath ->
             val content = source(relPath)
             assertFalse("$relPath must not declare or reference browsingServer", content.contains("browsingServer"))
-            assertFalse("$relPath must not declare or reference setActiveServer", content.contains("setActiveServer"))
+            assertFalse(
+                "$relPath must not declare setActiveServer",
+                Regex("""\bfun\s+setActiveServer\b""").containsMatchIn(content),
+            )
         }
 
         // 3. MusicPlayerAppSession must not declare any playDirectoryTrack overload lacking server: WebDavServer

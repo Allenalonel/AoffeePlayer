@@ -1,7 +1,7 @@
 # Spec: 播控会话接缝纯化、双轨彻底切割与起播前音频焦点门控 (Purify Playback Session Seams)
 
-Status: `ready-for-agent`  
-ADR: [`docs/adr/0041-purify-playback-session-seams-and-audio-focus-gating.md`](../../docs/adr/0041-purify-playback-session-seams-and-audio-focus-gating.md)
+Status: `completed`  
+ADR: [`docs/adr/0041-purify-playback-session-seams-and-audio-focus-gating.md`](../../../docs/adr/0041-purify-playback-session-seams-and-audio-focus-gating.md)
 
 ## Problem Statement
 

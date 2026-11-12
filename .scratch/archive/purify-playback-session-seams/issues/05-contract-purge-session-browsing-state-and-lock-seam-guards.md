@@ -4,8 +4,8 @@
 
 **Blocked by:** 01 (Audio Focus 窄门控与宿主硬件锁), 02 (PlaybackErrorKind 归一映射), 04 (全量调用方迁移)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] `Playback Session` 接口、会话状态模型及假对象中 `browsingServer` 与 `setActiveServer` 及其旧目录点播桥接已物理清零
-- [ ] 静态包接缝校验测试明确校验 `domain.session` 零 `data.*` 导入且会话接口/状态模型零浏览态字段或方法
-- [ ] 静态守卫测试及全量核心会话单测编译并通过
+- [x] `Playback Session` 接口、会话状态模型及假对象中 `browsingServer` 与 `setActiveServer` 及其旧目录点播桥接已物理清零
+- [x] 静态包接缝校验测试明确校验 `domain.session` 零 `data.*` 导入且会话接口/状态模型零浏览态字段或方法
+- [x] 静态守卫测试及全量核心会话单测编译并通过

@@ -4,9 +4,9 @@
 
 **Blocked by:** 01 (Audio Focus 窄门控与宿主硬件锁), 02 (PlaybackErrorKind 归一映射), 05 (Contract 物理删除与红线守卫)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] 队列管理器与容错协调器不再持有共享 `MutableStateFlow` 或直接调用 `AudioPlayerEngine`，且历史遗留无用参数死重载已物理清除
-- [ ] 时间轴协调器移除冗余回调网并仅承担引擎流订阅与进度节流；冷启动恢复等待门控收拢至主会话单一辅助逻辑
-- [ ] 应用级 `Playback Session` 主实现及其所有内部协作者均维持在 600 行预算以内
-- [ ] 针对纯队列与纯容错决策补充无引擎桩单测，且全量 `./gradlew testDebugUnitTest verifyReleasePackaging` 验证门禁一次通过
+- [x] 队列管理器与容错协调器不再持有共享 `MutableStateFlow` 或直接调用 `AudioPlayerEngine`，且历史遗留无用参数死重载已物理清除
+- [x] 时间轴协调器移除冗余回调网并仅承担引擎流订阅与进度节流；冷启动恢复等待门控收拢至主会话单一辅助逻辑
+- [x] 应用级 `Playback Session` 主实现及其所有内部协作者均维持在 600 行预算以内
+- [x] 针对纯队列与纯容错决策补充无引擎桩单测，且全量 `./gradlew testDebugUnitTest verifyReleasePackaging` 验证门禁一次通过

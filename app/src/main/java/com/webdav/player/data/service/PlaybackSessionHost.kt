@@ -220,7 +220,10 @@ class PlaybackSessionHost(
                         val engineState = playerEngine.playbackState.value
                         val isActivelyPlaying =
                             session.sessionState.value.isPlaying ||
-                                (playerEngine.playWhenReady && (engineState is PlaybackState.Playing || engineState is PlaybackState.Buffering))
+                                (
+                                    playerEngine.playWhenReady &&
+                                        (engineState is PlaybackState.Playing || engineState is PlaybackState.Buffering)
+                                )
                         if (isActivelyPlaying && currentTrack != null) {
                             acquireLocksForTrack(currentTrack.isLocal)
                         }

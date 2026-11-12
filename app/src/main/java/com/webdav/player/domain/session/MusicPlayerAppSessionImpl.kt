@@ -100,7 +100,6 @@ class MusicPlayerAppSessionImpl(
             getHasStreamLoaded = { hasStreamLoaded },
             clearPrerollIfActive = { clearPrerollIfActive() },
             onRestoreSession = { restoreSession() },
-            onSetActiveServer = { setActiveServer(it, resetPlayback = false) },
             onSkipToNext = { skipToNext() },
             onTransitionToQueueIndex = { s, idx -> transitionToQueueIndex(s, idx) },
         )
@@ -141,10 +140,7 @@ class MusicPlayerAppSessionImpl(
 
         fun dispatch(target: WebDavServer) {
             _sessionState.update { current ->
-                current.copy(
-                    activeServer = target,
-                    browsingServer = current.browsingServer ?: target,
-                )
+                current.copy(activeServer = target, browsingServer = current.browsingServer ?: target)
             }
             hasStreamLoaded = true
             try {
@@ -182,7 +178,7 @@ class MusicPlayerAppSessionImpl(
     }
 
     private fun dispatchQueueLoad(
-        server: WebDavServer,
+        server: WebDavServer?,
         request: QueueLoadRequest,
     ) {
         clearKilledBySystemFlag()
@@ -192,11 +188,7 @@ class MusicPlayerAppSessionImpl(
         queueManager.clearFailedTracks()
         _playbackProgress.value = PlaybackProgress(0L, request.targetTrack.durationMs, 0L)
         _sessionState.update {
-            it.copy(
-                queue = request.queue,
-                durationMs = request.targetTrack.durationMs,
-                errorMessage = null,
-            )
+            it.copy(queue = request.queue, durationMs = request.targetTrack.durationMs, errorMessage = null)
         }
         loadTrackIntoEngine(server, request.targetTrack, request.startPositionMs)
         coroutineScope.launch { flushSession() }
@@ -230,18 +222,35 @@ class MusicPlayerAppSessionImpl(
     private val networkObservationJob: Job? =
         networkConnectivityObserver?.let { observer ->
             coroutineScope.launch {
-                observer.networkStatus
-                    .map { it.isConnected }
-                    .distinctUntilChanged()
-                    .drop(1)
-                    .collect { isConnected ->
-                        if (isConnected) {
-                            faultTolerance.onNetworkRestored {
-                                resumeCurrentTrack()
-                            }
-                            storageReachabilityTracker?.triggerReachabilitySelfHealing()
+                observer.networkStatus.map { it.isConnected }.distinctUntilChanged().drop(1).collect { isConnected ->
+                    if (isConnected) {
+                        faultTolerance.onNetworkRestored { resumeCurrentTrack() }
+                        storageReachabilityTracker?.triggerReachabilitySelfHealing()
+                    }
+                }
+            }
+        }
+
+    private val serverDeletionObservationJob: Job? =
+        serverRepository?.let { repo ->
+            coroutineScope.launch {
+                repo.getAllServers().collect { servers ->
+                    val current = _sessionState.value
+                    val active = current.activeServer
+                    if (active != null && !active.isLocal && servers.none { it.id == active.id }) {
+                        if (current.hasTrack || current.playbackState !is PlaybackState.Idle) stop()
+                        _sessionState.update {
+                            it.copy(
+                                activeServer = null,
+                                browsingServer = if (it.browsingServer?.id == active.id) null else it.browsingServer,
+                                queue = PlaybackQueue.EMPTY,
+                                durationMs = 0L,
+                                lyrics = null,
+                                isLoadingLyrics = false,
+                            )
                         }
                     }
+                }
             }
         }
 
@@ -264,18 +273,8 @@ class MusicPlayerAppSessionImpl(
             if (currentBrowsing?.id == server?.id && current.activeServer?.id == server?.id) {
                 return@update current.copy(activeServer = server, browsingServer = server)
             }
-            if (server != null && current.hasTrack && !resetPlayback) {
-                // Do not disrupt ongoing playback or wipe queue when switching active browsing storage/server
-                return@update current.copy(
-                    activeServer = server,
-                    browsingServer = server,
-                )
-            }
-            if (current.queue.isPlaylistQueue) {
-                return@update current.copy(
-                    activeServer = server,
-                    browsingServer = server,
-                )
+            if ((server != null && current.hasTrack && !resetPlayback) || current.queue.isPlaylistQueue) {
+                return@update current.copy(activeServer = server, browsingServer = server)
             }
 
             if (current.playbackState !is PlaybackState.Idle) playerEngine.stop()
@@ -298,14 +297,23 @@ class MusicPlayerAppSessionImpl(
     }
 
     override fun playDirectoryTrack(
+        server: WebDavServer,
+        directory: RemoteDirectory,
+        selectedFile: RemoteFile,
+        initialMetadata: Map<String, TrackMetadata>,
+    ) {
+        val request = queueManager.buildDirectoryQueue(directory, selectedFile, initialMetadata, server = server) ?: return
+        dispatchQueueLoad(server, request)
+        metadataCoordinator.enrichQueueTracksFromCache(server, request.queue)
+    }
+
+    override fun playDirectoryTrack(
         directory: RemoteDirectory,
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata>,
     ) {
         val server = _sessionState.value.browsingServer ?: _sessionState.value.activeServer ?: return
-        val request = queueManager.buildDirectoryQueue(directory, selectedFile, initialMetadata, server = server) ?: return
-        dispatchQueueLoad(server, request)
-        metadataCoordinator.enrichQueueTracksFromCache(server, request.queue)
+        playDirectoryTrack(server, directory, selectedFile, initialMetadata)
     }
 
     override fun playTrack(track: AudioTrack) {
@@ -388,13 +396,7 @@ class MusicPlayerAppSessionImpl(
         clearPrerollIfActive()
         faultTolerance.cancelWatchdog()
         if (hasStreamLoaded) playerEngine.pause()
-        _sessionState.update {
-            it.copy(
-                isWeakNetwork = false,
-                canManualRetry = false,
-                isReconnecting = false,
-            )
-        }
+        _sessionState.update { it.copy(isWeakNetwork = false, canManualRetry = false, isReconnecting = false) }
         coroutineScope.launch {
             val pos = playerEngine.currentPositionMs.value
             if (pos > 0L) {
@@ -441,8 +443,7 @@ class MusicPlayerAppSessionImpl(
                 _sessionState.update { it.copy(queue = PlaybackQueue.EMPTY, errorMessage = null) }
                 return@launch
             }
-            val target = request.targetTrack
-            val active = queueManager.resolveServerForTrack(target) ?: return@launch
+            val active = queueManager.resolveServerForTrack(request.targetTrack)
             dispatchQueueLoad(active, request)
         }
     }
@@ -550,12 +551,7 @@ class MusicPlayerAppSessionImpl(
         playerEngine.stop()
         _playbackProgress.value = PlaybackProgress.ZERO
         _sessionState.update {
-            it.copy(
-                playbackState = PlaybackState.Idle,
-                isWeakNetwork = false,
-                canManualRetry = false,
-                isReconnecting = false,
-            )
+            it.copy(playbackState = PlaybackState.Idle, isWeakNetwork = false, canManualRetry = false, isReconnecting = false)
         }
         coroutineScope.launch { flushSessionWithCleanExit(isCleanExit = true) }
     }
@@ -579,6 +575,7 @@ class MusicPlayerAppSessionImpl(
         resetPlaybackState()
         timelineCoordinator.cancelObservations()
         networkObservationJob?.cancel()
+        serverDeletionObservationJob?.cancel()
         playerEngine.release()
         _playbackProgress.value = PlaybackProgress.ZERO
     }

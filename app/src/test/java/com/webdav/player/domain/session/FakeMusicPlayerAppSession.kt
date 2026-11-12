@@ -38,6 +38,7 @@ class FakeMusicPlayerAppSession(
         _isRestored.value = restored
     }
 
+    var lastPlayServer: WebDavServer? = null
     var lastPlayDirectory: RemoteDirectory? = null
     var lastPlaySelectedFile: RemoteFile? = null
     var togglePlayPauseCount = 0
@@ -83,6 +84,16 @@ class FakeMusicPlayerAppSession(
     var audioFocusTransientLossCount = 0
     var audioFocusGainCount = 0
     var audioFocusLossCount = 0
+
+    override fun playDirectoryTrack(
+        server: WebDavServer,
+        directory: RemoteDirectory,
+        selectedFile: RemoteFile,
+        initialMetadata: Map<String, TrackMetadata>,
+    ) {
+        lastPlayServer = server
+        playDirectoryTrack(directory, selectedFile, initialMetadata)
+    }
 
     override fun playDirectoryTrack(
         directory: RemoteDirectory,

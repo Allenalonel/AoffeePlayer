@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -76,8 +75,7 @@ class DirectoryBrowserViewModel(
 
         viewModelScope.launch {
             val activeServerFlow: Flow<WebDavServer?> =
-                musicPlayerAppSession?.sessionState?.map { it.browsingServer ?: it.activeServer }?.distinctUntilChanged()
-                    ?: serverRepository?.getActiveServer()?.distinctUntilChanged()
+                serverRepository?.getActiveServer()?.distinctUntilChanged()
                     ?: emptyFlow()
 
             activeServerFlow.collect { server ->
@@ -232,8 +230,10 @@ class DirectoryBrowserViewModel(
 
     fun onAudioTrackClicked(file: RemoteFile) {
         if (!file.isAudio) return
+        val server = _uiState.value.activeServer ?: return
         val dir = _uiState.value.currentDirectory ?: return
         musicPlayerAppSession?.playDirectoryTrack(
+            server = server,
             directory = dir,
             selectedFile = file,
             initialMetadata = _uiState.value.metadataMap,
@@ -355,7 +355,6 @@ class DirectoryBrowserViewModel(
             viewModelScope.launch {
                 serverRepository?.getServerById(targetServerId)?.let { targetServer ->
                     serverRepository.setActiveServer(targetServerId)
-                    musicPlayerAppSession?.setActiveServer(targetServer)
                     _uiState.update { it.copy(activeServer = targetServer) }
                 }
                 loadDirectory(directory.path, forceRefresh = false)

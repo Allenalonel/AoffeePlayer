@@ -1,32 +1,21 @@
 package com.webdav.player.domain.session
 
 import com.webdav.player.domain.model.AudioTrack
-import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackQueue
-import com.webdav.player.domain.model.PlaybackState
-import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.model.PlaylistTrackEntry
 import com.webdav.player.domain.model.QueueOrigin
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
-import com.webdav.player.domain.model.isLocal
-import com.webdav.player.domain.repository.ServerRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 
 /**
- * Pure internal collaborator managing playback queue state machine transitions,
+ * Pure domain decision collaborator managing playback queue state transitions,
  * next/previous index calculations, shuffle order generation, ad-hoc queue modifications,
  * and dead-track cycle prevention.
  */
-internal class PlaybackQueueManager(
-    private val sessionStateFlow: MutableStateFlow<PlayerSessionState>,
-    private val serverRepository: ServerRepository? = null,
-    private val onFlushRequested: () -> Unit = {},
-) {
+internal class PlaybackQueueManager {
     private val failedTrackIdsInCurrentCycle = mutableSetOf<String>()
 
     val failedTrackCount: Int
@@ -37,41 +26,6 @@ internal class PlaybackQueueManager(
     fun clearFailedTracks() {
         failedTrackIdsInCurrentCycle.clear()
     }
-
-    /**
-     * Resolves the effective [WebDavServer] context for [track], clamping local tracks
-     * to [LOCAL_STORAGE_ID] and querying [serverRepository] for cross-server tracks.
-     */
-    suspend fun resolveServerForTrack(
-        track: AudioTrack,
-        preferredServer: WebDavServer? = null,
-        fallbackServer: WebDavServer? = sessionStateFlow.value.activeServer,
-    ): WebDavServer? =
-        when {
-            track.isLocal || track.serverId == LOCAL_STORAGE_ID -> {
-                WebDavServer.createLocalStorage()
-            }
-
-            preferredServer != null && preferredServer.id == track.serverId -> {
-                preferredServer
-            }
-
-            fallbackServer != null && fallbackServer.id == track.serverId -> {
-                fallbackServer
-            }
-
-            serverRepository != null -> {
-                try {
-                    serverRepository.getServerById(track.serverId)
-                } catch (_: Throwable) {
-                    null
-                } ?: preferredServer ?: fallbackServer
-            }
-
-            else -> {
-                preferredServer ?: fallbackServer
-            }
-        }
 
     /**
      * Records a failed track ID and determines whether to proceed with skipping to next track
@@ -118,120 +72,129 @@ internal class PlaybackQueueManager(
     }
 
     /**
-     * Updates the playback mode, transforming to shuffled queue or restoring original order.
+     * Computes the next queue progression step, handling deterministic end-of-cycle reshuffling
+     * when in [PlaybackMode.SHUFFLE]. Returns null when [queue] is empty.
      */
-    fun setPlaybackMode(mode: PlaybackMode) {
-        sessionStateFlow.update { current ->
-            val updatedQueue =
-                when {
-                    mode == PlaybackMode.SHUFFLE && !current.queue.isShuffled && current.queue.tracks.isNotEmpty() -> {
-                        current.queue.toShuffled()
-                    }
-
-                    mode != PlaybackMode.SHUFFLE && current.queue.isShuffled -> {
-                        current.queue.toUnshuffled()
-                    }
-
-                    else -> {
-                        current.queue
-                    }
-                }
-            current.copy(playbackMode = mode, queue = updatedQueue)
+    fun advanceToNext(
+        queue: PlaybackQueue,
+        mode: PlaybackMode,
+    ): AdvanceQueueResult? {
+        if (queue.isEmpty) return null
+        return if (mode == PlaybackMode.SHUFFLE && queue.currentIndex >= queue.tracks.lastIndex) {
+            AdvanceQueueResult(targetIndex = 0, reshuffledQueue = queue.reshuffle())
+        } else {
+            AdvanceQueueResult(targetIndex = calculateNextQueueIndex(queue, mode), reshuffledQueue = null)
         }
-        onFlushRequested()
+    }
+
+    /**
+     * Computes updated playback mode and shuffled/unshuffled queue transformation.
+     */
+    fun setPlaybackMode(
+        queue: PlaybackQueue,
+        mode: PlaybackMode,
+    ): PlaybackModeUpdate {
+        val updatedQueue =
+            when {
+                mode == PlaybackMode.SHUFFLE && !queue.isShuffled && queue.tracks.isNotEmpty() -> {
+                    queue.toShuffled()
+                }
+
+                mode != PlaybackMode.SHUFFLE && queue.isShuffled -> {
+                    queue.toUnshuffled()
+                }
+
+                else -> {
+                    queue
+                }
+            }
+        return PlaybackModeUpdate(playbackMode = mode, queue = updatedQueue)
     }
 
     /**
      * Cycles to the next playback mode in order (LIST_LOOP -> SINGLE_LOOP -> SHUFFLE -> LIST_LOOP).
      */
-    fun cyclePlaybackMode() {
-        val nextMode = sessionStateFlow.value.playbackMode.next()
-        setPlaybackMode(nextMode)
-    }
+    fun cyclePlaybackMode(
+        queue: PlaybackQueue,
+        currentMode: PlaybackMode,
+    ): PlaybackModeUpdate = setPlaybackMode(queue, currentMode.next())
 
     /**
-     * Inserts a track immediately after the currently active track in the queue.
+     * Computes the decision for inserting a track immediately after the active track.
      */
     fun playNext(
+        queue: PlaybackQueue,
         track: AudioTrack,
-        hasServerOrRepo: Boolean = true,
-        onPlayTrack: (AudioTrack) -> Unit,
-    ) {
-        if (!hasServerOrRepo) return
-        val currentQueue = sessionStateFlow.value.queue
-        if (currentQueue.isEmpty) {
-            onPlayTrack(track)
-            return
+    ): PlayNextDecision =
+        if (queue.isEmpty) {
+            PlayNextDecision.PlayAsNew(track)
+        } else {
+            PlayNextDecision.QueueUpdated(queue.insertNext(track))
         }
-        if (sessionStateFlow.value.activeServer == null) return
-        val updatedQueue = currentQueue.insertNext(track)
-        sessionStateFlow.update { it.copy(queue = updatedQueue) }
-        onFlushRequested()
-    }
 
     /**
-     * Inserts a track immediately after the active track and immediately advances playback to it.
+     * Computes the decision for inserting a track immediately after the active track and advancing to it.
      */
     fun playNextAndAdvance(
+        queue: PlaybackQueue,
         track: AudioTrack,
-        hasServerOrRepo: Boolean,
-        onPlayTrack: (AudioTrack) -> Unit,
-        onTransitionToIndex: (Int) -> Unit,
-    ) {
-        if (!hasServerOrRepo) return
-        val currentQueue = sessionStateFlow.value.queue
-        if (currentQueue.isEmpty) {
-            onPlayTrack(track)
-            return
-        }
-        val targetIndex = (currentQueue.currentIndex + 1).coerceAtMost(currentQueue.tracks.size)
-        val updatedQueue = currentQueue.insertNext(track)
-        sessionStateFlow.update { it.copy(queue = updatedQueue) }
-        onTransitionToIndex(targetIndex)
+    ): PlayNextAndAdvanceResult {
+        if (queue.isEmpty) return PlayNextAndAdvanceResult.PlayAsNew(track)
+        val targetIndex = (queue.currentIndex + 1).coerceAtMost(queue.tracks.size)
+        return PlayNextAndAdvanceResult.QueueUpdatedAndAdvance(
+            queue = queue.insertNext(track),
+            targetIndex = targetIndex,
+        )
     }
 
     /**
-     * Removes a track at the specified index from the active queue.
+     * Computes the outcome of removing a track at [index] from [queue].
      */
     fun removeQueueTrack(
+        queue: PlaybackQueue,
         index: Int,
-        onQueueCleared: () -> Unit,
-        onCurrentTrackChanged: (AudioTrack) -> Unit,
-    ) {
-        val currentQueue = sessionStateFlow.value.queue
-        if (index !in currentQueue.tracks.indices) return
-
-        val wasCurrentTrack = (index == currentQueue.currentIndex)
-        val updatedQueue = currentQueue.removeTrackAt(index)
-
-        if (updatedQueue.isEmpty) {
-            sessionStateFlow.update {
-                it.copy(
-                    queue = PlaybackQueue.EMPTY,
-                    playbackState = PlaybackState.Idle,
-                    durationMs = 0L,
-                    lyrics = null,
-                    isLoadingLyrics = false,
-                )
+    ): RemoveQueueTrackResult {
+        if (index !in queue.tracks.indices) return RemoveQueueTrackResult.Unchanged
+        val wasCurrentTrack = (index == queue.currentIndex)
+        val updatedQueue = queue.removeTrackAt(index)
+        return when {
+            updatedQueue.isEmpty -> {
+                RemoveQueueTrackResult.Cleared
             }
-            onQueueCleared()
-        } else {
-            val nextTrack = updatedQueue.currentTrack
-            if (wasCurrentTrack && nextTrack != null) {
-                sessionStateFlow.update {
-                    it.copy(
-                        queue = updatedQueue,
-                        durationMs = nextTrack.durationMs,
-                    )
-                }
-                onCurrentTrackChanged(nextTrack)
-            } else {
-                sessionStateFlow.update {
-                    it.copy(queue = updatedQueue)
-                }
+
+            wasCurrentTrack && updatedQueue.currentTrack != null -> {
+                RemoveQueueTrackResult.CurrentTrackChanged(updatedQueue, updatedQueue.currentTrack!!)
+            }
+
+            else -> {
+                RemoveQueueTrackResult.QueueUpdated(updatedQueue)
             }
         }
-        onFlushRequested()
+    }
+
+    fun advanceOnTrackTransition(
+        queue: PlaybackQueue,
+        mode: PlaybackMode,
+    ): TrackTransitionUpdate? {
+        if (queue.isEmpty) return null
+        val nextIndex = calculateNextQueueIndex(queue, mode)
+        val nextTrack = queue.tracks[nextIndex]
+        return TrackTransitionUpdate(queue = queue.copy(currentIndex = nextIndex), nextTrack = nextTrack)
+    }
+
+    /**
+     * Updates the current track's duration in [queue] if changed.
+     */
+    fun updateCurrentTrackDuration(
+        queue: PlaybackQueue,
+        durationMs: Long,
+    ): PlaybackQueue {
+        val curIdx = queue.currentIndex
+        val updated =
+            queue.tracks.mapIndexed { idx, trk ->
+                if (idx == curIdx && trk.durationMs != durationMs) trk.copy(durationMs = durationMs) else trk
+            }
+        return queue.copy(tracks = updated)
     }
 
     fun buildDirectoryQueue(
@@ -239,6 +202,7 @@ internal class PlaybackQueueManager(
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata>,
         server: WebDavServer,
+        playbackMode: PlaybackMode = PlaybackMode.LIST_LOOP,
     ): QueueLoadRequest? {
         val audioFiles = directory.files.filter { it.isAudio }
         if (audioFiles.isEmpty()) return null
@@ -246,18 +210,8 @@ internal class PlaybackQueueManager(
         if (tracks.isEmpty()) return null
 
         val selectedIndex = tracks.indexOfFirst { it.remotePath == selectedFile.path }.takeIf { it >= 0 } ?: 0
-
-        val rawQueue =
-            PlaybackQueue.fromTracks(
-                tracks = tracks,
-                selectedIndex = selectedIndex,
-            )
-        val queue =
-            if (sessionStateFlow.value.playbackMode == PlaybackMode.SHUFFLE) {
-                rawQueue.toShuffled()
-            } else {
-                rawQueue
-            }
+        val rawQueue = PlaybackQueue.fromTracks(tracks = tracks, selectedIndex = selectedIndex)
+        val queue = if (playbackMode == PlaybackMode.SHUFFLE) rawQueue.toShuffled() else rawQueue
         val selectedTrack = queue.currentTrack ?: return null
 
         return QueueLoadRequest(
@@ -276,26 +230,16 @@ internal class PlaybackQueueManager(
         )
     }
 
-    @Suppress("UNUSED_PARAMETER")
-    fun buildTrackQueue(
-        track: AudioTrack,
-        server: WebDavServer?,
-    ): QueueLoadRequest = buildTrackQueue(track)
-
     fun buildPlaylistQueue(
         entries: List<PlaylistTrackEntry>,
         startIndex: Int,
+        playbackMode: PlaybackMode = PlaybackMode.LIST_LOOP,
     ): QueueLoadRequest? {
         if (entries.isEmpty()) return null
         val tracks = entries.map { it.toAudioTrack() }
         val safeStartIndex = startIndex.coerceIn(0, tracks.lastIndex)
         val rawQueue = PlaybackQueue.fromTracks(tracks = tracks, selectedIndex = safeStartIndex, origin = QueueOrigin.PLAYLIST)
-        val queue =
-            if (sessionStateFlow.value.playbackMode == PlaybackMode.SHUFFLE) {
-                rawQueue.toShuffled()
-            } else {
-                rawQueue
-            }
+        val queue = if (playbackMode == PlaybackMode.SHUFFLE) rawQueue.toShuffled() else rawQueue
         val currentTrack = queue.currentTrack ?: tracks[safeStartIndex]
         return QueueLoadRequest(
             queue = queue,
@@ -303,17 +247,61 @@ internal class PlaybackQueueManager(
             startPositionMs = 0L,
         )
     }
-
-    @Suppress("UNUSED_PARAMETER")
-    fun buildPlaylistQueue(
-        entries: List<PlaylistTrackEntry>,
-        startIndex: Int,
-        server: WebDavServer?,
-    ): QueueLoadRequest? = buildPlaylistQueue(entries, startIndex)
 }
 
 internal data class QueueLoadRequest(
     val queue: PlaybackQueue,
     val targetTrack: AudioTrack,
     val startPositionMs: Long = 0L,
+)
+
+internal data class PlaybackModeUpdate(
+    val playbackMode: PlaybackMode,
+    val queue: PlaybackQueue,
+)
+
+internal sealed interface PlayNextDecision {
+    data class PlayAsNew(
+        val track: AudioTrack,
+    ) : PlayNextDecision
+
+    data class QueueUpdated(
+        val queue: PlaybackQueue,
+    ) : PlayNextDecision
+}
+
+internal sealed interface PlayNextAndAdvanceResult {
+    data class PlayAsNew(
+        val track: AudioTrack,
+    ) : PlayNextAndAdvanceResult
+
+    data class QueueUpdatedAndAdvance(
+        val queue: PlaybackQueue,
+        val targetIndex: Int,
+    ) : PlayNextAndAdvanceResult
+}
+
+internal sealed interface RemoveQueueTrackResult {
+    data object Unchanged : RemoveQueueTrackResult
+
+    data object Cleared : RemoveQueueTrackResult
+
+    data class QueueUpdated(
+        val queue: PlaybackQueue,
+    ) : RemoveQueueTrackResult
+
+    data class CurrentTrackChanged(
+        val queue: PlaybackQueue,
+        val nextTrack: AudioTrack,
+    ) : RemoveQueueTrackResult
+}
+
+internal data class AdvanceQueueResult(
+    val targetIndex: Int,
+    val reshuffledQueue: PlaybackQueue? = null,
+)
+
+internal data class TrackTransitionUpdate(
+    val queue: PlaybackQueue,
+    val nextTrack: AudioTrack,
 )

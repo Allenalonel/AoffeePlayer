@@ -5,15 +5,20 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.CoverArtStorageImpl
+import com.webdav.player.data.local.DirectoryCacheEntity
 import com.webdav.player.data.local.DirectorySyncCheckpointDao
 import com.webdav.player.data.local.DirectorySyncCheckpointEntity
 import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.local.MediaTrackIndexEntity
+import com.webdav.player.data.local.TrackMetadataEntity
 import com.webdav.player.data.remote.OkHttpWebDavClient
 import com.webdav.player.data.repository.MediaLibraryRepositoryImpl
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
+import com.webdav.player.domain.model.RemoteFile
+import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.ServerRepository
+import com.webdav.player.domain.repository.TrackMetadataRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -34,6 +39,7 @@ class ServerCascadeDeletionTest {
     private lateinit var mediaTrackIndexDao: MediaTrackIndexDao
     private lateinit var checkpointDao: DirectorySyncCheckpointDao
     private lateinit var repository: ServerRepository
+    private lateinit var trackMetadataRepo: TestTrackMetadataRepo
 
     @Before
     fun setUp() {
@@ -57,6 +63,7 @@ class ServerCascadeDeletionTest {
                 context = context,
             )
 
+        trackMetadataRepo = TestTrackMetadataRepo()
         repository =
             ServerRepositoryImpl(
                 serverDao = database.webDavServerDao(),
@@ -65,6 +72,7 @@ class ServerCascadeDeletionTest {
                 localStorageFolderDao = database.localStorageFolderDao(),
                 context = context,
                 cascadeInvalidator = mediaLibraryRepository,
+                trackMetadataRepository = trackMetadataRepo,
             )
     }
 
@@ -252,4 +260,108 @@ class ServerCascadeDeletionTest {
             assertNotNull(promoted)
             assertEquals(true, promoted?.isDefault)
         }
+
+    @Test
+    fun removeMountedLocalFolder_clearsSubtreeDirectoryCache_andPreservesSiblingFolderCacheAndTrackMetadata() =
+        runTest {
+            val uri1 = "content://com.android.externalstorage.documents/tree/primary%3AMusic"
+            val uri2 = "content://com.android.externalstorage.documents/tree/primary%3APodcasts"
+
+            repository.addMountedLocalFolder(uri1, "Music")
+            repository.addMountedLocalFolder(uri2, "Podcasts")
+
+            val encodedUri1 = URLEncoder.encode(uri1, "UTF-8")
+            val encodedUri2 = URLEncoder.encode(uri2, "UTF-8")
+            val root1 = "/local/$encodedUri1/"
+            val root2 = "/local/$encodedUri2/"
+
+            val dirDao = database.directoryCacheDao()
+            val metaDao = database.trackMetadataDao()
+
+            // Populate directory caches
+            dirDao.insertOrUpdate(DirectoryCacheEntity(LOCAL_STORAGE_ID, "/", "{}", 1000L))
+            dirDao.insertOrUpdate(DirectoryCacheEntity(LOCAL_STORAGE_ID, "/local/", "{}", 1000L))
+            dirDao.insertOrUpdate(DirectoryCacheEntity(LOCAL_STORAGE_ID, root1, "{}", 1000L))
+            dirDao.insertOrUpdate(DirectoryCacheEntity(LOCAL_STORAGE_ID, "${root1}Rock/", "{}", 1000L))
+            dirDao.insertOrUpdate(DirectoryCacheEntity(LOCAL_STORAGE_ID, root2, "{}", 1000L))
+            dirDao.insertOrUpdate(DirectoryCacheEntity(LOCAL_STORAGE_ID, "${root2}News/", "{}", 1000L))
+
+            // Populate track metadata for folder 1 (e.g. added to playlist)
+            metaDao.insertOrUpdate(
+                TrackMetadataEntity(
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = "${root1}Rock/song1.mp3",
+                    title = "Rock Song",
+                    artist = "Rocker",
+                    album = "Rock Album",
+                    trackNumber = 1,
+                    durationMs = 180000L,
+                    coverThumbnailPath = "/covers/rock.jpg",
+                ),
+            )
+
+            // Unmount folder 1
+            repository.removeMountedLocalFolder(uri1)
+
+            // Verify root snapshots and folder 1 caches are cleared
+            assertNull("Root / directory cache must be cleared", dirDao.getCache(LOCAL_STORAGE_ID, "/"))
+            assertNull("Root /local/ directory cache must be cleared", dirDao.getCache(LOCAL_STORAGE_ID, "/local/"))
+            assertNull("Folder 1 root directory cache must be cleared", dirDao.getCache(LOCAL_STORAGE_ID, root1))
+            assertNull("Folder 1 subfolder directory cache must be cleared", dirDao.getCache(LOCAL_STORAGE_ID, "${root1}Rock/"))
+
+            // Verify folder 2 caches remain intact!
+            assertNotNull("Sibling folder 2 root directory cache must remain intact", dirDao.getCache(LOCAL_STORAGE_ID, root2))
+            assertNotNull("Sibling folder 2 subfolder directory cache must remain intact", dirDao.getCache(LOCAL_STORAGE_ID, "${root2}News/"))
+
+            // Verify track_metadata for folder 1 is PRESERVED (protects inactive playlist track snapshot)
+            val preservedMeta = metaDao.getMetadata(LOCAL_STORAGE_ID, "${root1}Rock/song1.mp3")
+            assertNotNull("Track metadata must be preserved for playlist snapshots", preservedMeta)
+            assertEquals("Rock Song", preservedMeta?.title)
+        }
+
+    @Test
+    fun deleteServer_clearsTrackMetadataRepositoryMemoryCachesForServer() =
+        runTest {
+            val serverId = repository.saveServer(WebDavServer(name = "Target NAS", url = "http://nas.local"))
+
+            repository.deleteServer(serverId)
+
+            assertEquals(listOf(serverId), trackMetadataRepo.clearedServers)
+        }
+
+    private class TestTrackMetadataRepo : TrackMetadataRepository {
+        val clearedServers = mutableListOf<Long>()
+
+        override fun clearCacheForServer(serverId: Long) {
+            clearedServers.add(serverId)
+        }
+
+        override fun getAllMetadataFlow(serverId: Long) = kotlinx.coroutines.flow.emptyFlow<List<TrackMetadata>>()
+
+        override fun getMetadataForPathsFlow(
+            serverId: Long,
+            remotePaths: List<String>,
+        ) = kotlinx.coroutines.flow.emptyFlow<List<TrackMetadata>>()
+
+        override fun getMetadataFlow(
+            serverId: Long,
+            remotePath: String,
+        ) = kotlinx.coroutines.flow.emptyFlow<TrackMetadata?>()
+
+        override suspend fun getCachedMetadata(
+            serverId: Long,
+            remotePath: String,
+        ): TrackMetadata? = null
+
+        override suspend fun resolveMetadata(
+            server: WebDavServer,
+            files: List<RemoteFile>,
+            forceRefresh: Boolean,
+        ) {}
+
+        override suspend fun resolveSingleTrackMetadata(
+            server: WebDavServer,
+            file: RemoteFile,
+        ) = TrackMetadata(server.id, file.path)
+    }
 }

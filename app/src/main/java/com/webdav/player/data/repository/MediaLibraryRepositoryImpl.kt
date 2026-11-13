@@ -632,6 +632,7 @@ class MediaLibraryRepositoryImpl internal constructor(
             }
             if (localRoot.isNotEmpty()) {
                 try {
+                    directoryCacheDao?.deleteCacheByServerAndPathPrefix(LOCAL_STORAGE_ID, localRoot)
                     mediaTrackIndexDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, localRoot)
                     directorySyncCheckpointDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, localRoot)
                 } catch (ce: CancellationException) {
@@ -641,14 +642,19 @@ class MediaLibraryRepositoryImpl internal constructor(
                 }
             }
             try {
-                mediaTrackIndexDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, uriString)
-                directorySyncCheckpointDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, uriString)
+                if (uriString.isNotEmpty()) {
+                    directoryCacheDao?.deleteCacheByServerAndPathPrefix(LOCAL_STORAGE_ID, uriString)
+                    mediaTrackIndexDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, uriString)
+                    directorySyncCheckpointDao?.deleteByServerAndPathPrefix(LOCAL_STORAGE_ID, uriString)
+                }
             } catch (ce: CancellationException) {
                 throw ce
             } catch (_: Exception) {
                 // Non-fatal
             }
-            directoryCacheDao?.deleteCacheByServerId(LOCAL_STORAGE_ID)
+            // Invalidate root summary snapshots so folder list refreshes without unmounted folder
+            directoryCacheDao?.deleteCache(LOCAL_STORAGE_ID, "/")
+            directoryCacheDao?.deleteCache(LOCAL_STORAGE_ID, "/local/")
 
             val currentCursor = browsingCursorStore.getLastBrowsingPath(LOCAL_STORAGE_ID)
             if ((localRoot.isNotEmpty() && (currentCursor.startsWith(localRoot) || currentCursor.contains(localRoot))) ||

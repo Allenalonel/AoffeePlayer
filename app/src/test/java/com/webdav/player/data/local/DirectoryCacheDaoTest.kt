@@ -85,6 +85,21 @@ class DirectoryCacheDaoTest {
     }
 
     @Test
+    fun deleteCacheByServerAndPathPrefix_cleansSubtreeEntries_preservesSiblings() = runTest {
+        dao.insertOrUpdate(DirectoryCacheEntity(0L, "/local/tree1/", "{}", 100L))
+        dao.insertOrUpdate(DirectoryCacheEntity(0L, "/local/tree1/Sub/", "{}", 150L))
+        dao.insertOrUpdate(DirectoryCacheEntity(0L, "/local/tree2/", "{}", 200L))
+        dao.insertOrUpdate(DirectoryCacheEntity(1L, "/local/tree1/", "{}", 300L))
+
+        dao.deleteCacheByServerAndPathPrefix(0L, "/local/tree1/")
+
+        assertNull("Root of tree1 must be deleted", dao.getCache(0L, "/local/tree1/"))
+        assertNull("Subdirectory of tree1 must be deleted", dao.getCache(0L, "/local/tree1/Sub/"))
+        assertNotNull("Sibling tree2 on same server must remain intact", dao.getCache(0L, "/local/tree2/"))
+        assertNotNull("Tree1 on different server must remain intact", dao.getCache(1L, "/local/tree1/"))
+    }
+
+    @Test
     fun clearAll_emptiesEntireCacheTable() = runTest {
         dao.insertOrUpdate(DirectoryCacheEntity(1L, "/a/", "{}", 100L))
         dao.insertOrUpdate(DirectoryCacheEntity(2L, "/b/", "{}", 200L))

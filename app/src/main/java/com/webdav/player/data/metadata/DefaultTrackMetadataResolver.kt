@@ -173,6 +173,14 @@ internal class DefaultTrackMetadataResolver(
         folderLocks.clear()
     }
 
+    fun clearCacheForServer(serverId: Long) {
+        val prefix = "$serverId:"
+        val keysToRemove = folderArtworkCache.keys().toList().filter { it.startsWith(prefix) }
+        keysToRemove.forEach { folderArtworkCache.remove(it) }
+        val lockKeys = folderLocks.keys().toList().filter { it.startsWith(prefix) }
+        lockKeys.forEach { folderLocks.remove(it) }
+    }
+
     private suspend fun fetchSecondaryRangeIfNeeded(
         server: WebDavServer,
         file: RemoteFile,

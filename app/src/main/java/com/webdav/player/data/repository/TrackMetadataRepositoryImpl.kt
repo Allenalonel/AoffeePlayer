@@ -436,4 +436,12 @@ class TrackMetadataRepositoryImpl internal constructor(
         resolvedLyricsCache.clear()
         trackMetadataResolver.clearCache()
     }
+
+    override fun clearCacheForServer(serverId: Long) {
+        val prefix = "$serverId:"
+        val lyricsKeysToRemove = resolvedLyricsCache.keys().toList().filter { it.startsWith(prefix) }
+        lyricsKeysToRemove.forEach { resolvedLyricsCache.remove(it) }
+        knownServers.remove(serverId)
+        trackMetadataResolver.clearCacheForServer(serverId)
+    }
 }

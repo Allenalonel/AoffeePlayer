@@ -307,7 +307,7 @@ class ServerManagementViewModelTest {
         }
 
     @Test
-    fun deleteServer_triggersMediaLibraryClearStorageData() =
+    fun deleteServer_delegatesDeletionToServerRepository_withoutDirectMediaLibraryCascade() =
         runTest {
             val server = WebDavServer(id = 88L, name = "Dead NAS", url = "http://dead")
             fakeRepository.addServerDirectly(server)
@@ -317,23 +317,33 @@ class ServerManagementViewModelTest {
             viewModel.onConfirmDeleteServer()
             advanceUntilIdle()
 
-            assertEquals(listOf(88L), fakeMediaLibraryRepository.clearedStorageServerIds)
+            assertNull("Server must be deleted in repository", fakeRepository.getServerById(88L))
+            assertTrue(
+                "ViewModel must not directly call mediaLibraryRepository.clearStorageData",
+                fakeMediaLibraryRepository.clearedStorageServerIds.isEmpty(),
+            )
         }
 
     @Test
-    fun mountedFolders_triggersMediaLibraryInvalidationAndSync() =
+    fun mountedFolders_triggersServerRepositoryCascade_withoutDirectMediaLibraryClearStorageData() =
         runTest {
             viewModel.onAddMountedFolder("content://tree/music", "Music")
             advanceUntilIdle()
 
-            assertTrue(fakeMediaLibraryRepository.clearedStorageServerIds.contains(LOCAL_STORAGE_ID))
+            assertTrue(
+                "ViewModel must not directly call mediaLibraryRepository.clearStorageData on add",
+                fakeMediaLibraryRepository.clearedStorageServerIds.isEmpty(),
+            )
             assertEquals(1, fakeMediaLibraryRepository.syncServerCalls.size)
             assertTrue(fakeMediaLibraryRepository.syncServerCalls.first().first.isLocal)
 
             viewModel.onRemoveMountedFolder("content://tree/music")
             advanceUntilIdle()
 
-            assertEquals(2, fakeMediaLibraryRepository.clearedStorageServerIds.count { it == LOCAL_STORAGE_ID })
+            assertTrue(
+                "ViewModel must not directly call mediaLibraryRepository.clearStorageData on remove",
+                fakeMediaLibraryRepository.clearedStorageServerIds.isEmpty(),
+            )
         }
 
     @Test

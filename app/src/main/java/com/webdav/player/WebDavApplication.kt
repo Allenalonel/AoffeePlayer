@@ -137,6 +137,7 @@ class WebDavApplication :
                 localStorageFolderDao = database.localStorageFolderDao(),
                 context = this,
                 cascadeInvalidator = mediaLibraryRepository,
+                trackMetadataRepository = trackMetadataRepository,
             )
 
         storageReachabilityTracker =

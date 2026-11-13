@@ -87,4 +87,9 @@ interface TrackMetadataRepository {
      * Clears all in-memory metadata and lyrics caches.
      */
     fun clearCache() {}
+
+    /**
+     * Clears in-memory lyrics, folder artwork, and metadata caches for a specific server.
+     */
+    fun clearCacheForServer(serverId: Long) {}
 }

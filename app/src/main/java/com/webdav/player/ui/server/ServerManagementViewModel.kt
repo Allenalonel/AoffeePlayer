@@ -140,7 +140,6 @@ class ServerManagementViewModel(
         val server = _dialogAndActionState.value.serverToDelete ?: return
         viewModelScope.launch {
             repository.deleteServer(server.id)
-            mediaLibraryRepository?.clearStorageData(server.id)
             _dialogAndActionState.update {
                 it.copy(
                     serverToDelete = null,
@@ -243,7 +242,6 @@ class ServerManagementViewModel(
     ) {
         viewModelScope.launch {
             repository.addMountedLocalFolder(uriString, displayName)
-            mediaLibraryRepository?.clearStorageData(LOCAL_STORAGE_ID)
             mediaLibraryRepository?.syncServer(WebDavServer.createLocalStorage(), force = false)
         }
     }
@@ -251,7 +249,6 @@ class ServerManagementViewModel(
     fun onRemoveMountedFolder(uriString: String) {
         viewModelScope.launch {
             repository.removeMountedLocalFolder(uriString)
-            mediaLibraryRepository?.clearStorageData(LOCAL_STORAGE_ID)
         }
     }
 }

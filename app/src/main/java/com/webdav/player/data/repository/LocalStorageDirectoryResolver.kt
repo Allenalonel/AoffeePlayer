@@ -139,65 +139,9 @@ class LocalStorageDirectoryResolver(
                     serverId = LOCAL_STORAGE_ID,
                 )
 
-            val audioFiles = sortedFiles.filter { it.isAudio }
-
-            val imageFiles =
-                sortedFiles.filter { file ->
-                    val ext = file.name.substringAfterLast('.', "").lowercase()
-                    ext in listOf("jpg", "jpeg", "png", "webp")
-                }
-            val companionCover =
-                imageFiles.firstOrNull { file ->
-                    val base = file.name.substringBeforeLast('.').lowercase()
-                    base in listOf("cover", "folder", "front", "album")
-                } ?: imageFiles.firstOrNull()
-
-            val resolvedCoverThumbnailPath: String? =
-                if (companionCover != null && coverArtStorage != null) {
-                    val existingThumb = coverArtStorage.getThumbnailFile(LOCAL_STORAGE_ID, companionCover.path)
-                    if (existingThumb != null && coverArtStorage.isValidThumbnailFile(existingThumb.absolutePath)) {
-                        existingThumb.absolutePath
-                    } else {
-                        try {
-                            val bytes =
-                                contentResolver.openInputStream(Uri.parse(companionCover.path))?.use { it.readBytes() }
-                            if (bytes != null && ImageHeaderValidator.isCompleteImage(bytes)) {
-                                coverArtStorage.saveThumbnail(LOCAL_STORAGE_ID, companionCover.path, bytes)
-                                    ?: companionCover.path
-                            } else {
-                                companionCover.path
-                            }
-                        } catch (_: Exception) {
-                            companionCover.path
-                        }
-                    }
-                } else {
-                    companionCover?.path
-                }
-
-            val metadataMap = mutableMapOf<String, TrackMetadata>()
-            for (audio in audioFiles) {
-                val audioBase = audio.name.substringBeforeLast('.')
-                val companionLrc =
-                    sortedFiles.firstOrNull {
-                        it.isLyrics && it.name.substringBeforeLast('.').equals(audioBase, ignoreCase = true)
-                    }
-                metadataMap[audio.path] =
-                    TrackMetadata(
-                        serverId = LOCAL_STORAGE_ID,
-                        remotePath = audio.path,
-                        title = audioBase,
-                        artist = null,
-                        album = null,
-                        durationMs = 0L,
-                        coverThumbnailPath = resolvedCoverThumbnailPath,
-                        lyrics = companionLrc?.path,
-                    )
-            }
-
             DirectoryContent(
                 directory = directory,
-                metadataMap = metadataMap,
+                metadataMap = emptyMap(),
                 isEnriching = false,
             )
         }

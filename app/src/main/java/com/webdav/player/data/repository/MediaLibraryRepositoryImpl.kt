@@ -186,14 +186,35 @@ class MediaLibraryRepositoryImpl internal constructor(
                     val remoteDir = remoteResult.directory
                     val remoteDiffersFromCache = (cachedDir == null || remoteDir != cachedDir)
 
+                    val stage1Meta =
+                        trackMetadataRepository?.matchCompanionManifest(
+                            server = server,
+                            files = remoteDir.files,
+                            directoryFiles = remoteDir.files,
+                            logicalDirectoryPath = normalizedPath,
+                        ) ?: emptyMap()
+
                     if (remoteDiffersFromCache) {
                         persistCache(server.id, normalizedPath, remoteDir)
                         val currentMeta = getCachedMetadataMap(server.id, remoteDir)
-                        emit(DirectoryContent(directory = remoteDir, metadataMap = currentMeta, isEnriching = true))
+                        emit(
+                            DirectoryContent(
+                                directory = remoteDir,
+                                metadataMap = if (currentMeta.isNotEmpty()) currentMeta else stage1Meta,
+                                isEnriching = true,
+                            ),
+                        )
                     }
 
                     // 3. Background enrichment
-                    val enriched = enrichDirectoryContent(server, remoteDir, forceRefresh)
+                    val enriched =
+                        enrichDirectoryContent(
+                            server = server,
+                            directory = remoteDir,
+                            forceRefresh = forceRefresh,
+                            resolvedMetadataMap = stage1Meta,
+                            logicalDirectoryPath = normalizedPath,
+                        )
                     emit(enriched)
                 }
 
@@ -233,12 +254,21 @@ class MediaLibraryRepositoryImpl internal constructor(
             val remoteDiffersFromCache = (cachedDir == null || remoteDir != cachedDir)
 
             persistCache(server.id, normalizedPath, remoteDir)
+
+            val stage1Meta =
+                trackMetadataRepository?.matchCompanionManifest(
+                    server = server,
+                    files = remoteDir.files,
+                    directoryFiles = remoteDir.files,
+                    logicalDirectoryPath = normalizedPath,
+                ) ?: emptyMap()
+
             if (remoteDiffersFromCache) {
                 val currentMeta = getCachedMetadataMap(server.id, remoteDir)
                 emit(
                     DirectoryContent(
                         directory = remoteDir,
-                        metadataMap = if (currentMeta.isNotEmpty()) currentMeta else localResult.metadataMap,
+                        metadataMap = if (currentMeta.isNotEmpty()) currentMeta else stage1Meta,
                         isEnriching = true,
                     ),
                 )
@@ -249,7 +279,8 @@ class MediaLibraryRepositoryImpl internal constructor(
                     server = server,
                     directory = remoteDir,
                     forceRefresh = forceRefresh,
-                    resolvedMetadataMap = localResult.metadataMap,
+                    resolvedMetadataMap = stage1Meta,
+                    logicalDirectoryPath = normalizedPath,
                 )
             emit(enriched)
         } else {
@@ -280,6 +311,7 @@ class MediaLibraryRepositoryImpl internal constructor(
         directory: RemoteDirectory,
         forceRefresh: Boolean,
         resolvedMetadataMap: Map<String, TrackMetadata>? = null,
+        logicalDirectoryPath: String? = null,
     ): DirectoryContent {
         val audioFiles = directory.files.filter { it.isAudio }
 
@@ -289,6 +321,7 @@ class MediaLibraryRepositoryImpl internal constructor(
                 files = audioFiles,
                 forceRefresh = forceRefresh,
                 directoryFiles = directory.files,
+                logicalDirectoryPath = logicalDirectoryPath,
             )
         }
 
@@ -311,7 +344,7 @@ class MediaLibraryRepositoryImpl internal constructor(
                             if (fallback != null) {
                                 cached.copy(
                                     coverThumbnailPath = cached.coverThumbnailPath ?: fallback.coverThumbnailPath,
-                                    lyrics = cached.lyrics ?: fallback.lyrics,
+                                    companionLyricsPath = cached.companionLyricsPath ?: fallback.companionLyricsPath,
                                 )
                             } else {
                                 cached

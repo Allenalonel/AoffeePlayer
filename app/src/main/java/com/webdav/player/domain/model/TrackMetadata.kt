@@ -9,7 +9,8 @@ data class TrackMetadata(
     val trackNumber: Int? = null,
     val durationMs: Long = 0L,
     val coverThumbnailPath: String? = null,
-    val lyrics: String? = null
+    val lyrics: String? = null,
+    val companionLyricsPath: String? = null,
 ) {
     val identity: TrackIdentity
         get() = TrackIdentity(serverId, remotePath)

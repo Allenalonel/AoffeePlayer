@@ -48,6 +48,16 @@ interface TrackMetadataRepository {
         forceRefresh: Boolean = false,
         directoryFiles: Collection<RemoteFile>? = null,
     ) {
+        resolveMetadata(server, files, forceRefresh, directoryFiles, null)
+    }
+
+    suspend fun resolveMetadata(
+        server: WebDavServer,
+        files: List<RemoteFile>,
+        forceRefresh: Boolean,
+        directoryFiles: Collection<RemoteFile>?,
+        logicalDirectoryPath: String?,
+    ) {
         resolveMetadata(server, files, forceRefresh)
     }
 
@@ -56,6 +66,17 @@ interface TrackMetadataRepository {
         files: List<RemoteFile>,
         forceRefresh: Boolean,
     )
+
+    /**
+     * Proactively matches companion artwork and lyrics from directoryFiles manifest
+     * in milliseconds, returning an initial TrackMetadata map before embedded tag parsing.
+     */
+    suspend fun matchCompanionManifest(
+        server: WebDavServer,
+        files: List<RemoteFile>,
+        directoryFiles: Collection<RemoteFile>?,
+        logicalDirectoryPath: String? = null,
+    ): Map<String, TrackMetadata> = emptyMap()
 
     /**
      * Resolves metadata for a single audio file on demand.

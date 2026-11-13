@@ -40,6 +40,7 @@ internal class DefaultTrackMetadataResolver(
         server: WebDavServer,
         file: RemoteFile,
         directoryFiles: Collection<RemoteFile>? = null,
+        logicalDirectoryPath: String? = null,
     ): TrackMetadata? =
         withContext(ioDispatcher) {
             val cleanFallbackTitle = file.name.substringBeforeLast('.').ifBlank { file.name }
@@ -131,7 +132,7 @@ internal class DefaultTrackMetadataResolver(
                     embeddedThumb
                 } else {
                     try {
-                        resolveFolderArtworkFallback(server, file, directoryFiles)
+                        resolveFolderArtworkFallback(server, file, directoryFiles, logicalDirectoryPath)
                     } catch (e: IOException) {
                         // Transient network / decode error probing folder artwork -> do not poison cache with null artwork
                         return@withContext null
@@ -144,12 +145,12 @@ internal class DefaultTrackMetadataResolver(
             val artist = parsed.artist?.takeIf { it.isNotBlank() }
             val album = parsed.album?.takeIf { it.isNotBlank() }
             val companionLyricsPath =
-                if (parsed.lyrics.isNullOrBlank() && directoryFiles != null) {
+                if (directoryFiles != null) {
+                    val baseName = file.name.substringBeforeLast('.')
                     directoryFiles
                         .firstOrNull {
                             it.isLyrics &&
-                                it.name.substringBeforeLast('.').equals(cleanFallbackTitle, ignoreCase = true) &&
-                                (it.path.startsWith("content://") || it.path.startsWith("file://"))
+                                it.name.substringBeforeLast('.').equals(baseName, ignoreCase = true)
                         }?.path
                 } else {
                     null
@@ -164,8 +165,50 @@ internal class DefaultTrackMetadataResolver(
                 trackNumber = parsed.trackNumber,
                 durationMs = parsed.durationMs,
                 coverThumbnailPath = thumbnailPath,
-                lyrics = parsed.lyrics?.takeIf { it.isNotBlank() } ?: companionLyricsPath,
+                lyrics = parsed.lyrics?.takeIf { it.isNotBlank() },
+                companionLyricsPath = companionLyricsPath,
             )
+        }
+
+    suspend fun matchCompanionManifest(
+        server: WebDavServer,
+        files: List<RemoteFile>,
+        directoryFiles: Collection<RemoteFile>?,
+        logicalDirectoryPath: String? = null,
+    ): Map<String, TrackMetadata> =
+        withContext(ioDispatcher) {
+            val audioFiles = files.filter { it.isAudio }
+            if (audioFiles.isEmpty() || directoryFiles == null) return@withContext emptyMap()
+
+            val firstAudio = audioFiles.first()
+            val sharedFolderThumb =
+                try {
+                    resolveFolderArtworkFallback(server, firstAudio, directoryFiles, logicalDirectoryPath)
+                } catch (_: Exception) {
+                    null
+                }
+
+            val result = mutableMapOf<String, TrackMetadata>()
+            for (audio in audioFiles) {
+                val baseName = audio.name.substringBeforeLast('.').ifBlank { audio.name }
+                val companionLrc =
+                    directoryFiles.firstOrNull {
+                        it.isLyrics && it.name.substringBeforeLast('.').equals(baseName, ignoreCase = true)
+                    }
+                result[audio.path] =
+                    TrackMetadata(
+                        serverId = server.id,
+                        remotePath = audio.path,
+                        title = baseName,
+                        artist = null,
+                        album = null,
+                        durationMs = 0L,
+                        coverThumbnailPath = sharedFolderThumb,
+                        lyrics = null,
+                        companionLyricsPath = companionLrc?.path,
+                    )
+            }
+            result
         }
 
     fun clearCache() {
@@ -264,8 +307,12 @@ internal class DefaultTrackMetadataResolver(
         server: WebDavServer,
         file: RemoteFile,
         directoryFiles: Collection<RemoteFile>? = null,
+        logicalDirectoryPath: String? = null,
     ): String? {
-        val parentDir = RemoteDirectory.getParentPath(file.path) ?: ""
+        val parentDir =
+            logicalDirectoryPath?.takeIf { it.isNotBlank() }
+                ?: RemoteDirectory.getParentPath(file.path)
+                ?: ""
         val baseName = file.name.substringBeforeLast('.').ifBlank { file.name }
         val folderKey = "${server.id}:$parentDir"
 
@@ -273,8 +320,13 @@ internal class DefaultTrackMetadataResolver(
         val manifestMap: Map<String, RemoteFile>? =
             directoryFiles?.let { dirFiles ->
                 val relevantFiles =
-                    dirFiles.filter {
-                        it.path.isBlank() || RemoteDirectory.getParentPath(it.path) == parentDir
+                    if (logicalDirectoryPath != null) {
+                        dirFiles
+                    } else {
+                        val fallbackParent = RemoteDirectory.getParentPath(file.path) ?: ""
+                        dirFiles.filter {
+                            it.path.isBlank() || RemoteDirectory.getParentPath(it.path) == fallbackParent
+                        }
                     }
                 relevantFiles.associateBy { it.name.lowercase() }
             }

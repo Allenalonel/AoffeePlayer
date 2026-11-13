@@ -832,4 +832,36 @@ class PackagingSeamVerificationTest {
             trackerSource.contains("TrackKey"),
         )
     }
+
+    @Test
+    fun coroutineExceptionSafety_inRepositories_rethrowsCancellationException() {
+        // CODING_STANDARDS.md §2 ("CancellationException 防吞法则"):
+        // Network and I/O catch blocks in TrackMetadataRepositoryImpl and MediaLibraryRepositoryImpl
+        // must explicitly rethrow CancellationException rather than silently swallowing it.
+        val metaRepoSource = source("data/repository/TrackMetadataRepositoryImpl.kt")
+        val lines = metaRepoSource.lines()
+        for (i in lines.indices) {
+            val line = lines[i]
+            if (line.contains("webDavClient?.fetchText") || line.contains("fun readLocalText")) {
+                val window = lines.subList(maxOf(0, i - 2), minOf(lines.size, i + 30)).joinToString("\n")
+                assertTrue(
+                    "Lyrics fetch/read at line ${i + 1} must rethrow CancellationException: \n$window",
+                    window.contains("CancellationException"),
+                )
+            }
+        }
+
+        val mediaRepoSource = source("data/repository/MediaLibraryRepositoryImpl.kt")
+        val mediaLines = mediaRepoSource.lines()
+        for (i in mediaLines.indices) {
+            val line = mediaLines[i]
+            if (line.contains("webDavClient.listDirectory") || line.contains("resolver.resolve")) {
+                val window = mediaLines.subList(maxOf(0, i - 2), minOf(mediaLines.size, i + 8)).joinToString("\n")
+                assertTrue(
+                    "Directory resolution at line ${i + 1} must handle CancellationException: \n$window",
+                    window.contains("CancellationException"),
+                )
+            }
+        }
+    }
 }

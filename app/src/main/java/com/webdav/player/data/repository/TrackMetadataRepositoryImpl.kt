@@ -565,7 +565,8 @@ class TrackMetadataRepositoryImpl internal constructor(
                                 }
                             }
                         }
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
                         // Ignore
                     }
                 }
@@ -598,7 +599,8 @@ class TrackMetadataRepositoryImpl internal constructor(
                             return@withContext parsed
                         }
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     // Ignore error
                 }
             }

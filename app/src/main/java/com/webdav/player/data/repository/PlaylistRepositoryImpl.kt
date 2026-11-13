@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import java.io.File
 
 class PlaylistRepositoryImpl(
     private val playlistDao: PlaylistDao,
@@ -35,56 +34,6 @@ class PlaylistRepositoryImpl(
             SupervisorJob() + Dispatchers.IO + kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> },
         ),
 ) : PlaylistRepository {
-    private val inFlightCoverHealing = java.util.concurrent.ConcurrentHashMap<Long, Job>()
-
-    private fun isCoverDeadOnDisk(path: String?): Boolean {
-        if (path.isNullOrBlank()) return false
-        if (path.startsWith("content://")) return false
-        val clean = if (path.startsWith("file://")) path.removePrefix("file://") else path
-        val file = File(clean)
-        return file.isAbsolute && !file.exists() && (file.path.contains("covers") || file.path.contains("cache"))
-    }
-
-    private fun triggerBackgroundCoverHealing(
-        trackEntryId: Long,
-        serverId: Long,
-        remotePath: String,
-    ) {
-        if (trackMetadataRepository == null) return
-        val isLocalTrack =
-            serverId == LOCAL_STORAGE_ID ||
-                remotePath.startsWith("content://") ||
-                remotePath.startsWith("file://") ||
-                remotePath.startsWith("/local/")
-        if (!isLocalTrack) return
-        val activeJob = inFlightCoverHealing[trackEntryId]
-        if (activeJob != null && activeJob.isActive) return
-
-        val effectiveServerId = LOCAL_STORAGE_ID
-        val job =
-            coroutineScope.launch {
-                try {
-                    val cached = trackMetadataRepository.getCachedMetadata(effectiveServerId, remotePath)
-                    if (!cached?.coverThumbnailPath.isNullOrBlank()) {
-                        playlistDao.updateTrackCover(trackEntryId, cached!!.coverThumbnailPath)
-                        return@launch
-                    }
-                    val server = WebDavServer.createLocalStorage()
-                    val fileName = remotePath.substringAfterLast('/').ifBlank { "track" }
-                    val file = RemoteFile(name = fileName, path = remotePath)
-                    val resolved = trackMetadataRepository.resolveSingleTrackMetadata(server, file)
-                    if (!resolved.coverThumbnailPath.isNullOrBlank()) {
-                        playlistDao.updateTrackCover(trackEntryId, resolved.coverThumbnailPath)
-                    }
-                } catch (_: Throwable) {
-                    // Ignore transient errors during background self-healing
-                } finally {
-                    inFlightCoverHealing.remove(trackEntryId)
-                }
-            }
-        inFlightCoverHealing[trackEntryId] = job
-    }
-
     override fun getAllPlaylistsFlow(): Flow<List<Playlist>> =
         playlistDao.getAllPlaylistsWithTrackCountFlow().map { list ->
             list.map { it.toDomain() }
@@ -216,44 +165,44 @@ class PlaylistRepositoryImpl(
             }
 
         return if (trackMetadataRepository != null) {
-            reconciled.map { track ->
-                val effectiveServerId = track.identity.serverId
-                val cachedMeta = trackMetadataRepository.getCachedMetadata(effectiveServerId, track.remotePath)
-                val isDead = isCoverDeadOnDisk(track.coverThumbnailPath)
+            val allIdentities = reconciled.map { it.identity }
+            val activeIdentities = reconciled.filter { !it.isInactive }.map { it.identity }.toSet()
 
-                when {
-                    cachedMeta?.coverThumbnailPath != null && cachedMeta.coverThumbnailPath != track.coverThumbnailPath -> {
+            val metadataMap =
+                trackMetadataRepository.batchQueryAndHealMetadata(
+                    identities = allIdentities,
+                    eligibleForHealing = activeIdentities,
+                    onCoverHealed = { identity, newCoverPath ->
                         coroutineScope.launch {
                             try {
-                                playlistDao.updateTrackCover(track.id, cachedMeta.coverThumbnailPath)
+                                playlistDao.updateTrackCoverByServerAndPath(
+                                    serverId = identity.serverId,
+                                    remotePath = identity.remotePath,
+                                    coverThumbnailPath = newCoverPath,
+                                )
                             } catch (_: Throwable) {
-                                // Ignore transient errors when database is closing
+                                // Non-fatal
                             }
                         }
-                        track.copy(coverThumbnailPath = cachedMeta.coverThumbnailPath)
-                    }
+                    },
+                )
 
-                    track.coverThumbnailPath.isNullOrBlank() || isDead -> {
-                        if (cachedMeta?.coverThumbnailPath != null) {
-                            coroutineScope.launch {
-                                try {
-                                    playlistDao.updateTrackCover(track.id, cachedMeta.coverThumbnailPath)
-                                } catch (_: Throwable) {
-                                    // Ignore transient errors when database is closing
-                                }
-                            }
-                            track.copy(coverThumbnailPath = cachedMeta.coverThumbnailPath)
-                        } else {
-                            if (!track.isInactive) {
-                                triggerBackgroundCoverHealing(track.id, effectiveServerId, track.remotePath)
-                            }
-                            track.copy(coverThumbnailPath = null)
+            reconciled.map { track ->
+                val meta = metadataMap[track.identity]
+                val effectiveCover = meta?.coverThumbnailPath
+                if (effectiveCover != null && effectiveCover != track.coverThumbnailPath) {
+                    coroutineScope.launch {
+                        try {
+                            playlistDao.updateTrackCover(track.id, effectiveCover)
+                        } catch (_: Throwable) {
+                            // Non-fatal
                         }
                     }
-
-                    else -> {
-                        track
-                    }
+                    track.copy(coverThumbnailPath = effectiveCover)
+                } else if (meta != null && effectiveCover == null && track.coverThumbnailPath != null) {
+                    track.copy(coverThumbnailPath = null)
+                } else {
+                    track
                 }
             }
         } else {
@@ -279,11 +228,8 @@ class PlaylistRepositoryImpl(
         val newSortOrder = currentMaxSort + 1
 
         val effectiveCover =
-            if (!track.coverThumbnailPath.isNullOrBlank() && !isCoverDeadOnDisk(track.coverThumbnailPath)) {
-                track.coverThumbnailPath
-            } else {
-                trackMetadataRepository?.getCachedMetadata(identity.serverId, identity.remotePath)?.coverThumbnailPath
-            }
+            track.coverThumbnailPath?.takeIf { it.isNotBlank() }
+                ?: trackMetadataRepository?.getCachedMetadata(identity.serverId, identity.remotePath)?.coverThumbnailPath
 
         val entry =
             PlaylistTrackEntry.fromAudioTrack(
@@ -314,11 +260,8 @@ class PlaylistRepositoryImpl(
             distinctNewTracks.mapIndexed { index, track ->
                 val identity = track.identity
                 val effectiveCover =
-                    if (!track.coverThumbnailPath.isNullOrBlank() && !isCoverDeadOnDisk(track.coverThumbnailPath)) {
-                        track.coverThumbnailPath
-                    } else {
-                        trackMetadataRepository?.getCachedMetadata(identity.serverId, identity.remotePath)?.coverThumbnailPath
-                    }
+                    track.coverThumbnailPath?.takeIf { it.isNotBlank() }
+                        ?: trackMetadataRepository?.getCachedMetadata(identity.serverId, identity.remotePath)?.coverThumbnailPath
                 val entry =
                     PlaylistTrackEntry.fromAudioTrack(
                         playlistId = playlistId,

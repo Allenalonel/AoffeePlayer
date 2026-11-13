@@ -106,6 +106,13 @@ interface PlaylistDao {
         coverThumbnailPath: String?,
     ): Int
 
+    @Query("UPDATE playlist_tracks SET coverThumbnailPath = :coverThumbnailPath WHERE serverId = :serverId AND remotePath = :remotePath")
+    suspend fun updateTrackCoverByServerAndPath(
+        serverId: Long,
+        remotePath: String,
+        coverThumbnailPath: String?,
+    ): Int
+
     @Query("SELECT * FROM playlist_tracks WHERE id = :trackEntryId LIMIT 1")
     suspend fun getTrackById(trackEntryId: Long): PlaylistTrackEntity?
 

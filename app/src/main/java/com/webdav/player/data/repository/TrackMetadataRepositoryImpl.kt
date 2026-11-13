@@ -13,6 +13,7 @@ import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.Lyrics
 import com.webdav.player.domain.model.RemoteFile
+import com.webdav.player.domain.model.TrackIdentity
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
@@ -339,6 +340,92 @@ class TrackMetadataRepositoryImpl internal constructor(
                 )
             }
         }
+
+    override suspend fun batchQueryAndHealMetadata(
+        identities: List<TrackIdentity>,
+        eligibleForHealing: Set<TrackIdentity>,
+        onCoverHealed: (suspend (TrackIdentity, String) -> Unit)?,
+    ): Map<TrackIdentity, TrackMetadata> =
+        withContext(ioDispatcher) {
+            if (identities.isEmpty()) return@withContext emptyMap()
+
+            val byServer = identities.groupBy { it.serverId }
+            val resultMap = mutableMapOf<TrackIdentity, TrackMetadata>()
+
+            for ((serverId, group) in byServer) {
+                val paths = group.map { it.remotePath }
+                val entities = trackMetadataDao.getMetadataForPaths(serverId, paths)
+                for (entity in entities) {
+                    val domain = entity.toDomain()
+                    val thumb = domain.coverThumbnailPath
+                    val isCoverLivenessValid = thumb != null && coverArtStorage.isValidThumbnailFile(thumb)
+                    val effectiveMeta =
+                        if (thumb != null && !isCoverLivenessValid) {
+                            domain.copy(coverThumbnailPath = null)
+                        } else {
+                            domain
+                        }
+                    resultMap[domain.identity] = effectiveMeta
+                }
+            }
+
+            // Bounded background healing for eligible tracks with missing or invalid covers
+            for (identity in identities) {
+                if (identity in eligibleForHealing) {
+                    val meta = resultMap[identity]
+                    val needsHealing = meta == null || meta.coverThumbnailPath == null
+                    if (needsHealing) {
+                        scheduleCoverHealing(identity, onCoverHealed)
+                    }
+                }
+            }
+
+            resultMap
+        }
+
+    private fun scheduleCoverHealing(
+        identity: TrackIdentity,
+        onCoverHealed: (suspend (TrackIdentity, String) -> Unit)?,
+    ) {
+        val key = identity.compositeKey
+        val existing = inFlightSelfHealing[key]
+        if (existing != null && existing.isActive) return
+
+        val job =
+            repositoryScope.launch {
+                try {
+                    semaphore.withPermit {
+                        val server =
+                            if (identity.isLocal) {
+                                WebDavServer.createLocalStorage()
+                            } else {
+                                knownServers[identity.serverId]
+                                    ?: serverLookup?.invoke(identity.serverId)
+                                    ?: webDavServerDao?.getServerById(identity.serverId)?.toDomain()
+                            } ?: return@withPermit
+
+                        val fileName = identity.remotePath.substringAfterLast('/').ifBlank { "track" }
+                        val file = RemoteFile(name = fileName, path = identity.remotePath)
+                        val resolved = trackMetadataResolver.resolve(server, file)
+                        val newCover = resolved?.coverThumbnailPath
+                        if (!newCover.isNullOrBlank() && coverArtStorage.isValidThumbnailFile(newCover)) {
+                            val current = trackMetadataDao.getMetadata(identity.serverId, identity.remotePath)
+                            if (current != null) {
+                                trackMetadataDao.insertOrUpdate(current.copy(coverThumbnailPath = newCover))
+                            } else if (resolved != null) {
+                                trackMetadataDao.insertOrUpdate(TrackMetadataEntity.fromDomain(resolved))
+                            }
+                            onCoverHealed?.invoke(identity, newCover)
+                        }
+                    }
+                } catch (_: Throwable) {
+                    // Ignore transient healing errors
+                } finally {
+                    inFlightSelfHealing.remove(key)
+                }
+            }
+        inFlightSelfHealing[key] = job
+    }
 
     override suspend fun resolveLyrics(
         server: WebDavServer,

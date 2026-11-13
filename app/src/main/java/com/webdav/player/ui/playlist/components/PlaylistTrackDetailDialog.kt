@@ -35,9 +35,7 @@ internal fun PlaylistTrackDetailDialog(
 ) {
     val isLocal =
         remember(track) {
-            track.serverId == LOCAL_STORAGE_ID ||
-                track.remotePath.startsWith("content://") ||
-                track.remotePath.startsWith("file://")
+            track.isLocal
         }
 
     val displayFilePath =

@@ -1,6 +1,5 @@
 package com.webdav.player.domain.model
 
-import com.webdav.player.domain.storage.TrackKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -108,7 +107,7 @@ class TrackIdentityTest {
     }
 
     @Test
-    fun valueSemanticsAndTrackKeyAliasCompatibility() {
+    fun valueSemanticsAndEquality() {
         val id1 = TrackIdentity(1L, "/a.mp3")
         val id2 = TrackIdentity(1L, "/a.mp3")
         val id3 = TrackIdentity(2L, "/a.mp3")
@@ -119,9 +118,5 @@ class TrackIdentityTest {
         assertEquals(id1, id2)
         assertEquals(id1.hashCode(), id2.hashCode())
         assertNotEquals(id1, id3)
-
-        // Compatibility alias TrackKey
-        val key: TrackKey = TrackKey(1L, "/a.mp3")
-        assertEquals(id1, key)
     }
 }

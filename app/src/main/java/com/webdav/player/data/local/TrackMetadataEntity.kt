@@ -43,15 +43,10 @@ data class TrackMetadataEntity(
 
     companion object {
         fun fromDomain(domain: TrackMetadata): TrackMetadataEntity {
-            val effectiveServerId =
-                if (domain.remotePath.startsWith("content://") || domain.remotePath.startsWith("file://")) {
-                    LOCAL_STORAGE_ID
-                } else {
-                    domain.serverId
-                }
+            val identity = domain.identity
             return TrackMetadataEntity(
-                serverId = effectiveServerId,
-                remotePath = domain.remotePath,
+                serverId = identity.serverId,
+                remotePath = identity.remotePath,
                 title = domain.title,
                 artist = domain.artist,
                 album = domain.album,

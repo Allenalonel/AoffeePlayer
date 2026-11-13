@@ -11,6 +11,8 @@ data class TrackMetadata(
     val coverThumbnailPath: String? = null,
     val lyrics: String? = null
 ) {
+    val identity: TrackIdentity
+        get() = TrackIdentity(serverId, remotePath)
     /**
      * Returns a displayable title, falling back to clean file name if title is null or blank.
      */

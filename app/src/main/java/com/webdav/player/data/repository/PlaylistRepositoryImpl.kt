@@ -9,11 +9,11 @@ import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.Playlist
 import com.webdav.player.domain.model.PlaylistTrackEntry
 import com.webdav.player.domain.model.RemoteFile
+import com.webdav.player.domain.model.TrackIdentity
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import com.webdav.player.domain.storage.StorageReachabilityTracker
-import com.webdav.player.domain.storage.TrackKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -168,15 +168,15 @@ class PlaylistRepositoryImpl(
 
     private suspend fun reconcilePlaylistTracks(
         entities: List<PlaylistTrackEntity>,
-        inactiveMap: Map<TrackKey, InactiveReason>,
+        inactiveMap: Map<TrackIdentity, InactiveReason>,
         serverReachability: Map<Long, Boolean>,
         serverReasons: Map<Long, InactiveReason>,
     ): List<PlaylistTrackEntry> {
-        val seenKeys = mutableSetOf<TrackKey>()
+        val seenKeys = mutableSetOf<TrackIdentity>()
         val duplicateIds = mutableListOf<Long>()
         val uniqueEntities = mutableListOf<PlaylistTrackEntity>()
         for (entity in entities) {
-            val key = TrackKey(entity.serverId, entity.remotePath)
+            val key = TrackIdentity(entity.serverId, entity.remotePath)
             if (seenKeys.add(key)) {
                 uniqueEntities.add(entity)
             } else {
@@ -196,7 +196,7 @@ class PlaylistRepositoryImpl(
         val reconciled =
             uniqueEntities.map { entity ->
                 val domain = entity.toDomain()
-                val trackReason = inactiveMap[TrackKey(domain.serverId, domain.remotePath)]
+                val trackReason = inactiveMap[domain.identity]
                 val isServerUnreachable = serverReachability[domain.serverId] == false
 
                 when {
@@ -217,16 +217,7 @@ class PlaylistRepositoryImpl(
 
         return if (trackMetadataRepository != null) {
             reconciled.map { track ->
-                val effectiveServerId =
-                    if (track.serverId == LOCAL_STORAGE_ID ||
-                        track.remotePath.startsWith("content://") ||
-                        track.remotePath.startsWith("file://") ||
-                        track.remotePath.startsWith("/local/")
-                    ) {
-                        LOCAL_STORAGE_ID
-                    } else {
-                        track.serverId
-                    }
+                val effectiveServerId = track.identity.serverId
                 val cachedMeta = trackMetadataRepository.getCachedMetadata(effectiveServerId, track.remotePath)
                 val isDead = isCoverDeadOnDisk(track.coverThumbnailPath)
 
@@ -274,11 +265,12 @@ class PlaylistRepositoryImpl(
         playlistId: Long,
         track: AudioTrack,
     ): Long {
+        val identity = track.identity
         val existing =
             playlistDao.findTrackInPlaylist(
                 playlistId = playlistId,
-                serverId = track.serverId,
-                remotePath = track.remotePath,
+                serverId = identity.serverId,
+                remotePath = identity.remotePath,
             )
         if (existing != null) {
             return -1L
@@ -290,7 +282,7 @@ class PlaylistRepositoryImpl(
             if (!track.coverThumbnailPath.isNullOrBlank() && !isCoverDeadOnDisk(track.coverThumbnailPath)) {
                 track.coverThumbnailPath
             } else {
-                trackMetadataRepository?.getCachedMetadata(track.serverId, track.remotePath)?.coverThumbnailPath
+                trackMetadataRepository?.getCachedMetadata(identity.serverId, identity.remotePath)?.coverThumbnailPath
             }
 
         val entry =
@@ -310,21 +302,22 @@ class PlaylistRepositoryImpl(
     ): List<Long> {
         if (tracks.isEmpty()) return emptyList()
         val existing = playlistDao.getTracksForPlaylist(playlistId)
-        val seenKeys = existing.map { "${it.serverId}:${it.remotePath}" }.toMutableSet()
+        val seenKeys = existing.map { TrackIdentity(it.serverId, it.remotePath).compositeKey }.toMutableSet()
         val distinctNewTracks =
             tracks.filter { track ->
-                seenKeys.add("${track.serverId}:${track.remotePath}")
+                seenKeys.add(track.identity.compositeKey)
             }
         if (distinctNewTracks.isEmpty()) return emptyList()
 
         val startSort = (playlistDao.getMaxSortOrder(playlistId) ?: -1) + 1
         val entities =
             distinctNewTracks.mapIndexed { index, track ->
+                val identity = track.identity
                 val effectiveCover =
                     if (!track.coverThumbnailPath.isNullOrBlank() && !isCoverDeadOnDisk(track.coverThumbnailPath)) {
                         track.coverThumbnailPath
                     } else {
-                        trackMetadataRepository?.getCachedMetadata(track.serverId, track.remotePath)?.coverThumbnailPath
+                        trackMetadataRepository?.getCachedMetadata(identity.serverId, identity.remotePath)?.coverThumbnailPath
                     }
                 val entry =
                     PlaylistTrackEntry.fromAudioTrack(

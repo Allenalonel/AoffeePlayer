@@ -766,17 +766,17 @@ class PlaylistRepositoryTest {
                     title = "Local 2",
                     format = AudioFormat.FLAC,
                 )
-            val remoteWithSamePath =
+            val remoteTrack =
                 AudioTrack(
-                    id = "1:content://media/audio/1",
+                    id = "1:/remote/audio/1",
                     serverId = 1L,
-                    remotePath = "content://media/audio/1",
-                    title = "Remote Track with same path",
+                    remotePath = "/remote/audio/1",
+                    title = "Remote Track",
                     format = AudioFormat.MP3,
                 )
 
-            // First batch: add local1, local2, and a remote track with the same path as local1 (different serverId)
-            val firstBatchResult = repository.addTracksToPlaylist(playlistId, listOf(local1, local2, remoteWithSamePath))
+            // First batch: add local1, local2, and a remote track
+            val firstBatchResult = repository.addTracksToPlaylist(playlistId, listOf(local1, local2, remoteTrack))
             assertEquals(3, firstBatchResult.size)
 
             val tracks = repository.getTracksForPlaylist(playlistId)
@@ -786,11 +786,24 @@ class PlaylistRepositoryTest {
             assertEquals(LOCAL_STORAGE_ID, tracks[1].serverId)
             assertEquals("content://media/audio/2", tracks[1].remotePath)
             assertEquals(1L, tracks[2].serverId)
-            assertEquals("content://media/audio/1", tracks[2].remotePath)
+            assertEquals("/remote/audio/1", tracks[2].remotePath)
 
             // Second batch addition of existing tracks should return empty
             val secondBatchResult = repository.addTracksToPlaylist(playlistId, listOf(local1, local2))
             assertTrue(secondBatchResult.isEmpty())
+            assertEquals(3, repository.getTracksForPlaylist(playlistId).size)
+
+            // Adding a track with content:// and mismatched serverId 2L is clamped and recognized as duplicate of local1
+            val local1WithMismatchedServerId =
+                AudioTrack(
+                    id = "2:content://media/audio/1",
+                    serverId = 2L,
+                    remotePath = "content://media/audio/1",
+                    title = "Local 1 with mismatched serverId",
+                    format = AudioFormat.FLAC,
+                )
+            val mismatchedBatchResult = repository.addTracksToPlaylist(playlistId, listOf(local1WithMismatchedServerId))
+            assertTrue(mismatchedBatchResult.isEmpty())
             assertEquals(3, repository.getTracksForPlaylist(playlistId).size)
         }
 

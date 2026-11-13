@@ -412,7 +412,7 @@ class TrackMetadataRepositoryImpl internal constructor(
                             val current = trackMetadataDao.getMetadata(identity.serverId, identity.remotePath)
                             if (current != null) {
                                 trackMetadataDao.insertOrUpdate(current.copy(coverThumbnailPath = newCover))
-                            } else if (resolved != null) {
+                            } else {
                                 trackMetadataDao.insertOrUpdate(TrackMetadataEntity.fromDomain(resolved))
                             }
                             onCoverHealed?.invoke(identity, newCover)

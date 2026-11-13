@@ -440,7 +440,7 @@ class TrackMetadataRepositoryImpl internal constructor(
 
             // 1. External companion .lrc has absolute first priority
             val companionPath = cachedMetadata?.companionLyricsPath
-            if (!companionPath.isNullOrBlank()) {
+            if (!companionPath.isNullOrBlank() && companionPath != DefaultTrackMetadataResolver.NO_COMPANION_LRC) {
                 val companionText: String? =
                     if (isLocal || companionPath.startsWith("content://") || companionPath.startsWith("file://")) {
                         try {
@@ -510,6 +510,36 @@ class TrackMetadataRepositoryImpl internal constructor(
                     } catch (_: Exception) {
                         // Fall through to embedded lyrics
                     }
+                }
+            }
+
+            // 1c. If remote WebDAV and companionPath was unverified (null), probe WebDAV with negative caching
+            if (!isLocal && companionPath == null) {
+                val lrcPath = track.remotePath.substringBeforeLast('.') + ".lrc"
+                try {
+                    val remoteText = webDavClient?.fetchText(server, lrcPath)
+                    if (!remoteText.isNullOrBlank()) {
+                        val parsed = LrcParser.parse(remoteText)
+                        if (parsed.isNotEmpty) {
+                            resolvedLyricsCache[cacheKey] = parsed
+                            if (cachedMetadata != null) {
+                                trackMetadataDao.insertOrUpdate(
+                                    TrackMetadataEntity.fromDomain(cachedMetadata.copy(companionLyricsPath = lrcPath)),
+                                )
+                            }
+                            return@withContext parsed
+                        }
+                    } else {
+                        if (cachedMetadata != null) {
+                            trackMetadataDao.insertOrUpdate(
+                                TrackMetadataEntity.fromDomain(
+                                    cachedMetadata.copy(companionLyricsPath = DefaultTrackMetadataResolver.NO_COMPANION_LRC),
+                                ),
+                            )
+                        }
+                    }
+                } catch (_: Exception) {
+                    // Ignore transient network errors
                 }
             }
 

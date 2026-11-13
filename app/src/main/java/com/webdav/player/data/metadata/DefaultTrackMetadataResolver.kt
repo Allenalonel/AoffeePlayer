@@ -29,6 +29,7 @@ internal class DefaultTrackMetadataResolver(
     private val folderLocks = ConcurrentHashMap<String, Mutex>()
 
     companion object {
+        const val NO_COMPANION_LRC = "__NO_LRC__"
         private const val INITIAL_RANGE_START = 0L
         private const val INITIAL_RANGE_END = 524287L // 512KB (524288 bytes)
         private const val MAX_TAG_SIZE_CAP = 8L * 1024L * 1024L // 8MB to support high-res embedded art
@@ -147,11 +148,12 @@ internal class DefaultTrackMetadataResolver(
             val companionLyricsPath =
                 if (directoryFiles != null) {
                     val baseName = file.name.substringBeforeLast('.')
-                    directoryFiles
-                        .firstOrNull {
+                    val matched =
+                        directoryFiles.firstOrNull {
                             it.isLyrics &&
                                 it.name.substringBeforeLast('.').equals(baseName, ignoreCase = true)
-                        }?.path
+                        }
+                    matched?.path ?: NO_COMPANION_LRC
                 } else {
                     null
                 }
@@ -205,7 +207,7 @@ internal class DefaultTrackMetadataResolver(
                         durationMs = 0L,
                         coverThumbnailPath = sharedFolderThumb,
                         lyrics = null,
-                        companionLyricsPath = companionLrc?.path,
+                        companionLyricsPath = companionLrc?.path ?: NO_COMPANION_LRC,
                     )
             }
             result

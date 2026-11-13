@@ -8,6 +8,7 @@ import com.webdav.player.data.local.CoverArtStorage
 import com.webdav.player.data.local.TrackMetadataDao
 import com.webdav.player.data.local.TrackMetadataEntity
 import com.webdav.player.data.local.WebDavServerEntity
+import com.webdav.player.data.metadata.DefaultTrackMetadataResolver
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
@@ -143,6 +144,7 @@ class LyricsRepositoryTest {
                     durationMs = 0L,
                     coverThumbnailPath = null,
                     lyrics = embeddedLyrics,
+                    companionLyricsPath = DefaultTrackMetadataResolver.NO_COMPANION_LRC,
                 ),
             )
 

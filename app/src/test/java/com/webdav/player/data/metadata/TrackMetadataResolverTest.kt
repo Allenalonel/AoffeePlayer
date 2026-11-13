@@ -435,7 +435,7 @@ class TrackMetadataResolverTest {
             assertNotNull(meta1)
             assertNotNull(meta2)
             assertEquals("/music/album/01.lrc", meta1?.companionLyricsPath)
-            assertNull(meta2?.companionLyricsPath)
+            assertEquals(DefaultTrackMetadataResolver.NO_COMPANION_LRC, meta2?.companionLyricsPath)
             assertEquals("Shared cover thumbnail must be identical across directory tracks", meta1?.coverThumbnailPath, meta2?.coverThumbnailPath)
             assertEquals(1, fakeStorage.savedThumbnails.size)
         }

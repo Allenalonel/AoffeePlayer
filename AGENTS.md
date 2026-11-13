@@ -24,5 +24,6 @@
    - 严禁凭空盲猜；状态机、数据库与置灰问题必须优先获取 logcat 与 SQLite (`webdav_player.db`) 确凿运行时实证；微动效掉帧必须采集 `dumpsys gfxinfo` 纳秒级帧耗时；
    - 日常真机联调与数据库实证排查优先安装 Debug 包（`./gradlew assembleDebug`），确保非 Root 设备可通过 `run-as com.webdav.player` 直接查询 `webdav_player.db`；仅在最终体积/R8 混淆验收时安装 Release 包。
 4. **Rapid iterative build & packaging gate (分层构建与发布红线)**
-   - 日常快速闭环仅运行针对性单测与 `./gradlew assembleDebug`；
-   - 交付结项门禁强制通过 `./gradlew testDebugUnitTest verifyReleasePackaging`；版本发布统一使用 GitHub CLI（`gh release create`）。
+   - **工单日常针对性闭环**：严禁在子工单开发与问题排查期间执行 Release 打包或混淆任务。仅运行针对性单测（`--tests "*<TargetTest>*"`）与 `./gradlew assembleDebug`，单次耗时控制在 10~20 秒内；
+   - **Spec 逻辑集成门禁**：整组工单集成合并后，仅运行全量单测 `./gradlew testDebugUnitTest`；
+   - **终结发版与体积验收门禁**：仅在涉及三方依赖变更、底层 Native 变动、或进入 GitHub 发版（Release Tag）前的最终终审阶段，单独执行一次 `./gradlew verifyReleasePackaging`，严禁在开发/排查期间与单测拼接串行执行；版本发布统一使用 GitHub CLI（`gh release create`）。

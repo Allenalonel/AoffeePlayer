@@ -8,7 +8,7 @@ import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.ServerRepository
-import com.webdav.player.domain.storage.TrackKey
+import com.webdav.player.domain.model.TrackIdentity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -86,14 +86,14 @@ class StorageReachabilityTrackerTest {
 
         val inactive = tracker.inactiveTracks.value
         assertEquals(1, inactive.size)
-        assertEquals(InactiveReason.FILE_NOT_FOUND, inactive[TrackKey(1L, "/music/track1.mp3")])
+        assertEquals(InactiveReason.FILE_NOT_FOUND, inactive[TrackIdentity(1L, "/music/track1.mp3")])
 
         tracker.reportTrackUnavailable(2L, "/other/track2.flac", InactiveReason.SERVER_UNREACHABLE)
 
         val updated = tracker.inactiveTracks.value
         assertEquals(2, updated.size)
-        assertEquals(InactiveReason.FILE_NOT_FOUND, updated[TrackKey(1L, "/music/track1.mp3")])
-        assertEquals(InactiveReason.SERVER_UNREACHABLE, updated[TrackKey(2L, "/other/track2.flac")])
+        assertEquals(InactiveReason.FILE_NOT_FOUND, updated[TrackIdentity(1L, "/music/track1.mp3")])
+        assertEquals(InactiveReason.SERVER_UNREACHABLE, updated[TrackIdentity(2L, "/other/track2.flac")])
     }
 
     @Test
@@ -101,10 +101,10 @@ class StorageReachabilityTrackerTest {
         val tracker = StorageReachabilityTrackerImpl()
 
         tracker.reportTrackUnavailable(1L, "/music/track1.mp3", InactiveReason.FILE_NOT_FOUND)
-        assertEquals(InactiveReason.FILE_NOT_FOUND, tracker.inactiveTracks.value[TrackKey(1L, "/music/track1.mp3")])
+        assertEquals(InactiveReason.FILE_NOT_FOUND, tracker.inactiveTracks.value[TrackIdentity(1L, "/music/track1.mp3")])
 
         tracker.reportTrackUnavailable(1L, "/music/track1.mp3", InactiveReason.SERVER_UNREACHABLE)
-        assertEquals(InactiveReason.SERVER_UNREACHABLE, tracker.inactiveTracks.value[TrackKey(1L, "/music/track1.mp3")])
+        assertEquals(InactiveReason.SERVER_UNREACHABLE, tracker.inactiveTracks.value[TrackIdentity(1L, "/music/track1.mp3")])
     }
 
     @Test
@@ -121,9 +121,9 @@ class StorageReachabilityTrackerTest {
         assertNull(tracker.serverReachability.value[2L])
 
         val inactive = tracker.inactiveTracks.value
-        assertEquals(InactiveReason.SERVER_UNREACHABLE, inactive[TrackKey(1L, "/song1.mp3")])
-        assertEquals(InactiveReason.FILE_NOT_FOUND, inactive[TrackKey(1L, "/missing.mp3")])
-        assertEquals(InactiveReason.SERVER_CREDENTIAL_INVALID, inactive[TrackKey(2L, "/song2.mp3")])
+        assertEquals(InactiveReason.SERVER_UNREACHABLE, inactive[TrackIdentity(1L, "/song1.mp3")])
+        assertEquals(InactiveReason.FILE_NOT_FOUND, inactive[TrackIdentity(1L, "/missing.mp3")])
+        assertEquals(InactiveReason.SERVER_CREDENTIAL_INVALID, inactive[TrackIdentity(2L, "/song2.mp3")])
     }
 
     @Test
@@ -146,17 +146,17 @@ class StorageReachabilityTrackerTest {
         assertEquals(false, tracker.serverReachability.value[2L])
 
         val inactive = tracker.inactiveTracks.value
-        assertNull("SERVER_UNREACHABLE track on server 1 must be cleared", inactive[TrackKey(1L, "/unreachable.mp3")])
-        assertNull("SERVER_CREDENTIAL_INVALID track on server 1 must be cleared", inactive[TrackKey(1L, "/auth_fail.mp3")])
+        assertNull("SERVER_UNREACHABLE track on server 1 must be cleared", inactive[TrackIdentity(1L, "/unreachable.mp3")])
+        assertNull("SERVER_CREDENTIAL_INVALID track on server 1 must be cleared", inactive[TrackIdentity(1L, "/auth_fail.mp3")])
         assertEquals(
             "FILE_NOT_FOUND track on server 1 must be preserved",
             InactiveReason.FILE_NOT_FOUND,
-            inactive[TrackKey(1L, "/missing_404.mp3")],
+            inactive[TrackIdentity(1L, "/missing_404.mp3")],
         )
         assertEquals(
             "Track on server 2 must remain unchanged",
             InactiveReason.SERVER_UNREACHABLE,
-            inactive[TrackKey(2L, "/other_server.mp3")],
+            inactive[TrackIdentity(2L, "/other_server.mp3")],
         )
     }
 
@@ -189,8 +189,8 @@ class StorageReachabilityTrackerTest {
             assertEquals(false, tracker.serverReachability.value[2L])
 
             val inactive = tracker.inactiveTracks.value
-            assertNull("Server 1 track must be restored", inactive[TrackKey(1L, "/online.mp3")])
-            assertEquals(InactiveReason.SERVER_UNREACHABLE, inactive[TrackKey(2L, "/offline.mp3")])
+            assertNull("Server 1 track must be restored", inactive[TrackIdentity(1L, "/online.mp3")])
+            assertEquals(InactiveReason.SERVER_UNREACHABLE, inactive[TrackIdentity(2L, "/offline.mp3")])
         }
 
     @Test
@@ -214,7 +214,7 @@ class StorageReachabilityTrackerTest {
             tracker.triggerReachabilitySelfHealing()
 
             assertEquals(true, tracker.serverReachability.value[1L])
-            assertNull(tracker.inactiveTracks.value[TrackKey(1L, "/auth.mp3")])
+            assertNull(tracker.inactiveTracks.value[TrackIdentity(1L, "/auth.mp3")])
         }
 
     @Test
@@ -239,7 +239,7 @@ class StorageReachabilityTrackerTest {
             tracker.triggerReachabilitySelfHealing()
 
             assertEquals(false, tracker.serverReachability.value[1L])
-            assertEquals(InactiveReason.SERVER_UNREACHABLE, tracker.inactiveTracks.value[TrackKey(1L, "/crash.mp3")])
+            assertEquals(InactiveReason.SERVER_UNREACHABLE, tracker.inactiveTracks.value[TrackIdentity(1L, "/crash.mp3")])
         }
 
     @Test
@@ -264,12 +264,12 @@ class StorageReachabilityTrackerTest {
             assertEquals(1, inactive.size)
             assertNull(
                 "Song 1 is now accessible and should be restored",
-                inactive[TrackKey(LOCAL_STORAGE_ID, "content://media/sdcard/song1.flac")],
+                inactive[TrackIdentity(LOCAL_STORAGE_ID, "content://media/sdcard/song1.flac")],
             )
             assertEquals(
                 "Missing song remains inaccessible",
                 InactiveReason.FILE_NOT_FOUND,
-                inactive[TrackKey(LOCAL_STORAGE_ID, "content://media/sdcard/missing.flac")],
+                inactive[TrackIdentity(LOCAL_STORAGE_ID, "content://media/sdcard/missing.flac")],
             )
         }
 
@@ -384,7 +384,7 @@ class StorageReachabilityTrackerTest {
             assertEquals(1, inactive.size)
             assertEquals(
                 InactiveReason.FILE_NOT_FOUND,
-                inactive[TrackKey(LOCAL_STORAGE_ID, "content://media/sdcard/song.flac")],
+                inactive[TrackIdentity(LOCAL_STORAGE_ID, "content://media/sdcard/song.flac")],
             )
         }
 

@@ -13,6 +13,7 @@ import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.StorageCascadeInvalidator
+import com.webdav.player.domain.repository.TrackMetadataRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -27,6 +28,7 @@ class ServerRepositoryImpl(
     private val localStorageFolderDao: LocalStorageFolderDao? = null,
     private val context: Context? = null,
     private val cascadeInvalidator: StorageCascadeInvalidator? = null,
+    private val trackMetadataRepository: TrackMetadataRepository? = null,
 ) : ServerRepository {
     private val prefs = context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val isLocalStorageActive =
@@ -92,6 +94,7 @@ class ServerRepositoryImpl(
         coverArtStorage?.deleteServerCovers(id)
         webDavClient?.invalidateServer(id)
         cascadeInvalidator?.clearStorageData(id)
+        trackMetadataRepository?.clearCacheForServer(id)
         trackMetadataDao?.deleteMetadataForServer(id)
         serverDao.deleteServerById(id)
 

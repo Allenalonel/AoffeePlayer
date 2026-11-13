@@ -7,9 +7,9 @@ import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.InactiveReason
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
+import com.webdav.player.domain.model.TrackIdentity
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.storage.StorageReachabilityTracker
-import com.webdav.player.domain.storage.TrackKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -32,8 +32,8 @@ class StorageReachabilityTrackerImpl(
     private val localUriReachabilityChecker: ((String) -> Boolean)? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : StorageReachabilityTracker {
-    private val _inactiveTracks = MutableStateFlow<Map<TrackKey, InactiveReason>>(emptyMap())
-    override val inactiveTracks: StateFlow<Map<TrackKey, InactiveReason>> = _inactiveTracks.asStateFlow()
+    private val _inactiveTracks = MutableStateFlow<Map<TrackIdentity, InactiveReason>>(emptyMap())
+    override val inactiveTracks: StateFlow<Map<TrackIdentity, InactiveReason>> = _inactiveTracks.asStateFlow()
 
     private val _serverReachability = MutableStateFlow<Map<Long, Boolean>>(emptyMap())
     override val serverReachability: StateFlow<Map<Long, Boolean>> = _serverReachability.asStateFlow()
@@ -49,7 +49,7 @@ class StorageReachabilityTrackerImpl(
         reason: InactiveReason,
     ) {
         _inactiveTracks.update { current ->
-            current + (TrackKey(serverId, remotePath) to reason)
+            current + (TrackIdentity(serverId, remotePath) to reason)
         }
     }
 

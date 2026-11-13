@@ -170,8 +170,13 @@ tasks.register("verifyReleasePackaging") {
     description = "Enforces binary thinning and release packaging size budget invariants."
     dependsOn("assembleRelease")
 
+    val apkFile = file("build/outputs/apk/release/app-release.apk")
+    val markerFile = file("build/intermediates/verifyReleasePackaging.marker")
+
+    inputs.file(apkFile)
+    outputs.file(markerFile)
+
     doLast {
-        val apkFile = file("build/outputs/apk/release/app-release.apk")
         check(apkFile.exists()) { "Release APK not found at ${apkFile.absolutePath}" }
 
         val maxApkSizeBytes = 7_864_320L // 7.5 MB
@@ -250,6 +255,9 @@ tasks.register("verifyReleasePackaging") {
             )
             println("Native architecture:   lib/arm64-v8a/ only (5 libraries, 0 32-bit)")
             println("============================================================")
+
+            markerFile.parentFile?.mkdirs()
+            markerFile.writeText("VERIFIED: ${System.currentTimeMillis()}\nsize: $apkSize\ndex: ${dex.size}\n")
         } finally {
             zip.close()
         }

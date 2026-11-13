@@ -12,6 +12,15 @@ Issues and specs for this repo live as markdown files in `.scratch/`.
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
 - **Archiving**: Once all tickets in a feature are completed and the work is merged, move the directory to `.scratch/archive/<feature-slug>/` to keep the active `.scratch/` root clean and noise-free.
 
+## Ticket verification criteria stratification (工单门禁分级指引)
+
+When authoring or implementing tickets:
+
+- **Intermediate implementation tickets (Ticket 01 ~ N-1)**: acceptance criteria must only require targeted unit tests (`./gradlew testDebugUnitTest --tests "*<TargetTest>*"`). Never declare full packaging or Release tasks in intermediate tickets.
+- **Spec integration gate (final ticket)**:
+  - **Pure-logic / refactoring efforts**: require only full unit tests (`./gradlew testDebugUnitTest`).
+  - **Dependency / Native / Asset efforts**: require `./gradlew verifyReleasePackaging` executed separately as the final gate. Never chain with `testDebugUnitTest` in a single command.
+
 ## Archiving completed features
 
 Once a spec or effort is fully implemented, verified, and merged:

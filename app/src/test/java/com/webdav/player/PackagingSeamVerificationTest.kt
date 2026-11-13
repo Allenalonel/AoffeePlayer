@@ -765,4 +765,103 @@ class PackagingSeamVerificationTest {
             Regex("""\bexportSchema\s*=\s*true\b""").containsMatchIn(appDatabaseSource),
         )
     }
+
+    @Test
+    fun trackIdentityAndMetadataHealing_enforcesArchitecturalGuardrails() {
+        // ADR-0042 Guardrails:
+        // 1. PlaylistRepositoryImpl must not check disk cover liveness or maintain background healing tasks
+        val playlistRepoSource = source("data/repository/PlaylistRepositoryImpl.kt")
+        assertFalse(
+            "PlaylistRepositoryImpl must not declare or use isCoverDeadOnDisk",
+            playlistRepoSource.contains("isCoverDeadOnDisk"),
+        )
+        assertFalse(
+            "PlaylistRepositoryImpl must not maintain inFlightCoverHealing map",
+            playlistRepoSource.contains("inFlightCoverHealing"),
+        )
+        assertFalse(
+            "PlaylistRepositoryImpl must not declare triggerBackgroundCoverHealing",
+            playlistRepoSource.contains("triggerBackgroundCoverHealing"),
+        )
+        assertFalse(
+            "PlaylistRepositoryImpl must not import java.io.File for disk operations",
+            playlistRepoSource.contains("import java.io.File"),
+        )
+
+        // 2. LocalStorageDirectoryResolver must be a pure directory lister without thumbnail writing or metadataMap assembly
+        val localResolverSource = source("data/repository/LocalStorageDirectoryResolver.kt")
+        assertFalse(
+            "LocalStorageDirectoryResolver must not save thumbnails",
+            localResolverSource.contains("saveThumbnail"),
+        )
+        assertFalse(
+            "LocalStorageDirectoryResolver must not call getThumbnailFile",
+            localResolverSource.contains("getThumbnailFile"),
+        )
+
+        // 3. Core repositories and coordinators must not bypass TrackIdentity with raw startsWith(\"content://\")
+        val metadataEntitySource = source("data/local/TrackMetadataEntity.kt")
+        assertFalse(
+            "TrackMetadataEntity must delegate to TrackIdentity rather than checking raw content://",
+            metadataEntitySource.contains("domain.remotePath.startsWith(\"content://\")"),
+        )
+
+        val audioTrackSource = source("domain/model/AudioTrack.kt")
+        assertFalse(
+            "AudioTrack.isLocal must delegate to TrackIdentity rather than checking raw content://",
+            audioTrackSource.contains("remotePath.startsWith(\"content://\")"),
+        )
+
+        val searchCoordinatorSource = source("data/repository/MediaLibrarySearchCoordinator.kt")
+        assertFalse(
+            "MediaLibrarySearchCoordinator must delegate to TrackIdentity rather than checking raw content://",
+            searchCoordinatorSource.contains("itemRemotePath.startsWith(\"content://\")") ||
+                searchCoordinatorSource.contains("itemPath.startsWith(\"content://\")"),
+        )
+
+        val playbackMetadataSource = source("domain/session/PlaybackMetadataCoordinator.kt")
+        assertFalse(
+            "PlaybackMetadataCoordinator must delegate to TrackIdentity rather than checking raw content://",
+            playbackMetadataSource.contains("track.remotePath.startsWith(\"content://\")"),
+        )
+
+        // 4. StorageReachabilityTracker must not declare or reference legacy TrackKey
+        val trackerSource = source("domain/storage/StorageReachabilityTracker.kt")
+        assertFalse(
+            "StorageReachabilityTracker must physically eliminate TrackKey",
+            trackerSource.contains("TrackKey"),
+        )
+    }
+
+    @Test
+    fun coroutineExceptionSafety_inRepositories_rethrowsCancellationException() {
+        // CODING_STANDARDS.md §2 ("CancellationException 防吞法则"):
+        // Network and I/O catch blocks in TrackMetadataRepositoryImpl and MediaLibraryRepositoryImpl
+        // must explicitly rethrow CancellationException rather than silently swallowing it.
+        val metaRepoSource = source("data/repository/TrackMetadataRepositoryImpl.kt")
+        val lines = metaRepoSource.lines()
+        for (i in lines.indices) {
+            val line = lines[i]
+            if (line.contains("webDavClient?.fetchText") || line.contains("fun readLocalText")) {
+                val window = lines.subList(maxOf(0, i - 2), minOf(lines.size, i + 30)).joinToString("\n")
+                assertTrue(
+                    "Lyrics fetch/read at line ${i + 1} must rethrow CancellationException: \n$window",
+                    window.contains("CancellationException"),
+                )
+            }
+        }
+
+        val mediaRepoSource = source("data/repository/MediaLibraryRepositoryImpl.kt")
+        val mediaLines = mediaRepoSource.lines()
+        for (i in mediaLines.indices) {
+            val line = mediaLines[i]
+            if (line.contains("webDavClient.listDirectory") || line.contains("resolver.resolve")) {
+                val window = mediaLines.subList(maxOf(0, i - 2), minOf(mediaLines.size, i + 8)).joinToString("\n")
+                assertTrue(
+                    "Directory resolution at line ${i + 1} must handle CancellationException: \n$window",
+                    window.contains("CancellationException"),
+                )
+            }
+        }
+    }
 }

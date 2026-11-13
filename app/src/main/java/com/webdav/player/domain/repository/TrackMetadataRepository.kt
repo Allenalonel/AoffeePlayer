@@ -3,6 +3,7 @@ package com.webdav.player.domain.repository
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.Lyrics
 import com.webdav.player.domain.model.RemoteFile
+import com.webdav.player.domain.model.TrackIdentity
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import kotlinx.coroutines.flow.Flow
@@ -48,6 +49,16 @@ interface TrackMetadataRepository {
         forceRefresh: Boolean = false,
         directoryFiles: Collection<RemoteFile>? = null,
     ) {
+        resolveMetadata(server, files, forceRefresh, directoryFiles, null)
+    }
+
+    suspend fun resolveMetadata(
+        server: WebDavServer,
+        files: List<RemoteFile>,
+        forceRefresh: Boolean,
+        directoryFiles: Collection<RemoteFile>?,
+        logicalDirectoryPath: String?,
+    ) {
         resolveMetadata(server, files, forceRefresh)
     }
 
@@ -56,6 +67,17 @@ interface TrackMetadataRepository {
         files: List<RemoteFile>,
         forceRefresh: Boolean,
     )
+
+    /**
+     * Proactively matches companion artwork and lyrics from directoryFiles manifest
+     * in milliseconds, returning an initial TrackMetadata map before embedded tag parsing.
+     */
+    suspend fun matchCompanionManifest(
+        server: WebDavServer,
+        files: List<RemoteFile>,
+        directoryFiles: Collection<RemoteFile>?,
+        logicalDirectoryPath: String? = null,
+    ): Map<String, TrackMetadata> = emptyMap()
 
     /**
      * Resolves metadata for a single audio file on demand.
@@ -70,6 +92,18 @@ interface TrackMetadataRepository {
         server: WebDavServer,
         file: RemoteFile,
     ): TrackMetadata
+
+    /**
+     * Batch queries metadata for a list of track identities and validates cover art physical liveness on disk.
+     * For tracks with missing or deleted cover thumbnails that are marked eligible for healing (active/reachable),
+     * triggers bounded background healing (both Local SAF and remote WebDAV) and returns valid metadata snapshots.
+     * Optionally invokes [onCoverHealed] as background healing tasks complete.
+     */
+    suspend fun batchQueryAndHealMetadata(
+        identities: List<TrackIdentity>,
+        eligibleForHealing: Set<TrackIdentity>,
+        onCoverHealed: (suspend (TrackIdentity, String) -> Unit)? = null,
+    ): Map<TrackIdentity, TrackMetadata> = emptyMap()
 
     /**
      * Resolves lyrics for an audio track using dual-source priority:
@@ -87,4 +121,9 @@ interface TrackMetadataRepository {
      * Clears all in-memory metadata and lyrics caches.
      */
     fun clearCache() {}
+
+    /**
+     * Clears in-memory lyrics, folder artwork, and metadata caches for a specific server.
+     */
+    fun clearCacheForServer(serverId: Long) {}
 }

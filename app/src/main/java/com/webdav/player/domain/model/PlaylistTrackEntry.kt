@@ -16,11 +16,18 @@ data class PlaylistTrackEntry(
     val isInactive: Boolean = false,
     val inactiveReason: InactiveReason? = null,
 ) {
-    fun toAudioTrack(): AudioTrack =
-        AudioTrack(
-            id = "$serverId:$remotePath",
-            serverId = serverId,
-            remotePath = remotePath,
+    val identity: TrackIdentity
+        get() = TrackIdentity(serverId, remotePath)
+
+    val isLocal: Boolean
+        get() = identity.isLocal
+
+    fun toAudioTrack(): AudioTrack {
+        val ident = identity
+        return AudioTrack(
+            id = ident.trackId,
+            serverId = ident.serverId,
+            remotePath = ident.remotePath,
             title = title,
             artist = artist,
             album = album,
@@ -29,6 +36,7 @@ data class PlaylistTrackEntry(
             format = format,
             coverThumbnailPath = coverThumbnailPath,
         )
+    }
 
     companion object {
         fun fromAudioTrack(

@@ -50,6 +50,12 @@ interface DirectoryCacheDao {
         path: String,
     )
 
+    @Query("DELETE FROM directory_cache WHERE serverId = :serverId AND path LIKE :prefix || '%'")
+    suspend fun deleteCacheByServerAndPathPrefix(
+        serverId: Long,
+        prefix: String,
+    )
+
     @Query("DELETE FROM directory_cache WHERE serverId = :serverId")
     suspend fun deleteCacheByServerId(serverId: Long)
 

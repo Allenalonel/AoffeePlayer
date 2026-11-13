@@ -18,7 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MediaTrackIndexEntity::class,
         DirectorySyncCheckpointEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -279,6 +279,15 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        val MIGRATION_9_10 =
+            object : Migration(9, 10) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "ALTER TABLE `track_metadata` ADD COLUMN `companionLyricsPath` TEXT DEFAULT NULL"
+                    )
+                }
+            }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance =
@@ -287,8 +296,15 @@ abstract class AppDatabase : RoomDatabase() {
                             context.applicationContext,
                             AppDatabase::class.java,
                             "webdav_player.db"
-                        ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
-                        .fallbackToDestructiveMigrationFrom(1, 2)
+                        ).addMigrations(
+                            MIGRATION_3_4,
+                            MIGRATION_4_5,
+                            MIGRATION_5_6,
+                            MIGRATION_6_7,
+                            MIGRATION_7_8,
+                            MIGRATION_8_9,
+                            MIGRATION_9_10,
+                        ).fallbackToDestructiveMigrationFrom(1, 2)
                         .build()
                 INSTANCE = instance
                 instance

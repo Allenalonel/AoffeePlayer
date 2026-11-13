@@ -12,6 +12,7 @@ import com.webdav.player.domain.model.InactiveReason
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaylistTrackEntry
 import com.webdav.player.domain.model.RemoteFile
+import com.webdav.player.domain.model.TrackIdentity
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.TrackMetadataRepository
@@ -477,6 +478,8 @@ class PlaylistRepositoryTest {
         val cachedMap = mutableMapOf<String, TrackMetadata>()
         val singleResolvedMap = mutableMapOf<String, TrackMetadata>()
         var singleResolveCalls = 0
+        var batchQueryCalls = 0
+        val healingTriggers = mutableListOf<TrackIdentity>()
 
         override fun getAllMetadataFlow(serverId: Long): Flow<List<TrackMetadata>> = emptyFlow()
 
@@ -494,6 +497,37 @@ class PlaylistRepositoryTest {
             serverId: Long,
             remotePath: String,
         ): TrackMetadata? = cachedMap["$serverId:$remotePath"]
+
+        override suspend fun batchQueryAndHealMetadata(
+            identities: List<TrackIdentity>,
+            eligibleForHealing: Set<TrackIdentity>,
+            onCoverHealed: (suspend (TrackIdentity, String) -> Unit)?,
+        ): Map<TrackIdentity, TrackMetadata> {
+            batchQueryCalls++
+            val result = mutableMapOf<TrackIdentity, TrackMetadata>()
+            for (id in identities) {
+                val meta = cachedMap[id.trackId]
+                if (meta != null) {
+                    val cover = meta.coverThumbnailPath
+                    val coverValid =
+                        cover != null &&
+                            !cover.contains("dead") &&
+                            !cover.contains("orphan")
+                    val effective = if (!coverValid) meta.copy(coverThumbnailPath = null) else meta
+                    result[id] = effective
+                }
+                val currentCover = result[id]?.coverThumbnailPath
+                if (id in eligibleForHealing && currentCover == null) {
+                    healingTriggers.add(id)
+                    val resolved = singleResolvedMap[id.trackId]
+                    val resolvedCover = resolved?.coverThumbnailPath
+                    if (resolvedCover != null) {
+                        onCoverHealed?.invoke(id, resolvedCover)
+                    }
+                }
+            }
+            return result
+        }
 
         override suspend fun resolveMetadata(
             server: WebDavServer,
@@ -766,17 +800,17 @@ class PlaylistRepositoryTest {
                     title = "Local 2",
                     format = AudioFormat.FLAC,
                 )
-            val remoteWithSamePath =
+            val remoteTrack =
                 AudioTrack(
-                    id = "1:content://media/audio/1",
+                    id = "1:/remote/audio/1",
                     serverId = 1L,
-                    remotePath = "content://media/audio/1",
-                    title = "Remote Track with same path",
+                    remotePath = "/remote/audio/1",
+                    title = "Remote Track",
                     format = AudioFormat.MP3,
                 )
 
-            // First batch: add local1, local2, and a remote track with the same path as local1 (different serverId)
-            val firstBatchResult = repository.addTracksToPlaylist(playlistId, listOf(local1, local2, remoteWithSamePath))
+            // First batch: add local1, local2, and a remote track
+            val firstBatchResult = repository.addTracksToPlaylist(playlistId, listOf(local1, local2, remoteTrack))
             assertEquals(3, firstBatchResult.size)
 
             val tracks = repository.getTracksForPlaylist(playlistId)
@@ -786,11 +820,24 @@ class PlaylistRepositoryTest {
             assertEquals(LOCAL_STORAGE_ID, tracks[1].serverId)
             assertEquals("content://media/audio/2", tracks[1].remotePath)
             assertEquals(1L, tracks[2].serverId)
-            assertEquals("content://media/audio/1", tracks[2].remotePath)
+            assertEquals("/remote/audio/1", tracks[2].remotePath)
 
             // Second batch addition of existing tracks should return empty
             val secondBatchResult = repository.addTracksToPlaylist(playlistId, listOf(local1, local2))
             assertTrue(secondBatchResult.isEmpty())
+            assertEquals(3, repository.getTracksForPlaylist(playlistId).size)
+
+            // Adding a track with content:// and mismatched serverId 2L is clamped and recognized as duplicate of local1
+            val local1WithMismatchedServerId =
+                AudioTrack(
+                    id = "2:content://media/audio/1",
+                    serverId = 2L,
+                    remotePath = "content://media/audio/1",
+                    title = "Local 1 with mismatched serverId",
+                    format = AudioFormat.FLAC,
+                )
+            val mismatchedBatchResult = repository.addTracksToPlaylist(playlistId, listOf(local1WithMismatchedServerId))
+            assertTrue(mismatchedBatchResult.isEmpty())
             assertEquals(3, repository.getTracksForPlaylist(playlistId).size)
         }
 
@@ -886,5 +933,104 @@ class PlaylistRepositoryTest {
             kotlinx.coroutines.delay(100)
             val updatedInDb = dao.getTrackById(entryId)
             assertEquals(validCoverFile.absolutePath, updatedInDb?.coverThumbnailPath)
+        }
+
+    @Test
+    fun remoteAndLocalTracksInPlaylist_bothTriggerCoverSelfHealing_whenCoversMissing() =
+        runBlocking {
+            val metadataRepo = TestTrackMetadataRepository()
+            val localUri = "content://media/external/audio/local_cross_test"
+            val remotePath = "/music/remote_cross_test.flac"
+
+            metadataRepo.singleResolvedMap["$LOCAL_STORAGE_ID:$localUri"] =
+                TrackMetadata(
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = localUri,
+                    title = "Local Healed",
+                    coverThumbnailPath = "/covers/local_healed_cross.jpg",
+                )
+            metadataRepo.singleResolvedMap["1:$remotePath"] =
+                TrackMetadata(
+                    serverId = 1L,
+                    remotePath = remotePath,
+                    title = "Remote Healed",
+                    coverThumbnailPath = "/covers/remote_healed_cross.jpg",
+                )
+
+            val repo =
+                PlaylistRepositoryImpl(
+                    playlistDao = dao,
+                    trackMetadataRepository = metadataRepo,
+                    timeProvider = { simulatedTime },
+                )
+
+            val playlistId = repo.createPlaylist("跨源封面自愈测试")
+            val localTrack =
+                AudioTrack(
+                    id = "$LOCAL_STORAGE_ID:$localUri",
+                    serverId = LOCAL_STORAGE_ID,
+                    remotePath = localUri,
+                    title = "Local Song",
+                    format = AudioFormat.FLAC,
+                )
+            val remoteTrack =
+                AudioTrack(
+                    id = "1:$remotePath",
+                    serverId = 1L,
+                    remotePath = remotePath,
+                    title = "Remote Song",
+                    format = AudioFormat.FLAC,
+                )
+
+            val entry1 = repo.addTrackToPlaylist(playlistId, localTrack)
+            val entry2 = repo.addTrackToPlaylist(playlistId, remoteTrack)
+
+            // Reconcile
+            repo.getTracksForPlaylist(playlistId)
+            kotlinx.coroutines.delay(200)
+
+            // Both local and remote covers are healed in DB
+            val healedLocal = dao.getTrackById(entry1)
+            val healedRemote = dao.getTrackById(entry2)
+            assertEquals("/covers/local_healed_cross.jpg", healedLocal?.coverThumbnailPath)
+            assertEquals("/covers/remote_healed_cross.jpg", healedRemote?.coverThumbnailPath)
+            assertEquals(1, metadataRepo.batchQueryCalls)
+        }
+
+    @Test
+    fun inactivePlaylistTracks_neverTriggerCoverHealing() =
+        runBlocking {
+            val metadataRepo = TestTrackMetadataRepository()
+            val tracker = FakeStorageReachabilityTracker()
+
+            val remotePath = "/music/unreachable_song.mp3"
+            tracker.reportServerUnavailable(1L, InactiveReason.SERVER_UNREACHABLE)
+
+            val repo =
+                PlaylistRepositoryImpl(
+                    playlistDao = dao,
+                    trackMetadataRepository = metadataRepo,
+                    storageReachabilityTracker = tracker,
+                    timeProvider = { simulatedTime },
+                )
+
+            val playlistId = repo.createPlaylist("离线曲目测试")
+            val remoteTrack =
+                AudioTrack(
+                    id = "1:$remotePath",
+                    serverId = 1L,
+                    remotePath = remotePath,
+                    title = "Unreachable Song",
+                    format = AudioFormat.MP3,
+                )
+
+            repo.addTrackToPlaylist(playlistId, remoteTrack)
+
+            val tracks = repo.getTracksForPlaylist(playlistId)
+            assertEquals(1, tracks.size)
+            assertTrue(tracks[0].isInactive)
+
+            // Inactive track must NOT be triggered for healing
+            assertTrue("Inactive track must never trigger healing probe", metadataRepo.healingTriggers.isEmpty())
         }
 }

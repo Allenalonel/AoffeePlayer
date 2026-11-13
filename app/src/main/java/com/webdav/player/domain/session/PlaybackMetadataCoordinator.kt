@@ -203,9 +203,7 @@ internal class PlaybackMetadataCoordinator(
             val updatedTracks =
                 current.queue.tracks.mapIndexed { index, track ->
                     val identity = track.identity
-                    val meta =
-                        metaByComposite[identity.trackId]
-                            ?: if (identity.serverId == 0L && !track.isLocal) metaByPath[track.remotePath] else null
+                    val meta = metaByComposite[identity.trackId] ?: metaByPath[track.remotePath]
                     if (meta != null) {
                         val enriched =
                             enrichTrack(track, meta, isCurrentActiveTrack = (index == current.queue.currentIndex))

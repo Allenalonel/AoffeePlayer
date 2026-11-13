@@ -18,6 +18,7 @@ import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.TrackMetadataRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -427,6 +428,27 @@ class TrackMetadataRepositoryImpl internal constructor(
         inFlightSelfHealing[key] = job
     }
 
+    private fun readLocalText(path: String): String? =
+        try {
+            when {
+                path.startsWith("content://") -> {
+                    context
+                        ?.contentResolver
+                        ?.openInputStream(Uri.parse(path))
+                        ?.bufferedReader(Charsets.UTF_8)
+                        ?.use { it.readText() }
+                }
+                else -> {
+                    val clean = path.removePrefix("file://")
+                    val f = File(clean)
+                    if (f.exists() && f.length() > 0L) f.readText() else null
+                }
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            null
+        }
+
     override suspend fun resolveLyrics(
         server: WebDavServer,
         track: AudioTrack,
@@ -443,28 +465,12 @@ class TrackMetadataRepositoryImpl internal constructor(
             if (!companionPath.isNullOrBlank() && companionPath != DefaultTrackMetadataResolver.NO_COMPANION_LRC) {
                 val companionText: String? =
                     if (isLocal || companionPath.startsWith("content://") || companionPath.startsWith("file://")) {
-                        try {
-                            when {
-                                companionPath.startsWith("content://") -> {
-                                    context
-                                        ?.contentResolver
-                                        ?.openInputStream(Uri.parse(companionPath))
-                                        ?.bufferedReader(Charsets.UTF_8)
-                                        ?.use { it.readText() }
-                                }
-                                else -> {
-                                    val clean = companionPath.removePrefix("file://")
-                                    val f = File(clean)
-                                    if (f.exists() && f.length() > 0L) f.readText() else null
-                                }
-                            }
-                        } catch (_: Exception) {
-                            null
-                        }
+                        readLocalText(companionPath)
                     } else {
                         try {
                             webDavClient?.fetchText(server, companionPath)
-                        } catch (_: Exception) {
+                        } catch (e: Exception) {
+                            if (e is CancellationException) throw e
                             null
                         }
                     }
@@ -484,31 +490,13 @@ class TrackMetadataRepositoryImpl internal constructor(
                 if (rawLyrics.startsWith("content://") || rawLyrics.startsWith("file://") ||
                     (rawLyrics.startsWith("/") && !rawLyrics.startsWith("["))
                 ) {
-                    try {
-                        val legacyText =
-                            when {
-                                rawLyrics.startsWith("content://") -> {
-                                    context
-                                        ?.contentResolver
-                                        ?.openInputStream(Uri.parse(rawLyrics))
-                                        ?.bufferedReader(Charsets.UTF_8)
-                                        ?.use { it.readText() }
-                                }
-                                else -> {
-                                    val clean = rawLyrics.removePrefix("file://")
-                                    val f = File(clean)
-                                    if (f.exists() && f.length() > 0L) f.readText() else null
-                                }
-                            }
-                        if (!legacyText.isNullOrBlank()) {
-                            val parsed = LrcParser.parse(legacyText)
-                            if (parsed.isNotEmpty) {
-                                resolvedLyricsCache[cacheKey] = parsed
-                                return@withContext parsed
-                            }
+                    val legacyText = readLocalText(rawLyrics)
+                    if (!legacyText.isNullOrBlank()) {
+                        val parsed = LrcParser.parse(legacyText)
+                        if (parsed.isNotEmpty) {
+                            resolvedLyricsCache[cacheKey] = parsed
+                            return@withContext parsed
                         }
-                    } catch (_: Exception) {
-                        // Fall through to embedded lyrics
                     }
                 }
             }
@@ -538,7 +526,8 @@ class TrackMetadataRepositoryImpl internal constructor(
                             )
                         }
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     // Ignore transient network errors
                 }
             }

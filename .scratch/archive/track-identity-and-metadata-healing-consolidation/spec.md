@@ -1,6 +1,6 @@
 # Spec: TrackIdentity 规范化、伴生清单两阶段收拢与跨源封面批量自愈 (TrackIdentity & Metadata Healing Consolidation)
 
-Status: `ready-for-agent`  
+Status: `completed`  
 ADR: [`docs/adr/0042-track-identity-companion-manifest-and-metadata-healing-consolidation.md`](../../docs/adr/0042-track-identity-companion-manifest-and-metadata-healing-consolidation.md)
 
 ## Problem Statement

@@ -765,4 +765,71 @@ class PackagingSeamVerificationTest {
             Regex("""\bexportSchema\s*=\s*true\b""").containsMatchIn(appDatabaseSource),
         )
     }
+
+    @Test
+    fun trackIdentityAndMetadataHealing_enforcesArchitecturalGuardrails() {
+        // ADR-0042 Guardrails:
+        // 1. PlaylistRepositoryImpl must not check disk cover liveness or maintain background healing tasks
+        val playlistRepoSource = source("data/repository/PlaylistRepositoryImpl.kt")
+        assertFalse(
+            "PlaylistRepositoryImpl must not declare or use isCoverDeadOnDisk",
+            playlistRepoSource.contains("isCoverDeadOnDisk"),
+        )
+        assertFalse(
+            "PlaylistRepositoryImpl must not maintain inFlightCoverHealing map",
+            playlistRepoSource.contains("inFlightCoverHealing"),
+        )
+        assertFalse(
+            "PlaylistRepositoryImpl must not declare triggerBackgroundCoverHealing",
+            playlistRepoSource.contains("triggerBackgroundCoverHealing"),
+        )
+        assertFalse(
+            "PlaylistRepositoryImpl must not import java.io.File for disk operations",
+            playlistRepoSource.contains("import java.io.File"),
+        )
+
+        // 2. LocalStorageDirectoryResolver must be a pure directory lister without thumbnail writing or metadataMap assembly
+        val localResolverSource = source("data/repository/LocalStorageDirectoryResolver.kt")
+        assertFalse(
+            "LocalStorageDirectoryResolver must not save thumbnails",
+            localResolverSource.contains("saveThumbnail"),
+        )
+        assertFalse(
+            "LocalStorageDirectoryResolver must not call getThumbnailFile",
+            localResolverSource.contains("getThumbnailFile"),
+        )
+
+        // 3. Core repositories and coordinators must not bypass TrackIdentity with raw startsWith(\"content://\")
+        val metadataEntitySource = source("data/local/TrackMetadataEntity.kt")
+        assertFalse(
+            "TrackMetadataEntity must delegate to TrackIdentity rather than checking raw content://",
+            metadataEntitySource.contains("domain.remotePath.startsWith(\"content://\")"),
+        )
+
+        val audioTrackSource = source("domain/model/AudioTrack.kt")
+        assertFalse(
+            "AudioTrack.isLocal must delegate to TrackIdentity rather than checking raw content://",
+            audioTrackSource.contains("remotePath.startsWith(\"content://\")"),
+        )
+
+        val searchCoordinatorSource = source("data/repository/MediaLibrarySearchCoordinator.kt")
+        assertFalse(
+            "MediaLibrarySearchCoordinator must delegate to TrackIdentity rather than checking raw content://",
+            searchCoordinatorSource.contains("itemRemotePath.startsWith(\"content://\")") ||
+                searchCoordinatorSource.contains("itemPath.startsWith(\"content://\")"),
+        )
+
+        val playbackMetadataSource = source("domain/session/PlaybackMetadataCoordinator.kt")
+        assertFalse(
+            "PlaybackMetadataCoordinator must delegate to TrackIdentity rather than checking raw content://",
+            playbackMetadataSource.contains("track.remotePath.startsWith(\"content://\")"),
+        )
+
+        // 4. StorageReachabilityTracker must not declare or reference legacy TrackKey
+        val trackerSource = source("domain/storage/StorageReachabilityTracker.kt")
+        assertFalse(
+            "StorageReachabilityTracker must physically eliminate TrackKey",
+            trackerSource.contains("TrackKey"),
+        )
+    }
 }

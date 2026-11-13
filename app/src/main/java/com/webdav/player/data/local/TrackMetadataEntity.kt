@@ -27,6 +27,7 @@ data class TrackMetadataEntity(
     val durationMs: Long,
     val coverThumbnailPath: String?,
     val lyrics: String? = null,
+    val companionLyricsPath: String? = null,
 ) {
     fun toDomain(): TrackMetadata =
         TrackMetadata(
@@ -39,6 +40,7 @@ data class TrackMetadataEntity(
             durationMs = durationMs,
             coverThumbnailPath = coverThumbnailPath,
             lyrics = lyrics,
+            companionLyricsPath = companionLyricsPath,
         )
 
     companion object {
@@ -54,6 +56,7 @@ data class TrackMetadataEntity(
                 durationMs = domain.durationMs,
                 coverThumbnailPath = domain.coverThumbnailPath,
                 lyrics = domain.lyrics,
+                companionLyricsPath = domain.companionLyricsPath,
             )
         }
     }

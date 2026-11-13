@@ -359,6 +359,88 @@ class TrackMetadataResolverTest {
         }
 
     @Test
+    fun resolve_withBothEmbeddedLyricsAndCompanionLrc_prioritizesCompanionLrcAndPreservesEmbeddedInLyrics() =
+        runTest {
+            val sampleMp3 = buildSampleId3v2Bytes("DualSong", "DualArtist", "DualAlbum", artworkBytes = null)
+            val trackPath = "/music/dualsong.mp3"
+            fakeClient.stubFileBytes(trackPath, sampleMp3)
+
+            val dirFiles =
+                listOf(
+                    RemoteFile(name = "dualsong.mp3", path = trackPath, size = 5000L),
+                    RemoteFile(name = "dualsong.lrc", path = "/music/dualsong.lrc", size = 100L),
+                )
+
+            val file = dirFiles[0]
+            val meta = resolver.resolve(testServer, file, directoryFiles = dirFiles)
+
+            assertNotNull(meta)
+            assertEquals("/music/dualsong.lrc", meta?.companionLyricsPath)
+        }
+
+    @Test
+    fun resolve_safDirectoriesWithDistinctLogicalPaths_doNotCollideInFolderArtworkCache() =
+        runTest {
+            fakeStorage.customThumbnailNamer = { serverId, path -> "/fake/covers/cover_${serverId}_${path.replace('/', '_')}.jpg" }
+            val track1 = RemoteFile(name = "track1.mp3", path = "/music/doc1.mp3", size = 1000L)
+            val track2 = RemoteFile(name = "track2.mp3", path = "/music/doc2.mp3", size = 1000L)
+
+            val sampleBytes = buildSampleId3v2Bytes("Title", "Artist", "Album", artworkBytes = null)
+            fakeClient.stubFileBytes("/music/doc1.mp3", sampleBytes)
+            fakeClient.stubFileBytes("/music/doc2.mp3", sampleBytes)
+
+            val coverABytes = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 0xFF.toByte(), 0xD9.toByte())
+            val coverBBytes = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 0x01, 0xFF.toByte(), 0xD9.toByte())
+
+            fakeClient.stubFileBytes("/local/tree%3AMusic/AlbumA/cover.jpg", coverABytes)
+            fakeClient.stubFileBytes("/local/tree%3AMusic/AlbumB/cover.jpg", coverBBytes)
+
+            val dirA = listOf(track1, RemoteFile(name = "cover.jpg", path = "/local/tree%3AMusic/AlbumA/cover.jpg", size = 20L))
+            val dirB = listOf(track2, RemoteFile(name = "cover.jpg", path = "/local/tree%3AMusic/AlbumB/cover.jpg", size = 20L))
+
+            val metaA = resolver.resolve(testServer, track1, directoryFiles = dirA, logicalDirectoryPath = "/local/tree%3AMusic/AlbumA/")
+            val metaB = resolver.resolve(testServer, track2, directoryFiles = dirB, logicalDirectoryPath = "/local/tree%3AMusic/AlbumB/")
+
+            assertNotNull(metaA?.coverThumbnailPath)
+            assertNotNull(metaB?.coverThumbnailPath)
+            org.junit.Assert.assertNotEquals(
+                "Albums in different logical paths must not collide in folder artwork",
+                metaA?.coverThumbnailPath,
+                metaB?.coverThumbnailPath,
+            )
+        }
+
+    @Test
+    fun matchCompanionManifest_fastStage1EmitsSingleSharedCover_andCompanionLrc() =
+        runTest {
+            val track1 = RemoteFile(name = "01.mp3", path = "/music/album/01.mp3", size = 1000L)
+            val track2 = RemoteFile(name = "02.mp3", path = "/music/album/02.mp3", size = 1000L)
+            val coverJpg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 0xFF.toByte(), 0xD9.toByte())
+            fakeClient.stubFileBytes("/music/album/cover.jpg", coverJpg)
+
+            val dirFiles =
+                listOf(
+                    track1,
+                    track2,
+                    RemoteFile(name = "01.lrc", path = "/music/album/01.lrc", size = 50L),
+                    RemoteFile(name = "cover.jpg", path = "/music/album/cover.jpg", size = 20L),
+                )
+
+            val initialMap = resolver.matchCompanionManifest(testServer, listOf(track1, track2), dirFiles, "/music/album/")
+
+            assertEquals(2, initialMap.size)
+            val meta1 = initialMap[track1.path]
+            val meta2 = initialMap[track2.path]
+
+            assertNotNull(meta1)
+            assertNotNull(meta2)
+            assertEquals("/music/album/01.lrc", meta1?.companionLyricsPath)
+            assertNull(meta2?.companionLyricsPath)
+            assertEquals("Shared cover thumbnail must be identical across directory tracks", meta1?.coverThumbnailPath, meta2?.coverThumbnailPath)
+            assertEquals(1, fakeStorage.savedThumbnails.size)
+        }
+
+    @Test
     fun resolve_withoutDirectoryManifest_retainsFallbackProbing() =
         runTest {
             val sampleMp3 = buildSampleId3v2Bytes("Track", "Artist", "Album", artworkBytes = null)
@@ -582,13 +664,14 @@ class TrackMetadataResolverTest {
     private class FakeCoverArtStorage : CoverArtStorage {
         val savedThumbnails = mutableMapOf<String, ByteArray>()
         val diskFiles = mutableSetOf<String>()
+        var customThumbnailNamer: ((Long, String) -> String)? = null
 
         override suspend fun saveThumbnail(
             serverId: Long,
             remotePath: String,
             artworkBytes: ByteArray,
         ): String? {
-            val path = "/fake/covers/cover_$serverId.jpg"
+            val path = customThumbnailNamer?.invoke(serverId, remotePath) ?: "/fake/covers/cover_$serverId.jpg"
             savedThumbnails["$serverId:$remotePath"] = artworkBytes
             diskFiles.add(path)
             return path
@@ -602,12 +685,14 @@ class TrackMetadataResolverTest {
         override fun getThumbnailFile(
             serverId: Long,
             remotePath: String,
-        ): File? =
-            if (savedThumbnails.containsKey("$serverId:$remotePath") && diskFiles.contains("/fake/covers/cover_$serverId.jpg")) {
-                File("/fake/covers/cover_$serverId.jpg")
+        ): File? {
+            val path = customThumbnailNamer?.invoke(serverId, remotePath) ?: "/fake/covers/cover_$serverId.jpg"
+            return if (savedThumbnails.containsKey("$serverId:$remotePath") && diskFiles.contains(path)) {
+                File(path)
             } else {
                 null
             }
+        }
 
         override fun deleteThumbnail(
             serverId: Long,

@@ -259,14 +259,13 @@ class LocalStorageDirectoryResolverTest {
             assertTrue(audioFile!!.isAudio)
             assertEquals(RemoteFileType.Audio(com.webdav.player.domain.model.AudioFormat.FLAC), audioFile.fileType)
 
-            // Companion lyrics & cover artwork attached in metadata
-            val audioMeta = result.metadataMap[audioFile.path]
-            assertNotNull(audioMeta)
-            assertEquals("Song", audioMeta!!.title)
-            assertNotNull(audioMeta.coverThumbnailPath)
-            assertTrue(audioMeta.coverThumbnailPath!!.contains("cover.jpg"))
-            assertNotNull(audioMeta.lyrics)
-            assertTrue(audioMeta.lyrics!!.contains("Song.lrc"))
+            // Companion files are returned in dir.files for TrackMetadataRepository manifest enrichment
+            val lrcFile = dir.files.firstOrNull { it.name == "Song.lrc" }
+            assertNotNull(lrcFile)
+            assertTrue(lrcFile!!.isLyrics)
+            val coverFile = dir.files.firstOrNull { it.name == "cover.jpg" }
+            assertNotNull(coverFile)
+            assertTrue(result.metadataMap.isEmpty())
         }
 
     @Test
@@ -334,22 +333,12 @@ class LocalStorageDirectoryResolverTest {
             val audioFile = result.directory.files.firstOrNull { it.name == "Album.flac" }
             assertNotNull(audioFile)
             assertTrue(audioFile!!.isAudio)
-            assertTrue(result.metadataMap.containsKey(audioFile.path))
+            assertTrue(result.metadataMap.isEmpty())
         }
 
     @Test
-    fun resolve_companionCover_withCoverArtStorage_savesPhysicalThumbnail() =
+    fun resolve_companionCover_returnsCoverInDirectoryFiles_withoutDirectThumbnailWrite() =
         runTest {
-            val coverArtStorage =
-                com.webdav.player.data.local
-                    .CoverArtStorageImpl(context)
-            val resolverWithStorage =
-                LocalStorageDirectoryResolver(
-                    context = context,
-                    localStorageFolderDao = FakeLocalStorageFolderDao(mountedFolderEntities),
-                    coverArtStorage = coverArtStorage,
-                )
-
             val rootDocId = "primary:Music"
             TestDocumentsProvider.childrenMap[rootDocId] =
                 listOf(
@@ -366,42 +355,13 @@ class LocalStorageDirectoryResolverTest {
                         size = 22L,
                     ),
                 )
-            // Valid minimal JPEG bytes: SOI (FF D8) ... EOI (FF D9)
-            val fakeJpeg =
-                byteArrayOf(
-                    0xFF.toByte(),
-                    0xD8.toByte(),
-                    0xFF.toByte(),
-                    0xE0.toByte(),
-                    0x00,
-                    0x10,
-                    0x4A,
-                    0x46,
-                    0x49,
-                    0x46,
-                    0x00,
-                    0x01,
-                    0x01,
-                    0x00,
-                    0x00,
-                    0x01,
-                    0x00,
-                    0x01,
-                    0x00,
-                    0x00,
-                    0xFF.toByte(),
-                    0xD9.toByte(),
-                )
-            TestDocumentsProvider.fileBytes["primary:Music/cover.jpg"] = fakeJpeg
-
             val encodedTreeUri = URLEncoder.encode(TREE_URI_STRING, "UTF-8")
-            val result = resolverWithStorage.resolve("/local/$encodedTreeUri/")
-            val audioFile = result.directory.files.first { it.name == "Song.flac" }
-            val audioMeta = result.metadataMap[audioFile.path]
-            assertNotNull(audioMeta)
-            assertNotNull(audioMeta?.coverThumbnailPath)
-            assertTrue(audioMeta?.coverThumbnailPath!!.startsWith(context.cacheDir.absolutePath))
-            assertTrue(coverArtStorage.isValidThumbnailFile(audioMeta.coverThumbnailPath))
+            val result = resolver.resolve("/local/$encodedTreeUri/")
+            assertEquals(2, result.directory.files.size)
+            val coverFile = result.directory.files.firstOrNull { it.name == "cover.jpg" }
+            assertNotNull(coverFile)
+            // LocalStorageDirectoryResolver is a pure directory lister and does not write thumbnails or assemble metadataMap
+            assertTrue(result.metadataMap.isEmpty())
         }
 
     @Test

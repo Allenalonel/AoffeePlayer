@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -803,6 +804,88 @@ class DatabaseMigrationTest {
         assertTrue(cursorNew.moveToFirst())
         assertEquals(0, cursorNew.getInt(0))
         cursorNew.close()
+
+        db.close()
+    }
+
+    @Test
+    fun migration_9_to_10_addsCompanionLyricsPathColumnPreservingExistingData() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val dbFile = context.getDatabasePath("test_migration_9_10.db")
+        dbFile.delete()
+
+        val openHelper =
+            FrameworkSQLiteOpenHelperFactory().create(
+                androidx.sqlite.db.SupportSQLiteOpenHelper.Configuration
+                    .builder(context)
+                    .name("test_migration_9_10.db")
+                    .callback(
+                        object : androidx.sqlite.db.SupportSQLiteOpenHelper.Callback(9) {
+                            override fun onCreate(db: SupportSQLiteDatabase) {
+                                db.execSQL(
+                                    """
+                                    CREATE TABLE IF NOT EXISTS `track_metadata` (
+                                        `serverId` INTEGER NOT NULL,
+                                        `remotePath` TEXT NOT NULL,
+                                        `title` TEXT,
+                                        `artist` TEXT,
+                                        `album` TEXT,
+                                        `trackNumber` INTEGER,
+                                        `durationMs` INTEGER NOT NULL,
+                                        `coverThumbnailPath` TEXT,
+                                        `lyrics` TEXT,
+                                        PRIMARY KEY(`serverId`, `remotePath`)
+                                    )
+                                    """.trimIndent(),
+                                )
+                            }
+
+                            override fun onUpgrade(
+                                db: SupportSQLiteDatabase,
+                                oldVersion: Int,
+                                newVersion: Int,
+                            ) {}
+                        },
+                    ).build(),
+            )
+
+        val db = openHelper.writableDatabase
+
+        db.execSQL(
+            """
+            INSERT INTO track_metadata (serverId, remotePath, title, artist, album, trackNumber, durationMs, coverThumbnailPath, lyrics)
+            VALUES (1, '/music/song.mp3', 'Song Title', 'Artist', 'Album', 3, 210000, '/covers/thumb.jpg', '[00:01.00]Embedded lyrics')
+            """.trimIndent(),
+        )
+
+        AppDatabase.MIGRATION_9_10.migrate(db)
+
+        // Verify column exists
+        val cursorCols = db.query("PRAGMA table_info('track_metadata')")
+        val cols = mutableListOf<String>()
+        while (cursorCols.moveToNext()) {
+            cols.add(cursorCols.getString(1))
+        }
+        cursorCols.close()
+        assertTrue("companionLyricsPath column must exist in v10", cols.contains("companionLyricsPath"))
+
+        // Verify existing record preserved with null companionLyricsPath
+        val cursorData = db.query("SELECT title, artist, album, durationMs, lyrics, companionLyricsPath FROM track_metadata WHERE serverId = 1")
+        assertTrue(cursorData.moveToFirst())
+        assertEquals("Song Title", cursorData.getString(0))
+        assertEquals("Artist", cursorData.getString(1))
+        assertEquals("Album", cursorData.getString(2))
+        assertEquals(210000L, cursorData.getLong(3))
+        assertEquals("[00:01.00]Embedded lyrics", cursorData.getString(4))
+        assertNull("companionLyricsPath must default to null for existing records", cursorData.getString(5))
+        cursorData.close()
+
+        // Verify column is writable
+        db.execSQL("UPDATE track_metadata SET companionLyricsPath = '/music/song.lrc' WHERE serverId = 1")
+        val cursorUpdated = db.query("SELECT companionLyricsPath FROM track_metadata WHERE serverId = 1")
+        assertTrue(cursorUpdated.moveToFirst())
+        assertEquals("/music/song.lrc", cursorUpdated.getString(0))
+        cursorUpdated.close()
 
         db.close()
     }

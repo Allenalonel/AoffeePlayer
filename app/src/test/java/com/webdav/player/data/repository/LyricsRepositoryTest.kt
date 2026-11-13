@@ -109,6 +109,7 @@ class LyricsRepositoryTest {
                     durationMs = 0L,
                     coverThumbnailPath = null,
                     lyrics = "[00:10.00]Should not be used",
+                    companionLyricsPath = expectedLrcPath,
                 ),
             )
 
@@ -153,6 +154,44 @@ class LyricsRepositoryTest {
             assertEquals("Embedded line 1", lyrics.lines[0].text)
             assertEquals(20000L, lyrics.lines[1].timestampMs)
             assertEquals("Embedded line 2", lyrics.lines[1].text)
+            assertEquals(
+                "When directory manifest confirms no companion .lrc, zero WebDAV fetchText calls must be made",
+                0,
+                fakeClient.fetchTextCount.get(),
+            )
+        }
+
+    @Test
+    fun resolveLyrics_whenCompanionLrcFails_seamlesslyFallsBackToEmbeddedLyrics() =
+        runTest {
+            val brokenLrcPath = "/music/Queen/Broken.lrc"
+            // File not added to fakeClient.textFiles -> returns null (simulating 404/network failure)
+            val embeddedLyrics =
+                """
+                [00:10.00]Embedded fallback 1
+                [00:20.00]Embedded fallback 2
+                """.trimIndent()
+            dao.insertOrUpdate(
+                TrackMetadataEntity(
+                    serverId = testServer.id,
+                    remotePath = testTrack.remotePath,
+                    title = testTrack.title,
+                    artist = testTrack.artist,
+                    album = testTrack.album,
+                    trackNumber = null,
+                    durationMs = 0L,
+                    coverThumbnailPath = null,
+                    lyrics = embeddedLyrics,
+                    companionLyricsPath = brokenLrcPath,
+                ),
+            )
+
+            val lyrics = repository.resolveLyrics(testServer, testTrack)
+
+            assertTrue(lyrics.isSynchronized)
+            assertEquals(2, lyrics.lines.size)
+            assertEquals("Embedded fallback 1", lyrics.lines[0].text)
+            assertEquals(1, fakeClient.fetchTextCount.get())
         }
 
     @Test
@@ -169,6 +208,20 @@ class LyricsRepositoryTest {
         runTest {
             val expectedLrcPath = "/music/Queen/Bohemian Rhapsody.lrc"
             fakeClient.textFiles[expectedLrcPath] = "[00:01.00]Only once"
+            dao.insertOrUpdate(
+                TrackMetadataEntity(
+                    serverId = testServer.id,
+                    remotePath = testTrack.remotePath,
+                    title = testTrack.title,
+                    artist = testTrack.artist,
+                    album = testTrack.album,
+                    trackNumber = null,
+                    durationMs = 0L,
+                    coverThumbnailPath = null,
+                    lyrics = null,
+                    companionLyricsPath = expectedLrcPath,
+                ),
+            )
 
             val firstCall = repository.resolveLyrics(testServer, testTrack)
             val secondCall = repository.resolveLyrics(testServer, testTrack)
@@ -183,6 +236,20 @@ class LyricsRepositoryTest {
         runTest {
             val lrcPath = "/music/Queen/Bohemian Rhapsody.lrc"
             fakeClient.textFiles[lrcPath] = "[00:01.00]Only once"
+            dao.insertOrUpdate(
+                TrackMetadataEntity(
+                    serverId = testServer.id,
+                    remotePath = testTrack.remotePath,
+                    title = testTrack.title,
+                    artist = testTrack.artist,
+                    album = testTrack.album,
+                    trackNumber = null,
+                    durationMs = 0L,
+                    coverThumbnailPath = null,
+                    lyrics = null,
+                    companionLyricsPath = lrcPath,
+                ),
+            )
 
             repository.resolveLyrics(testServer, testTrack)
             assertEquals(1, fakeClient.fetchTextCount.get())
@@ -220,7 +287,8 @@ class LyricsRepositoryTest {
                     trackNumber = null,
                     durationMs = 0L,
                     coverThumbnailPath = null,
-                    lyrics = lrcFile.absolutePath,
+                    lyrics = "[00:01.00]Embedded fallback",
+                    companionLyricsPath = lrcFile.absolutePath,
                 ),
             )
 

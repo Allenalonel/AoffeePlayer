@@ -3,6 +3,7 @@ package com.webdav.player.domain.repository
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.Lyrics
 import com.webdav.player.domain.model.RemoteFile
+import com.webdav.player.domain.model.TrackIdentity
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import kotlinx.coroutines.flow.Flow
@@ -91,6 +92,18 @@ interface TrackMetadataRepository {
         server: WebDavServer,
         file: RemoteFile,
     ): TrackMetadata
+
+    /**
+     * Batch queries metadata for a list of track identities and validates cover art physical liveness on disk.
+     * For tracks with missing or deleted cover thumbnails that are marked eligible for healing (active/reachable),
+     * triggers bounded background healing (both Local SAF and remote WebDAV) and returns valid metadata snapshots.
+     * Optionally invokes [onCoverHealed] as background healing tasks complete.
+     */
+    suspend fun batchQueryAndHealMetadata(
+        identities: List<TrackIdentity>,
+        eligibleForHealing: Set<TrackIdentity>,
+        onCoverHealed: (suspend (TrackIdentity, String) -> Unit)? = null,
+    ): Map<TrackIdentity, TrackMetadata> = emptyMap()
 
     /**
      * Resolves lyrics for an audio track using dual-source priority:

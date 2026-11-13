@@ -214,3 +214,7 @@ _Avoid_: Static Theme, Wallpaper Color Only, Hardcoded Brand Fallback
 **Monochrome Safeguard**:
 当在播曲目专辑封面为黑白或低饱和度灰阶时，自动回退至中性灰阶以防止界面产生杂色偏色的视觉保护机制。
 _Avoid_: Grayscale Color Leak, Red Tinted Neutral
+
+**Track Detail Sheet**:
+统一在媒体库与歌单承载音频发烧级物理规格（采样率、位深、Hi-Res 认证）与存储卷标规范路径呈现的焦点隔离抽屉。
+_Avoid_: File Info Dialog, Track Detail Dialog, Song Properties Popup

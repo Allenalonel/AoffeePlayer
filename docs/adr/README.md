@@ -57,3 +57,4 @@
 | **0040** | [媒体库目录排序策略与播控队列对齐架构](0040-directory-sort-order-and-queue-alignment.md) | `Accepted` | 确定自然排序、文件夹置顶、表现层实时重排与播控队列强对齐不变量 |
 | **0041** | [播控会话接缝纯化、双轨彻底切割与起播前音频焦点门控](0041-purify-playback-session-seams-and-audio-focus-gating.md) | `Accepted` | 组合包 A 终局共识：Host 焦点门控、PlaybackErrorKind、切除浏览态与纯决策会话 |
 | **0042** | [TrackIdentity 规范化、伴生清单两阶段收拢与跨源封面批量自愈](0042-track-identity-companion-manifest-and-metadata-healing-consolidation.md) | `Accepted` | 组合包 B 终局共识：TrackIdentity、Room v10 双列歌词、前缀级联与跨源批量自愈 |
+| **0043** | [受控流体播放器、GPU 绘制阶段变换与统一曲目详情抽屉](0043-controlled-morphing-player-gpu-motion-and-track-detail-sheet.md) | `Accepted` | 组合包 C 终局共识：受控纯化容器、RenderNode 纯矩阵形变、统一详情抽屉与测试桩收拢 |

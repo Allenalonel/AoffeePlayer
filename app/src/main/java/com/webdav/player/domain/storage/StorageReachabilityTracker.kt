@@ -4,10 +4,8 @@ import com.webdav.player.domain.model.InactiveReason
 import com.webdav.player.domain.model.TrackIdentity
 import kotlinx.coroutines.flow.StateFlow
 
-typealias TrackKey = TrackIdentity
-
 interface StorageReachabilityTracker {
-    val inactiveTracks: StateFlow<Map<TrackKey, InactiveReason>>
+    val inactiveTracks: StateFlow<Map<TrackIdentity, InactiveReason>>
     val serverReachability: StateFlow<Map<Long, Boolean>>
     val serverReasons: StateFlow<Map<Long, InactiveReason>>
 

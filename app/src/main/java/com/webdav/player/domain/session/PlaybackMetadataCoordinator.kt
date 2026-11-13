@@ -141,9 +141,7 @@ internal class PlaybackMetadataCoordinator(
         track: AudioTrack,
     ) {
         val repo = trackMetadataRepository ?: return
-        val isLocalTrack =
-            track.isLocal || track.serverId == LOCAL_STORAGE_ID || track.remotePath.startsWith("content://") ||
-                track.remotePath.startsWith("file://")
+        val isLocalTrack = track.isLocal
         val s = if (isLocalTrack) WebDavServer.createLocalStorage() else (server ?: return)
         val cachedMeta = repo.getCachedMetadata(s.id, track.remotePath)
         val meta =
@@ -196,7 +194,7 @@ internal class PlaybackMetadataCoordinator(
     }
 
     private fun applyMetadataListToQueue(metadataList: List<TrackMetadata>) {
-        val metaByComposite = metadataList.associateBy { "${it.serverId}:${it.remotePath}" }
+        val metaByComposite = metadataList.associateBy { it.identity.trackId }
         val metaByPath = metadataList.associateBy { it.remotePath }
         val tracksToUpdate = mutableListOf<Pair<Int, AudioTrack>>()
 
@@ -204,10 +202,10 @@ internal class PlaybackMetadataCoordinator(
             var anyChanged = false
             val updatedTracks =
                 current.queue.tracks.mapIndexed { index, track ->
-                    val effectiveServerId = if (track.isLocal) LOCAL_STORAGE_ID else track.serverId
+                    val identity = track.identity
                     val meta =
-                        metaByComposite["$effectiveServerId:${track.remotePath}"]
-                            ?: if (effectiveServerId == 0L && !track.isLocal) metaByPath[track.remotePath] else null
+                        metaByComposite[identity.trackId]
+                            ?: if (identity.serverId == 0L && !track.isLocal) metaByPath[track.remotePath] else null
                     if (meta != null) {
                         val enriched =
                             enrichTrack(track, meta, isCurrentActiveTrack = (index == current.queue.currentIndex))

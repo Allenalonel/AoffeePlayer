@@ -2,6 +2,8 @@ package com.webdav.player.ui.common
 
 import android.net.Uri
 import android.provider.DocumentsContract
+import com.webdav.player.domain.model.LOCAL_STORAGE_ID
+import com.webdav.player.domain.model.TrackIdentity
 import java.net.URLDecoder
 
 /**
@@ -10,12 +12,31 @@ import java.net.URLDecoder
  */
 object TrackPathFormatter {
     fun formatDisplayPath(path: String): String {
-        if (!path.startsWith("content://")) {
-            return if (path.startsWith("file://")) {
-                path.removePrefix("file://")
+        val identity = TrackIdentity(LOCAL_STORAGE_ID, path)
+        if (!identity.isLocal) {
+            return path
+        }
+        if (path.startsWith("file://")) {
+            return path.removePrefix("file://")
+        }
+        if (path.startsWith("/local/")) {
+            val relative = path.removePrefix("/local/").trim('/')
+            val parts = relative.split('/', limit = 2)
+            val decodedUri =
+                try {
+                    URLDecoder.decode(parts[0], "UTF-8")
+                } catch (_: Exception) {
+                    parts[0]
+                }
+            val formattedBase = formatDisplayPath(decodedUri)
+            return if (parts.size > 1) {
+                "$formattedBase/${parts[1]}"
             } else {
-                path
+                formattedBase
             }
+        }
+        if (!path.startsWith("content://")) {
+            return path
         }
 
         return try {

@@ -12,6 +12,9 @@ data class AudioTrack(
     val format: AudioFormat,
     val coverThumbnailPath: String? = null,
 ) {
+    val identity: TrackIdentity
+        get() = TrackIdentity(serverId, remotePath)
+
     val fileName: String
         get() = remotePath.substringAfterLast('/').ifEmpty { title }
 
@@ -61,13 +64,12 @@ data class AudioTrack(
             metadata: TrackMetadata? = null,
         ): AudioTrack? {
             val format = (file.fileType as? RemoteFileType.Audio)?.format ?: return null
-            val isLocal = server.isLocal || file.path.startsWith("content://") || file.path.startsWith("file://")
-            val effectiveServerId = if (isLocal) LOCAL_STORAGE_ID else server.id
+            val identity = TrackIdentity(if (server.isLocal) LOCAL_STORAGE_ID else server.id, file.path)
             val baseTrack =
                 AudioTrack(
-                    id = "$effectiveServerId:${file.path}",
-                    serverId = effectiveServerId,
-                    remotePath = file.path,
+                    id = identity.trackId,
+                    serverId = identity.serverId,
+                    remotePath = identity.remotePath,
                     title = metadata?.displayTitle(file.name) ?: file.name,
                     artist = metadata?.displayArtist(),
                     album = metadata?.album,
@@ -82,4 +84,4 @@ data class AudioTrack(
 }
 
 val AudioTrack.isLocal: Boolean
-    get() = serverId == LOCAL_STORAGE_ID || remotePath.startsWith("content://") || remotePath.startsWith("file://")
+    get() = identity.isLocal

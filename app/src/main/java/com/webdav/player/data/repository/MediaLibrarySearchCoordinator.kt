@@ -12,6 +12,7 @@ import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LibrarySearchResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFileType
+import com.webdav.player.domain.model.TrackIdentity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
@@ -51,73 +52,30 @@ class MediaLibrarySearchCoordinator(
             val matchedDirs = mutableMapOf<String, RemoteDirectory>()
             val matchedTracks = mutableMapOf<String, AudioTrack>()
 
-            fun isAccepted(
-                itemServerId: Long,
-                itemPath: String,
-            ): Boolean {
-                val isLocal =
-                    itemServerId == LOCAL_STORAGE_ID ||
-                        itemPath.startsWith("content://") ||
-                        itemPath.startsWith("/local/")
-                return when {
-                    serverId == null -> true
-                    serverId == LOCAL_STORAGE_ID -> isLocal
-                    else -> !isLocal && itemServerId == serverId
-                }
-            }
-
-            fun trackDedupeKey(
-                itemServerId: Long,
-                itemRemotePath: String,
-            ): String {
-                val isLocal =
-                    itemServerId == LOCAL_STORAGE_ID ||
-                        itemRemotePath.startsWith("content://") ||
-                        itemRemotePath.startsWith("/local/")
-                return if (isLocal) "local:$itemRemotePath" else "$itemServerId:$itemRemotePath"
-            }
-
-            fun dirDedupeKey(
-                itemServerId: Long,
-                itemDirPath: String,
-            ): String {
-                val isLocal =
-                    itemServerId == LOCAL_STORAGE_ID ||
-                        itemDirPath.startsWith("/local/")
-                return if (isLocal) "local:$itemDirPath" else "$itemServerId:$itemDirPath"
-            }
-
             for (cp in checkpoints) {
-                if (!isAccepted(cp.serverId, cp.path)) continue
+                val identity = TrackIdentity(cp.serverId, cp.path)
+                if (!identity.matchesScope(serverId)) continue
                 if (isMatch(cleanQuery, cp.path)) {
                     val dirName = cp.path.trimEnd('/').substringAfterLast('/')
                     if (dirName.isNotBlank()) {
-                        val key = dirDedupeKey(cp.serverId, cp.path)
+                        val key = identity.compositeKey
                         matchedDirs[key] =
                             RemoteDirectory(
                                 path = cp.path,
                                 name = dirName,
                                 subDirectories = emptyList(),
                                 files = emptyList(),
-                                serverId = if (cp.path.startsWith("/local/")) LOCAL_STORAGE_ID else cp.serverId,
+                                serverId = identity.serverId,
                             )
                     }
                 }
             }
 
             for (entity in indexedTracks) {
-                if (!isAccepted(entity.serverId, entity.remotePath)) continue
+                val identity = TrackIdentity(entity.serverId, entity.remotePath)
+                if (!identity.matchesScope(serverId)) continue
 
-                val metaKey = "${entity.serverId}:${entity.remotePath}"
-                val effectiveServerId =
-                    if (entity.remotePath.startsWith("content://") ||
-                        entity.remotePath.startsWith("/local/") ||
-                        entity.serverId == LOCAL_STORAGE_ID
-                    ) {
-                        LOCAL_STORAGE_ID
-                    } else {
-                        entity.serverId
-                    }
+                val metaKey = identity.trackId
                 val meta = metadataMap[metaKey] ?: metadataMap["$LOCAL_STORAGE_ID:${entity.remotePath}"]
                 val format =
                     AudioFormat.fromExtension(entity.format)
@@ -125,7 +83,7 @@ class MediaLibrarySearchCoordinator(
                         ?: AudioFormat.MP3
                 val track =
                     createAudioTrack(
-                        serverId = effectiveServerId,
+                        serverId = identity.serverId,
                         remotePath = entity.remotePath,
                         fileName = entity.fileName,
                         fileSize = entity.fileSize,
@@ -134,13 +92,14 @@ class MediaLibrarySearchCoordinator(
                         titleFallback = entity.parsedTitle,
                         artistFallback = entity.parsedArtist,
                     )
-                matchedTracks[trackDedupeKey(effectiveServerId, entity.remotePath)] = track
+                matchedTracks[identity.compositeKey] = track
 
+                val parentIdentity = TrackIdentity(entity.serverId, entity.parentPath)
                 if (entity.parentPath.contains(cleanQuery, ignoreCase = true) &&
-                    isAccepted(entity.serverId, entity.parentPath)
+                    parentIdentity.matchesScope(serverId)
                 ) {
                     val dirName = entity.parentPath.trimEnd('/').substringAfterLast('/')
-                    val dirKey = dirDedupeKey(entity.serverId, entity.parentPath)
+                    val dirKey = parentIdentity.compositeKey
                     if (!matchedDirs.containsKey(dirKey) && dirName.isNotBlank()) {
                         matchedDirs[dirKey] =
                             RemoteDirectory(
@@ -148,32 +107,24 @@ class MediaLibrarySearchCoordinator(
                                 name = dirName,
                                 subDirectories = emptyList(),
                                 files = emptyList(),
-                                serverId = if (entity.parentPath.startsWith("/local/")) LOCAL_STORAGE_ID else entity.serverId,
+                                serverId = parentIdentity.serverId,
                             )
                     }
                 }
             }
 
             for (meta in metaEntities) {
-                if (!isAccepted(meta.serverId, meta.remotePath)) continue
-                val dedupeKey = trackDedupeKey(meta.serverId, meta.remotePath)
+                val identity = TrackIdentity(meta.serverId, meta.remotePath)
+                if (!identity.matchesScope(serverId)) continue
+                val dedupeKey = identity.compositeKey
                 if (!matchedTracks.containsKey(dedupeKey) &&
                     isMatch(cleanQuery, meta.title, meta.artist, meta.album, meta.remotePath)
                 ) {
                     val fileName = meta.remotePath.substringAfterLast('/')
                     val format = (RemoteFileType.fromFileName(fileName) as? RemoteFileType.Audio)?.format ?: AudioFormat.MP3
-                    val effectiveServerId =
-                        if (meta.remotePath.startsWith("content://") ||
-                            meta.remotePath.startsWith("/local/") ||
-                            meta.serverId == LOCAL_STORAGE_ID
-                        ) {
-                            LOCAL_STORAGE_ID
-                        } else {
-                            meta.serverId
-                        }
                     matchedTracks[dedupeKey] =
                         createAudioTrack(
-                            serverId = effectiveServerId,
+                            serverId = identity.serverId,
                             remotePath = meta.remotePath,
                             fileName = fileName,
                             fileSize = 0L,

@@ -1,11 +1,9 @@
 package com.webdav.player.ui.player
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,7 +43,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -62,7 +59,6 @@ import com.webdav.player.ui.player.components.PlayerVinylArtwork
 import com.webdav.player.ui.player.components.isFullPlayerRetryBannerVisible
 import com.webdav.player.ui.player.components.rememberArtworkBackgroundBrush
 import com.webdav.player.ui.theme.AppIcons
-import com.webdav.player.ui.theme.WebDavPlayerTheme
 import kotlinx.coroutines.launch
 
 object FullPlayerDefaults {
@@ -103,11 +99,9 @@ fun FullPlayerView(
     onPlayButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
     isQueueButtonVisible: Boolean = true,
     onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
-    enableBackHandler: Boolean = true,
     renderBackground: Boolean = true,
-    onOpenQueue: (() -> Unit)? = null,
+    onOpenQueue: () -> Unit = {},
 ) {
-    var showQueueSheet by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     // 2-page Horizontal Pager: Page 0 = Artwork & Info, Page 1 = Synchronized Lyrics
@@ -116,11 +110,6 @@ fun FullPlayerView(
             initialPage = 0,
             pageCount = { 2 },
         )
-
-    // Intercept back button to collapse to mini-player when enabled (yields to bottom sheet when open)
-    BackHandler(enabled = enableBackHandler && !showQueueSheet) {
-        onCollapse()
-    }
 
     val currentTrack = sessionState.currentTrack
 
@@ -148,35 +137,13 @@ fun FullPlayerView(
             playbackProgress.currentPositionMs
         }
 
-    // Downward swipe modifier to collapse player sheet smoothly
-    val downwardSwipeModifier =
-        Modifier.pointerInput(Unit) {
-            var downwardDrag = 0f
-            detectVerticalDragGestures(
-                onVerticalDrag = { change, dragAmount ->
-                    downwardDrag += dragAmount
-                    if (downwardDrag > 24f) {
-                        change.consume()
-                        onCollapse()
-                        downwardDrag = 0f
-                    }
-                },
-                onDragEnd = { downwardDrag = 0f },
-                onDragCancel = { downwardDrag = 0f },
-            )
-        }
-
-    WebDavPlayerTheme(
-        darkTheme = true,
-        artworkColors = artworkColors,
+    Surface(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .then(backgroundModifier),
+        color = Color.Transparent,
     ) {
-        Surface(
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .then(backgroundModifier),
-            color = Color.Transparent,
-        ) {
             Column(
                 modifier =
                     Modifier
@@ -214,7 +181,7 @@ fun FullPlayerView(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
                                     onClick = onCollapse,
-                                ).then(downwardSwipeModifier),
+                                ),
                         contentAlignment = Alignment.Center,
                     ) {
                         val serverName = sessionState.activeServer?.name?.takeIf { it.isNotBlank() } ?: "WebDAV"
@@ -280,13 +247,7 @@ fun FullPlayerView(
                             onSkipToNext = { playbackActions.skipToNext() },
                             onSkipToPrevious = { playbackActions.skipToPrevious() },
                             onCyclePlaybackMode = { playbackActions.cyclePlaybackMode() },
-                            onOpenQueue = {
-                                if (onOpenQueue != null) {
-                                    onOpenQueue()
-                                } else {
-                                    showQueueSheet = true
-                                }
-                            },
+                            onOpenQueue = onOpenQueue,
                             modifier = modifier,
                             isPlayButtonVisible = isPlayButtonVisible,
                             onPlayButtonPositioned = onPlayButtonPositioned,
@@ -434,17 +395,6 @@ fun FullPlayerView(
             }
         }
 
-        // Playback Queue Bottom Sheet
-        if (showQueueSheet) {
-            HoistedPlaybackQueueSheet(
-                sessionState = sessionState,
-                playbackProgress = playbackProgress,
-                playbackActions = playbackActions,
-                onDismissRequest = { showQueueSheet = false },
-                onAddToPlaylist = onAddToPlaylist,
-            )
-        }
-
         if (sessionState.isUnsupportedRange) {
             AlertDialog(
                 onDismissRequest = onDismissUnsupportedRange,
@@ -464,7 +414,6 @@ fun FullPlayerView(
             )
         }
     }
-}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

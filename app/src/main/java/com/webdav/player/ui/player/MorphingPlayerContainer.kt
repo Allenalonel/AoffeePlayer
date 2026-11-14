@@ -1,10 +1,6 @@
 package com.webdav.player.ui.player
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -60,7 +56,6 @@ import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.ui.common.CoverThumbnailImage
-import com.webdav.player.ui.motion.isReduceMotionEnabled
 import com.webdav.player.ui.player.components.rememberArtworkBackgroundBrush
 import com.webdav.player.ui.theme.AppIcons
 import com.webdav.player.ui.theme.ExpressiveDarkColorScheme
@@ -154,40 +149,21 @@ fun MorphingPlayerContainer(
     sessionState: PlayerSessionState,
     playbackProgress: PlaybackProgress,
     playbackActions: PlaybackActions,
-    isExpanded: Boolean,
+    progress: Float,
     onExpand: () -> Unit,
     onCollapse: () -> Unit,
     collapsedBottomPadding: Dp,
     modifier: Modifier = Modifier,
+    isExpanded: Boolean = progress > 0.5f,
     onOpenQueue: () -> Unit = {},
     onAddToPlaylist: (AudioTrack) -> Unit = {},
     onDismissBatteryBanner: () -> Unit = {},
     onConfirmUnsupportedRangeReplay: () -> Unit = {},
     onDismissUnsupportedRange: () -> Unit = {},
     artworkColors: ArtworkColors? = null,
-    progressOverride: Float? = null,
 ) {
     val currentTrack = sessionState.currentTrack ?: return
-    val isReduceMotion = isReduceMotionEnabled()
-
-    val morphingSpec =
-        remember(isReduceMotion) {
-            if (isReduceMotion) {
-                snap()
-            } else {
-                tween<Float>(
-                    durationMillis = 480,
-                    easing = CubicBezierEasing(0.20f, 0.0f, 0.0f, 1.0f),
-                )
-            }
-        }
-
-    val internalProgress by animateFloatAsState(
-        targetValue = if (isExpanded) 1f else 0f,
-        animationSpec = morphingSpec,
-        label = "PlayerMorphingProgress",
-    )
-    val expansionProgress = progressOverride ?: internalProgress
+    val expansionProgress = progress.coerceIn(0f, 1f)
 
     var containerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
@@ -393,7 +369,6 @@ fun MorphingPlayerContainer(
                         onQueueButtonPositioned = { coords ->
                             coords.boundsIn(containerCoordinates)?.let { fullQueueRect = it }
                         },
-                        enableBackHandler = isExpanded,
                         renderBackground = false,
                         onOpenQueue = onOpenQueue,
                     )

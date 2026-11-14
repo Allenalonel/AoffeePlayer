@@ -47,9 +47,9 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.webdav.player.domain.model.PlaylistTrackEntry
 import com.webdav.player.ui.common.FluidTopAppBar
+import com.webdav.player.ui.common.TrackDetailBottomSheet
 import com.webdav.player.ui.player.MiniPlayerDefaults
 import com.webdav.player.ui.playlist.components.PlaylistHeaderArea
-import com.webdav.player.ui.playlist.components.PlaylistTrackDetailDialog
 import com.webdav.player.ui.playlist.components.PlaylistTrackRow
 import com.webdav.player.ui.theme.AppIcons
 
@@ -395,7 +395,7 @@ fun PlaylistDetailScreen(
     }
 
     if (trackForDetails != null) {
-        PlaylistTrackDetailDialog(
+        TrackDetailBottomSheet(
             track = trackForDetails!!,
             onDismiss = { trackForDetails = null },
             onPlay = {

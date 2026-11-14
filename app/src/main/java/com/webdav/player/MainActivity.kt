@@ -75,13 +75,13 @@ import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.ui.browser.DirectoryBrowserScreen
 import com.webdav.player.ui.browser.DirectoryBrowserViewModel
 import com.webdav.player.ui.common.RequestNotificationPermissionEffect
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.webdav.player.ui.common.ThumbnailMemoryCache
 import com.webdav.player.ui.motion.MotionTransitions
 import com.webdav.player.ui.motion.fluidIndicator
 import com.webdav.player.ui.motion.isReduceMotionEnabled
 import com.webdav.player.ui.navigation.AppDestination
 import com.webdav.player.ui.navigation.MainNavigationCoordinator
-import com.webdav.player.ui.navigation.tabAccessibilityGuard
 import com.webdav.player.ui.player.FullPlayerView
 import com.webdav.player.ui.player.HoistedPlaybackQueueSheet
 import com.webdav.player.ui.player.MiniPlayer
@@ -332,7 +332,9 @@ class MainActivity : ComponentActivity() {
                                         modifier =
                                             Modifier
                                                 .fillMaxSize()
-                                                .tabAccessibilityGuard(isCurrentTab),
+                                                .then(
+                                                    if (isCurrentTab) Modifier else Modifier.clearAndSetSemantics { }
+                                                ),
                                     ) {
                                         when (targetDestination) {
                                             AppDestination.PLAYLISTS -> {

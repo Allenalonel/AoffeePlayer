@@ -8,14 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,10 +35,11 @@ import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.ui.common.AudioQualityBadgePill
 import com.webdav.player.ui.common.AudioTrackRow
 import com.webdav.player.ui.common.AudioTrackRowDefaults
-import com.webdav.player.ui.common.TrackPathFormatter
+import com.webdav.player.ui.common.TrackDetailBottomSheet
+import com.webdav.player.ui.common.formatTrackFileSize
 import com.webdav.player.ui.theme.AppIcons
-import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AudioTrackItemRow(
     file: RemoteFile,
@@ -55,17 +54,16 @@ fun AudioTrackItemRow(
     onAddToPlaylist: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var showInfoDialog by remember { mutableStateOf(false) }
+    var showDetailSheet by remember { mutableStateOf(false) }
     val badgeInfo = remember(file, metadata) { file.resolveBadge(metadata) }
 
-    if (showInfoDialog) {
-        FileInfoDialog(
+    if (showDetailSheet && file.isAudio) {
+        TrackDetailBottomSheet(
             file = file,
             metadata = metadata,
-            badgeInfo = badgeInfo,
-            onDismiss = { showInfoDialog = false },
+            onDismiss = { showDetailSheet = false },
             onPlay = {
-                showInfoDialog = false
+                showDetailSheet = false
                 onClick()
             },
         )
@@ -99,6 +97,14 @@ fun AudioTrackItemRow(
             } else {
                 MaterialTheme.colorScheme.surfaceContainer
             }
+        val effectiveLongClick: (() -> Unit)? =
+            when {
+                isSelectionMode -> onLongClick
+                onLongClick != null -> onLongClick
+                file.isAudio -> { { showDetailSheet = true } }
+                else -> null
+            }
+
         Surface(
             modifier =
                 modifier
@@ -117,7 +123,7 @@ fun AudioTrackItemRow(
                 isPlaying = isPlaying,
                 containerColor = Color.Transparent,
                 onClick = onClick,
-                onLongClick = onLongClick,
+                onLongClick = effectiveLongClick,
                 isSelectionMode = isSelectionMode,
                 isSelected = isSelected,
                 actionsMenu = { dismiss ->
@@ -148,7 +154,7 @@ fun AudioTrackItemRow(
                         },
                         onClick = {
                             dismiss()
-                            showInfoDialog = true
+                            showDetailSheet = true
                         },
                     )
                 },
@@ -206,7 +212,7 @@ private fun NonAudioFileRow(
                 Text(file.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             },
             supportingContent = {
-                val sub = if (file.size > 0) formatFileSize(file.size) else file.lastModified
+                val sub = if (file.size > 0) formatTrackFileSize(file.size) else file.lastModified
                 if (!sub.isNullOrBlank()) {
                     Text(
                         sub,
@@ -221,120 +227,4 @@ private fun NonAudioFileRow(
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         )
     }
-}
-
-@Composable
-private fun FileInfoDialog(
-    file: RemoteFile,
-    metadata: TrackMetadata? = null,
-    badgeInfo: AudioQualityBadge? = null,
-    onDismiss: () -> Unit,
-    onPlay: () -> Unit,
-) {
-    val displayTitle = metadata?.displayTitle(file.name) ?: file.name
-    val qualitySummary =
-        remember(file, metadata) {
-            file.formatQualitySummary(metadata)
-        }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    imageVector = AppIcons.Info,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = "音频详情",
-                    style = MaterialTheme.typography.titleLarge,
-                )
-            }
-        },
-        text = {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                InfoRow(label = "歌曲标题", value = displayTitle)
-                if (!metadata?.artist.isNullOrBlank()) {
-                    InfoRow(label = "艺术家", value = metadata!!.artist!!)
-                }
-                if (!metadata?.album.isNullOrBlank()) {
-                    InfoRow(label = "专辑名称", value = metadata!!.album!!)
-                }
-                InfoRow(label = "音频格式", value = qualitySummary)
-                if (badgeInfo?.estimatedBitrateKbps != null) {
-                    InfoRow(label = "预估码率", value = "${badgeInfo.estimatedBitrateKbps} kbps")
-                }
-                if ((metadata?.durationMs ?: 0L) > 0L) {
-                    InfoRow(label = "曲目时长", value = PlaybackProgress.formatMs(metadata!!.durationMs))
-                }
-                if (file.size > 0L) {
-                    InfoRow(label = "文件大小", value = formatFileSize(file.size))
-                }
-                InfoRow(label = "文件名称", value = file.name)
-                val isLocalFile =
-                    remember(file.path) {
-                        file.path.startsWith("content://") ||
-                            file.path.startsWith("file://") ||
-                            file.path.startsWith("/local/")
-                    }
-                InfoRow(
-                    label = if (isLocalFile) "文件存储路径" else "远程文件路径",
-                    value = if (isLocalFile) TrackPathFormatter.formatDisplayPath(file.path) else file.path,
-                )
-            }
-        },
-        confirmButton = {
-            if (file.isAudio) {
-                Button(onClick = onPlay) {
-                    Text("立即播放")
-                }
-            }
-        },
-        dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
-                Text("关闭")
-            }
-        },
-    )
-}
-
-@Composable
-private fun InfoRow(
-    label: String,
-    value: String,
-) {
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Medium,
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-private fun formatFileSize(bytes: Long): String {
-    if (bytes <= 0) return "0 B"
-    val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
-    val unitIndex = digitGroups.coerceIn(0, units.size - 1)
-    val value = bytes / Math.pow(1024.0, unitIndex.toDouble())
-    return String.format(Locale.US, "%.1f %s", value, units[unitIndex])
 }

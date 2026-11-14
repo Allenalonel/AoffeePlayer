@@ -430,29 +430,23 @@ fun MorphingPlayerContainer(
             val cHeight = rootConstraints.maxHeight.toFloat()
             val hMarginPx = with(density) { MorphingPlayerMath.containerHorizontalMargin(p).toPx() }
 
-            val miniCapsuleTopPx =
-                cHeight - with(density) { collapsedBottomPadding.toPx() } - with(density) { MiniPlayerDefaults.CapsuleHeight.toPx() }
+            val miniCapsuleCenterY =
+                cHeight - with(density) { collapsedBottomPadding.toPx() } - with(density) { (MiniPlayerDefaults.CapsuleHeight / 2f).toPx() }
 
             val fallbackMiniCover =
                 Rect(
-                    Offset(hMarginPx + with(density) { 10.dp.toPx() }, miniCapsuleTopPx + with(density) { 9.dp.toPx() }),
-                    Size(with(density) { 42.dp.toPx() }, with(density) { 42.dp.toPx() }),
+                    center = Offset(hMarginPx + with(density) { (10.dp + 21.dp).toPx() }, miniCapsuleCenterY),
+                    radius = with(density) { 21.dp.toPx() },
                 )
             val fallbackMiniQueue =
                 Rect(
-                    Offset(
-                        cWidth - hMarginPx - with(density) { 12.dp.toPx() } - with(density) { 38.dp.toPx() },
-                        miniCapsuleTopPx + with(density) { 11.dp.toPx() },
-                    ),
-                    Size(with(density) { 38.dp.toPx() }, with(density) { 38.dp.toPx() }),
+                    center = Offset(cWidth - hMarginPx - with(density) { (12.dp + 19.dp).toPx() }, miniCapsuleCenterY),
+                    radius = with(density) { 19.dp.toPx() },
                 )
             val fallbackMiniPlay =
                 Rect(
-                    Offset(
-                        fallbackMiniQueue.left - with(density) { 8.dp.toPx() } - with(density) { 40.dp.toPx() },
-                        miniCapsuleTopPx + with(density) { 10.dp.toPx() },
-                    ),
-                    Size(with(density) { 40.dp.toPx() }, with(density) { 40.dp.toPx() }),
+                    center = Offset(fallbackMiniQueue.center.x - with(density) { (19.dp + 8.dp + 20.dp).toPx() }, miniCapsuleCenterY),
+                    radius = with(density) { 20.dp.toPx() },
                 )
 
             val fullArtSizePx = minOf(with(density) { MorphingPlayerDefaults.FullPlayerArtworkSize.toPx() }, cWidth * 0.85f)
@@ -477,13 +471,17 @@ fun MorphingPlayerContainer(
                     Size(fullQueueSizePx, fullQueueSizePx),
                 )
 
-            val startCover = stableMiniCoverRect ?: fallbackMiniCover
+            // Ensure mini starting anchors strictly align to the capsule vertical center
+            val rawCover = stableMiniCoverRect ?: fallbackMiniCover
+            val startCover = Rect(center = Offset(rawCover.center.x, miniCapsuleCenterY), radius = rawCover.width / 2f)
             val endCover = stableFullCoverRect ?: fallbackFullCover
 
-            val startPlay = stableMiniPlayRect ?: fallbackMiniPlay
+            val rawPlay = stableMiniPlayRect ?: fallbackMiniPlay
+            val startPlay = Rect(center = Offset(rawPlay.center.x, miniCapsuleCenterY), radius = rawPlay.width / 2f)
             val endPlay = stableFullPlayRect ?: fallbackFullPlay
 
-            val startQueue = stableMiniQueueRect ?: fallbackMiniQueue
+            val rawQueue = stableMiniQueueRect ?: fallbackMiniQueue
+            val startQueue = Rect(center = Offset(rawQueue.center.x, miniCapsuleCenterY), radius = rawQueue.width / 2f)
             val endQueue = stableFullQueueRect ?: fallbackFullQueue
 
             // Base Geometry Dimensions (Static expanded base dimensions, zero per-frame remeasure)

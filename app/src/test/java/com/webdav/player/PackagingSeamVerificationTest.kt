@@ -864,4 +864,72 @@ class PackagingSeamVerificationTest {
             }
         }
     }
+
+    @Test
+    fun controlledMorphingPlayerAndGpuDrawPhaseMotion_satisfyArchitecturalInvariants() {
+        // 1. MorphingPlayerContainer must not perform per-frame dynamic .size(...) calls or IntOffset computations
+        val morphingSource = source("ui/player/MorphingPlayerContainer.kt")
+        assertFalse(
+            "MorphingPlayerContainer must not perform dynamic .size(with(density)...) calls",
+            morphingSource.contains(".size(with(density)")
+        )
+        assertFalse(
+            "MorphingPlayerContainer must not call .size() with lerp or dynamic dimensions",
+            Regex("""\.size\([^)]*(?:lerp|progress|curCover|curPlay|curQueue|iconSize)""").containsMatchIn(morphingSource)
+        )
+        assertFalse(
+            "MorphingPlayerContainer must eliminate per-frame .offset { IntOffset(...) } layout calculations",
+            morphingSource.contains(".offset {") || morphingSource.contains("IntOffset(")
+        )
+
+        // 2. TabAccessibilityGuard, PlaylistTrackDetailDialog, and FileInfoDialog must be physically eliminated
+        val bannedPaths =
+            listOf(
+                "ui/navigation/TabAccessibilityGuard.kt",
+                "ui/playlist/components/PlaylistTrackDetailDialog.kt"
+            )
+        val existingBannedFiles = bannedPaths.filter { File(sourceRoot, it).exists() }
+        assertTrue(
+            "Deprecated dialog/guard files must be physically deleted: $existingBannedFiles",
+            existingBannedFiles.isEmpty()
+        )
+
+        val bannedSymbolsRegex = Regex("""\b(TabAccessibilityGuard|PlaylistTrackDetailDialog|FileInfoDialog)\b""")
+        val symbolOffenders =
+            sourceRoot
+                .walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .filter { bannedSymbolsRegex.containsMatchIn(it.readText()) }
+                .map { it.name }
+                .toList()
+        assertTrue(
+            "Banned legacy symbols (TabAccessibilityGuard, PlaylistTrackDetailDialog, FileInfoDialog) must be eliminated: $symbolOffenders",
+            symbolOffenders.isEmpty()
+        )
+
+        // 3. WebDavMediaSourceBuilder and ServerRepositoryImpl must not couple to OkHttpWebDavClient concrete implementation
+        val serverRepoSource = source("data/repository/ServerRepositoryImpl.kt")
+        assertFalse(
+            "ServerRepositoryImpl must not reference concrete OkHttpWebDavClient",
+            serverRepoSource.contains("OkHttpWebDavClient")
+        )
+        assertTrue(
+            "ServerRepositoryImpl must declare webDavClient: WebDavClient?",
+            Regex("""\bwebDavClient\s*:\s*WebDavClient\?""").containsMatchIn(serverRepoSource)
+        )
+
+        val mediaSourceBuilderSource = source("data/player/WebDavMediaSourceBuilder.kt")
+        assertFalse(
+            "WebDavMediaSourceBuilder must not downcast to OkHttpWebDavClient",
+            mediaSourceBuilderSource.contains("as? OkHttpWebDavClient") || mediaSourceBuilderSource.contains("as OkHttpWebDavClient")
+        )
+        assertFalse(
+            "WebDavMediaSourceBuilder constructor parameter must not be typed as OkHttpWebDavClient",
+            Regex("""\bwebDavClient\s*:\s*OkHttpWebDavClient\b""").containsMatchIn(mediaSourceBuilderSource)
+        )
+        assertTrue(
+            "WebDavMediaSourceBuilder constructor parameter must be typed as WebDavClient",
+            Regex("""\bwebDavClient\s*:\s*WebDavClient\b""").containsMatchIn(mediaSourceBuilderSource)
+        )
+    }
 }

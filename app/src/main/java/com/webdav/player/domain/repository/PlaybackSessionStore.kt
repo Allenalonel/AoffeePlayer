@@ -7,7 +7,7 @@ interface PlaybackSessionStore {
 
     suspend fun savePosition(
         positionMs: Long,
-        isCleanExit: Boolean = false,
+        isCleanExit: Boolean = false
     ) {}
 
     suspend fun getSavedSession(): PlaybackSessionData?

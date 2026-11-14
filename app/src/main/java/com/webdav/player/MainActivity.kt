@@ -42,12 +42,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,30 +58,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.lifecycleScope
 import com.webdav.player.data.service.PlaybackSessionHost
 import com.webdav.player.di.AppContainer
 import com.webdav.player.di.AppViewModelFactory
 import com.webdav.player.domain.model.AudioTrack
-import com.webdav.player.domain.model.PlaybackProgress
-import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.ui.browser.DirectoryBrowserScreen
 import com.webdav.player.ui.browser.DirectoryBrowserViewModel
 import com.webdav.player.ui.common.RequestNotificationPermissionEffect
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.webdav.player.ui.common.ThumbnailMemoryCache
 import com.webdav.player.ui.motion.MotionTransitions
 import com.webdav.player.ui.motion.fluidIndicator
 import com.webdav.player.ui.motion.isReduceMotionEnabled
 import com.webdav.player.ui.navigation.AppDestination
 import com.webdav.player.ui.navigation.MainNavigationCoordinator
-import com.webdav.player.ui.player.FullPlayerView
 import com.webdav.player.ui.player.HoistedPlaybackQueueSheet
-import com.webdav.player.ui.player.MiniPlayer
 import com.webdav.player.ui.player.MiniPlayerDefaults
 import com.webdav.player.ui.player.MorphingPlayerContainer
 import com.webdav.player.ui.player.rememberArtworkColors
@@ -98,7 +90,6 @@ import com.webdav.player.ui.server.ServerListScreen
 import com.webdav.player.ui.server.ServerManagementViewModel
 import com.webdav.player.ui.theme.AppIcons
 import com.webdav.player.ui.theme.WebDavPlayerTheme
-import kotlinx.coroutines.launch
 
 /**
  * Main application activity hosting edge-to-edge navigation and playback sheets.
@@ -130,11 +121,11 @@ class MainActivity : ComponentActivity() {
             val musicSession = appContainer.musicPlayerAppSession
             val playerSessionState by musicSession.sessionState.collectAsStateWithLifecycle()
             val artworkColors by rememberArtworkColors(
-                thumbnailPath = playerSessionState.currentTrack?.coverThumbnailPath,
+                thumbnailPath = playerSessionState.currentTrack?.coverThumbnailPath
             )
 
             WebDavPlayerTheme(
-                artworkColors = artworkColors,
+                artworkColors = artworkColors
             ) {
                 RequestNotificationPermissionEffect()
 
@@ -160,7 +151,7 @@ class MainActivity : ComponentActivity() {
                             initialIsMiniPlayerVisible = playerSessionState.hasTrack,
                             onDestinationChanged = { destination ->
                                 navPrefs.edit().putString("last_active_tab", destination.name).apply()
-                            },
+                            }
                         )
                     }
                 val navState by coordinator.uiState.collectAsStateWithLifecycle()
@@ -189,14 +180,14 @@ class MainActivity : ComponentActivity() {
                         } else {
                             tween<Float>(
                                 durationMillis = 480,
-                                easing = CubicBezierEasing(0.20f, 0.0f, 0.0f, 1.0f),
+                                easing = CubicBezierEasing(0.20f, 0.0f, 0.0f, 1.0f)
                             )
                         }
                     }
                 val playerExpansionProgress by animateFloatAsState(
                     targetValue = if (isPlayerExpanded) 1f else 0f,
                     animationSpec = playerMorphingSpec,
-                    label = "GlobalPlayerMorphingProgress",
+                    label = "GlobalPlayerMorphingProgress"
                 )
 
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -207,23 +198,23 @@ class MainActivity : ComponentActivity() {
                             // Persistent M3 Expressive Navigation Bar with Sinking Parallax
                             Surface(
                                 modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .graphicsLayer {
-                                            translationY = 80.dp.toPx() * playerExpansionProgress
-                                            alpha = (1f - playerExpansionProgress * 1.4f).coerceIn(0f, 1f)
-                                        },
+                                Modifier
+                                    .fillMaxWidth()
+                                    .graphicsLayer {
+                                        translationY = 80.dp.toPx() * playerExpansionProgress
+                                        alpha = (1f - playerExpansionProgress * 1.4f).coerceIn(0f, 1f)
+                                    },
                                 color = MaterialTheme.colorScheme.surfaceContainer,
-                                tonalElevation = 3.dp,
+                                tonalElevation = 3.dp
                             ) {
                                 Row(
                                     modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
-                                            .height(60.dp),
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
+                                        .height(60.dp),
                                     horizontalArrangement = Arrangement.SpaceAround,
-                                    verticalAlignment = Alignment.CenterVertically,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     val destinations =
                                         listOf(
@@ -237,42 +228,42 @@ class MainActivity : ComponentActivity() {
                                                     AppIcons.FolderOpen
                                                 } else {
                                                     AppIcons.Folder
-                                                },
+                                                }
                                             ),
-                                            Triple(AppDestination.SERVER_LIST, "存储", AppIcons.Storage),
+                                            Triple(AppDestination.SERVER_LIST, "存储", AppIcons.Storage)
                                         )
                                     destinations.forEach { (destination, label, icon) ->
                                         val isSelected = navState.currentDestination == destination
                                         Column(
                                             modifier =
-                                                Modifier
-                                                    .clip(RoundedCornerShape(16.dp))
-                                                    .clickable { coordinator.selectDestination(destination) }
-                                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                                            Modifier
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .clickable { coordinator.selectDestination(destination) }
+                                                .padding(horizontal = 16.dp, vertical = 4.dp),
                                             horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.Center,
+                                            verticalArrangement = Arrangement.Center
                                         ) {
                                             Box(
                                                 modifier =
-                                                    Modifier
-                                                        .size(width = 52.dp, height = 28.dp)
-                                                        .fluidIndicator(isSelected)
-                                                        .clip(RoundedCornerShape(14.dp))
-                                                        .background(
-                                                            if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                                                        ),
-                                                contentAlignment = Alignment.Center,
+                                                Modifier
+                                                    .size(width = 52.dp, height = 28.dp)
+                                                    .fluidIndicator(isSelected)
+                                                    .clip(RoundedCornerShape(14.dp))
+                                                    .background(
+                                                        if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+                                                    ),
+                                                contentAlignment = Alignment.Center
                                             ) {
                                                 Icon(
                                                     imageVector = icon,
                                                     contentDescription = label,
                                                     tint =
-                                                        if (isSelected) {
-                                                            MaterialTheme.colorScheme.onPrimaryContainer
-                                                        } else {
-                                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                                        },
-                                                    modifier = Modifier.size(20.dp),
+                                                    if (isSelected) {
+                                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                                    } else {
+                                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                                    },
+                                                    modifier = Modifier.size(20.dp)
                                                 )
                                             }
                                             Spacer(modifier = Modifier.height(3.dp))
@@ -281,41 +272,41 @@ class MainActivity : ComponentActivity() {
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                                 color =
-                                                    if (isSelected) {
-                                                        MaterialTheme.colorScheme.onSurface
-                                                    } else {
-                                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                                    },
+                                                if (isSelected) {
+                                                    MaterialTheme.colorScheme.onSurface
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                }
                                             )
                                         }
                                     }
                                 }
                             }
-                        },
+                        }
                     ) { innerPadding ->
                         scaffoldBottomPadding = innerPadding.calculateBottomPadding()
                         val fabBottomPadding by animateDpAsState(
                             targetValue =
-                                if (navState.isMiniPlayerVisible) {
-                                    innerPadding.calculateBottomPadding() + 8.dp + MiniPlayerDefaults.CapsuleHeight + 24.dp - 16.dp
-                                } else {
-                                    innerPadding.calculateBottomPadding()
-                                },
-                            label = "fab_bottom_padding",
+                            if (navState.isMiniPlayerVisible) {
+                                innerPadding.calculateBottomPadding() + 8.dp + MiniPlayerDefaults.CapsuleHeight + 24.dp - 16.dp
+                            } else {
+                                innerPadding.calculateBottomPadding()
+                            },
+                            label = "fab_bottom_padding"
                         )
 
                         val saveableStateHolder = rememberSaveableStateHolder()
 
                         Box(
                             modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer {
-                                        val scale = lerp(1f, 0.94f, playerExpansionProgress)
-                                        scaleX = scale
-                                        scaleY = scale
-                                        alpha = lerp(1f, 0.70f, playerExpansionProgress)
-                                    },
+                            Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    val scale = lerp(1f, 0.94f, playerExpansionProgress)
+                                    scaleX = scale
+                                    scaleY = scale
+                                    alpha = lerp(1f, 0.70f, playerExpansionProgress)
+                                }
                         ) {
                             // Preserved view hierarchy with M3 Shared Axis X horizontal transition
                             AnimatedContent(
@@ -325,17 +316,18 @@ class MainActivity : ComponentActivity() {
                                     MotionTransitions.sharedAxisX(isForward = isForward, reduceMotion = isReduceMotion)
                                 },
                                 label = "MainSharedAxisTabTransition",
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxSize()
                             ) { targetDestination ->
                                 saveableStateHolder.SaveableStateProvider(targetDestination) {
                                     val isCurrentTab = (targetDestination == navState.currentDestination)
+                                    val isTabInteractive = navState.isTabInteractive(targetDestination, isPlaybackQueueSheetVisible)
                                     Box(
                                         modifier =
-                                            Modifier
-                                                .fillMaxSize()
-                                                .then(
-                                                    if (isCurrentTab) Modifier else Modifier.clearAndSetSemantics { }
-                                                ),
+                                        Modifier
+                                            .fillMaxSize()
+                                            .then(
+                                                if (isCurrentTab) Modifier else Modifier.clearAndSetSemantics { }
+                                            )
                                     ) {
                                         when (targetDestination) {
                                             AppDestination.PLAYLISTS -> {
@@ -350,25 +342,25 @@ class MainActivity : ComponentActivity() {
                                                                 MotionTransitions.hierarchyPopExit(isReduceMotion)
                                                         }
                                                     },
-                                                    label = "PlaylistDrilldownTransition",
+                                                    label = "PlaylistDrilldownTransition"
                                                 ) { targetPlaylistId ->
                                                     if (targetPlaylistId != null) {
                                                         val selectedId = targetPlaylistId
                                                         val detailViewModel: PlaylistDetailViewModel =
                                                             androidx.lifecycle.viewmodel.compose.viewModel(
                                                                 key = "playlist_detail_$selectedId",
-                                                                factory = AppViewModelFactory(appContainer, selectedId),
+                                                                factory = AppViewModelFactory(appContainer, selectedId)
                                                             )
                                                         PlaylistDetailScreen(
                                                             viewModel = detailViewModel,
                                                             onBackClick = { coordinator.navigateBackFromPlaylistDetail() },
-                                                            isCurrentTab = isCurrentTab,
+                                                            isCurrentTab = isTabInteractive,
                                                             onTrackClick = { track, index ->
                                                                 detailViewModel.onTrackClick(track, index)
                                                             },
                                                             onPlayAll = {
                                                                 detailViewModel.playAll()
-                                                            },
+                                                            }
                                                         )
                                                     } else {
                                                         PlaylistListScreen(
@@ -376,7 +368,7 @@ class MainActivity : ComponentActivity() {
                                                             onPlaylistClick = { playlist ->
                                                                 coordinator.navigateToPlaylistDetail(playlist.id)
                                                             },
-                                                            fabBottomPadding = fabBottomPadding,
+                                                            fabBottomPadding = fabBottomPadding
                                                         )
                                                     }
                                                 }
@@ -388,7 +380,7 @@ class MainActivity : ComponentActivity() {
                                                     onNavigateToServerManagement = {
                                                         coordinator.selectDestination(AppDestination.SERVER_LIST)
                                                     },
-                                                    isCurrentTab = isCurrentTab,
+                                                    isCurrentTab = isTabInteractive,
                                                     onOpenFullPlayer = {
                                                         coordinator.expandFullPlayer()
                                                     },
@@ -399,7 +391,7 @@ class MainActivity : ComponentActivity() {
                                                         tracksToAddToPlaylist = tracks
                                                     },
                                                     bottomBarPadding = innerPadding.calculateBottomPadding() + 8.dp,
-                                                    onSelectionModeChanged = { isBrowserSelectionActive = it },
+                                                    onSelectionModeChanged = { isBrowserSelectionActive = it }
                                                 )
                                             }
 
@@ -419,7 +411,7 @@ class MainActivity : ComponentActivity() {
                                                             }
                                                         })
                                                     },
-                                                    fabBottomPadding = fabBottomPadding,
+                                                    fabBottomPadding = fabBottomPadding
                                                 )
                                             }
                                         }
@@ -441,15 +433,15 @@ class MainActivity : ComponentActivity() {
                     AnimatedVisibility(
                         visible = (navState.isMiniPlayerVisible && !isBrowserSelectionActive) || isPlayerExpanded,
                         enter =
-                            slideInVertically(
-                                initialOffsetY = { it },
-                                animationSpec = tween(250),
-                            ) + fadeIn(animationSpec = tween(250)),
+                        slideInVertically(
+                            initialOffsetY = { it },
+                            animationSpec = tween(250)
+                        ) + fadeIn(animationSpec = tween(250)),
                         exit =
-                            slideOutVertically(
-                                targetOffsetY = { it },
-                                animationSpec = tween(200),
-                            ) + fadeOut(animationSpec = tween(200)),
+                        slideOutVertically(
+                            targetOffsetY = { it },
+                            animationSpec = tween(200)
+                        ) + fadeOut(animationSpec = tween(200))
                     ) {
                         MorphingPlayerContainer(
                             sessionState = playerSessionState,
@@ -467,7 +459,7 @@ class MainActivity : ComponentActivity() {
                             onDismissBatteryBanner = { musicSession.clearKilledBySystemFlag() },
                             onConfirmUnsupportedRangeReplay = { musicSession.confirmUnsupportedRangeReplay() },
                             onDismissUnsupportedRange = { musicSession.dismissUnsupportedRange() },
-                            artworkColors = artworkColors,
+                            artworkColors = artworkColors
                         )
                     }
 
@@ -479,7 +471,7 @@ class MainActivity : ComponentActivity() {
                             onDismissRequest = { isPlaybackQueueSheetVisible = false },
                             onAddToPlaylist = { track ->
                                 tracksToAddToPlaylist = listOf(track)
-                            },
+                            }
                         )
                     }
 
@@ -504,7 +496,7 @@ class MainActivity : ComponentActivity() {
                                             .makeText(
                                                 context,
                                                 message,
-                                                Toast.LENGTH_SHORT,
+                                                Toast.LENGTH_SHORT
                                             ).show()
                                     }
                                 } else {
@@ -519,7 +511,7 @@ class MainActivity : ComponentActivity() {
                                             .makeText(
                                                 context,
                                                 message,
-                                                Toast.LENGTH_SHORT,
+                                                Toast.LENGTH_SHORT
                                             ).show()
                                     }
                                 }
@@ -534,7 +526,7 @@ class MainActivity : ComponentActivity() {
                                             .makeText(
                                                 context,
                                                 "已新建歌单 “$name” 并添加 “$trackName”",
-                                                Toast.LENGTH_SHORT,
+                                                Toast.LENGTH_SHORT
                                             ).show()
                                     }
                                 } else {
@@ -543,12 +535,12 @@ class MainActivity : ComponentActivity() {
                                             .makeText(
                                                 context,
                                                 "已新建歌单 “$name” 并添加 $addedCount 首歌曲",
-                                                Toast.LENGTH_SHORT,
+                                                Toast.LENGTH_SHORT
                                             ).show()
                                     }
                                 }
                                 tracksToAddToPlaylist = null
-                            },
+                            }
                         )
                     }
                 }

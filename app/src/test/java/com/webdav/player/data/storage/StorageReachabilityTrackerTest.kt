@@ -1,15 +1,13 @@
 package com.webdav.player.data.storage
 
 import com.webdav.player.data.remote.ConnectionResult
-import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.InactiveReason
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
-import com.webdav.player.domain.model.ListDirectoryResult
-import com.webdav.player.domain.model.RemoteDirectory
+import com.webdav.player.domain.model.TrackIdentity
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.test.SharedFakeWebDavClient
-import com.webdav.player.domain.model.TrackIdentity
+import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -18,16 +16,13 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.IOException
-import java.util.concurrent.atomic.AtomicInteger
 
 class StorageReachabilityTrackerTest {
     private class FakeServerRepository(
-        initialServers: List<WebDavServer> = emptyList(),
+        initialServers: List<WebDavServer> = emptyList()
     ) : ServerRepository {
         private val serversMap = initialServers.associateBy { it.id }.toMutableMap()
 
@@ -128,12 +123,12 @@ class StorageReachabilityTrackerTest {
         assertEquals(
             "FILE_NOT_FOUND track on server 1 must be preserved",
             InactiveReason.FILE_NOT_FOUND,
-            inactive[TrackIdentity(1L, "/missing_404.mp3")],
+            inactive[TrackIdentity(1L, "/missing_404.mp3")]
         )
         assertEquals(
             "Track on server 2 must remain unchanged",
             InactiveReason.SERVER_UNREACHABLE,
-            inactive[TrackIdentity(2L, "/other_server.mp3")],
+            inactive[TrackIdentity(2L, "/other_server.mp3")]
         )
     }
 
@@ -152,7 +147,7 @@ class StorageReachabilityTrackerTest {
                 StorageReachabilityTrackerImpl(
                     webDavClient = fakeClient,
                     serverRepository = serverRepo,
-                    ioDispatcher = Dispatchers.Unconfined,
+                    ioDispatcher = Dispatchers.Unconfined
                 )
 
             tracker.reportServerUnavailable(1L, InactiveReason.SERVER_UNREACHABLE)
@@ -183,7 +178,7 @@ class StorageReachabilityTrackerTest {
                 StorageReachabilityTrackerImpl(
                     webDavClient = fakeClient,
                     serverRepository = serverRepo,
-                    ioDispatcher = Dispatchers.Unconfined,
+                    ioDispatcher = Dispatchers.Unconfined
                 )
 
             tracker.reportTrackUnavailable(1L, "/auth.mp3", InactiveReason.SERVER_CREDENTIAL_INVALID)
@@ -207,7 +202,7 @@ class StorageReachabilityTrackerTest {
                 StorageReachabilityTrackerImpl(
                     webDavClient = fakeClient,
                     serverRepository = serverRepo,
-                    ioDispatcher = Dispatchers.Unconfined,
+                    ioDispatcher = Dispatchers.Unconfined
                 )
 
             tracker.reportServerUnavailable(1L, InactiveReason.SERVER_UNREACHABLE)
@@ -227,7 +222,7 @@ class StorageReachabilityTrackerTest {
             val tracker =
                 StorageReachabilityTrackerImpl(
                     localUriReachabilityChecker = { path -> accessibleUris.contains(path) },
-                    ioDispatcher = Dispatchers.Unconfined,
+                    ioDispatcher = Dispatchers.Unconfined
                 )
 
             tracker.reportTrackUnavailable(LOCAL_STORAGE_ID, "content://media/sdcard/song1.flac", InactiveReason.FILE_NOT_FOUND)
@@ -241,12 +236,12 @@ class StorageReachabilityTrackerTest {
             assertEquals(1, inactive.size)
             assertNull(
                 "Song 1 is now accessible and should be restored",
-                inactive[TrackIdentity(LOCAL_STORAGE_ID, "content://media/sdcard/song1.flac")],
+                inactive[TrackIdentity(LOCAL_STORAGE_ID, "content://media/sdcard/song1.flac")]
             )
             assertEquals(
                 "Missing song remains inaccessible",
                 InactiveReason.FILE_NOT_FOUND,
-                inactive[TrackIdentity(LOCAL_STORAGE_ID, "content://media/sdcard/missing.flac")],
+                inactive[TrackIdentity(LOCAL_STORAGE_ID, "content://media/sdcard/missing.flac")]
             )
         }
 
@@ -270,7 +265,7 @@ class StorageReachabilityTrackerTest {
                 StorageReachabilityTrackerImpl(
                     webDavClient = fakeClient,
                     serverRepository = serverRepo,
-                    ioDispatcher = Dispatchers.Default,
+                    ioDispatcher = Dispatchers.Default
                 )
 
             tracker.reportServerUnavailable(1L, InactiveReason.SERVER_UNREACHABLE)
@@ -309,7 +304,7 @@ class StorageReachabilityTrackerTest {
                 StorageReachabilityTrackerImpl(
                     webDavClient = fakeClient,
                     serverRepository = serverRepo,
-                    ioDispatcher = Dispatchers.Unconfined,
+                    ioDispatcher = Dispatchers.Unconfined
                 )
 
             tracker.triggerReachabilitySelfHealing()
@@ -330,7 +325,7 @@ class StorageReachabilityTrackerTest {
                 StorageReachabilityTrackerImpl(
                     webDavClient = fakeClient,
                     serverRepository = serverRepo,
-                    ioDispatcher = Dispatchers.Unconfined,
+                    ioDispatcher = Dispatchers.Unconfined
                 )
 
             tracker.reportServerUnavailable(1L, InactiveReason.SERVER_UNREACHABLE)
@@ -350,7 +345,7 @@ class StorageReachabilityTrackerTest {
                 StorageReachabilityTrackerImpl(
                     context = null,
                     localUriReachabilityChecker = null,
-                    ioDispatcher = Dispatchers.Unconfined,
+                    ioDispatcher = Dispatchers.Unconfined
                 )
 
             tracker.reportTrackUnavailable(LOCAL_STORAGE_ID, "content://media/sdcard/song.flac", InactiveReason.FILE_NOT_FOUND)
@@ -361,7 +356,7 @@ class StorageReachabilityTrackerTest {
             assertEquals(1, inactive.size)
             assertEquals(
                 InactiveReason.FILE_NOT_FOUND,
-                inactive[TrackIdentity(LOCAL_STORAGE_ID, "content://media/sdcard/song.flac")],
+                inactive[TrackIdentity(LOCAL_STORAGE_ID, "content://media/sdcard/song.flac")]
             )
         }
 
@@ -392,7 +387,7 @@ class StorageReachabilityTrackerTest {
                 StorageReachabilityTrackerImpl(
                     webDavClient = fakeClient,
                     serverRepository = FakeServerRepository(listOf(server)),
-                    ioDispatcher = Dispatchers.Unconfined,
+                    ioDispatcher = Dispatchers.Unconfined
                 )
 
             tracker.reportServerUnavailable(1L, InactiveReason.SERVER_UNREACHABLE)

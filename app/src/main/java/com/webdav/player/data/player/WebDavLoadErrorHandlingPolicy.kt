@@ -11,7 +11,7 @@ import java.io.IOException
 
 @OptIn(UnstableApi::class)
 class WebDavLoadErrorHandlingPolicy(
-    private val defaultMinRetryCount: Int = 3,
+    private val defaultMinRetryCount: Int = 3
 ) : DefaultLoadErrorHandlingPolicy(defaultMinRetryCount) {
     override fun getMinimumLoadableRetryCount(dataType: Int): Int = defaultMinRetryCount
 
@@ -37,7 +37,7 @@ class WebDavLoadErrorHandlingPolicy(
                 (
                     cause is HttpDataSource.InvalidResponseCodeException &&
                         cause.responseCode in NON_RETRYABLE_STATUS_CODES
-                )
+                    )
         }
 
     companion object {

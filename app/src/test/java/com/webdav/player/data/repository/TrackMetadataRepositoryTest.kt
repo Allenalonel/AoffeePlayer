@@ -6,12 +6,16 @@ import androidx.test.core.app.ApplicationProvider
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.CoverArtStorage
 import com.webdav.player.data.local.TrackMetadataDao
-import com.webdav.player.data.remote.ConnectionResult
-import com.webdav.player.data.remote.WebDavClient
-import com.webdav.player.domain.model.ListDirectoryResult
+import com.webdav.player.data.local.TrackMetadataEntity
+import com.webdav.player.data.local.WebDavServerEntity
 import com.webdav.player.domain.model.RemoteFile
+import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.test.SharedFakeWebDavClient
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -20,9 +24,6 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
-import com.webdav.player.data.local.WebDavServerEntity
-import com.webdav.player.data.local.TrackMetadataEntity
-import com.webdav.player.domain.model.TrackMetadata
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -34,10 +35,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.nio.charset.StandardCharsets
-import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -52,7 +49,7 @@ class TrackMetadataRepositoryTest {
         WebDavServer(
             id = 1L,
             name = "Test Server",
-            url = "http://example.com",
+            url = "http://example.com"
         )
 
     @Before
@@ -76,7 +73,7 @@ class TrackMetadataRepositoryTest {
                 coverArtStorage = fakeStorage,
                 webDavServerDao = database.webDavServerDao(),
                 maxConcurrency = 2,
-                ioDispatcher = Dispatchers.Unconfined,
+                ioDispatcher = Dispatchers.Unconfined
             )
     }
 
@@ -93,7 +90,7 @@ class TrackMetadataRepositoryTest {
 
             val files =
                 listOf(
-                    RemoteFile(name = "starlight.mp3", path = "/music/starlight.mp3", size = 5000000L),
+                    RemoteFile(name = "starlight.mp3", path = "/music/starlight.mp3", size = 5000000L)
                 )
 
             repository.resolveMetadata(testServer, files)
@@ -304,7 +301,7 @@ class TrackMetadataRepositoryTest {
                     artist = "Artist",
                     album = "Album",
                     artworkBytes = truncatedEmbeddedArtwork,
-                    forceValidJpeg = false,
+                    forceValidJpeg = false
                 )
             fakeClient.stubFileBytes("/music/trunc_embed/song.mp3", sampleMp3)
 
@@ -320,11 +317,11 @@ class TrackMetadataRepositoryTest {
             assertEquals("Truncated Song", cached?.title)
             assertFalse(
                 "Truncated embedded artwork must not be saved to storage",
-                fakeStorage.savedThumbnails.containsKey("1:/music/trunc_embed/song.mp3"),
+                fakeStorage.savedThumbnails.containsKey("1:/music/trunc_embed/song.mp3")
             )
             assertTrue(
                 "Must fall back to valid folder cover when embedded artwork is truncated",
-                fakeStorage.savedThumbnails.containsKey("1:/music/trunc_embed/cover.jpg"),
+                fakeStorage.savedThumbnails.containsKey("1:/music/trunc_embed/cover.jpg")
             )
         }
 
@@ -346,7 +343,7 @@ class TrackMetadataRepositoryTest {
                 RemoteFile(
                     name = "cached_song.mp3",
                     path = "/music/cached_song.mp3",
-                    size = sampleMp3.size.toLong() + 1000L,
+                    size = sampleMp3.size.toLong() + 1000L
                 )
 
             // First visit: resolves and populates cache
@@ -363,7 +360,7 @@ class TrackMetadataRepositoryTest {
             repository.resolveMetadata(testServer, listOf(file))
             assertTrue(
                 "Must re-resolve and restore thumbnail when cache file was cleared from disk",
-                fakeStorage.savedThumbnails.containsKey("1:/music/cached_song.mp3"),
+                fakeStorage.savedThumbnails.containsKey("1:/music/cached_song.mp3")
             )
         }
 
@@ -390,7 +387,7 @@ class TrackMetadataRepositoryTest {
             assertEquals(
                 "Track with physically existing folder artwork must skip re-resolution to preserve bandwidth",
                 fetchCountAfterFirstResolve,
-                fakeClient.fetchCount.get(),
+                fakeClient.fetchCount.get()
             )
         }
 
@@ -540,7 +537,7 @@ class TrackMetadataRepositoryTest {
                 RemoteFile(
                     name = "partial_secondary.mp3",
                     path = "/music/partial_secondary.mp3",
-                    size = sampleMp3.size.toLong() + 2000000L,
+                    size = sampleMp3.size.toLong() + 2000000L
                 )
             repository.resolveMetadata(testServer, listOf(file))
 
@@ -549,7 +546,7 @@ class TrackMetadataRepositoryTest {
             assertNull("Partial secondary range fetch must be treated as transient network error without poisoning Room", cached)
             assertFalse(
                 "Incomplete artwork must never be saved into storage",
-                fakeStorage.savedThumbnails.containsKey("1:/music/partial_secondary.mp3"),
+                fakeStorage.savedThumbnails.containsKey("1:/music/partial_secondary.mp3")
             )
         }
 
@@ -574,7 +571,7 @@ class TrackMetadataRepositoryTest {
                 RemoteFile(
                     name = "short_zero.mp3",
                     path = "/music/short_zero.mp3",
-                    size = sampleMp3.size.toLong() + 2000000L,
+                    size = sampleMp3.size.toLong() + 2000000L
                 )
             repository.resolveMetadata(testServer, listOf(file))
 
@@ -582,7 +579,7 @@ class TrackMetadataRepositoryTest {
             assertNull("Insufficient stream from byte 0 must not duplicate stream or poison Room", cached)
             assertFalse(
                 "Corrupt artwork must not be saved into storage",
-                fakeStorage.savedThumbnails.containsKey("1:/music/short_zero.mp3"),
+                fakeStorage.savedThumbnails.containsKey("1:/music/short_zero.mp3")
             )
         }
 
@@ -732,7 +729,7 @@ class TrackMetadataRepositoryTest {
                     coverArtStorage = fakeStorage,
                     webDavServerDao = database.webDavServerDao(),
                     maxConcurrency = 4,
-                    ioDispatcher = Dispatchers.Default,
+                    ioDispatcher = Dispatchers.Default
                 )
 
             multiThreadRepo.resolveMetadata(testServer, listOf(file))
@@ -802,9 +799,9 @@ class TrackMetadataRepositoryTest {
                         artist = "Artist",
                         album = "Album",
                         coverThumbnailPath = oldCover,
-                        durationMs = 1000L,
-                    ),
-                ),
+                        durationMs = 1000L
+                    )
+                )
             )
             fakeStorage.diskFiles.remove(oldCover)
 
@@ -839,7 +836,7 @@ class TrackMetadataRepositoryTest {
 
             val files =
                 listOf(
-                    RemoteFile(name = "trackA.mp3", path = "/music/trackA.mp3", size = 1000L),
+                    RemoteFile(name = "trackA.mp3", path = "/music/trackA.mp3", size = 1000L)
                 )
 
             val flow = repository.getMetadataForPathsFlow(1L, listOf("/music/trackA.mp3"))
@@ -960,8 +957,8 @@ class TrackMetadataRepositoryTest {
                     path = "/music/oversized.flac",
                     size = totalFileSize,
                     fileType =
-                        com.webdav.player.domain.model.RemoteFileType
-                            .Audio(com.webdav.player.domain.model.AudioFormat.FLAC),
+                    com.webdav.player.domain.model.RemoteFileType
+                        .Audio(com.webdav.player.domain.model.AudioFormat.FLAC)
                 )
             repository.resolveMetadata(testServer, listOf(file))
 
@@ -1005,7 +1002,7 @@ class TrackMetadataRepositoryTest {
                 RemoteFile(
                     name = "padded_oversized.mp3",
                     path = "/music/padded_oversized.mp3",
-                    size = fullMp3Bytes.size.toLong(),
+                    size = fullMp3Bytes.size.toLong()
                 )
             repository.resolveMetadata(testServer, listOf(file))
 
@@ -1031,7 +1028,7 @@ class TrackMetadataRepositoryTest {
             val files =
                 listOf(
                     RemoteFile(name = "song1.mp3", path = "/music/album/song1.mp3", size = 1000L),
-                    RemoteFile(name = "song2.mp3", path = "/music/album/song2.mp3", size = 1000L),
+                    RemoteFile(name = "song2.mp3", path = "/music/album/song2.mp3", size = 1000L)
                 )
 
             repository.resolveMetadata(testServer, files)
@@ -1112,7 +1109,7 @@ class TrackMetadataRepositoryTest {
             assertNotNull(cachedB?.coverThumbnailPath)
             assertTrue(
                 "Track-specific artwork songB.jpg must take precedence even if folder cover is cached",
-                fakeStorage.savedThumbnails.containsKey("1:/music/album/songB.jpg"),
+                fakeStorage.savedThumbnails.containsKey("1:/music/album/songB.jpg")
             )
         }
 
@@ -1132,7 +1129,7 @@ class TrackMetadataRepositoryTest {
             assertNotNull(cached?.coverThumbnailPath)
             assertTrue(
                 "Track-specific artwork must support .png candidate fallback",
-                fakeStorage.savedThumbnails.containsKey("1:/music/album/songC.png"),
+                fakeStorage.savedThumbnails.containsKey("1:/music/album/songC.png")
             )
         }
 
@@ -1152,7 +1149,7 @@ class TrackMetadataRepositoryTest {
             assertNotNull(cached?.coverThumbnailPath)
             assertTrue(
                 "Track-specific artwork must support literal \${filename}.jpg fallback",
-                fakeStorage.savedThumbnails.containsKey("1:/music/album/songD.flac.jpg"),
+                fakeStorage.savedThumbnails.containsKey("1:/music/album/songD.flac.jpg")
             )
         }
 
@@ -1172,7 +1169,7 @@ class TrackMetadataRepositoryTest {
             assertNotNull("Folder artwork must fall back to front.jpg when cover/folder.jpg absent", cached?.coverThumbnailPath)
             assertTrue(
                 "front.jpg must be saved to storage",
-                fakeStorage.savedThumbnails.containsKey("1:/music/front_album/front.jpg"),
+                fakeStorage.savedThumbnails.containsKey("1:/music/front_album/front.jpg")
             )
         }
 
@@ -1194,7 +1191,7 @@ class TrackMetadataRepositoryTest {
             assertNotNull("Folder artwork must be found via fallback to folder.jpg", cached?.coverThumbnailPath)
             assertTrue(
                 "folder.jpg must have been saved to storage",
-                fakeStorage.savedThumbnails.containsKey("1:/music/fallback/folder.jpg"),
+                fakeStorage.savedThumbnails.containsKey("1:/music/fallback/folder.jpg")
             )
         }
 
@@ -1214,7 +1211,7 @@ class TrackMetadataRepositoryTest {
             repository.resolveMetadata(
                 server = testServer,
                 files = dirFiles,
-                directoryFiles = dirFiles,
+                directoryFiles = dirFiles
             )
 
             for (file in dirFiles) {
@@ -1251,7 +1248,7 @@ class TrackMetadataRepositoryTest {
             repository.resolveMetadata(
                 server = testServer,
                 files = audioFiles,
-                directoryFiles = dirFiles,
+                directoryFiles = dirFiles
             )
 
             for (file in audioFiles) {
@@ -1272,7 +1269,7 @@ class TrackMetadataRepositoryTest {
         artist: String,
         album: String,
         artworkBytes: ByteArray? = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte()),
-        forceValidJpeg: Boolean = true,
+        forceValidJpeg: Boolean = true
     ): ByteArray {
         val stream = ByteArrayOutputStream()
         stream.write("ID3".toByteArray(StandardCharsets.US_ASCII))
@@ -1284,7 +1281,7 @@ class TrackMetadataRepositoryTest {
 
         fun writeFrame(
             id: String,
-            text: String,
+            text: String
         ) {
             val p = ByteArrayOutputStream()
             p.write(3) // UTF-8
@@ -1349,7 +1346,7 @@ class TrackMetadataRepositoryTest {
         title: String,
         artist: String,
         album: String,
-        artworkBytes: ByteArray? = null,
+        artworkBytes: ByteArray? = null
     ): ByteArray {
         val stream = ByteArrayOutputStream()
         // "fLaC"
@@ -1457,7 +1454,7 @@ class TrackMetadataRepositoryTest {
         override suspend fun saveThumbnail(
             serverId: Long,
             remotePath: String,
-            artworkBytes: ByteArray,
+            artworkBytes: ByteArray
         ): String? {
             if (failSaving) return null
             val key = "$serverId:$remotePath"
@@ -1477,7 +1474,7 @@ class TrackMetadataRepositoryTest {
 
         override fun getThumbnailFile(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): File? {
             val key = "$serverId:$remotePath"
             if (!savedThumbnails.containsKey(key)) return null
@@ -1487,7 +1484,7 @@ class TrackMetadataRepositoryTest {
 
         override fun deleteThumbnail(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ) {
             val key = "$serverId:$remotePath"
             savedThumbnails.remove(key)

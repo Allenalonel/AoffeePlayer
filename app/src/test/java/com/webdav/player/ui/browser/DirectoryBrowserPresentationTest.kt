@@ -8,13 +8,11 @@ import com.webdav.player.domain.model.Breadcrumb
 import com.webdav.player.domain.model.LibrarySearchResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
-import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -25,7 +23,7 @@ class DirectoryBrowserPresentationTest {
             name = "Synology NAS",
             url = "https://nas.example.com",
             port = 5006,
-            isDefault = true,
+            isDefault = true
         )
 
     @Test
@@ -124,7 +122,7 @@ class DirectoryBrowserPresentationTest {
             RemoteFile(
                 name = "Eagles - Hotel California (320kbps).mp3",
                 path = "/Music/Eagles - Hotel California (320kbps).mp3",
-                size = 5_000_000L,
+                size = 5_000_000L
             )
 
         val badge = AudioQuality.resolveBadge(taggedFile, null)
@@ -141,10 +139,10 @@ class DirectoryBrowserPresentationTest {
                 name = "Rock",
                 subDirectories = listOf(RemoteDirectory(path = "/Music/Rock/Queen/", name = "Queen")),
                 files =
-                    listOf(
-                        RemoteFile(name = "song1.mp3", path = "/Music/Rock/song1.mp3"),
-                        RemoteFile(name = "song2.flac", path = "/Music/Rock/song2.flac"),
-                    ),
+                listOf(
+                    RemoteFile(name = "song1.mp3", path = "/Music/Rock/song1.mp3"),
+                    RemoteFile(name = "song2.flac", path = "/Music/Rock/song2.flac")
+                )
             )
 
         val emptyDir =
@@ -152,7 +150,7 @@ class DirectoryBrowserPresentationTest {
                 path = "/Music/Empty/",
                 name = "Empty",
                 subDirectories = emptyList(),
-                files = emptyList(),
+                files = emptyList()
             )
 
         assertEquals(2, audioDir.audioFiles.size)
@@ -171,7 +169,7 @@ class DirectoryBrowserPresentationTest {
             DirectoryBrowserUiState(
                 isInitializing = false,
                 activeServer = sampleServer,
-                currentPath = "/",
+                currentPath = "/"
             )
         assertEquals("Synology NAS", state.headerTitle)
     }
@@ -182,7 +180,7 @@ class DirectoryBrowserPresentationTest {
             DirectoryBrowserUiState(
                 isInitializing = false,
                 activeServer = null,
-                currentPath = "/",
+                currentPath = "/"
             )
         assertEquals("远程目录", state.headerTitle)
     }
@@ -195,7 +193,7 @@ class DirectoryBrowserPresentationTest {
                 isInitializing = false,
                 activeServer = sampleServer,
                 currentPath = "/Music/Lossless/",
-                currentDirectory = dir,
+                currentDirectory = dir
             )
         assertEquals("Lossless", state.headerTitle)
     }
@@ -207,7 +205,7 @@ class DirectoryBrowserPresentationTest {
                 isInitializing = false,
                 activeServer = sampleServer,
                 currentPath = "/Music/Jazz/",
-                currentDirectory = null,
+                currentDirectory = null
             )
         assertEquals("Jazz", state.headerTitle)
     }
@@ -220,7 +218,7 @@ class DirectoryBrowserPresentationTest {
                 activeServer = sampleServer,
                 currentPath = "/Music/",
                 activeTrackPath = "/Music/song.flac",
-                isPlaying = true,
+                isPlaying = true
             )
         assertTrue(state.isTrackActive("/Music/song.flac"))
         assertFalse(state.isTrackActive("/Music/other.mp3"))
@@ -235,7 +233,7 @@ class DirectoryBrowserPresentationTest {
                 activeServer = sampleServer,
                 currentPath = "/Music/",
                 activeTrackPath = null,
-                isPlaying = false,
+                isPlaying = false
             )
         assertFalse(state.isTrackActive("/Music/song.flac"))
         assertFalse(state.isPlaying)
@@ -255,7 +253,7 @@ class DirectoryBrowserPresentationTest {
                 currentDirectory = dir,
                 activeTrackPath = audioFile.path,
                 activeTrackId = "1:${audioFile.path}",
-                isPlaying = true,
+                isPlaying = true
             )
 
         assertEquals(2, state.files.size)
@@ -274,10 +272,10 @@ class DirectoryBrowserPresentationTest {
             LibrarySearchResult(
                 matchedDirectories = listOf(RemoteDirectory(path = "/Music/Pop/", name = "Pop")),
                 matchedTracks =
-                    listOf(
-                        AudioTrack(id = "1:/s1.mp3", serverId = 1L, remotePath = "/s1.mp3", title = "S1", format = AudioFormat.MP3),
-                        AudioTrack(id = "1:/s2.mp3", serverId = 1L, remotePath = "/s2.mp3", title = "S2", format = AudioFormat.MP3),
-                    ),
+                listOf(
+                    AudioTrack(id = "1:/s1.mp3", serverId = 1L, remotePath = "/s1.mp3", title = "S1", format = AudioFormat.MP3),
+                    AudioTrack(id = "1:/s2.mp3", serverId = 1L, remotePath = "/s2.mp3", title = "S2", format = AudioFormat.MP3)
+                )
             )
         assertFalse(populatedResult.isEmpty)
         assertEquals(3, populatedResult.totalMatchesCount)
@@ -292,7 +290,7 @@ class DirectoryBrowserPresentationTest {
                 isSearchActive = true,
                 searchQuery = "beethoven",
                 isSearching = true,
-                searchHistory = listOf("bach", "mozart"),
+                searchHistory = listOf("bach", "mozart")
             )
         assertTrue(state.isSearchActive)
         assertEquals("beethoven", state.searchQuery)
@@ -310,7 +308,7 @@ class DirectoryBrowserPresentationTest {
                 title = "Whole Symphony",
                 artist = "Beethoven",
                 album = "Symphony No. 9",
-                format = AudioFormat.FLAC,
+                format = AudioFormat.FLAC
             )
         assertEquals("Whole Symphony", standardTrack.title)
         assertEquals("Beethoven", standardTrack.artist)
@@ -323,7 +321,7 @@ class DirectoryBrowserPresentationTest {
                 title = "Allegro",
                 artist = "Herbert von Karajan",
                 album = "Symphony No. 9",
-                format = AudioFormat.FLAC,
+                format = AudioFormat.FLAC
             )
         assertEquals("Allegro", trackWithCueId.title)
         assertEquals("Herbert von Karajan", trackWithCueId.artist)
@@ -354,7 +352,7 @@ class DirectoryBrowserPresentationTest {
         var state =
             DirectoryBrowserUiState(
                 isSearchActive = true,
-                searchQuery = "Pink",
+                searchQuery = "Pink"
             )
         assertTrue(state.isSearchActive)
 
@@ -363,7 +361,7 @@ class DirectoryBrowserPresentationTest {
             state.copy(
                 isSearchActive = false,
                 searchQuery = "",
-                currentPath = targetDirectory.path,
+                currentPath = targetDirectory.path
             )
         assertFalse(state.isSearchActive)
         assertEquals("", state.searchQuery)

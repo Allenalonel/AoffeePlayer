@@ -9,13 +9,13 @@ data class LocalStorageFolderEntity(
     @PrimaryKey
     val uriString: String,
     val displayName: String,
-    val dateAdded: Long,
+    val dateAdded: Long
 ) {
     fun toDomain(): LocalStorageFolder =
         LocalStorageFolder(
             uriString = uriString,
             displayName = displayName,
-            dateAdded = dateAdded,
+            dateAdded = dateAdded
         )
 
     companion object {
@@ -23,7 +23,7 @@ data class LocalStorageFolderEntity(
             LocalStorageFolderEntity(
                 uriString = domain.uriString,
                 displayName = domain.displayName,
-                dateAdded = domain.dateAdded,
+                dateAdded = domain.dateAdded
             )
     }
 }

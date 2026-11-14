@@ -22,14 +22,11 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,7 +53,7 @@ import com.webdav.player.ui.theme.AppIcons
 internal class DragDropState(
     val lazyListState: LazyListState,
     private val onMove: (Int, Int) -> Unit,
-    private val onDragEnd: () -> Unit,
+    private val onDragEnd: () -> Unit
 ) {
     var draggedIndex by mutableStateOf<Int?>(null)
         private set
@@ -109,7 +106,7 @@ fun PlaylistDetailScreen(
     isCurrentTab: Boolean = true,
     onTrackClick: (PlaylistTrackEntry, Int) -> Unit = { track, index -> viewModel.onTrackClick(track, index) },
     onPlayAll: () -> Unit = { viewModel.playAll() },
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showSortMenu by remember { mutableStateOf(false) }
@@ -142,7 +139,7 @@ fun PlaylistDetailScreen(
             DragDropState(
                 lazyListState = listState,
                 onMove = { from, to -> viewModel.moveTrack(from, to) },
-                onDragEnd = { viewModel.onDragEnd() },
+                onDragEnd = { viewModel.onDragEnd() }
             )
         }
 
@@ -158,28 +155,28 @@ fun PlaylistDetailScreen(
                         modifier = Modifier.size(38.dp),
                         shape = CircleShape,
                         colors =
-                            IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ),
+                        IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        )
                     ) {
                         Icon(
                             imageVector = AppIcons.ArrowBack,
                             contentDescription = "返回",
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 },
                 actions = {
                     if (uiState.isCustomReorderMode) {
                         TextButton(
-                            onClick = { viewModel.saveCustomReorder() },
+                            onClick = { viewModel.saveCustomReorder() }
                         ) {
                             Text(
                                 text = "保存",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     } else {
@@ -189,21 +186,21 @@ fun PlaylistDetailScreen(
                                 modifier = Modifier.size(38.dp),
                                 shape = CircleShape,
                                 colors =
-                                    IconButtonDefaults.filledTonalIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurface,
-                                    ),
+                                IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                )
                             ) {
                                 Icon(
                                     imageVector = AppIcons.Sort,
                                     contentDescription = "排序",
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
 
                             DropdownMenu(
                                 expanded = showSortMenu,
-                                onDismissRequest = { showSortMenu = false },
+                                onDismissRequest = { showSortMenu = false }
                             ) {
                                 val sortOptions =
                                     listOf(
@@ -211,7 +208,7 @@ fun PlaylistDetailScreen(
                                         PlaylistSortOption.DATE_ADDED_DESC to "添加时间（最新优先）",
                                         PlaylistSortOption.DATE_ADDED_ASC to "添加时间（最早优先）",
                                         PlaylistSortOption.TITLE_ASC to "歌曲标题（A-Z）",
-                                        PlaylistSortOption.ARTIST_ASC to "艺术家（A-Z）",
+                                        PlaylistSortOption.ARTIST_ASC to "艺术家（A-Z）"
                                     )
                                 sortOptions.forEach { (option, label) ->
                                     DropdownMenuItem(
@@ -222,7 +219,7 @@ fun PlaylistDetailScreen(
                                                     imageVector = AppIcons.Check,
                                                     contentDescription = null,
                                                     tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(18.dp),
+                                                    modifier = Modifier.size(18.dp)
                                                 )
                                             }
                                         },
@@ -233,7 +230,7 @@ fun PlaylistDetailScreen(
                                             } else {
                                                 viewModel.sortTracks(option)
                                             }
-                                        },
+                                        }
                                     )
                                 }
                             }
@@ -247,21 +244,21 @@ fun PlaylistDetailScreen(
                                 modifier = Modifier.size(38.dp),
                                 shape = CircleShape,
                                 colors =
-                                    IconButtonDefaults.filledTonalIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurface,
-                                    ),
+                                IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                )
                             ) {
                                 Icon(
                                     imageVector = AppIcons.MoreVert,
                                     contentDescription = "更多操作",
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
 
                             DropdownMenu(
                                 expanded = showMoreMenu,
-                                onDismissRequest = { showMoreMenu = false },
+                                onDismissRequest = { showMoreMenu = false }
                             ) {
                                 DropdownMenuItem(
                                     text = { Text("清理失效歌曲") },
@@ -269,42 +266,42 @@ fun PlaylistDetailScreen(
                                         Icon(
                                             imageVector = AppIcons.DeleteOutline,
                                             contentDescription = null,
-                                            modifier = Modifier.size(20.dp),
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     },
                                     onClick = {
                                         showMoreMenu = false
                                         viewModel.cleanInactiveTracks()
-                                    },
+                                    }
                                 )
                             }
                         }
                     }
                 },
                 scrollBehavior = null,
-                expandedHeight = 0.dp,
+                expandedHeight = 0.dp
             )
-        },
+        }
     ) { innerPadding ->
         Column(
             modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
+            Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
         ) {
             // Header Area (大字标题 + 药丸动作栏，无大方块海报)
             PlaylistHeaderArea(
                 playlist = uiState.playlist,
                 trackCount = uiState.tracks.size,
                 onPlayAll = onPlayAll,
-                onShufflePlay = { viewModel.playShuffle() },
+                onShufflePlay = { viewModel.playShuffle() }
             )
 
             when {
                 uiState.isLoading && uiState.tracks.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
                     }
@@ -313,31 +310,31 @@ fun PlaylistDetailScreen(
                 uiState.tracks.isEmpty() -> {
                     Box(
                         modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .padding(32.dp),
-                        contentAlignment = Alignment.Center,
+                        Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
                                 imageVector = AppIcons.QueueMusic,
                                 contentDescription = null,
                                 modifier = Modifier.size(56.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 text = "歌单内暂无歌曲",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = "可以在曲库或搜索结果中将喜欢的音乐加入歌单",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
@@ -348,17 +345,17 @@ fun PlaylistDetailScreen(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding =
-                            PaddingValues(
-                                start = 12.dp,
-                                end = 12.dp,
-                                top = 4.dp,
-                                bottom = MiniPlayerDefaults.PenetrativeContentBottomPadding,
-                            ),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        PaddingValues(
+                            start = 12.dp,
+                            end = 12.dp,
+                            top = 4.dp,
+                            bottom = MiniPlayerDefaults.PenetrativeContentBottomPadding
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         itemsIndexed(
                             items = uiState.tracks,
-                            key = { _, item -> item.id },
+                            key = { _, item -> item.id }
                         ) { index, track ->
                             val isDragging = dragDropState.draggedIndex == index
                             PlaylistTrackRow(
@@ -376,16 +373,16 @@ fun PlaylistDetailScreen(
                                         .makeText(
                                             context,
                                             "已将 “${track.title}” 添加到下一首播放",
-                                            android.widget.Toast.LENGTH_SHORT,
+                                            android.widget.Toast.LENGTH_SHORT
                                         ).show()
                                 },
                                 onShowDetails = { trackForDetails = it },
                                 modifier =
-                                    if (isDragging) {
-                                        Modifier.zIndex(3f)
-                                    } else {
-                                        Modifier.animateItemPlacement()
-                                    },
+                                if (isDragging) {
+                                    Modifier.zIndex(3f)
+                                } else {
+                                    Modifier.animateItemPlacement()
+                                }
                             )
                         }
                     }
@@ -401,7 +398,7 @@ fun PlaylistDetailScreen(
             onPlay = {
                 viewModel.playTrack(trackForDetails!!)
                 trackForDetails = null
-            },
+            }
         )
     }
 }

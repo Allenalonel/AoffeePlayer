@@ -7,7 +7,7 @@ data class RemoteDirectory(
     val files: List<RemoteFile> = emptyList(),
     val serverId: Long? = null,
     val lastModified: Long = 0L,
-    val etag: String? = null,
+    val etag: String? = null
 ) {
     val audioFiles: List<RemoteFile> get() = files.filter { it.isAudio }
     val isEmpty: Boolean get() = subDirectories.isEmpty() && files.isEmpty()
@@ -46,7 +46,7 @@ data class RemoteDirectory(
 
         fun isAncestor(
             ancestorPath: String,
-            currentPath: String,
+            currentPath: String
         ): Boolean {
             val normAncestor = normalizePath(ancestorPath)
             val normCurrent = normalizePath(currentPath)
@@ -56,7 +56,7 @@ data class RemoteDirectory(
 
         fun buildBreadcrumbs(
             server: WebDavServer?,
-            path: String,
+            path: String
         ): List<Breadcrumb> {
             val isLocal = server?.isLocal == true || path.startsWith("/local/")
             val rootName =
@@ -125,5 +125,5 @@ data class RemoteDirectory(
 
 data class Breadcrumb(
     val name: String,
-    val path: String,
+    val path: String
 )

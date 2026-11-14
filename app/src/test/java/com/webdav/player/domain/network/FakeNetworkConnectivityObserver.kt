@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class FakeNetworkConnectivityObserver(
-    initialStatus: NetworkStatus = NetworkStatus(isConnected = true, isWifi = true),
+    initialStatus: NetworkStatus = NetworkStatus(isConnected = true, isWifi = true)
 ) : NetworkConnectivityObserver {
     private val _networkStatus = MutableStateFlow(initialStatus)
     override val networkStatus: StateFlow<NetworkStatus> = _networkStatus.asStateFlow()

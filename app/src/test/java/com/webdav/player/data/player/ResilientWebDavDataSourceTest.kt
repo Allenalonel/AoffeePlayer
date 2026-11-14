@@ -1,12 +1,18 @@
 package com.webdav.player.data.player
 
-import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.InterruptedIOException
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -22,14 +28,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.io.InterruptedIOException
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Unit tests for ResilientWebDavDataSource.
@@ -73,7 +71,7 @@ class ResilientWebDavDataSourceTest {
                 underlyingFactory = baseHttpDataSourceFactory,
                 initialBackoffMs = 1000L,
                 maxBackoffMs = 6000L,
-                backoffMultiplier = 2.0,
+                backoffMultiplier = 2.0
             )
 
         assertEquals(1000L, dataSource.calculateBackoffDelay(0))
@@ -95,7 +93,7 @@ class ResilientWebDavDataSourceTest {
                 .setResponseCode(200)
                 .setBody(okio.Buffer().write(part1))
                 .setHeader("Content-Length", fullData.size.toString())
-                .setSocketPolicy(SocketPolicy.DISCONNECT_AT_END),
+                .setSocketPolicy(SocketPolicy.DISCONNECT_AT_END)
         )
 
         // Second response accepts Range: bytes=5- and returns remaining bytes
@@ -104,7 +102,7 @@ class ResilientWebDavDataSourceTest {
                 .setResponseCode(206)
                 .setBody(okio.Buffer().write(remaining))
                 .setHeader("Content-Range", "bytes 5-${fullData.size - 1}/${fullData.size}")
-                .setHeader("Content-Length", remaining.size.toString()),
+                .setHeader("Content-Length", remaining.size.toString())
         )
 
         val reconnectingEvents = CopyOnWriteArrayList<Boolean>()
@@ -113,7 +111,7 @@ class ResilientWebDavDataSourceTest {
                 underlyingFactory = baseHttpDataSourceFactory,
                 maxRetryAttempts = 3,
                 sleeper = { recordedBackoffs.add(it) },
-                onReconnectingListener = { reconnectingEvents.add(it) },
+                onReconnectingListener = { reconnectingEvents.add(it) }
             )
 
         val dataSpec =
@@ -159,7 +157,7 @@ class ResilientWebDavDataSourceTest {
                 .setResponseCode(200)
                 .setBody(okio.Buffer().write(prematureBytes))
                 .setHeader("Content-Length", totalExpected.toString())
-                .setSocketPolicy(SocketPolicy.DISCONNECT_AT_END),
+                .setSocketPolicy(SocketPolicy.DISCONNECT_AT_END)
         )
 
         // Resumed Range response
@@ -168,14 +166,14 @@ class ResilientWebDavDataSourceTest {
                 .setResponseCode(206)
                 .setBody(okio.Buffer().write(remainderBytes))
                 .setHeader("Content-Range", "bytes 10-19/20")
-                .setHeader("Content-Length", remainderBytes.size.toString()),
+                .setHeader("Content-Length", remainderBytes.size.toString())
         )
 
         val resilientSource =
             ResilientWebDavDataSource(
                 underlyingFactory = baseHttpDataSourceFactory,
                 maxRetryAttempts = 3,
-                sleeper = { recordedBackoffs.add(it) },
+                sleeper = { recordedBackoffs.add(it) }
             )
 
         val dataSpec =
@@ -214,14 +212,14 @@ class ResilientWebDavDataSourceTest {
             mockWebServer.enqueue(
                 MockResponse()
                     .setResponseCode(code)
-                    .setBody("Error $code"),
+                    .setBody("Error $code")
             )
 
             val resilientSource =
                 ResilientWebDavDataSource(
                     underlyingFactory = baseHttpDataSourceFactory,
                     maxRetryAttempts = 5,
-                    sleeper = { recordedBackoffs.add(it) },
+                    sleeper = { recordedBackoffs.add(it) }
                 )
 
             val dataSpec =
@@ -250,20 +248,20 @@ class ResilientWebDavDataSourceTest {
                 .setResponseCode(200)
                 .setBody(okio.Buffer().write("12345".toByteArray()))
                 .setHeader("Content-Length", "5")
-                .setSocketPolicy(SocketPolicy.DISCONNECT_AT_END),
+                .setSocketPolicy(SocketPolicy.DISCONNECT_AT_END)
         )
         // Reconnect range request gets 416
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(416)
-                .setBody("Requested Range Not Satisfiable"),
+                .setBody("Requested Range Not Satisfiable")
         )
 
         val resilientSource =
             ResilientWebDavDataSource(
                 underlyingFactory = baseHttpDataSourceFactory,
                 maxRetryAttempts = 3,
-                sleeper = { recordedBackoffs.add(it) },
+                sleeper = { recordedBackoffs.add(it) }
             )
 
         val dataSpec =
@@ -290,7 +288,7 @@ class ResilientWebDavDataSourceTest {
             ResilientWebDavDataSource(
                 underlyingFactory = baseHttpDataSourceFactory,
                 maxRetryAttempts = 10,
-                sleeper = { Thread.sleep(it) },
+                sleeper = { Thread.sleep(it) }
             )
 
         // Close before read
@@ -314,7 +312,7 @@ class ResilientWebDavDataSourceTest {
                 .setResponseCode(200)
                 .setBody(okio.Buffer().write(prematureBytes))
                 .setHeader("Content-Length", totalExpected.toString())
-                .setSocketPolicy(SocketPolicy.DISCONNECT_AT_END),
+                .setSocketPolicy(SocketPolicy.DISCONNECT_AT_END)
         )
 
         // Second response for Range: bytes=10- returns HTTP 200 OK (server does not support Range)
@@ -322,14 +320,14 @@ class ResilientWebDavDataSourceTest {
             MockResponse()
                 .setResponseCode(200)
                 .setBody(okio.Buffer().write("FULLCONTENTFROMBYTE0".toByteArray()))
-                .setHeader("Content-Length", totalExpected.toString()),
+                .setHeader("Content-Length", totalExpected.toString())
         )
 
         val resilientSource =
             ResilientWebDavDataSource(
                 underlyingFactory = baseHttpDataSourceFactory,
                 maxRetryAttempts = 3,
-                sleeper = { recordedBackoffs.add(it) },
+                sleeper = { recordedBackoffs.add(it) }
             )
 
         val dataSpec =
@@ -350,7 +348,7 @@ class ResilientWebDavDataSourceTest {
         } catch (e: UnsupportedRangeReconnectionException) {
             assertTrue(
                 e.message?.contains("Remote server does not support partial content") == true ||
-                    e.message?.contains("HTTP 200 returned on Range request") == true,
+                    e.message?.contains("HTTP 200 returned on Range request") == true
             )
         } finally {
             resilientSource.close()
@@ -361,7 +359,7 @@ class ResilientWebDavDataSourceTest {
     fun isNonRetryable_identifiesUnsupportedRangeReconnectionExceptionInCausalChain() {
         val resilientSource =
             ResilientWebDavDataSource(
-                underlyingFactory = baseHttpDataSourceFactory,
+                underlyingFactory = baseHttpDataSourceFactory
             )
         val ex =
             UnsupportedRangeReconnectionException("Remote server does not support partial content (HTTP 200 returned on Range request)")
@@ -384,7 +382,7 @@ class ResilientWebDavDataSourceTest {
             mockWebServer.enqueue(
                 MockResponse()
                     .setResponseCode(500)
-                    .setBody("Server Error"),
+                    .setBody("Server Error")
             )
         }
 
@@ -393,7 +391,7 @@ class ResilientWebDavDataSourceTest {
             ResilientWebDavDataSource(
                 underlyingFactory = baseHttpDataSourceFactory,
                 sleeper = { recordedBackoffs.add(it) },
-                onReconnectingListener = { reconnectingEvents.add(it) },
+                onReconnectingListener = { reconnectingEvents.add(it) }
             )
 
         val dataSpec =
@@ -423,20 +421,20 @@ class ResilientWebDavDataSourceTest {
                 .setResponseCode(200)
                 .setBody(okio.Buffer().write("12345".toByteArray()))
                 .setHeader("Content-Length", "20")
-                .setSocketPolicy(SocketPolicy.DISCONNECT_AT_END),
+                .setSocketPolicy(SocketPolicy.DISCONNECT_AT_END)
         )
         repeat(6) {
             mockWebServer.enqueue(
                 MockResponse()
                     .setResponseCode(500)
-                    .setBody("Server Error"),
+                    .setBody("Server Error")
             )
         }
 
         val resilientSource =
             ResilientWebDavDataSource(
                 underlyingFactory = baseHttpDataSourceFactory,
-                sleeper = { recordedBackoffs.add(it) },
+                sleeper = { recordedBackoffs.add(it) }
             )
 
         val dataSpec =
@@ -466,7 +464,7 @@ class ResilientWebDavDataSourceTest {
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(500)
-                .setBody("Server Error"),
+                .setBody("Server Error")
         )
 
         val sleepStartedLatch = CountDownLatch(1)
@@ -476,7 +474,7 @@ class ResilientWebDavDataSourceTest {
                 sleeper = { _ ->
                     sleepStartedLatch.countDown()
                     Thread.sleep(30_000L)
-                },
+                }
             )
 
         val dataSpec =

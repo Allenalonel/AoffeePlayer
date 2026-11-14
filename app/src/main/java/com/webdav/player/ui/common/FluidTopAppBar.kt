@@ -50,7 +50,7 @@ object FluidTopAppBarDefaults {
 
     fun calculateCompactTitleAlpha(
         fraction: Float,
-        isExpandedTitlePresent: Boolean,
+        isExpandedTitlePresent: Boolean
     ): Float {
         if (!isExpandedTitlePresent) return 1f
         return ((fraction - 0.4f) / 0.6f).coerceIn(0f, 1f)
@@ -60,14 +60,14 @@ object FluidTopAppBarDefaults {
 
     fun calculateExpandedHeight(
         baseHeight: Dp,
-        fraction: Float,
+        fraction: Float
     ): Dp = lerp(baseHeight, 0.dp, fraction)
 
     fun calculateLeftPadding(hasNavigationIcon: Boolean): Dp = if (hasNavigationIcon) LeftBaselineWithNav else LeftBaselineNoNav
 
     fun isScrolled(
         fraction: Float,
-        contentOffset: Float,
+        contentOffset: Float
     ): Boolean = fraction > 0.01f || contentOffset < -1f
 }
 
@@ -81,7 +81,7 @@ fun FluidTopAppBar(
     actions: (@Composable RowScope.() -> Unit)? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null,
     expandedHeight: Dp = FluidTopAppBarDefaults.ExpandedHeight,
-    containerColor: Color? = null,
+    containerColor: Color? = null
 ) {
     val density = LocalDensity.current
     val hasExpandedTitle = expandedHeight > 0.dp
@@ -136,22 +136,22 @@ fun FluidTopAppBar(
         modifier = modifier.fillMaxWidth(),
         color = resolvedContainerColor,
         shadowElevation = elevation,
-        tonalElevation = lerp(0.dp, 2.dp, scrollProgress),
+        tonalElevation = lerp(0.dp, 2.dp, scrollProgress)
     ) {
         Column(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding(),
+            Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
         ) {
             // Compact 56dp Top Row
             Row(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(FluidTopAppBarDefaults.CollapsedHeight)
-                        .padding(start = 16.dp, end = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                Modifier
+                    .fillMaxWidth()
+                    .height(FluidTopAppBarDefaults.CollapsedHeight)
+                    .padding(start = 16.dp, end = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 if (navigationIcon != null) {
                     navigationIcon()
@@ -161,10 +161,10 @@ fun FluidTopAppBar(
                 // Compact Title
                 Box(
                     modifier =
-                        Modifier
-                            .weight(1f)
-                            .padding(end = 8.dp),
-                    contentAlignment = Alignment.CenterStart,
+                    Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp),
+                    contentAlignment = Alignment.CenterStart
                 ) {
                     Text(
                         text = title,
@@ -174,18 +174,18 @@ fun FluidTopAppBar(
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier =
-                            Modifier
-                                .alpha(compactTitleAlpha)
-                                .graphicsLayer {
-                                    translationY = (1f - compactTitleAlpha) * 8f
-                                },
+                        Modifier
+                            .alpha(compactTitleAlpha)
+                            .graphicsLayer {
+                                translationY = (1f - compactTitleAlpha) * 8f
+                            }
                     )
                 }
 
                 if (actions != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        content = actions,
+                        content = actions
                     )
                 } else {
                     Spacer(modifier = Modifier.width(8.dp))
@@ -197,41 +197,41 @@ fun FluidTopAppBar(
                 val leftPadding = FluidTopAppBarDefaults.calculateLeftPadding(navigationIcon != null)
                 Box(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(currentExpandedHeight)
-                            .padding(start = leftPadding, end = 16.dp)
-                            .alpha(expandedTitleAlpha)
-                            .graphicsLayer {
-                                translationY = -fraction * 10f
-                            },
-                    contentAlignment = Alignment.CenterStart,
+                    Modifier
+                        .fillMaxWidth()
+                        .height(currentExpandedHeight)
+                        .padding(start = leftPadding, end = 16.dp)
+                        .alpha(expandedTitleAlpha)
+                        .graphicsLayer {
+                            translationY = -fraction * 10f
+                        },
+                    contentAlignment = Alignment.CenterStart
                 ) {
                     Column(
-                        verticalArrangement = Arrangement.Center,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = title,
                             style =
-                                MaterialTheme.typography.headlineMedium.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    letterSpacing = (-0.5).sp,
-                                ),
+                            MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = (-0.5).sp
+                            ),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         if (!subtitle.isNullOrBlank()) {
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = subtitle,
                                 style =
-                                    MaterialTheme.typography.bodyMedium.copy(
-                                        fontWeight = FontWeight.SemiBold,
-                                    ),
+                                MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }

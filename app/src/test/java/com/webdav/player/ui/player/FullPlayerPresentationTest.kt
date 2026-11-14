@@ -11,7 +11,6 @@ import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlayerSessionState
-import com.webdav.player.domain.model.formatAudiophileSpecs
 import com.webdav.player.domain.session.FakeMusicPlayerAppSession
 import com.webdav.player.ui.navigation.MainNavigationCoordinator
 import com.webdav.player.ui.player.components.isFullPlayerRetryBannerVisible
@@ -39,7 +38,7 @@ class FullPlayerPresentationTest {
             album = "Hotel California",
             durationMs = 390_000L,
             size = 119_437_500L,
-            format = AudioFormat.FLAC,
+            format = AudioFormat.FLAC
         )
 
     private val standardMp3Track =
@@ -52,7 +51,7 @@ class FullPlayerPresentationTest {
             album = "Help!",
             durationMs = 125_000L,
             size = 5_000_000L,
-            format = AudioFormat.MP3,
+            format = AudioFormat.MP3
         )
 
     @Before
@@ -70,7 +69,7 @@ class FullPlayerPresentationTest {
             PlaybackProgress(
                 currentPositionMs = 50_000L,
                 durationMs = 200_000L,
-                bufferedPositionMs = 150_000L,
+                bufferedPositionMs = 150_000L
             )
 
         assertEquals(0.25f, progress.progressFraction, 0.001f)
@@ -86,7 +85,7 @@ class FullPlayerPresentationTest {
             PlaybackProgress(
                 currentPositionMs = 250_000L,
                 durationMs = 200_000L,
-                bufferedPositionMs = 300_000L,
+                bufferedPositionMs = 300_000L
             )
         assertEquals(1.0f, overflowProgress.progressFraction, 0.001f)
         assertEquals(1.0f, overflowProgress.bufferedFraction, 0.001f)
@@ -99,7 +98,7 @@ class FullPlayerPresentationTest {
     @Test
     fun minimalistDragHandle_collapsesExpandedSheet() {
         coordinator.onSessionStateChanged(
-            PlayerSessionState(queue = PlaybackQueue(listOf(hiResFlacTrack), 0)),
+            PlayerSessionState(queue = PlaybackQueue(listOf(hiResFlacTrack), 0))
         )
         coordinator.expandFullPlayer()
         assertTrue(coordinator.uiState.value.isFullPlayerExpanded)
@@ -127,7 +126,7 @@ class FullPlayerPresentationTest {
                 artist = "CD Artist",
                 durationMs = 200_000L,
                 size = 20_000_000L,
-                format = AudioFormat.FLAC,
+                format = AudioFormat.FLAC
             )
         val standardFlacSpecs = standardFlacTrack.audiophileSpecsModel
         assertTrue(standardFlacSpecs.isLossless)
@@ -157,7 +156,7 @@ class FullPlayerPresentationTest {
         val xiaomiManager =
             DefaultBatteryWhitelistManager(
                 manufacturerProvider = { "Xiaomi" },
-                brandProvider = { "Redmi" },
+                brandProvider = { "Redmi" }
             )
         assertTrue(xiaomiManager.isXiaomiDevice())
 
@@ -172,7 +171,7 @@ class FullPlayerPresentationTest {
         val nonXiaomiManager =
             DefaultBatteryWhitelistManager(
                 manufacturerProvider = { "Google" },
-                brandProvider = { "Pixel" },
+                brandProvider = { "Pixel" }
             )
         assertFalse(nonXiaomiManager.isXiaomiDevice())
 
@@ -220,7 +219,7 @@ class FullPlayerPresentationTest {
         val state =
             PlayerSessionState(
                 queue = PlaybackQueue(listOf(hiResFlacTrack), 0),
-                isUnsupportedRange = true,
+                isUnsupportedRange = true
             )
         assertTrue(state.isUnsupportedRange)
 
@@ -254,7 +253,7 @@ class FullPlayerPresentationTest {
         val weakNetworkOnly = PlayerSessionState(isWeakNetwork = true, canManualRetry = false)
         assertFalse(
             "During early 15s quiet reconnection, full player banner must not show yet",
-            isFullPlayerRetryBannerVisible(weakNetworkOnly),
+            isFullPlayerRetryBannerVisible(weakNetworkOnly)
         )
         assertFalse(weakNetworkOnly.isSuspendedRetry)
 
@@ -273,7 +272,7 @@ class FullPlayerPresentationTest {
             PlayerSessionState(
                 queue = PlaybackQueue(listOf(hiResFlacTrack), 0),
                 isWeakNetwork = true,
-                canManualRetry = true,
+                canManualRetry = true
             )
         assertTrue(isFullPlayerRetryBannerVisible(state))
 
@@ -313,14 +312,14 @@ class FullPlayerPresentationTest {
             PlayerSessionState(
                 queue = PlaybackQueue(listOf(currentTrack, standardMp3Track), 0),
                 isWeakNetwork = true,
-                canManualRetry = true,
+                canManualRetry = true
             )
         fakeSession._sessionState.value = state
         fakeSession._playbackProgress.value =
             PlaybackProgress(
                 currentPositionMs = 75_000L,
                 durationMs = currentTrack.durationMs,
-                bufferedPositionMs = 75_000L,
+                bufferedPositionMs = 75_000L
             )
 
         // Invoke retry
@@ -332,7 +331,7 @@ class FullPlayerPresentationTest {
         assertEquals(
             currentTrack.id,
             fakeSession.sessionState.value.currentTrack
-                ?.id,
+                ?.id
         )
         assertEquals(2, fakeSession.sessionState.value.queue.tracks.size)
         assertEquals(75_000L, fakeSession.playbackProgress.value.currentPositionMs)
@@ -366,7 +365,7 @@ class FullPlayerPresentationTest {
 
 class FakeBatteryWhitelistManager(
     var isIgnoring: Boolean = false,
-    var isXiaomi: Boolean = false,
+    var isXiaomi: Boolean = false
 ) : BatteryWhitelistManager {
     var requestIgnoreCount = 0
     var openOemSettingsCount = 0

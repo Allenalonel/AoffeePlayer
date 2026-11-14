@@ -17,11 +17,11 @@ import java.util.concurrent.atomic.AtomicReference
 class UnexpectedEndOfStreamException(
     message: String,
     val bytesRead: Long = 0L,
-    val expectedBytes: Long = 0L,
+    val expectedBytes: Long = 0L
 ) : IOException(message)
 
 class UnsupportedRangeReconnectionException(
-    message: String,
+    message: String
 ) : IOException(message)
 
 /**
@@ -35,7 +35,7 @@ class ResilientWebDavDataSource(
     val maxBackoffMs: Long = DEFAULT_MAX_BACKOFF_MS,
     val backoffMultiplier: Double = DEFAULT_BACKOFF_MULTIPLIER,
     val sleeper: (Long) -> Unit = { Thread.sleep(it) },
-    private val onReconnectingListener: ((Boolean) -> Unit)? = null,
+    private val onReconnectingListener: ((Boolean) -> Unit)? = null
 ) : HttpDataSource {
     companion object {
         const val DEFAULT_MAX_RETRIES: Int = 5
@@ -52,7 +52,7 @@ class ResilientWebDavDataSource(
         private val maxBackoffMs: Long = DEFAULT_MAX_BACKOFF_MS,
         private val backoffMultiplier: Double = DEFAULT_BACKOFF_MULTIPLIER,
         private val sleeper: (Long) -> Unit = { Thread.sleep(it) },
-        private val onReconnectingListener: ((Boolean) -> Unit)? = null,
+        private val onReconnectingListener: ((Boolean) -> Unit)? = null
     ) : HttpDataSource.Factory {
         override fun createDataSource(): HttpDataSource =
             ResilientWebDavDataSource(
@@ -62,7 +62,7 @@ class ResilientWebDavDataSource(
                 maxBackoffMs = maxBackoffMs,
                 backoffMultiplier = backoffMultiplier,
                 sleeper = sleeper,
-                onReconnectingListener = onReconnectingListener,
+                onReconnectingListener = onReconnectingListener
             )
 
         override fun setDefaultRequestProperties(defaultRequestProperties: Map<String, String>): HttpDataSource.Factory {
@@ -110,7 +110,7 @@ class ResilientWebDavDataSource(
 
     override fun setRequestProperty(
         name: String,
-        value: String,
+        value: String
     ) {
         requestProperties[name] = value
         currentDataSource?.setRequestProperty(name, value)
@@ -178,7 +178,7 @@ class ResilientWebDavDataSource(
     override fun read(
         buffer: ByteArray,
         offset: Int,
-        length: Int,
+        length: Int
     ): Int {
         if (length == 0) return 0
         activeThread.set(Thread.currentThread())
@@ -205,7 +205,7 @@ class ResilientWebDavDataSource(
                             throw UnexpectedEndOfStreamException(
                                 "Premature EOF: received $totalBytesRead bytes but expected $expectedContentLength bytes",
                                 bytesRead = totalBytesRead,
-                                expectedBytes = expectedContentLength,
+                                expectedBytes = expectedContentLength
                             )
                         }
                         return C.RESULT_END_OF_INPUT
@@ -282,7 +282,7 @@ class ResilientWebDavDataSource(
 
         if (currentOffset > 0L && nextSource.responseCode == 200) {
             throw UnsupportedRangeReconnectionException(
-                "Remote server does not support partial content (HTTP 200 returned on Range request)",
+                "Remote server does not support partial content (HTTP 200 returned on Range request)"
             )
         }
     }
@@ -359,6 +359,6 @@ class ResilientWebDavDataSource(
                 (
                     cause is HttpDataSource.InvalidResponseCodeException &&
                         cause.responseCode in NON_RETRYABLE_STATUS_CODES
-                )
+                    )
         }
 }

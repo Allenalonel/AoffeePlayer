@@ -3,7 +3,7 @@ package com.webdav.player.domain.model
 enum class QueueOrigin {
     DIRECTORY,
     PLAYLIST,
-    AD_HOC,
+    AD_HOC
     ;
 
     companion object {

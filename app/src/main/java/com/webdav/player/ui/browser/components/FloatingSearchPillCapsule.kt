@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -66,14 +65,14 @@ fun FloatingSearchPillCapsule(
     selectedCount: Int = 0,
     isAllSelected: Boolean = false,
     onClearSelection: () -> Unit = {},
-    onToggleSelectAll: () -> Unit = {},
+    onToggleSelectAll: () -> Unit = {}
 ) {
     val isReduceMotion = isReduceMotionEnabled()
 
     val expansionProgress by animateFloatAsState(
         targetValue = if (isExpanded) 1f else 0f,
         animationSpec = MotionTokens.spatialSpec(isReduceMotion),
-        label = "search_capsule_expansion",
+        label = "search_capsule_expansion"
     )
 
     // When completely collapsed and not expanded, do not consume layout/touches
@@ -83,10 +82,10 @@ fun FloatingSearchPillCapsule(
 
     BoxWithConstraints(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .height(56.dp),
+        modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .height(56.dp)
     ) {
         val availableWidth = maxWidth
 
@@ -111,10 +110,10 @@ fun FloatingSearchPillCapsule(
 
         Box(
             modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(top = currentTopOffset, end = currentEndOffset),
-            contentAlignment = Alignment.TopEnd,
+            Modifier
+                .fillMaxSize()
+                .padding(top = currentTopOffset, end = currentEndOffset),
+            contentAlignment = Alignment.TopEnd
         ) {
             Surface(
                 shape = RoundedCornerShape(currentCornerRadius),
@@ -122,31 +121,31 @@ fun FloatingSearchPillCapsule(
                 tonalElevation = tonalElevation,
                 shadowElevation = shadowElevation,
                 modifier =
-                    Modifier
-                        .width(currentWidth)
-                        .height(currentHeight)
-                        .expressivePress(enabled = !isExpanded),
+                Modifier
+                    .width(currentWidth)
+                    .height(currentHeight)
+                    .expressivePress(enabled = !isExpanded)
             ) {
                 if (expansionProgress < 0.35f) {
                     // Collapsed state: 38dp circular magnifying glass button
                     val iconAlpha = ((0.35f - expansionProgress) / 0.35f).coerceIn(0f, 1f)
                     Box(
                         modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .alpha(iconAlpha)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = onExpand,
-                                ),
-                        contentAlignment = Alignment.Center,
+                        Modifier
+                            .fillMaxSize()
+                            .alpha(iconAlpha)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onExpand
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = AppIcons.Search,
                             contentDescription = "搜索曲库",
                             tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 } else {
@@ -154,37 +153,37 @@ fun FloatingSearchPillCapsule(
                     val contentAlpha = ((expansionProgress - 0.35f) / 0.65f).coerceIn(0f, 1f)
                     Box(
                         modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .alpha(contentAlpha),
-                        contentAlignment = Alignment.Center,
+                        Modifier
+                            .fillMaxSize()
+                            .alpha(contentAlpha),
+                        contentAlignment = Alignment.Center
                     ) {
                         if (isSearchSelectionMode) {
                             // Search Multi-Selection Top Row
                             Row(
                                 modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 8.dp),
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(
                                         onClick = onClearSelection,
-                                        modifier = Modifier.size(36.dp),
+                                        modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
                                             imageVector = AppIcons.Close,
                                             contentDescription = "退出多选",
-                                            tint = MaterialTheme.colorScheme.onSurface,
+                                            tint = MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "已选 $selectedCount 项",
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
+                                        fontWeight = FontWeight.Bold
                                     )
                                 }
                                 TextButton(onClick = onToggleSelectAll) {
@@ -192,7 +191,7 @@ fun FloatingSearchPillCapsule(
                                         text = if (isAllSelected) "取消全选" else "全选",
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
@@ -200,19 +199,19 @@ fun FloatingSearchPillCapsule(
                             // Standard Search Input Row
                             Row(
                                 modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 IconButton(
                                     onClick = onBackClick,
-                                    modifier = Modifier.size(38.dp),
+                                    modifier = Modifier.size(38.dp)
                                 ) {
                                     Icon(
                                         imageVector = AppIcons.ArrowBack,
                                         contentDescription = "返回",
-                                        tint = MaterialTheme.colorScheme.onSurface,
+                                        tint = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
 
@@ -222,7 +221,7 @@ fun FloatingSearchPillCapsule(
                                     imageVector = AppIcons.Search,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier.size(20.dp)
                                 )
 
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -234,15 +233,15 @@ fun FloatingSearchPillCapsule(
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                                     keyboardActions = KeyboardActions(onSearch = { onSearch(searchQuery) }),
                                     textStyle =
-                                        MaterialTheme.typography.bodyLarge.copy(
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            fontWeight = FontWeight.SemiBold,
-                                        ),
+                                    MaterialTheme.typography.bodyLarge.copy(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.SemiBold
+                                    ),
                                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                     modifier =
-                                        Modifier
-                                            .weight(1f)
-                                            .focusRequester(focusRequester),
+                                    Modifier
+                                        .weight(1f)
+                                        .focusRequester(focusRequester),
                                     decorationBox = { innerTextField ->
                                         if (searchQuery.isEmpty()) {
                                             Text(
@@ -250,23 +249,23 @@ fun FloatingSearchPillCapsule(
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                                 maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
                                         innerTextField()
-                                    },
+                                    }
                                 )
 
                                 if (searchQuery.isNotEmpty()) {
                                     IconButton(
                                         onClick = onClearQuery,
-                                        modifier = Modifier.size(28.dp),
+                                        modifier = Modifier.size(28.dp)
                                     ) {
                                         Icon(
                                             imageVector = AppIcons.Close,
                                             contentDescription = "清空输入",
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(16.dp),
+                                            modifier = Modifier.size(16.dp)
                                         )
                                     }
                                 }

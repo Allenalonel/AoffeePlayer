@@ -28,7 +28,7 @@ class ServerRepositoryImpl(
     private val localStorageFolderDao: LocalStorageFolderDao? = null,
     private val context: Context? = null,
     private val cascadeInvalidator: StorageCascadeInvalidator? = null,
-    private val trackMetadataRepository: TrackMetadataRepository? = null,
+    private val trackMetadataRepository: TrackMetadataRepository? = null
 ) : ServerRepository {
     private val prefs = context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val isLocalStorageActive =
@@ -38,7 +38,7 @@ class ServerRepositoryImpl(
         combine(serverDao.getAllServersFlow(), getActiveServer()) { remoteServers, activeServer ->
             val localNode =
                 WebDavServer.createLocalStorage(
-                    isDefault = (activeServer?.id == LOCAL_STORAGE_ID),
+                    isDefault = (activeServer?.id == LOCAL_STORAGE_ID)
                 )
             listOf(localNode) + remoteServers.map { it.toDomain() }
         }
@@ -126,14 +126,14 @@ class ServerRepositoryImpl(
 
     override suspend fun addMountedLocalFolder(
         uriString: String,
-        displayName: String,
+        displayName: String
     ) {
         localStorageFolderDao?.insertFolder(
             LocalStorageFolderEntity(
                 uriString = uriString,
                 displayName = displayName,
-                dateAdded = System.currentTimeMillis(),
-            ),
+                dateAdded = System.currentTimeMillis()
+            )
         )
     }
 

@@ -34,7 +34,7 @@ internal class PlaybackQueueManager {
      */
     fun recordFailedTrack(
         trackId: String,
-        queueSize: Int,
+        queueSize: Int
     ): Boolean {
         failedTrackIdsInCurrentCycle.add(trackId)
         return if (queueSize > 1 && failedTrackIdsInCurrentCycle.size < queueSize) {
@@ -51,7 +51,7 @@ internal class PlaybackQueueManager {
      */
     fun calculateNextQueueIndex(
         queue: PlaybackQueue,
-        mode: PlaybackMode,
+        mode: PlaybackMode
     ): Int {
         if (queue.tracks.size <= 1) return 0
         if (failedTrackIdsInCurrentCycle.isNotEmpty() && mode == PlaybackMode.SINGLE_LOOP) {
@@ -65,7 +65,7 @@ internal class PlaybackQueueManager {
      */
     fun calculatePreviousQueueIndex(
         queue: PlaybackQueue,
-        mode: PlaybackMode,
+        mode: PlaybackMode
     ): Int {
         if (queue.tracks.size <= 1) return 0
         return queue.getPreviousIndex(mode) ?: 0
@@ -77,7 +77,7 @@ internal class PlaybackQueueManager {
      */
     fun advanceToNext(
         queue: PlaybackQueue,
-        mode: PlaybackMode,
+        mode: PlaybackMode
     ): AdvanceQueueResult? {
         if (queue.isEmpty) return null
         return if (mode == PlaybackMode.SHUFFLE && queue.currentIndex >= queue.tracks.lastIndex) {
@@ -92,7 +92,7 @@ internal class PlaybackQueueManager {
      */
     fun setPlaybackMode(
         queue: PlaybackQueue,
-        mode: PlaybackMode,
+        mode: PlaybackMode
     ): PlaybackModeUpdate {
         val updatedQueue =
             when {
@@ -116,7 +116,7 @@ internal class PlaybackQueueManager {
      */
     fun cyclePlaybackMode(
         queue: PlaybackQueue,
-        currentMode: PlaybackMode,
+        currentMode: PlaybackMode
     ): PlaybackModeUpdate = setPlaybackMode(queue, currentMode.next())
 
     /**
@@ -124,7 +124,7 @@ internal class PlaybackQueueManager {
      */
     fun playNext(
         queue: PlaybackQueue,
-        track: AudioTrack,
+        track: AudioTrack
     ): PlayNextDecision =
         if (queue.isEmpty) {
             PlayNextDecision.PlayAsNew(track)
@@ -137,13 +137,13 @@ internal class PlaybackQueueManager {
      */
     fun playNextAndAdvance(
         queue: PlaybackQueue,
-        track: AudioTrack,
+        track: AudioTrack
     ): PlayNextAndAdvanceResult {
         if (queue.isEmpty) return PlayNextAndAdvanceResult.PlayAsNew(track)
         val targetIndex = (queue.currentIndex + 1).coerceAtMost(queue.tracks.size)
         return PlayNextAndAdvanceResult.QueueUpdatedAndAdvance(
             queue = queue.insertNext(track),
-            targetIndex = targetIndex,
+            targetIndex = targetIndex
         )
     }
 
@@ -152,7 +152,7 @@ internal class PlaybackQueueManager {
      */
     fun removeQueueTrack(
         queue: PlaybackQueue,
-        index: Int,
+        index: Int
     ): RemoveQueueTrackResult {
         if (index !in queue.tracks.indices) return RemoveQueueTrackResult.Unchanged
         val wasCurrentTrack = (index == queue.currentIndex)
@@ -174,7 +174,7 @@ internal class PlaybackQueueManager {
 
     fun advanceOnTrackTransition(
         queue: PlaybackQueue,
-        mode: PlaybackMode,
+        mode: PlaybackMode
     ): TrackTransitionUpdate? {
         if (queue.isEmpty) return null
         val nextIndex = calculateNextQueueIndex(queue, mode)
@@ -187,7 +187,7 @@ internal class PlaybackQueueManager {
      */
     fun updateCurrentTrackDuration(
         queue: PlaybackQueue,
-        durationMs: Long,
+        durationMs: Long
     ): PlaybackQueue {
         val curIdx = queue.currentIndex
         val updated =
@@ -202,7 +202,7 @@ internal class PlaybackQueueManager {
         selectedFile: RemoteFile,
         initialMetadata: Map<String, TrackMetadata>,
         server: WebDavServer,
-        playbackMode: PlaybackMode = PlaybackMode.LIST_LOOP,
+        playbackMode: PlaybackMode = PlaybackMode.LIST_LOOP
     ): QueueLoadRequest? {
         val audioFiles = directory.files.filter { it.isAudio }
         if (audioFiles.isEmpty()) return null
@@ -217,7 +217,7 @@ internal class PlaybackQueueManager {
         return QueueLoadRequest(
             queue = queue,
             targetTrack = selectedTrack,
-            startPositionMs = 0L,
+            startPositionMs = 0L
         )
     }
 
@@ -226,14 +226,14 @@ internal class PlaybackQueueManager {
         return QueueLoadRequest(
             queue = queue,
             targetTrack = track,
-            startPositionMs = 0L,
+            startPositionMs = 0L
         )
     }
 
     fun buildPlaylistQueue(
         entries: List<PlaylistTrackEntry>,
         startIndex: Int,
-        playbackMode: PlaybackMode = PlaybackMode.LIST_LOOP,
+        playbackMode: PlaybackMode = PlaybackMode.LIST_LOOP
     ): QueueLoadRequest? {
         if (entries.isEmpty()) return null
         val tracks = entries.map { it.toAudioTrack() }
@@ -244,7 +244,7 @@ internal class PlaybackQueueManager {
         return QueueLoadRequest(
             queue = queue,
             targetTrack = currentTrack,
-            startPositionMs = 0L,
+            startPositionMs = 0L
         )
     }
 }
@@ -252,32 +252,32 @@ internal class PlaybackQueueManager {
 internal data class QueueLoadRequest(
     val queue: PlaybackQueue,
     val targetTrack: AudioTrack,
-    val startPositionMs: Long = 0L,
+    val startPositionMs: Long = 0L
 )
 
 internal data class PlaybackModeUpdate(
     val playbackMode: PlaybackMode,
-    val queue: PlaybackQueue,
+    val queue: PlaybackQueue
 )
 
 internal sealed interface PlayNextDecision {
     data class PlayAsNew(
-        val track: AudioTrack,
+        val track: AudioTrack
     ) : PlayNextDecision
 
     data class QueueUpdated(
-        val queue: PlaybackQueue,
+        val queue: PlaybackQueue
     ) : PlayNextDecision
 }
 
 internal sealed interface PlayNextAndAdvanceResult {
     data class PlayAsNew(
-        val track: AudioTrack,
+        val track: AudioTrack
     ) : PlayNextAndAdvanceResult
 
     data class QueueUpdatedAndAdvance(
         val queue: PlaybackQueue,
-        val targetIndex: Int,
+        val targetIndex: Int
     ) : PlayNextAndAdvanceResult
 }
 
@@ -287,21 +287,21 @@ internal sealed interface RemoveQueueTrackResult {
     data object Cleared : RemoveQueueTrackResult
 
     data class QueueUpdated(
-        val queue: PlaybackQueue,
+        val queue: PlaybackQueue
     ) : RemoveQueueTrackResult
 
     data class CurrentTrackChanged(
         val queue: PlaybackQueue,
-        val nextTrack: AudioTrack,
+        val nextTrack: AudioTrack
     ) : RemoveQueueTrackResult
 }
 
 internal data class AdvanceQueueResult(
     val targetIndex: Int,
-    val reshuffledQueue: PlaybackQueue? = null,
+    val reshuffledQueue: PlaybackQueue? = null
 )
 
 internal data class TrackTransitionUpdate(
     val queue: PlaybackQueue,
-    val nextTrack: AudioTrack,
+    val nextTrack: AudioTrack
 )

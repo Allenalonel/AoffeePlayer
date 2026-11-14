@@ -5,7 +5,7 @@ import java.util.Locale
 data class PlaybackProgress(
     val currentPositionMs: Long = 0L,
     val durationMs: Long = 0L,
-    val bufferedPositionMs: Long = 0L,
+    val bufferedPositionMs: Long = 0L
 ) {
     val progressFraction: Float
         get() = if (durationMs > 0L) (currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
@@ -24,7 +24,7 @@ data class PlaybackProgress(
             PlaybackProgress(
                 currentPositionMs = 0L,
                 durationMs = 0L,
-                bufferedPositionMs = 0L,
+                bufferedPositionMs = 0L
             )
 
         fun formatMs(durationMs: Long): String {

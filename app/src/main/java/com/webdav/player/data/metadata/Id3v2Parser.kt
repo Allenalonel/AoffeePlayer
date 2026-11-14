@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 object Id3v2Parser {
     fun parse(
         bytes: ByteArray,
-        offset: Int = 0,
+        offset: Int = 0
     ): ParsedAudioMetadata? {
         val reader = ByteSliceReader(bytes, offset)
         if (!reader.hasRemaining(10)) return null
@@ -178,13 +178,13 @@ object Id3v2Parser {
             durationMs = durationMs,
             artworkData = artworkData,
             artworkMimeType = artworkMimeType,
-            lyrics = lyrics,
+            lyrics = lyrics
         )
     }
 
     private fun readUsltFrame(
         reader: ByteSliceReader,
-        size: Int,
+        size: Int
     ): String? {
         if (size <= 4) {
             reader.skip(size)
@@ -207,7 +207,7 @@ object Id3v2Parser {
 
     private fun readSyltFrame(
         reader: ByteSliceReader,
-        size: Int,
+        size: Int
     ): String? {
         if (size <= 6) {
             reader.skip(size)
@@ -247,7 +247,7 @@ object Id3v2Parser {
 
     private fun readTextFrame(
         reader: ByteSliceReader,
-        size: Int,
+        size: Int
     ): String {
         if (size <= 1) {
             reader.skip(size)
@@ -275,7 +275,7 @@ object Id3v2Parser {
 
     private fun readApicFrame(
         reader: ByteSliceReader,
-        size: Int,
+        size: Int
     ): Pair<ByteArray?, String?> {
         val startPos = reader.position()
         val endPos = startPos + size
@@ -313,7 +313,7 @@ object Id3v2Parser {
 
     private fun readPicFrame(
         reader: ByteSliceReader,
-        size: Int,
+        size: Int
     ): Pair<ByteArray?, String?> {
         val startPos = reader.position()
         val endPos = startPos + size

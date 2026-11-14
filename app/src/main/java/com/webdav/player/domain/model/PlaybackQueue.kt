@@ -4,7 +4,7 @@ data class PlaybackQueue(
     val tracks: List<AudioTrack> = emptyList(),
     val currentIndex: Int = -1,
     val originalTracks: List<AudioTrack> = emptyList(),
-    val origin: QueueOrigin = QueueOrigin.DIRECTORY,
+    val origin: QueueOrigin = QueueOrigin.DIRECTORY
 ) {
     val currentTrack: AudioTrack?
         get() = if (currentIndex in tracks.indices) tracks[currentIndex] else null
@@ -105,7 +105,7 @@ data class PlaybackQueue(
         return copy(
             tracks = shuffledTracks,
             currentIndex = 0,
-            originalTracks = baseOriginal,
+            originalTracks = baseOriginal
         )
     }
 
@@ -120,7 +120,7 @@ data class PlaybackQueue(
         return copy(
             tracks = shuffledTracks,
             currentIndex = 0,
-            originalTracks = baseOriginal,
+            originalTracks = baseOriginal
         )
     }
 
@@ -141,7 +141,7 @@ data class PlaybackQueue(
         return copy(
             tracks = restoredTracks,
             currentIndex = restoredIndex,
-            originalTracks = emptyList(),
+            originalTracks = emptyList()
         )
     }
 
@@ -154,7 +154,7 @@ data class PlaybackQueue(
             }
 
             PlaybackMode.LIST_LOOP,
-            PlaybackMode.SHUFFLE,
+            PlaybackMode.SHUFFLE
             -> {
                 if (currentIndex >= tracks.lastIndex) 0 else currentIndex + 1
             }
@@ -170,7 +170,7 @@ data class PlaybackQueue(
             }
 
             PlaybackMode.LIST_LOOP,
-            PlaybackMode.SHUFFLE,
+            PlaybackMode.SHUFFLE
             -> {
                 if (currentIndex <= 0) tracks.lastIndex else currentIndex - 1
             }
@@ -184,7 +184,7 @@ data class PlaybackQueue(
             tracks: List<AudioTrack>,
             selectedIndex: Int = 0,
             originalTracks: List<AudioTrack> = emptyList(),
-            origin: QueueOrigin = QueueOrigin.DIRECTORY,
+            origin: QueueOrigin = QueueOrigin.DIRECTORY
         ): PlaybackQueue {
             if (tracks.isEmpty()) return EMPTY
             val validSelectedIndex = selectedIndex.coerceIn(tracks.indices)
@@ -192,7 +192,7 @@ data class PlaybackQueue(
                 tracks = tracks,
                 currentIndex = validSelectedIndex,
                 originalTracks = originalTracks,
-                origin = origin,
+                origin = origin
             )
         }
     }

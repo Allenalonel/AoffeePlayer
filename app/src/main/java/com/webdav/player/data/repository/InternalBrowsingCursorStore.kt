@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicReference
  */
 internal class InternalBrowsingCursorStore(
     private val context: Context? = null,
-    private val prefsName: String = DEFAULT_PREFS_NAME,
+    private val prefsName: String = DEFAULT_PREFS_NAME
 ) {
     companion object {
         const val DEFAULT_PREFS_NAME = "media_library_preferences"

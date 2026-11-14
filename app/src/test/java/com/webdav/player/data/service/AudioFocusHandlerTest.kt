@@ -30,7 +30,7 @@ class AudioFocusHandlerTest {
             name = "Test",
             url = "http://localhost:8080/dav",
             port = 8080,
-            pathPrefix = "/dav",
+            pathPrefix = "/dav"
         )
 
     private val testTrack =
@@ -40,7 +40,7 @@ class AudioFocusHandlerTest {
             remotePath = "/1.mp3",
             title = "Song 1",
             format = AudioFormat.MP3,
-            size = 100L,
+            size = 100L
         )
 
     @Before
@@ -49,13 +49,13 @@ class AudioFocusHandlerTest {
         fakeSession =
             FakeMusicPlayerAppSession(
                 initialState =
-                    PlayerSessionState(
-                        activeServer = testServer,
-                        queue =
-                            com.webdav.player.domain.model
-                                .PlaybackQueue(listOf(testTrack), 0),
-                        playbackState = PlaybackState.Playing,
-                    ),
+                PlayerSessionState(
+                    activeServer = testServer,
+                    queue =
+                    com.webdav.player.domain.model
+                        .PlaybackQueue(listOf(testTrack), 0),
+                    playbackState = PlaybackState.Playing
+                )
             )
         focusHandler = AudioFocusHandler(context, appSession = fakeSession)
     }

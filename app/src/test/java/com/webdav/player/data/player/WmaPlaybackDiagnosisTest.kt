@@ -1,13 +1,14 @@
 package com.webdav.player.data.player
 
 import com.webdav.player.data.metadata.AsfParser
-import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.player.FakeAudioPlayerEngine
 import com.webdav.player.domain.session.MusicPlayerAppSessionImpl
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -16,8 +17,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WmaPlaybackDiagnosisTest {
@@ -31,7 +30,7 @@ class WmaPlaybackDiagnosisTest {
      */
     private fun buildAsfHeaderWithPreroll(
         actualAudioDurationMs: Long,
-        prerollMs: Long,
+        prerollMs: Long
     ): ByteArray {
         val totalPlayDuration100ns = (actualAudioDurationMs + prerollMs) * 10000L
         val filePropsSize = 104
@@ -82,7 +81,7 @@ class WmaPlaybackDiagnosisTest {
         assertEquals(
             "WMA duration must subtract preroll (${standardPrerollMs}ms) to reflect actual audio duration",
             expectedActualDurationMs,
-            metadata.durationMs,
+            metadata.durationMs
         )
     }
 
@@ -100,7 +99,7 @@ class WmaPlaybackDiagnosisTest {
                     playerEngine = fakeEngine,
                     coroutineScope = testScope,
                     progressDispatcher = testDispatcher,
-                    periodicDispatcher = testDispatcher,
+                    periodicDispatcher = testDispatcher
                 )
 
             val file1 = RemoteFile(name = "01.wma", path = "/Music/01.wma", size = 1_000_000L)
@@ -129,12 +128,12 @@ class WmaPlaybackDiagnosisTest {
             assertEquals(
                 "Playback session must advance to next track when WMA track reaches natural audio EOF",
                 1,
-                session.sessionState.value.queue.currentIndex,
+                session.sessionState.value.queue.currentIndex
             )
             assertNotEquals(
                 "Playback session must not be stuck in Buffering at EOF due to bloated duration",
                 PlaybackState.Buffering,
-                session.sessionState.value.playbackState,
+                session.sessionState.value.playbackState
             )
         }
 }

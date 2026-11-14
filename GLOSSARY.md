@@ -79,8 +79,8 @@ _Avoid_: File Sort, File Order, List Sorter, Display Ordering
 _Avoid_: Song, Music, Audio File, Virtual Track, Cue Track, Sub-track
 
 **Audiophile Specs**:
-音频曲目解码呈现的发烧级规格参数模型，聚合音频格式类型、采样率、位深、比特率及高解析度（Hi-Res）认证状态。
-_Avoid_: Audio Resolution, Track Spec String, Bitrate Text
+音频曲目由底层二进制流头（如 FLAC STREAMINFO、WAV fmt、MPEG 帧头）权威提取的发烧级规格参数模型，聚合音频格式、采样率、位深、声道数、比特率及高解析度（Hi-Res）认证状态。未探测到真实物理规格时严格保持空缺，杜绝任何文件名正则猜测。
+_Avoid_: Audio Resolution, Track Spec String, Bitrate Text, Guesswork Specs
 
 **Audio Quality Badge**:
 音频曲目在列表中呈现的轻量音质规格徽章，分为无损、高品质、标准与压缩四级。

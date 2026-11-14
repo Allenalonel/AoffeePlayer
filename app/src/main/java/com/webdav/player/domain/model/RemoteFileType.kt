@@ -2,7 +2,7 @@ package com.webdav.player.domain.model
 
 enum class AudioFormat(
     val extension: String,
-    val mimeType: String,
+    val mimeType: String
 ) {
     MP3("mp3", "audio/mpeg"),
     FLAC("flac", "audio/flac"),
@@ -11,7 +11,7 @@ enum class AudioFormat(
     AAC("aac", "audio/aac"),
     OGG("ogg", "audio/ogg"),
     M4A("m4a", "audio/mp4"),
-    APE("ape", "audio/x-ape"),
+    APE("ape", "audio/x-ape")
     ;
 
     companion object {
@@ -26,7 +26,7 @@ enum class AudioFormat(
 
 sealed interface RemoteFileType {
     data class Audio(
-        val format: AudioFormat,
+        val format: AudioFormat
     ) : RemoteFileType
 
     data object Lyrics : RemoteFileType

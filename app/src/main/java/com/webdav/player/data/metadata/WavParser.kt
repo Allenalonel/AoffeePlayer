@@ -24,6 +24,10 @@ object WavParser {
         var artworkData: ByteArray? = null
         var artworkMimeType: String? = null
         var lyrics: String? = null
+        var sampleRate: Int? = null
+        var bitDepth: Int? = null
+        var bitrateKbps: Int? = null
+        var channels: Int? = null
 
         while (reader.hasRemaining(8)) {
             val chunkId = reader.readAsciiId(4)
@@ -33,8 +37,19 @@ object WavParser {
             when (chunkId) {
                 "fmt " -> {
                     if (chunkSize >= 16 && reader.hasRemaining(16)) {
-                        reader.skip(8) // skip format (2), channels (2), sampleRate (4)
+                        reader.skip(2) // format code (PCM = 1, etc.)
+                        val ch = reader.readShortLe() and 0xFFFF
+                        val sr = reader.readUIntLe().toInt()
                         byteRate = reader.readUIntLe()
+                        reader.skip(2) // block align
+                        val bits = reader.readShortLe() and 0xFFFF
+
+                        if (ch in 1..8) channels = ch
+                        if (sr > 0) sampleRate = sr
+                        if (bits in 8..64) bitDepth = bits
+                        if (byteRate > 0) {
+                            bitrateKbps = ((byteRate * 8L) / 1000L).toInt()
+                        }
                     }
                 }
                 "data" -> {
@@ -107,7 +122,11 @@ object WavParser {
             durationMs = durationMs,
             artworkData = artworkData,
             artworkMimeType = artworkMimeType,
-            lyrics = lyrics
+            lyrics = lyrics,
+            sampleRate = sampleRate,
+            bitDepth = bitDepth,
+            bitrateKbps = bitrateKbps,
+            channels = channels
         )
     }
 }

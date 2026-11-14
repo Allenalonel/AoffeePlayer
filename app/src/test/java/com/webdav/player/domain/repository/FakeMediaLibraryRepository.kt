@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
 
 open class FakeMediaLibraryRepository(
-    var trackMetadataRepository: TrackMetadataRepository? = null,
+    var trackMetadataRepository: TrackMetadataRepository? = null
 ) : MediaLibraryRepository {
     val clearedStorageServerIds = mutableListOf<Long>()
     val clearedLocalFolderUris = mutableListOf<String>()
@@ -36,35 +36,35 @@ open class FakeMediaLibraryRepository(
 
     fun setResult(
         path: String,
-        result: ListDirectoryResult,
+        result: ListDirectoryResult
     ) {
         results[path] = result
     }
 
     fun setCached(
         path: String,
-        directory: RemoteDirectory,
+        directory: RemoteDirectory
     ) {
         cachedDirectories[path] = directory
     }
 
     fun setDirectoryContent(
         path: String,
-        content: DirectoryContent,
+        content: DirectoryContent
     ) {
         contentResults[path] = content
     }
 
     fun setDirectoryContentEmissions(
         path: String,
-        emissions: List<DirectoryContent>,
+        emissions: List<DirectoryContent>
     ) {
         contentEmissions[path] = emissions
     }
 
     suspend fun listDirectory(
         path: String,
-        forceRefresh: Boolean = false,
+        forceRefresh: Boolean = false
     ): ListDirectoryResult {
         listCalls++
         if (forceRefresh) {
@@ -76,7 +76,7 @@ open class FakeMediaLibraryRepository(
     override fun observeDirectoryContent(
         server: WebDavServer,
         path: String,
-        forceRefresh: Boolean,
+        forceRefresh: Boolean
     ): Flow<DirectoryContent> =
         flow {
             observeCalls.add(Triple(server, path, forceRefresh))
@@ -103,7 +103,7 @@ open class FakeMediaLibraryRepository(
                     RemoteDirectory(
                         path = path,
                         name = path.trimEnd('/').substringAfterLast('/').ifEmpty { "/" },
-                        serverId = server.id,
+                        serverId = server.id
                     )
                 emit(DirectoryContent(directory = fallbackDir, isEnriching = false))
                 return@flow
@@ -127,8 +127,8 @@ open class FakeMediaLibraryRepository(
                         DirectoryContent(
                             directory = dir,
                             metadataMap = metaMap,
-                            isEnriching = false,
-                        ),
+                            isEnriching = false
+                        )
                     )
                 }
 
@@ -149,7 +149,7 @@ open class FakeMediaLibraryRepository(
 
     override suspend fun getCachedDirectory(
         server: WebDavServer,
-        path: String,
+        path: String
     ): RemoteDirectory? = cachedDirectories[path]
 
     // Multi-source & Single-source B-Tree Search
@@ -163,7 +163,7 @@ open class FakeMediaLibraryRepository(
 
     override fun search(
         query: String,
-        serverId: Long?,
+        serverId: Long?
     ): Flow<LibrarySearchResult> {
         lastSearchQuery = query
         lastSearchServerId = serverId
@@ -178,7 +178,7 @@ open class FakeMediaLibraryRepository(
 
     override suspend fun syncServer(
         server: WebDavServer,
-        force: Boolean,
+        force: Boolean
     ): LibrarySyncResult {
         syncServerCalls.add(server to force)
         return LibrarySyncResult.Success(0, 0, 0)

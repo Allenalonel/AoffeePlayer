@@ -7,7 +7,6 @@ import android.provider.DocumentsContract
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,13 +60,13 @@ fun ManageFoldersSheet(
     onRemoveFolder: (uriString: String) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 ) {
     val context = LocalContext.current
 
     val openDocumentTreeLauncher =
         rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.OpenDocumentTree(),
+            contract = ActivityResultContracts.OpenDocumentTree()
         ) { uri: Uri? ->
             if (uri != null) {
                 val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -86,7 +85,7 @@ fun ManageFoldersSheet(
             val uri = Uri.parse(uriString)
             context.contentResolver.releasePersistableUriPermission(
                 uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
         } catch (_: Throwable) {
             // Ignore release failure
@@ -114,41 +113,41 @@ fun ManageFoldersSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         properties =
-            ModalBottomSheetProperties(
-                securePolicy = SecureFlagPolicy.Inherit,
-                isFocusable = false,
-                shouldDismissOnBackPress = true,
-            ),
+        ModalBottomSheetProperties(
+            securePolicy = SecureFlagPolicy.Inherit,
+            isFocusable = false,
+            shouldDismissOnBackPress = true
+        ),
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Column(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
         ) {
             // Sheet Header
             Row(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "本地音乐目录",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "(${folders.size})",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -156,41 +155,41 @@ fun ManageFoldersSheet(
                     Icon(
                         imageVector = AppIcons.Close,
                         contentDescription = "关闭",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
             HorizontalDivider(
                 thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
+                color = MaterialTheme.colorScheme.outlineVariant
             )
 
             // Folders List or Empty State
             if (folders.isEmpty()) {
                 Box(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
-                            .padding(horizontal = 24.dp),
-                    contentAlignment = Alignment.Center,
+                    Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .padding(horizontal = 24.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            modifier = Modifier.size(52.dp),
+                            modifier = Modifier.size(52.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = AppIcons.Folder,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.size(28.dp),
+                                    modifier = Modifier.size(28.dp)
                                 )
                             }
                         }
@@ -199,43 +198,43 @@ fun ManageFoldersSheet(
                             text = "未添加任何本地音乐目录",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "点击下方按钮授权音乐文件夹，在媒体库中尽享无损好音乐",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             } else {
                 LazyColumn(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 340.dp),
-                    contentPadding = PaddingValues(vertical = 4.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 340.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp)
                 ) {
                     items(folders, key = { it.uriString }) { folder ->
                         Row(
                             modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.secondaryContainer,
-                                modifier = Modifier.size(40.dp),
+                                modifier = Modifier.size(40.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = AppIcons.Folder,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        modifier = Modifier.size(20.dp),
+                                        modifier = Modifier.size(20.dp)
                                     )
                                 }
                             }
@@ -249,7 +248,7 @@ fun ManageFoldersSheet(
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
@@ -257,20 +256,20 @@ fun ManageFoldersSheet(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
 
                             Spacer(modifier = Modifier.width(8.dp))
 
                             IconButton(
-                                onClick = { handleRemoveFolder(folder.uriString) },
+                                onClick = { handleRemoveFolder(folder.uriString) }
                             ) {
                                 Icon(
                                     imageVector = AppIcons.Delete,
                                     contentDescription = "解除挂载",
                                     tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
@@ -284,36 +283,36 @@ fun ManageFoldersSheet(
             Button(
                 onClick = { openDocumentTreeLauncher.launch(null) },
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                contentPadding = PaddingValues(vertical = 12.dp),
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                contentPadding = PaddingValues(vertical = 12.dp)
             ) {
                 Icon(
                     imageVector = AppIcons.Add,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "添加音乐目录",
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Bold
                 )
             }
 
             // Insets padding for navigation bar gestures
             Spacer(
                 modifier =
-                    Modifier.height(
-                        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
-                    ),
+                Modifier.height(
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                )
             )
         }
     }
@@ -321,7 +320,7 @@ fun ManageFoldersSheet(
 
 internal fun resolveFolderDisplayName(
     context: Context,
-    uri: Uri,
+    uri: Uri
 ): String {
     try {
         val documentId = DocumentsContract.getTreeDocumentId(uri)

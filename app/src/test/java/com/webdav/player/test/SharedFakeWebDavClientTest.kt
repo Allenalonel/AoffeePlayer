@@ -5,9 +5,9 @@ import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.WebDavServer
+import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertArrayEquals
@@ -19,7 +19,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
-import java.io.IOException
 
 class SharedFakeWebDavClientTest {
     private lateinit var client: SharedFakeWebDavClient
@@ -31,7 +30,7 @@ class SharedFakeWebDavClientTest {
             port = 5005,
             pathPrefix = "/dav",
             username = "admin",
-            password = "password",
+            password = "password"
         )
 
     @Before
@@ -90,7 +89,7 @@ class SharedFakeWebDavClientTest {
                 RemoteDirectory(
                     path = "/Music/Jazz/",
                     name = "Jazz",
-                    files = listOf(RemoteFile(path = "/Music/Jazz/track.flac", name = "track.flac", size = 1024L)),
+                    files = listOf(RemoteFile(path = "/Music/Jazz/track.flac", name = "track.flac", size = 1024L))
                 )
             client.stubDirectory("/Music/Jazz", stubDir)
 

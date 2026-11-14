@@ -46,14 +46,14 @@ fun AddToPlaylistDialog(
     onDismissRequest: () -> Unit,
     onSelectPlaylist: (Playlist) -> Unit,
     onCreatePlaylistAndAdd: (String) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) = AddToPlaylistDialog(
     tracks = listOf(track),
     playlists = playlists,
     onDismissRequest = onDismissRequest,
     onSelectPlaylist = onSelectPlaylist,
     onCreatePlaylistAndAdd = onCreatePlaylistAndAdd,
-    modifier = modifier,
+    modifier = modifier
 )
 
 @Composable
@@ -63,7 +63,7 @@ fun AddToPlaylistDialog(
     onDismissRequest: () -> Unit,
     onSelectPlaylist: (Playlist) -> Unit,
     onCreatePlaylistAndAdd: (String) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     if (tracks.isEmpty()) return
     val singleTrack = tracks.firstOrNull()
@@ -79,21 +79,21 @@ fun AddToPlaylistDialog(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "添加到歌单",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Bold
                 )
                 IconButton(
                     onClick = onDismissRequest,
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
                         imageVector = AppIcons.Close,
                         contentDescription = "关闭",
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -104,18 +104,18 @@ fun AddToPlaylistDialog(
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     if (tracks.size == 1 && singleTrack != null) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = AppIcons.Audiotrack,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(22.dp),
+                                modifier = Modifier.size(22.dp)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
@@ -124,7 +124,7 @@ fun AddToPlaylistDialog(
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 val artistText = singleTrack.artist?.ifBlank { "未知艺术家" } ?: "未知艺术家"
                                 Text(
@@ -132,26 +132,26 @@ fun AddToPlaylistDialog(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
                     } else {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
                                 color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(32.dp),
+                                modifier = Modifier.size(32.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
                                         text = "${tracks.size}",
                                         style = MaterialTheme.typography.labelLarge,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 }
                             }
@@ -160,12 +160,12 @@ fun AddToPlaylistDialog(
                                 Text(
                                     text = "已选中 ${tracks.size} 首歌曲",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
                                     text = "将自动去重，跳过已存在的歌曲",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -188,19 +188,19 @@ fun AddToPlaylistDialog(
                             label = { Text("新歌单名称") },
                             singleLine = true,
                             isError = createError != null,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth()
                         )
                         if (createError != null) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = createError!!,
                                 color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                         Row(
                             horizontalArrangement = Arrangement.End,
-                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                         ) {
                             TextButton(onClick = {
                                 isCreatingNew = false
@@ -220,7 +220,7 @@ fun AddToPlaylistDialog(
                                         onCreatePlaylistAndAdd(trimmed)
                                     }
                                 },
-                                enabled = newPlaylistName.isNotBlank(),
+                                enabled = newPlaylistName.isNotBlank()
                             ) {
                                 Text("创建并添加")
                             }
@@ -229,24 +229,24 @@ fun AddToPlaylistDialog(
                 } else {
                     Row(
                         modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { isCreatingNew = true }
-                                .padding(vertical = 10.dp, horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { isCreatingNew = true }
+                            .padding(vertical = 10.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = AppIcons.Add,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "新建歌单并添加",
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
@@ -259,41 +259,41 @@ fun AddToPlaylistDialog(
                 if (playlists.isEmpty() && !isCreatingNew) {
                     Box(
                         modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 20.dp),
-                        contentAlignment = Alignment.Center,
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 20.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "暂无已有歌单，点击上方“新建歌单”添加",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 } else {
                     LazyColumn(
-                        modifier = Modifier.heightIn(max = 240.dp),
+                        modifier = Modifier.heightIn(max = 240.dp)
                     ) {
                         items(playlists, key = { it.id }) { playlist ->
                             Row(
                                 modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onSelectPlaylist(playlist) }
-                                        .padding(vertical = 10.dp, horizontal = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onSelectPlaylist(playlist) }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Surface(
                                     shape = MaterialTheme.shapes.extraSmall,
                                     color = MaterialTheme.colorScheme.primaryContainer,
-                                    modifier = Modifier.size(32.dp),
+                                    modifier = Modifier.size(32.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
                                             imageVector = AppIcons.QueueMusic,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.size(18.dp),
+                                            modifier = Modifier.size(18.dp)
                                         )
                                     }
                                 }
@@ -304,12 +304,12 @@ fun AddToPlaylistDialog(
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Medium,
                                         maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
                                         text = "${playlist.trackCount} 首",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -322,6 +322,6 @@ fun AddToPlaylistDialog(
             TextButton(onClick = onDismissRequest) {
                 Text("关闭")
             }
-        },
+        }
     )
 }

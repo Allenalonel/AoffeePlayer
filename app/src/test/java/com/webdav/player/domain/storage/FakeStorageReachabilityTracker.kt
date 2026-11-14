@@ -25,7 +25,7 @@ class FakeStorageReachabilityTracker : StorageReachabilityTracker {
     override fun reportTrackUnavailable(
         serverId: Long,
         remotePath: String,
-        reason: InactiveReason,
+        reason: InactiveReason
     ) {
         reportedUnavailableTracks.add(Triple(serverId, remotePath, reason))
         _inactiveTracks.update { current ->
@@ -35,7 +35,7 @@ class FakeStorageReachabilityTracker : StorageReachabilityTracker {
 
     override fun reportServerUnavailable(
         serverId: Long,
-        reason: InactiveReason,
+        reason: InactiveReason
     ) {
         reportedUnavailableServers.add(serverId to reason)
         _serverReachability.update { current ->

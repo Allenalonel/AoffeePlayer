@@ -8,49 +8,49 @@ class RemoteDirectorySorterTest {
     private val subDirA = RemoteDirectory(
         path = "/music/Folder A/",
         name = "Folder A",
-        lastModified = 1000L,
+        lastModified = 1000L
     )
     private val subDirB = RemoteDirectory(
         path = "/music/Folder 10/",
         name = "Folder 10",
-        lastModified = 3000L,
+        lastModified = 3000L
     )
     private val subDirC = RemoteDirectory(
         path = "/music/Folder 2/",
         name = "Folder 2",
-        lastModified = 2000L,
+        lastModified = 2000L
     )
 
     private val file1 = RemoteFile(
         name = "01 - Track 1.flac",
         path = "/music/01 - Track 1.flac",
         size = 10_000_000L,
-        lastModified = "Wed, 14 Jan 2026 08:00:00 GMT",
+        lastModified = "Wed, 14 Jan 2026 08:00:00 GMT"
     )
     private val file2 = RemoteFile(
         name = "02 - Track 2.flac",
         path = "/music/02 - Track 2.flac",
         size = 50_000_000L,
-        lastModified = "1768464600000", // newer timestamp
+        lastModified = "1768464600000" // newer timestamp
     )
     private val file10 = RemoteFile(
         name = "10 - Track 10.flac",
         path = "/music/10 - Track 10.flac",
         size = 5_000_000L,
-        lastModified = "2026-01-14T09:00:00Z",
+        lastModified = "2026-01-14T09:00:00Z"
     )
     private val fileNoDate = RemoteFile(
         name = "Unknown.flac",
         path = "/music/Unknown.flac",
         size = 20_000_000L,
-        lastModified = null,
+        lastModified = null
     )
 
     private val sampleDirectory = RemoteDirectory(
         path = "/music/",
         name = "music",
         subDirectories = listOf(subDirB, subDirA, subDirC),
-        files = listOf(file10, file2, fileNoDate, file1),
+        files = listOf(file10, file2, fileNoDate, file1)
     )
 
     @Test

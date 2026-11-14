@@ -4,7 +4,11 @@ import java.nio.charset.StandardCharsets
 
 object FlacParser {
 
-    fun parse(bytes: ByteArray, offset: Int = 0): ParsedAudioMetadata? {
+    fun parse(
+        bytes: ByteArray,
+        offset: Int = 0,
+        totalBytes: Long = 0L
+    ): ParsedAudioMetadata? {
         val reader = ByteSliceReader(bytes, offset)
         if (!reader.hasRemaining(4)) return null
 
@@ -25,6 +29,9 @@ object FlacParser {
         var artworkData: ByteArray? = null
         var artworkMimeType: String? = null
         var lyrics: String? = null
+        var sampleRate: Int? = null
+        var bitDepth: Int? = null
+        var channels: Int? = null
 
         var isLast = false
 
@@ -50,15 +57,29 @@ object FlacParser {
                         val b16 = reader.readUByte()
                         val b17 = reader.readUByte()
 
-                        val sampleRate = (b10 shl 12) or (b11 shl 4) or ((b12 and 0xF0) ushr 4)
-                        val totalSamples = (((b13.toLong() and 0x0F) shl 32)
+                        val parsedSampleRate = (b10 shl 12) or (b11 shl 4) or ((b12 and 0xF0) ushr 4)
+                        if (parsedSampleRate > 0) {
+                            sampleRate = parsedSampleRate
+                        }
+                        val parsedChannels = ((b12 and 0x0E) ushr 1) + 1
+                        if (parsedChannels in 1..8) {
+                            channels = parsedChannels
+                        }
+                        val parsedBitDepth = (((b12 and 0x01) shl 4) or ((b13 and 0xF0) ushr 4)) + 1
+                        if (parsedBitDepth in 4..32) {
+                            bitDepth = parsedBitDepth
+                        }
+
+                        val totalSamples = (
+                            ((b13.toLong() and 0x0F) shl 32)
                                 or ((b14.toLong() and 0xFF) shl 24)
                                 or ((b15.toLong() and 0xFF) shl 16)
                                 or ((b16.toLong() and 0xFF) shl 8)
-                                or (b17.toLong() and 0xFF))
+                                or (b17.toLong() and 0xFF)
+                            )
 
-                        if (sampleRate > 0 && totalSamples > 0L) {
-                            durationMs = (totalSamples * 1000L) / sampleRate
+                        if (parsedSampleRate > 0 && totalSamples > 0L) {
+                            durationMs = (totalSamples * 1000L) / parsedSampleRate
                         }
                     }
                 }
@@ -119,6 +140,13 @@ object FlacParser {
             }
         }
 
+        val bitrateKbps =
+            if (durationMs >= 1000L && totalBytes > 0L) {
+                ((totalBytes * 8L) / durationMs).toInt().takeIf { it in 32..50000 }
+            } else {
+                null
+            }
+
         return ParsedAudioMetadata(
             title = title,
             artist = artist,
@@ -127,7 +155,11 @@ object FlacParser {
             durationMs = durationMs,
             artworkData = artworkData,
             artworkMimeType = artworkMimeType,
-            lyrics = lyrics
+            lyrics = lyrics,
+            sampleRate = sampleRate,
+            bitDepth = bitDepth,
+            bitrateKbps = bitrateKbps,
+            channels = channels
         )
     }
 }

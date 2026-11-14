@@ -6,16 +6,15 @@ import androidx.compose.ui.graphics.Color
 import com.webdav.player.data.lyrics.LrcParser
 import com.webdav.player.data.service.WebDavMediaSessionCallback
 import com.webdav.player.domain.model.AudioFormat
+import com.webdav.player.domain.model.AudioQuality
+import com.webdav.player.domain.model.AudioQualityLevel
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
-import com.webdav.player.domain.model.AudioQuality
-import com.webdav.player.domain.model.AudioQualityLevel
 import com.webdav.player.domain.model.RemoteFileType
-import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.player.FakeAudioPlayerEngine
 import com.webdav.player.domain.repository.ServerRepository
@@ -30,7 +29,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -69,7 +67,7 @@ class EndToEndMusicPlayerPipelineTest {
             username = "audiophile",
             password = "secret",
             allowSelfSigned = true,
-            isDefault = true,
+            isDefault = true
         )
 
     private val flacFile =
@@ -78,7 +76,7 @@ class EndToEndMusicPlayerPipelineTest {
             path = "/music/Lossless/Album/01-Symphony.flac",
             size = 35000000L,
             lastModified = "2026-09-26",
-            fileType = RemoteFileType.Audio(AudioFormat.FLAC),
+            fileType = RemoteFileType.Audio(AudioFormat.FLAC)
         )
 
     private val mp3File =
@@ -87,7 +85,7 @@ class EndToEndMusicPlayerPipelineTest {
             path = "/music/Lossless/Album/02-Allegro [320k].mp3",
             size = 12400000L,
             lastModified = "2026-09-26",
-            fileType = RemoteFileType.Audio(AudioFormat.MP3),
+            fileType = RemoteFileType.Audio(AudioFormat.MP3)
         )
 
     private val sampleDirectory =
@@ -95,11 +93,11 @@ class EndToEndMusicPlayerPipelineTest {
             path = "/music/Lossless/Album/",
             name = "Album",
             subDirectories = emptyList(),
-            files = listOf(flacFile, mp3File),
+            files = listOf(flacFile, mp3File)
         )
 
     private class TestServerRepository(
-        initialServers: List<WebDavServer> = emptyList(),
+        initialServers: List<WebDavServer> = emptyList()
     ) : ServerRepository {
         private val serversFlow = MutableStateFlow(initialServers)
         private val activeServerFlow = MutableStateFlow(initialServers.firstOrNull { it.isDefault } ?: initialServers.firstOrNull())
@@ -135,7 +133,7 @@ class EndToEndMusicPlayerPipelineTest {
                 playerEngine = fakeEngine,
                 serverRepository = fakeServerRepo,
                 sessionStore = fakeStore,
-                coroutineScope = sessionScope,
+                coroutineScope = sessionScope
             )
 
         mediaSessionCallback = WebDavMediaSessionCallback(session)
@@ -150,7 +148,7 @@ class EndToEndMusicPlayerPipelineTest {
 
     private fun createMediaButtonIntent(
         keyCode: Int,
-        action: Int = KeyEvent.ACTION_DOWN,
+        action: Int = KeyEvent.ACTION_DOWN
     ): Intent {
         val intent = Intent(Intent.ACTION_MEDIA_BUTTON)
         val event = KeyEvent(action, keyCode)
@@ -224,7 +222,7 @@ class EndToEndMusicPlayerPipelineTest {
             assertEquals(
                 mp3File.path,
                 session.sessionState.value.currentTrack
-                    ?.remotePath,
+                    ?.remotePath
             )
             assertEquals(mp3File.name, fakeEngine.loadedTrack?.title)
 
@@ -273,7 +271,7 @@ class EndToEndMusicPlayerPipelineTest {
                     playerEngine = freshEngine,
                     serverRepository = fakeServerRepo,
                     sessionStore = fakeStore,
-                    coroutineScope = freshScope,
+                    coroutineScope = freshScope
                 )
 
             // Advance to trigger auto-resumption in background
@@ -311,9 +309,9 @@ class EndToEndMusicPlayerPipelineTest {
             PlayerSessionState(
                 activeServer = sampleServer,
                 queue =
-                    com.webdav.player.domain.model
-                        .PlaybackQueue(tracks = listOf(track), currentIndex = 0),
-                playbackState = PlaybackState.Playing,
+                com.webdav.player.domain.model
+                    .PlaybackQueue(tracks = listOf(track), currentIndex = 0),
+                playbackState = PlaybackState.Playing
             )
         coordinator.onSessionStateChanged(activeState)
         assertTrue("Mini-player is visible", coordinator.uiState.value.isMiniPlayerVisible)
@@ -370,7 +368,7 @@ class EndToEndMusicPlayerPipelineTest {
         val fallback =
             ArtworkColorExtractor.createFallbackColors(
                 defaultSurfaceColor = Color(0xFF1E1F25),
-                defaultBackgroundColor = Color(0xFF121318),
+                defaultBackgroundColor = Color(0xFF121318)
             )
         assertNotNull(fallback)
         assertTrue("Is fallback color scheme", fallback.isFallback)

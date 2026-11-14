@@ -8,7 +8,7 @@ data class PlaybackSessionData(
     val playbackMode: PlaybackMode,
     val cleanExit: Boolean = true,
     val queueOrigin: QueueOrigin = QueueOrigin.DIRECTORY,
-    val originalTracks: List<AudioTrack> = emptyList(),
+    val originalTracks: List<AudioTrack> = emptyList()
 ) {
     companion object {
         val EMPTY =
@@ -20,7 +20,7 @@ data class PlaybackSessionData(
                 playbackMode = PlaybackMode.LIST_LOOP,
                 cleanExit = true,
                 queueOrigin = QueueOrigin.DIRECTORY,
-                originalTracks = emptyList(),
+                originalTracks = emptyList()
             )
     }
 }

@@ -27,12 +27,12 @@ class PlaybackQueueManagerTest {
             name = "Server1",
             url = "http://example.com",
             username = "u",
-            password = "p",
+            password = "p"
         )
 
     private fun createTrack(
         id: String,
-        durationMs: Long = 180_000L,
+        durationMs: Long = 180_000L
     ): AudioTrack =
         AudioTrack(
             id = id,
@@ -40,7 +40,7 @@ class PlaybackQueueManagerTest {
             remotePath = "/$id.mp3",
             title = "Track $id",
             durationMs = durationMs,
-            format = AudioFormat.MP3,
+            format = AudioFormat.MP3
         )
 
     private val t1 = createTrack("1")
@@ -225,7 +225,7 @@ class PlaybackQueueManagerTest {
         val dir = RemoteDirectory(path = "/", name = "root", files = listOf(f1, cover, f2))
         val meta =
             mapOf(
-                f2.path to TrackMetadata(serverId = 1L, remotePath = f2.path, title = "Track Two", durationMs = 240_000L),
+                f2.path to TrackMetadata(serverId = 1L, remotePath = f2.path, title = "Track Two", durationMs = 240_000L)
             )
 
         val req = queueManager.buildDirectoryQueue(dir, f2, meta, testServer, PlaybackMode.SHUFFLE)
@@ -242,7 +242,7 @@ class PlaybackQueueManagerTest {
         val entries =
             listOf(
                 PlaylistTrackEntry(1L, 10L, 1L, "/a.mp3", 0, "A", format = AudioFormat.MP3),
-                PlaylistTrackEntry(2L, 10L, 2L, "/b.flac", 1, "B", format = AudioFormat.FLAC),
+                PlaylistTrackEntry(2L, 10L, 2L, "/b.flac", 1, "B", format = AudioFormat.FLAC)
             )
         val playlistReq = queueManager.buildPlaylistQueue(entries, startIndex = 1, playbackMode = PlaybackMode.LIST_LOOP)
         assertNotNull(playlistReq)

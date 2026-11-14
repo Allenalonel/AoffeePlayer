@@ -1,20 +1,18 @@
 package com.webdav.player.ui.browser
 
-import com.webdav.player.domain.model.AudioQualityBadge
 import com.webdav.player.domain.model.AudioQualityLevel
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.ui.common.AudioTrackRowDefaults
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AudioTrackItemRowTest {
     private fun formatSubtitleFor(metadata: TrackMetadata?): String =
         AudioTrackRowDefaults.formatTrackSubtitle(
             artist = metadata?.displayArtist(),
-            album = metadata?.album,
+            album = metadata?.album
         )
 
     @Test
@@ -26,7 +24,7 @@ class AudioTrackItemRowTest {
                 remotePath = file.path,
                 title = "Time",
                 artist = "Pink Floyd",
-                album = "The Dark Side of the Moon",
+                album = "The Dark Side of the Moon"
             )
         val subtitle = formatSubtitleFor(metadata)
         assertEquals("Pink Floyd · The Dark Side of the Moon", subtitle)
@@ -40,7 +38,7 @@ class AudioTrackItemRowTest {
                 serverId = 1L,
                 remotePath = file.path,
                 artist = "Pink Floyd",
-                album = null,
+                album = null
             )
         val subtitle = formatSubtitleFor(metadata)
         assertEquals("Pink Floyd", subtitle)
@@ -54,7 +52,7 @@ class AudioTrackItemRowTest {
                 serverId = 1L,
                 remotePath = file.path,
                 artist = null,
-                album = "Greatest Hits",
+                album = "Greatest Hits"
             )
         val subtitle = formatSubtitleFor(metadata)
         assertEquals("Greatest Hits", subtitle)

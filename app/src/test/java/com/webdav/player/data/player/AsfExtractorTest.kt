@@ -12,6 +12,10 @@ import androidx.media3.extractor.PositionHolder
 import androidx.media3.extractor.SeekMap
 import androidx.media3.extractor.TrackOutput
 import com.webdav.player.domain.model.AudioFormat
+import java.io.ByteArrayInputStream
+import java.io.EOFException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -19,11 +23,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.ByteArrayInputStream
-import java.io.EOFException
-import java.io.IOException
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 @OptIn(UnstableApi::class)
 @RunWith(RobolectricTestRunner::class)

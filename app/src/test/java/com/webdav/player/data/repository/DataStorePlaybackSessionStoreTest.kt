@@ -4,12 +4,12 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.test.core.app.ApplicationProvider
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackSessionData
+import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.test.TestScope
@@ -24,11 +24,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
-import org.robolectric.annotation.Implementation
-import org.robolectric.annotation.Implements
-import org.robolectric.annotation.RealObject
-import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -49,7 +44,7 @@ class DataStorePlaybackSessionStoreTest {
         dataStore =
             PreferenceDataStoreFactory.create(
                 scope = testScope,
-                produceFile = { testFile },
+                produceFile = { testFile }
             )
         repository = DataStorePlaybackSessionStore(dataStore, { testFile })
     }
@@ -83,7 +78,7 @@ class DataStorePlaybackSessionStoreTest {
                     durationMs = 180000L,
                     size = 5000000L,
                     format = AudioFormat.MP3,
-                    coverThumbnailPath = "/cache/covers/1.png",
+                    coverThumbnailPath = "/cache/covers/1.png"
                 )
             val track2 =
                 AudioTrack(
@@ -96,7 +91,7 @@ class DataStorePlaybackSessionStoreTest {
                     durationMs = 240000L,
                     size = 25000000L,
                     format = AudioFormat.FLAC,
-                    coverThumbnailPath = null,
+                    coverThumbnailPath = null
                 )
 
             val original =
@@ -106,7 +101,7 @@ class DataStorePlaybackSessionStoreTest {
                     currentTrackIndex = 1,
                     positionMs = 65432L,
                     playbackMode = PlaybackMode.SHUFFLE,
-                    originalTracks = listOf(track2, track1),
+                    originalTracks = listOf(track2, track1)
                 )
 
             repository.saveSession(original)
@@ -142,7 +137,7 @@ class DataStorePlaybackSessionStoreTest {
                     currentTrackIndex = 0,
                     positionMs = 12000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cleanExit = false,
+                    cleanExit = false
                 )
 
             repository.saveSession(original)
@@ -165,7 +160,7 @@ class DataStorePlaybackSessionStoreTest {
                     queueTracks = emptyList(),
                     currentTrackIndex = -1,
                     positionMs = 1000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
 
             repository.saveSession(original)
@@ -184,7 +179,7 @@ class DataStorePlaybackSessionStoreTest {
                 tracksJson = "NOT_A_VALID_JSON_ARRAY{{{",
                 trackIndex = 0,
                 posMs = 5000L,
-                mode = "SINGLE_LOOP",
+                mode = "SINGLE_LOOP"
             )
 
             val restored = repository.getSavedSession()
@@ -205,14 +200,14 @@ class DataStorePlaybackSessionStoreTest {
                     queueTracks = emptyList(),
                     currentTrackIndex = 0,
                     positionMs = 1000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             repository.saveSession(initial)
 
             val updated =
                 initial.copy(
                     positionMs = 25000L,
-                    playbackMode = PlaybackMode.SINGLE_LOOP,
+                    playbackMode = PlaybackMode.SINGLE_LOOP
                 )
             repository.saveSession(updated)
 

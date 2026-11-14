@@ -96,7 +96,7 @@ private data class CachedDirectoryContent(
     val directories: List<RemoteDirectory>,
     val files: List<RemoteFile>,
     val metadataMap: Map<String, TrackMetadata>,
-    val isEmpty: Boolean,
+    val isEmpty: Boolean
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,7 +111,7 @@ fun DirectoryBrowserScreen(
     onAddToPlaylist: (AudioTrack) -> Unit = {},
     onAddTracksToPlaylist: (List<AudioTrack>) -> Unit = { tracks -> tracks.firstOrNull()?.let(onAddToPlaylist) },
     bottomBarPadding: Dp = 88.dp,
-    onSelectionModeChanged: (Boolean) -> Unit = {},
+    onSelectionModeChanged: (Boolean) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isReduceMotion = isReduceMotionEnabled()
@@ -201,7 +201,7 @@ fun DirectoryBrowserScreen(
                     directories = uiState.subDirectories,
                     files = uiState.files,
                     metadataMap = uiState.metadataMap,
-                    isEmpty = uiState.isEmpty,
+                    isEmpty = uiState.isEmpty
                 )
         }
     }
@@ -210,7 +210,7 @@ fun DirectoryBrowserScreen(
     val searchExpansionProgress by animateFloatAsState(
         targetValue = if (uiState.isSearchActive) 1f else 0f,
         animationSpec = MotionTokens.spatialSpec(isReduceMotion),
-        label = "search_expansion_progress",
+        label = "search_expansion_progress"
     )
     val topBarTitleAlpha = (1f - searchExpansionProgress).coerceIn(0f, 1f)
 
@@ -225,7 +225,7 @@ fun DirectoryBrowserScreen(
             object : NestedScrollConnection {
                 override fun onPreScroll(
                     available: Offset,
-                    source: NestedScrollSource,
+                    source: NestedScrollSource
                 ): Offset {
                     if (available.y > 0f && scrollBehavior.state.collapsedFraction > 0f) {
                         return Offset.Zero
@@ -236,7 +236,7 @@ fun DirectoryBrowserScreen(
                 override fun onPostScroll(
                     consumed: Offset,
                     available: Offset,
-                    source: NestedScrollSource,
+                    source: NestedScrollSource
                 ): Offset {
                     if (available.y > 0f && scrollBehavior.state.collapsedFraction > 0f) {
                         return Offset.Zero
@@ -253,7 +253,7 @@ fun DirectoryBrowserScreen(
 
                 override suspend fun onPostFling(
                     consumed: Velocity,
-                    available: Velocity,
+                    available: Velocity
                 ): Velocity {
                     if (available.y > 0f && scrollBehavior.state.collapsedFraction > 0f) {
                         return Velocity.Zero
@@ -275,14 +275,14 @@ fun DirectoryBrowserScreen(
                                 Text(
                                     text = "已选 ${selectedFilePaths.size} 项",
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = uiState.headerTitle,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         },
@@ -290,7 +290,7 @@ fun DirectoryBrowserScreen(
                             IconButton(onClick = { viewModel.clearSelection() }) {
                                 Icon(
                                     imageVector = AppIcons.Close,
-                                    contentDescription = "退出多选",
+                                    contentDescription = "退出多选"
                                 )
                             }
                         },
@@ -304,20 +304,20 @@ fun DirectoryBrowserScreen(
                                     } else {
                                         viewModel.selectAllAudioFiles()
                                     }
-                                },
+                                }
                             ) {
                                 Text(
                                     text = if (isAllSelected) "取消全选" else "全选",
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         },
                         colors =
-                            TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            ),
+                        TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
                     )
                 } else {
                     val subtitleText =
@@ -343,50 +343,50 @@ fun DirectoryBrowserScreen(
                                     sortOrder = uiState.sortOrder,
                                     onSortOrderChanged = { viewModel.onSortOrderChanged(it) },
                                     enabled = actionsEnabled,
-                                    modifier = Modifier.alpha(actionsAlpha),
+                                    modifier = Modifier.alpha(actionsAlpha)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 FilledTonalIconButton(
                                     onClick = { viewModel.onSearchActiveChanged(true) },
                                     enabled = actionsEnabled,
                                     modifier =
-                                        Modifier
-                                            .size(38.dp)
-                                            .alpha(actionsAlpha),
+                                    Modifier
+                                        .size(38.dp)
+                                        .alpha(actionsAlpha),
                                     shape = CircleShape,
                                     colors =
-                                        IconButtonDefaults.filledTonalIconButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            contentColor = MaterialTheme.colorScheme.onSurface,
-                                        ),
+                                    IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurface
+                                    )
                                 ) {
                                     Icon(
                                         imageVector = AppIcons.Search,
                                         contentDescription = "搜索曲库",
-                                        modifier = Modifier.size(20.dp),
+                                        modifier = Modifier.size(20.dp)
                                     )
                                 }
                             }
                         },
                         scrollBehavior = scrollBehavior,
                         expandedHeight = FluidTopAppBarDefaults.ExpandedHeight,
-                        modifier = Modifier.alpha(topBarTitleAlpha),
+                        modifier = Modifier.alpha(topBarTitleAlpha)
                     )
                 }
-            },
+            }
         ) { innerPadding ->
             Column(
                 modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
             ) {
                 if (!uiState.isInitializing && uiState.activeServer != null) {
                     // Breadcrumb navigation bar (MD3 AssistChip Strip with dynamic tail growth)
                     DirectoryBreadcrumbStrip(
                         breadcrumbs = uiState.breadcrumbs,
                         currentPath = uiState.currentPath,
-                        onBreadcrumbClicked = { viewModel.onBreadcrumbClicked(it) },
+                        onBreadcrumbClicked = { viewModel.onBreadcrumbClicked(it) }
                     )
                 }
 
@@ -394,22 +394,22 @@ fun DirectoryBrowserScreen(
                 AnimatedVisibility(
                     visible = syncState is LibrarySyncState.Scanning,
                     enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically(),
+                    exit = fadeOut() + shrinkVertically()
                 ) {
                     if (syncState is LibrarySyncState.Scanning) {
                         Column(
                             modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 2.dp)
                         ) {
                             LinearProgressIndicator(
                                 modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .height(3.dp),
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(3.dp),
                                 color = MaterialTheme.colorScheme.primary,
-                                trackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                                trackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                             )
                         }
                     }
@@ -418,15 +418,15 @@ fun DirectoryBrowserScreen(
                 // Content Area with Hierarchy Drilldown AnimatedContent
                 Box(
                     modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .nestedScroll(coordinatedRefreshConnection)
-                            .clipToBounds(),
+                    Modifier
+                        .fillMaxSize()
+                        .nestedScroll(coordinatedRefreshConnection)
+                        .clipToBounds()
                 ) {
                     when {
                         uiState.isInitializing -> {
                             Box(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxSize()
                             )
                         }
 
@@ -443,7 +443,7 @@ fun DirectoryBrowserScreen(
                                         MotionTransitions.resolveHierarchyDirection(
                                             initialPath = initialState,
                                             targetPath = targetState,
-                                            isFocalLanding = landing,
+                                            isFocalLanding = landing
                                         )
                                     if (landing) {
                                         isSearchLanding.value = false
@@ -451,10 +451,10 @@ fun DirectoryBrowserScreen(
                                     MotionTransitions.hierarchyContentTransform(direction, isReduceMotion)
                                 },
                                 label = "hierarchy_drilldown_transition",
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxSize()
                             ) { targetPath ->
                                 Box(
-                                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+                                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
                                 ) {
                                     if (targetPath == uiState.currentPath) {
                                         // Live content for current path
@@ -463,7 +463,7 @@ fun DirectoryBrowserScreen(
                                                 (uiState.currentDirectory == null || uiState.currentDirectory?.path != uiState.currentPath) -> {
                                                 Box(
                                                     modifier = Modifier.fillMaxSize(),
-                                                    contentAlignment = Alignment.Center,
+                                                    contentAlignment = Alignment.Center
                                                 ) {
                                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                                         CircularProgressIndicator()
@@ -471,7 +471,7 @@ fun DirectoryBrowserScreen(
                                                         Text(
                                                             text = "正在加载远程目录...",
                                                             style = MaterialTheme.typography.bodyMedium,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                                         )
                                                     }
                                                 }
@@ -482,7 +482,7 @@ fun DirectoryBrowserScreen(
                                                     message = uiState.errorMessage ?: "加载失败",
                                                     onRetry = { viewModel.onRetry() },
                                                     onGoBack = { viewModel.onNavigateUp() },
-                                                    canGoBack = uiState.canNavigateUp,
+                                                    canGoBack = uiState.canNavigateUp
                                                 )
                                             }
 
@@ -518,7 +518,7 @@ fun DirectoryBrowserScreen(
                                                         if (file.isAudio && !isSelectionMode) {
                                                             viewModel.toggleFileSelection(file.path)
                                                         }
-                                                    },
+                                                    }
                                                 )
                                             }
                                         }
@@ -539,7 +539,7 @@ fun DirectoryBrowserScreen(
                                                 onAddToPlaylist = onAddToPlaylist,
                                                 isSelectionMode = isSelectionMode,
                                                 selectedFilePaths = selectedFilePaths,
-                                                onFileLongClicked = null,
+                                                onFileLongClicked = null
                                             )
                                         } else {
                                             Box(modifier = Modifier.fillMaxSize())
@@ -563,13 +563,13 @@ fun DirectoryBrowserScreen(
                                 viewModel.clearSelection()
                             }
                         },
-                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomBarPadding),
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomBarPadding)
                     )
 
                     if (pullRefreshState.verticalOffset > 0f || pullRefreshState.isRefreshing) {
                         PullToRefreshContainer(
                             state = pullRefreshState,
-                            modifier = Modifier.align(Alignment.TopCenter),
+                            modifier = Modifier.align(Alignment.TopCenter)
                         )
                     }
                 }
@@ -582,16 +582,16 @@ fun DirectoryBrowserScreen(
             enter = MotionTransitions.searchOverlayEnter(isReduceMotion),
             exit = MotionTransitions.searchOverlayExit(isReduceMotion),
             modifier =
-                Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .padding(top = 56.dp),
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(top = 56.dp)
         ) {
             Box(
                 modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surface),
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
                 SearchResultsContent(
                     query = uiState.searchQuery,
@@ -626,7 +626,7 @@ fun DirectoryBrowserScreen(
                     },
                     isGlobalSearch = uiState.isGlobalSearch,
                     onToggleSearchScope = { viewModel.onToggleSearchScope() },
-                    activeSourceName = uiState.activeServer?.name,
+                    activeSourceName = uiState.activeServer?.name
                 )
 
                 FloatingMultiSelectBottomBar(
@@ -642,7 +642,7 @@ fun DirectoryBrowserScreen(
                             viewModel.clearSearchSelection()
                         }
                     },
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomBarPadding),
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomBarPadding)
                 )
             }
         }
@@ -659,7 +659,7 @@ fun DirectoryBrowserScreen(
             isSearchSelectionMode = isSearchSelectionMode,
             selectedCount = selectedSearchTrackIds.size,
             isAllSelected =
-                uiState.searchResult.matchedTracks.isNotEmpty() && selectedSearchTrackIds.size == uiState.searchResult.matchedTracks.size,
+            uiState.searchResult.matchedTracks.isNotEmpty() && selectedSearchTrackIds.size == uiState.searchResult.matchedTracks.size,
             onClearSelection = { viewModel.clearSearchSelection() },
             onToggleSelectAll = {
                 val selectableTracks = uiState.searchResult.matchedTracks
@@ -669,7 +669,7 @@ fun DirectoryBrowserScreen(
                 } else {
                     viewModel.selectAllSearchTracks()
                 }
-            },
+            }
         )
     }
 }
@@ -690,7 +690,7 @@ fun DirectoryContentList(
     isSelectionMode: Boolean = false,
     selectedFilePaths: Set<String> = emptySet(),
     onFileLongClicked: ((RemoteFile) -> Unit)? = null,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val isReduceMotion = isReduceMotionEnabled()
     val placementSpec =
@@ -704,14 +704,14 @@ fun DirectoryContentList(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = MiniPlayerDefaults.PenetrativeContentBottomPadding),
+        contentPadding = PaddingValues(top = 8.dp, bottom = MiniPlayerDefaults.PenetrativeContentBottomPadding)
     ) {
         // Subdirectories first (Elevated MD3 Cards)
         items(directories, key = { "dir_${it.path}" }) { dir ->
             DirectoryItemRow(
                 directory = dir,
                 onClick = { if (!isSelectionMode) onDirectoryClicked(dir) },
-                modifier = if (placementSpec != null) Modifier.animateItemPlacement(placementSpec) else Modifier,
+                modifier = if (placementSpec != null) Modifier.animateItemPlacement(placementSpec) else Modifier
             )
         }
 
@@ -743,7 +743,7 @@ fun DirectoryContentList(
                         }
                     }
                 },
-                modifier = if (placementSpec != null) Modifier.animateItemPlacement(placementSpec) else Modifier,
+                modifier = if (placementSpec != null) Modifier.animateItemPlacement(placementSpec) else Modifier
             )
         }
     }

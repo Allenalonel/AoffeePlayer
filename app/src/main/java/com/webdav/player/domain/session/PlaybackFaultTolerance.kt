@@ -8,17 +8,17 @@ import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.model.WebDavServer
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import java.io.FileNotFoundException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 internal fun Throwable?.isFileNotFoundOrDeniedException(): Boolean {
     if (this == null) return false
@@ -32,14 +32,14 @@ internal fun Throwable?.isFileNotFoundOrDeniedException(): Boolean {
  * dead-track skip decisions, premature EOF arbitration, and adaptive pre-roll planning.
  */
 internal class PlaybackFaultTolerance(
-    private val coroutineScope: CoroutineScope,
+    private val coroutineScope: CoroutineScope
 ) {
     val bufferingWatchdogJobRef = AtomicReference<Job?>(null)
     val lastBufferingTimestampMs = AtomicLong(0L)
 
     fun onBufferingStarted(
         isLocalTrack: Boolean,
-        onTimeout: (autoPause: Boolean) -> Unit,
+        onTimeout: (autoPause: Boolean) -> Unit
     ) {
         if (isLocalTrack) return
         lastBufferingTimestampMs.set(System.currentTimeMillis())
@@ -64,7 +64,7 @@ internal class PlaybackFaultTolerance(
         val clearFlags = state.isWeakNetwork || state.canManualRetry || state.isReconnecting
         return PlayingStartedDecision(
             clearWeakNetworkFlags = clearFlags,
-            reachableServerId = state.currentTrack?.serverId,
+            reachableServerId = state.currentTrack?.serverId
         )
     }
 
@@ -90,7 +90,7 @@ internal class PlaybackFaultTolerance(
     fun handle404Failure(
         track: AudioTrack?,
         errorMessage: String? = null,
-        canSkip: (AudioTrack) -> Boolean = { false },
+        canSkip: (AudioTrack) -> Boolean = { false }
     ): FaultDecision {
         cancelWatchdog()
         val unavailableTrack = track?.let { Triple(it.serverId, it.remotePath, InactiveReason.FILE_NOT_FOUND) }
@@ -100,14 +100,14 @@ internal class PlaybackFaultTolerance(
         val msg = errorMessage ?: "音频文件已被重命名或删除"
         return FaultDecision.ShowError(
             error = PlaybackState.Error(msg, kind = PlaybackErrorKind.FILE_NOT_FOUND),
-            unavailableTrack = unavailableTrack,
+            unavailableTrack = unavailableTrack
         )
     }
 
     fun handleAuthFailure(
         track: AudioTrack?,
         errorMessage: String? = null,
-        canSkip: (AudioTrack) -> Boolean = { false },
+        canSkip: (AudioTrack) -> Boolean = { false }
     ): FaultDecision {
         cancelWatchdog()
         val unavailableServer = track?.let { it.serverId to InactiveReason.SERVER_CREDENTIAL_INVALID }
@@ -117,13 +117,13 @@ internal class PlaybackFaultTolerance(
         val msg = errorMessage ?: "服务器认证凭据失效"
         return FaultDecision.ShowError(
             error = PlaybackState.Error(msg, kind = PlaybackErrorKind.AUTH_INVALID),
-            unavailableServer = unavailableServer,
+            unavailableServer = unavailableServer
         )
     }
 
     fun handleServerUnavailable(
         track: AudioTrack,
-        canSkip: (AudioTrack) -> Boolean = { false },
+        canSkip: (AudioTrack) -> Boolean = { false }
     ): FaultDecision {
         cancelWatchdog()
         val unavailableServer = track.serverId to InactiveReason.SERVER_UNREACHABLE
@@ -132,7 +132,7 @@ internal class PlaybackFaultTolerance(
         } else {
             FaultDecision.ShowError(
                 error = PlaybackState.Error("所属服务器无法连接", kind = PlaybackErrorKind.SERVER_UNREACHABLE),
-                unavailableServer = unavailableServer,
+                unavailableServer = unavailableServer
             )
         }
     }
@@ -140,7 +140,7 @@ internal class PlaybackFaultTolerance(
     fun handlePlaybackError(
         state: PlaybackState.Error,
         currentTrack: AudioTrack?,
-        canSkip: (AudioTrack) -> Boolean = { false },
+        canSkip: (AudioTrack) -> Boolean = { false }
     ): FaultDecision =
         when (state.kind) {
             PlaybackErrorKind.UNSUPPORTED_RANGE -> FaultDecision.PauseForUnsupportedRange
@@ -153,7 +153,7 @@ internal class PlaybackFaultTolerance(
     fun handleLoadException(
         e: Throwable,
         track: AudioTrack,
-        canSkip: (AudioTrack) -> Boolean = { false },
+        canSkip: (AudioTrack) -> Boolean = { false }
     ): FaultDecision =
         when {
             e.isFileNotFoundOrDeniedException() -> handle404Failure(track, canSkip = canSkip)
@@ -163,7 +163,7 @@ internal class PlaybackFaultTolerance(
 
     fun isPrematureEof(
         currentPos: Long,
-        duration: Long,
+        duration: Long
     ): Boolean {
         val isPhysicalMatch = duration <= 0L || currentPos >= (duration - DURATION_COMPLETION_TOLERANCE_MS)
         val isProgressMatch =
@@ -174,7 +174,7 @@ internal class PlaybackFaultTolerance(
     fun evaluatePreroll(
         progress: PlaybackProgress,
         state: PlayerSessionState,
-        isPrerollAlreadyAppended: Boolean,
+        isPrerollAlreadyAppended: Boolean
     ): PrerollPlan {
         if (isPrerollAlreadyAppended || state.queue.tracks.size <= 1) return PrerollPlan.None
         if (state.playbackMode == PlaybackMode.SHUFFLE && state.queue.currentIndex >= state.queue.tracks.lastIndex) {
@@ -187,14 +187,14 @@ internal class PlaybackFaultTolerance(
         val server = state.activeServer ?: return PrerollPlan.None
         return PrerollPlan.ScheduleNext(
             expectedTrackId = state.currentTrack?.id,
-            fallbackServer = server,
+            fallbackServer = server
         )
     }
 
     fun evaluatePlaybackEnded(
         state: PlayerSessionState,
         currentPos: Long,
-        engineDurationMs: Long,
+        engineDurationMs: Long
     ): PlaybackEndedDecision {
         val duration = engineDurationMs.takeIf { it > 0L } ?: state.currentTrack?.durationMs ?: state.durationMs
         if (isPrematureEof(currentPos, duration)) {
@@ -213,7 +213,7 @@ internal class PlaybackFaultTolerance(
 
     fun reduceStateForDecision(
         current: PlayerSessionState,
-        decision: FaultDecision,
+        decision: FaultDecision
     ): PlayerSessionState =
         when (decision) {
             is FaultDecision.PauseForUnsupportedRange -> {
@@ -225,7 +225,7 @@ internal class PlaybackFaultTolerance(
                     playbackState = decision.error,
                     errorMessage = decision.error.message,
                     canManualRetry = false,
-                    isWeakNetwork = false,
+                    isWeakNetwork = false
                 )
             }
 
@@ -235,12 +235,12 @@ internal class PlaybackFaultTolerance(
                     errorMessage = decision.error.message,
                     isWeakNetwork = true,
                     canManualRetry = true,
-                    isReconnecting = false,
+                    isReconnecting = false
                 )
             }
 
             is FaultDecision.SkipTrack,
-            is FaultDecision.Ignored,
+            is FaultDecision.Ignored
             -> {
                 current
             }
@@ -258,12 +258,12 @@ internal class PlaybackFaultTolerance(
 
 internal data class PlayingStartedDecision(
     val clearWeakNetworkFlags: Boolean,
-    val reachableServerId: Long?,
+    val reachableServerId: Long?
 )
 
 internal enum class NetworkRestoreDecision {
     Ignore,
-    AutoResume,
+    AutoResume
 }
 
 internal sealed interface FaultDecision {
@@ -276,17 +276,17 @@ internal sealed interface FaultDecision {
 
     data class SkipTrack(
         override val unavailableTrack: Triple<Long, String, InactiveReason>? = null,
-        override val unavailableServer: Pair<Long, InactiveReason>? = null,
+        override val unavailableServer: Pair<Long, InactiveReason>? = null
     ) : FaultDecision
 
     data class ShowError(
         val error: PlaybackState.Error,
         override val unavailableTrack: Triple<Long, String, InactiveReason>? = null,
-        override val unavailableServer: Pair<Long, InactiveReason>? = null,
+        override val unavailableServer: Pair<Long, InactiveReason>? = null
     ) : FaultDecision
 
     data class RetryableError(
-        val error: PlaybackState.Error,
+        val error: PlaybackState.Error
     ) : FaultDecision
 }
 
@@ -295,22 +295,22 @@ internal sealed interface PrerollPlan {
 
     data class ScheduleNext(
         val expectedTrackId: String?,
-        val fallbackServer: WebDavServer,
+        val fallbackServer: WebDavServer
     ) : PrerollPlan
 }
 
 internal sealed interface PlaybackEndedDecision {
     data class PrematureEof(
-        val seekPositionMs: Long,
+        val seekPositionMs: Long
     ) : PlaybackEndedDecision
 
     data object Ended : PlaybackEndedDecision
 
     data class SingleLoopReplay(
-        val durationMs: Long,
+        val durationMs: Long
     ) : PlaybackEndedDecision
 
     data class AdvanceQueue(
-        val server: WebDavServer,
+        val server: WebDavServer
     ) : PlaybackEndedDecision
 }

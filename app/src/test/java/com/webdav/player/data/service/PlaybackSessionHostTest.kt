@@ -61,7 +61,7 @@ class PlaybackSessionHostTest {
             name = "Test Server",
             url = "http://127.0.0.1:8080/dav",
             port = 8080,
-            pathPrefix = "/dav",
+            pathPrefix = "/dav"
         )
 
     private val testTrack =
@@ -71,7 +71,7 @@ class PlaybackSessionHostTest {
             remotePath = "/track.mp3",
             title = "Track 1",
             format = AudioFormat.MP3,
-            size = 1000L,
+            size = 1000L
         )
 
     @Before
@@ -89,7 +89,7 @@ class PlaybackSessionHostTest {
                 playerEngine = fakeEngine,
                 audioFocusHandler = AudioFocusHandler(context),
                 coroutineScope = testScope,
-                sessionPlayer = exoPlayer,
+                sessionPlayer = exoPlayer
             )
         PlaybackSessionHost.setInstanceForTesting(host)
 
@@ -428,9 +428,9 @@ class PlaybackSessionHostTest {
         val appSession =
             com.webdav.player.domain.session.FakeMusicPlayerAppSession(
                 initialState =
-                    com.webdav.player.domain.model.PlayerSessionState(
-                        playbackState = PlaybackState.Playing,
-                    ),
+                com.webdav.player.domain.model.PlayerSessionState(
+                    playbackState = PlaybackState.Playing
+                )
             )
         host.bindAppSession(appSession)
         val focusHandler = host.audioFocusHandler
@@ -462,9 +462,9 @@ class PlaybackSessionHostTest {
         val appSession =
             com.webdav.player.domain.session.FakeMusicPlayerAppSession(
                 initialState =
-                    com.webdav.player.domain.model.PlayerSessionState(
-                        playbackState = PlaybackState.Playing,
-                    ),
+                com.webdav.player.domain.model.PlayerSessionState(
+                    playbackState = PlaybackState.Playing
+                )
             )
         host.bindAppSession(appSession)
 
@@ -489,9 +489,9 @@ class PlaybackSessionHostTest {
         val appSession =
             com.webdav.player.domain.session.FakeMusicPlayerAppSession(
                 initialState =
-                    com.webdav.player.domain.model.PlayerSessionState(
-                        playbackState = PlaybackState.Playing,
-                    ),
+                com.webdav.player.domain.model.PlayerSessionState(
+                    playbackState = PlaybackState.Playing
+                )
             )
         host.bindAppSession(appSession)
 
@@ -548,14 +548,14 @@ class PlaybackSessionHostTest {
         val media3Engine =
             com.webdav.player.data.player.Media3AudioPlayerEngine(
                 context = context,
-                coroutineScope = testScope,
+                coroutineScope = testScope
             )
         val standaloneHost =
             PlaybackSessionHost(
                 context = context,
                 engine = media3Engine,
                 audioFocusHandler = AudioFocusHandler(context),
-                coroutineScope = testScope,
+                coroutineScope = testScope
             )
         try {
             assertNotNull(standaloneHost.sessionPlayer)
@@ -563,7 +563,7 @@ class PlaybackSessionHostTest {
             assertEquals(standaloneHost.sessionPlayer, standaloneHost.mediaSession.player)
             assertEquals(
                 media3Engine.player,
-                (standaloneHost.sessionPlayer as androidx.media3.common.ForwardingPlayer).wrappedPlayer,
+                (standaloneHost.sessionPlayer as androidx.media3.common.ForwardingPlayer).wrappedPlayer
             )
 
             // Before any track is loaded, next/previous media item commands are not forced available
@@ -619,7 +619,7 @@ class PlaybackSessionHostTest {
                 testTrack.copy(
                     title = "Host Enriched Title",
                     artist = "Host Enriched Artist",
-                    album = "Host Enriched Album",
+                    album = "Host Enriched Album"
                 )
             media3Engine.updateTrackMetadata(enrichedTrack)
             org.robolectric.shadows.ShadowLooper
@@ -628,17 +628,17 @@ class PlaybackSessionHostTest {
             assertEquals(
                 "Host Enriched Title",
                 standaloneHost.mediaSession.player.mediaMetadata.title
-                    ?.toString(),
+                    ?.toString()
             )
             assertEquals(
                 "Host Enriched Artist",
                 standaloneHost.mediaSession.player.mediaMetadata.artist
-                    ?.toString(),
+                    ?.toString()
             )
             assertEquals(
                 "Host Enriched Album",
                 standaloneHost.mediaSession.player.mediaMetadata.albumTitle
-                    ?.toString(),
+                    ?.toString()
             )
             assertEquals("Host Enriched Title", observedSessionMeta?.title?.toString())
             assertEquals("Host Enriched Artist", observedSessionMeta?.artist?.toString())
@@ -648,11 +648,11 @@ class PlaybackSessionHostTest {
             val notification = standaloneHost.buildCurrentNotification()
             assertEquals(
                 "Host Enriched Title",
-                notification.extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString(),
+                notification.extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString()
             )
             assertEquals(
                 "Host Enriched Artist",
-                notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString(),
+                notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString()
             )
 
             // Verify media buttons and player commands route to appSession without engine callbacks
@@ -883,7 +883,7 @@ class PlaybackSessionHostTest {
                         .setTitle("Symphony No. 5")
                         .setArtist("Beethoven")
                         .setAlbumTitle("Classical Collection")
-                        .build(),
+                        .build()
                 ).build()
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
@@ -894,7 +894,7 @@ class PlaybackSessionHostTest {
         assertEquals("Beethoven", playingNotification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString())
         assertEquals(
             "Classical Collection",
-            playingNotification.extras.getCharSequence(android.app.Notification.EXTRA_SUB_TEXT)?.toString(),
+            playingNotification.extras.getCharSequence(android.app.Notification.EXTRA_SUB_TEXT)?.toString()
         )
         assertTrue(playingNotification.flags and android.app.Notification.FLAG_ONGOING_EVENT != 0)
         assertEquals("Pause", playingNotification.actions[1].title.toString())
@@ -935,7 +935,7 @@ class PlaybackSessionHostTest {
         assertFalse("AudioPlayerEngine must not expose onAudioRoutingChanged", "onAudioRoutingChanged" in engineMethods)
         assertFalse(
             "PlaybackSessionHost must not implement AudioPlayerEngine",
-            com.webdav.player.domain.player.AudioPlayerEngine::class.java.isAssignableFrom(PlaybackSessionHost::class.java),
+            com.webdav.player.domain.player.AudioPlayerEngine::class.java.isAssignableFrom(PlaybackSessionHost::class.java)
         )
     }
 
@@ -1016,7 +1016,7 @@ class PlaybackSessionHostTest {
                 context = context,
                 engine = media3Engine,
                 audioFocusHandler = AudioFocusHandler(context),
-                coroutineScope = testScope,
+                coroutineScope = testScope
             )
         try {
             shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
@@ -1040,7 +1040,7 @@ class PlaybackSessionHostTest {
             assertTrue("Media3 playWhenReady must become true once focus granted", media3Engine.playWhenReady)
             assertTrue(
                 media3Engine.playbackState.value is PlaybackState.Playing ||
-                    media3Engine.playbackState.value is PlaybackState.Buffering,
+                    media3Engine.playbackState.value is PlaybackState.Buffering
             )
             assertTrue(standaloneHost.hardwareLockManager.isWakeLockHeld)
             assertTrue(standaloneHost.hardwareLockManager.isWifiLockHeld)
@@ -1058,16 +1058,16 @@ class PlaybackSessionHostTest {
                 remotePath = "content://media/external/audio/1",
                 title = "Local Song",
                 format = AudioFormat.FLAC,
-                size = 5000L,
+                size = 5000L
             )
         val remoteTrack = testTrack
         val appSession =
             com.webdav.player.domain.session.FakeMusicPlayerAppSession(
                 initialState =
-                    PlayerSessionState(
-                        queue = PlaybackQueue(listOf(localTrack, remoteTrack), 0),
-                        playbackState = PlaybackState.Playing,
-                    ),
+                PlayerSessionState(
+                    queue = PlaybackQueue(listOf(localTrack, remoteTrack), 0),
+                    playbackState = PlaybackState.Playing
+                )
             )
         host.bindAppSession(appSession)
         testScope.runCurrent()
@@ -1080,7 +1080,7 @@ class PlaybackSessionHostTest {
         // Transition to remote track while playing -> both locks held
         appSession._sessionState.value =
             appSession.sessionState.value.copy(
-                queue = PlaybackQueue(listOf(localTrack, remoteTrack), 1),
+                queue = PlaybackQueue(listOf(localTrack, remoteTrack), 1)
             )
         testScope.runCurrent()
         assertTrue("WakeLock must be held for remote track", host.hardwareLockManager.isWakeLockHeld)
@@ -1089,7 +1089,7 @@ class PlaybackSessionHostTest {
         // Transition back to local track while playing -> WifiLock released, WakeLock retained
         appSession._sessionState.value =
             appSession.sessionState.value.copy(
-                queue = PlaybackQueue(listOf(localTrack, remoteTrack), 0),
+                queue = PlaybackQueue(listOf(localTrack, remoteTrack), 0)
             )
         testScope.runCurrent()
         assertTrue("WakeLock must remain held on local track", host.hardwareLockManager.isWakeLockHeld)
@@ -1125,7 +1125,7 @@ class PlaybackSessionHostTest {
         host.handlePlaybackStateChanged(PlaybackState.Ended)
         assertTrue(
             "Ended must abandon the active audio focus request",
-            shadowAudioManager.lastAbandonedAudioFocusRequest === reqForEnded,
+            shadowAudioManager.lastAbandonedAudioFocusRequest === reqForEnded
         )
 
         // 4. Idle abandons audio focus
@@ -1135,7 +1135,7 @@ class PlaybackSessionHostTest {
         host.handlePlaybackStateChanged(PlaybackState.Idle)
         assertTrue(
             "Idle must abandon the active audio focus request",
-            shadowAudioManager.lastAbandonedAudioFocusRequest === reqForIdle,
+            shadowAudioManager.lastAbandonedAudioFocusRequest === reqForIdle
         )
 
         // 5. detachService abandons audio focus
@@ -1145,7 +1145,7 @@ class PlaybackSessionHostTest {
         host.detachService(service)
         assertTrue(
             "detachService must abandon the active audio focus request",
-            shadowAudioManager.lastAbandonedAudioFocusRequest === reqForDetach,
+            shadowAudioManager.lastAbandonedAudioFocusRequest === reqForDetach
         )
     }
 
@@ -1155,10 +1155,10 @@ class PlaybackSessionHostTest {
         val appSession =
             com.webdav.player.domain.session.FakeMusicPlayerAppSession(
                 initialState =
-                    PlayerSessionState(
-                        queue = PlaybackQueue(listOf(testTrack, secondTrack), 0),
-                        playbackState = PlaybackState.Error("Stream failed"),
-                    ),
+                PlayerSessionState(
+                    queue = PlaybackQueue(listOf(testTrack, secondTrack), 0),
+                    playbackState = PlaybackState.Error("Stream failed")
+                )
             )
         host.bindAppSession(appSession)
         testScope.runCurrent()
@@ -1173,7 +1173,7 @@ class PlaybackSessionHostTest {
         // Track changes while in Error state -> must NOT re-acquire locks
         appSession._sessionState.value =
             appSession.sessionState.value.copy(
-                queue = PlaybackQueue(listOf(testTrack, secondTrack), 1),
+                queue = PlaybackQueue(listOf(testTrack, secondTrack), 1)
             )
         testScope.runCurrent()
         assertFalse("WakeLock must remain released on track change during Error", host.hardwareLockManager.isWakeLockHeld)
@@ -1184,7 +1184,7 @@ class PlaybackSessionHostTest {
         appSession._sessionState.value =
             appSession.sessionState.value.copy(
                 playbackState = PlaybackState.Idle,
-                queue = PlaybackQueue(listOf(testTrack, secondTrack), 0),
+                queue = PlaybackQueue(listOf(testTrack, secondTrack), 0)
             )
         testScope.runCurrent()
         assertFalse("WakeLock must remain released on track change during Idle", host.hardwareLockManager.isWakeLockHeld)

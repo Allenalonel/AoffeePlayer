@@ -18,6 +18,11 @@ import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.WebDavServer
+import java.io.File
+import java.io.IOException
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.util.concurrent.TimeUnit
 import okhttp3.Credentials
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -32,11 +37,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.File
-import java.io.IOException
-import java.net.SocketException
-import java.net.SocketTimeoutException
-import java.util.concurrent.TimeUnit
 
 @OptIn(UnstableApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -56,7 +56,7 @@ class WebDavMediaSourceBuilderTest {
             artist = "Test Artist",
             album = "Test Album",
             format = AudioFormat.MP3,
-            size = 1024L,
+            size = 1024L
         )
 
     @Before
@@ -74,7 +74,7 @@ class WebDavMediaSourceBuilderTest {
                 port = mockWebServer.port,
                 pathPrefix = "/dav",
                 username = "testuser",
-                password = "testpassword",
+                password = "testpassword"
             )
 
         builder = WebDavMediaSourceBuilder(context)
@@ -105,7 +105,7 @@ class WebDavMediaSourceBuilderTest {
         val artUri = mediaItem.mediaMetadata.artworkUri
         assertTrue(
             "artworkUri must not expose non-existent or private file:// scheme, was: $artUri",
-            artUri == null || artUri.scheme == "content",
+            artUri == null || artUri.scheme == "content"
         )
     }
 
@@ -122,13 +122,13 @@ class WebDavMediaSourceBuilderTest {
             org.junit.Assert.assertArrayEquals(fakeImageData, mediaItem.mediaMetadata.artworkData)
             assertEquals(
                 MediaMetadata.PICTURE_TYPE_FRONT_COVER,
-                mediaItem.mediaMetadata.artworkDataType,
+                mediaItem.mediaMetadata.artworkDataType
             )
             // Ensure no private file:// URI is leaked to external processes
             val artUri = mediaItem.mediaMetadata.artworkUri
             assertTrue(
                 "artworkUri must not expose private file:// scheme to prevent SystemUI ENOENT crash, was: $artUri",
-                artUri == null || artUri.scheme == "content",
+                artUri == null || artUri.scheme == "content"
             )
         } finally {
             coverFile.delete()
@@ -155,11 +155,11 @@ class WebDavMediaSourceBuilderTest {
 
         assertTrue(
             "Read timeout must be at least 30 seconds (30000ms), but was ${streamingClient.readTimeoutMillis}ms",
-            streamingClient.readTimeoutMillis >= 30_000,
+            streamingClient.readTimeoutMillis >= 30_000
         )
         assertTrue(
             "Write timeout must be at least 30 seconds (30000ms), but was ${streamingClient.writeTimeoutMillis}ms",
-            streamingClient.writeTimeoutMillis >= 30_000,
+            streamingClient.writeTimeoutMillis >= 30_000
         )
     }
 
@@ -171,7 +171,7 @@ class WebDavMediaSourceBuilderTest {
                 .setResponseCode(200)
                 .setHeader("Content-Type", "audio/mpeg")
                 .setHeader("Content-Length", "1024")
-                .setBody("test audio stream data"),
+                .setBody("test audio stream data")
         )
 
         val mediaSource = builder.createMediaSource(testServer, testTrack)
@@ -201,7 +201,7 @@ class WebDavMediaSourceBuilderTest {
                 "Read timeout",
                 SocketTimeoutException("Read timed out"),
                 testDataSpec,
-                HttpDataSource.HttpDataSourceException.TYPE_READ,
+                HttpDataSource.HttpDataSourceException.TYPE_READ
             )
 
         // Attempt 1: 1000ms delay
@@ -210,7 +210,7 @@ class WebDavMediaSourceBuilderTest {
                 LoadEventInfo(0L, testDataSpec, 0L),
                 MediaLoadData(C.DATA_TYPE_MEDIA),
                 socketTimeoutException,
-                1,
+                1
             )
         assertEquals(1000L, policy.getRetryDelayMsFor(info1))
 
@@ -220,7 +220,7 @@ class WebDavMediaSourceBuilderTest {
                 LoadEventInfo(0L, testDataSpec, 0L),
                 MediaLoadData(C.DATA_TYPE_MEDIA),
                 socketTimeoutException,
-                2,
+                2
             )
         assertEquals(2000L, policy.getRetryDelayMsFor(info2))
 
@@ -230,7 +230,7 @@ class WebDavMediaSourceBuilderTest {
                 LoadEventInfo(0L, testDataSpec, 0L),
                 MediaLoadData(C.DATA_TYPE_MEDIA),
                 socketTimeoutException,
-                3,
+                3
             )
         assertEquals(4000L, policy.getRetryDelayMsFor(info3))
 
@@ -240,7 +240,7 @@ class WebDavMediaSourceBuilderTest {
                 LoadEventInfo(0L, testDataSpec, 0L),
                 MediaLoadData(C.DATA_TYPE_MEDIA),
                 socketTimeoutException,
-                4,
+                4
             )
         assertEquals(C.TIME_UNSET, policy.getRetryDelayMsFor(info4))
 
@@ -250,14 +250,14 @@ class WebDavMediaSourceBuilderTest {
                 "Broken pipe",
                 SocketException("Broken pipe"),
                 testDataSpec,
-                HttpDataSource.HttpDataSourceException.TYPE_READ,
+                HttpDataSource.HttpDataSourceException.TYPE_READ
             )
         val brokenPipeInfo =
             LoadErrorHandlingPolicy.LoadErrorInfo(
                 LoadEventInfo(0L, testDataSpec, 0L),
                 MediaLoadData(C.DATA_TYPE_MEDIA),
                 brokenPipeException,
-                1,
+                1
             )
         assertEquals(1000L, policy.getRetryDelayMsFor(brokenPipeInfo))
     }
@@ -277,14 +277,14 @@ class WebDavMediaSourceBuilderTest {
                     null,
                     emptyMap(),
                     testDataSpec,
-                    byteArrayOf(),
+                    byteArrayOf()
                 )
             val errorInfo =
                 LoadErrorHandlingPolicy.LoadErrorInfo(
                     LoadEventInfo(0L, testDataSpec, 0L),
                     MediaLoadData(C.DATA_TYPE_MEDIA),
                     httpException,
-                    1,
+                    1
                 )
             assertEquals("HTTP $code must fail fast without retrying", C.TIME_UNSET, policy.getRetryDelayMsFor(errorInfo))
         }
@@ -297,7 +297,7 @@ class WebDavMediaSourceBuilderTest {
                 .setResponseCode(200)
                 .setHeader("Content-Type", "audio/mpeg")
                 .setHeader("Content-Length", "1024")
-                .setBody("streaming-chunk-data"),
+                .setBody("streaming-chunk-data")
         )
 
         val dataSource = builder.getDataSourceFactory(testServer).createDataSource()
@@ -332,7 +332,7 @@ class WebDavMediaSourceBuilderTest {
                 .setResponseCode(200)
                 .setHeader("Content-Type", "audio/mpeg")
                 .setHeader("Content-Length", "1024")
-                .setBody("recovered-after-retry"),
+                .setBody("recovered-after-retry")
         )
 
         val dataSpec =
@@ -373,7 +373,7 @@ class WebDavMediaSourceBuilderTest {
                 LoadEventInfo(0L, dataSpec, 0L),
                 MediaLoadData(C.DATA_TYPE_MEDIA),
                 caughtTimeoutException!!,
-                1,
+                1
             )
         val retryDelayMs = builder.loadErrorHandlingPolicy.getRetryDelayMsFor(errorInfo)
         assertNotEquals("Should retry transient socket timeout", C.TIME_UNSET, retryDelayMs)
@@ -434,7 +434,7 @@ class WebDavMediaSourceBuilderTest {
                 remotePath = "/Music/test.wma",
                 title = "Test WMA",
                 format = AudioFormat.WMA,
-                size = 2048L,
+                size = 2048L
             )
         val mediaSource = builder.createMediaSource(testServer, wmaTrack)
         assertNotNull(mediaSource)
@@ -460,7 +460,7 @@ class WebDavMediaSourceBuilderTest {
                 artist = "Local Artist",
                 album = "Local Album",
                 format = AudioFormat.FLAC,
-                size = 10485760L,
+                size = 10485760L
             )
 
         val mediaSource = builder.createMediaSource(localServer, localTrack)
@@ -470,7 +470,7 @@ class WebDavMediaSourceBuilderTest {
             localTrack.remotePath,
             mediaSource.mediaItem.localConfiguration
                 ?.uri
-                .toString(),
+                .toString()
         )
         assertEquals(AudioFormat.FLAC.mimeType, mediaSource.mediaItem.localConfiguration?.mimeType)
     }
@@ -485,7 +485,7 @@ class WebDavMediaSourceBuilderTest {
                 remotePath = "content://media/external/audio/media/42",
                 title = "Content Song",
                 format = AudioFormat.MP3,
-                size = 4096L,
+                size = 4096L
             )
 
         val mediaItem = builder.createMediaItem(localServer, contentTrack)
@@ -504,13 +504,13 @@ class WebDavMediaSourceBuilderTest {
                 title = "Track with Art",
                 format = AudioFormat.MP3,
                 size = 4096L,
-                coverThumbnailPath = "content://media/external/audio/albumart/7",
+                coverThumbnailPath = "content://media/external/audio/albumart/7"
             )
 
         val mediaItem = builder.createMediaItem(localServer, contentArtTrack)
         assertEquals(
             Uri.parse("content://media/external/audio/albumart/7"),
-            mediaItem.mediaMetadata.artworkUri,
+            mediaItem.mediaMetadata.artworkUri
         )
     }
 
@@ -520,7 +520,7 @@ class WebDavMediaSourceBuilderTest {
         val streamingClient = builder.getStreamingClientForServer(testServer)
         assertSame(
             builder.streamingConnectionPool,
-            streamingClient.connectionPool,
+            streamingClient.connectionPool
         )
     }
 

@@ -13,7 +13,7 @@ data class PlayerSessionState(
     val canManualRetry: Boolean = false,
     val isReconnecting: Boolean = false,
     val wasKilledBySystem: Boolean = false,
-    val isUnsupportedRange: Boolean = false,
+    val isUnsupportedRange: Boolean = false
 ) {
     val currentTrack: AudioTrack? get() = queue.currentTrack
     val isPlaying: Boolean get() = playbackState is PlaybackState.Playing
@@ -26,19 +26,19 @@ data class PlayerSessionState(
     fun withWeakNetwork(
         isWeakNetwork: Boolean,
         canManualRetry: Boolean,
-        playbackState: PlaybackState = this.playbackState,
+        playbackState: PlaybackState = this.playbackState
     ): PlayerSessionState =
         copy(
             playbackState = playbackState,
             isWeakNetwork = isWeakNetwork,
             canManualRetry = canManualRetry,
-            isReconnecting = isWeakNetwork,
+            isReconnecting = isWeakNetwork
         )
 
     fun withClearedNetworkFlags(
         playbackState: PlaybackState = this.playbackState,
         errorMessage: String? = this.errorMessage,
-        isUnsupportedRange: Boolean = this.isUnsupportedRange,
+        isUnsupportedRange: Boolean = this.isUnsupportedRange
     ): PlayerSessionState =
         copy(
             playbackState = playbackState,
@@ -46,12 +46,12 @@ data class PlayerSessionState(
             isWeakNetwork = false,
             canManualRetry = false,
             isReconnecting = false,
-            isUnsupportedRange = isUnsupportedRange,
+            isUnsupportedRange = isUnsupportedRange
         )
 
     fun withClearedQueue(
         playbackState: PlaybackState = this.playbackState,
-        clearActiveServer: Boolean = false,
+        clearActiveServer: Boolean = false
     ): PlayerSessionState =
         copy(
             activeServer = if (clearActiveServer) null else activeServer,
@@ -59,7 +59,7 @@ data class PlayerSessionState(
             playbackState = playbackState,
             durationMs = 0L,
             lyrics = null,
-            isLoadingLyrics = false,
+            isLoadingLyrics = false
         )
 
     companion object {

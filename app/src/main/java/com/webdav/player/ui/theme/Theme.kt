@@ -49,7 +49,7 @@ val ExpressiveDarkColorScheme =
         onError = OnErrorDark,
         errorContainer = ErrorContainerDark,
         onErrorContainer = OnErrorContainerDark,
-        surfaceTint = PrimaryDark,
+        surfaceTint = PrimaryDark
     )
 
 val ExpressiveLightColorScheme =
@@ -83,7 +83,7 @@ val ExpressiveLightColorScheme =
         onError = OnErrorLight,
         errorContainer = ErrorContainerLight,
         onErrorContainer = OnErrorContainerLight,
-        surfaceTint = PrimaryLight,
+        surfaceTint = PrimaryLight
     )
 
 /**
@@ -96,7 +96,7 @@ const val FLUID_THEME_DURATION_MS = 450
 val FluidThemeAnimationSpec: AnimationSpec<Color> =
     tween(
         durationMillis = FLUID_THEME_DURATION_MS,
-        easing = FluidThemeAnimationEasing,
+        easing = FluidThemeAnimationEasing
     )
 
 /**
@@ -107,7 +107,7 @@ val FluidThemeAnimationSpec: AnimationSpec<Color> =
 @Composable
 fun animatedColorScheme(
     target: ColorScheme,
-    animationSpec: AnimationSpec<Color> = FluidThemeAnimationSpec,
+    animationSpec: AnimationSpec<Color> = FluidThemeAnimationSpec
 ): ColorScheme {
     val background by animateColorAsState(target.background, animationSpec, label = "color_background")
     val surface by animateColorAsState(target.surface, animationSpec, label = "color_surface")
@@ -128,7 +128,7 @@ fun animatedColorScheme(
         primary = primary,
         primaryContainer = primaryContainer,
         onPrimary = onPrimary,
-        onPrimaryContainer = onPrimaryContainer,
+        onPrimaryContainer = onPrimaryContainer
     )
 }
 
@@ -143,7 +143,7 @@ fun resolveBaseColorScheme(
     artworkColors: ArtworkColors? = null,
     targetColorScheme: ColorScheme? = null,
     dynamicDarkScheme: ColorScheme? = null,
-    dynamicLightScheme: ColorScheme? = null,
+    dynamicLightScheme: ColorScheme? = null
 ): ColorScheme =
     when {
         targetColorScheme != null -> {
@@ -174,7 +174,7 @@ fun WebDavPlayerTheme(
     artworkColors: ArtworkColors? = null,
     targetColorScheme: ColorScheme? = null,
     animateTransitions: Boolean = true,
-    content: @Composable () -> Unit,
+    content: @Composable () -> Unit
 ) {
     val dynamicDark =
         if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -196,7 +196,7 @@ fun WebDavPlayerTheme(
             artworkColors = artworkColors,
             targetColorScheme = targetColorScheme,
             dynamicDarkScheme = dynamicDark,
-            dynamicLightScheme = dynamicLight,
+            dynamicLightScheme = dynamicLight
         )
 
     val finalColorScheme =
@@ -210,6 +210,6 @@ fun WebDavPlayerTheme(
         colorScheme = finalColorScheme,
         typography = ExpressiveTypography,
         shapes = ExpressiveShapes,
-        content = content,
+        content = content
     )
 }

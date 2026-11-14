@@ -1,8 +1,5 @@
 package com.webdav.player.ui.browser
 
-import com.webdav.player.data.remote.ConnectionResult
-import com.webdav.player.data.remote.WebDavClient
-import com.webdav.player.test.SharedFakeWebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.Breadcrumb
@@ -20,11 +17,10 @@ import com.webdav.player.domain.model.SortField
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.FakeMediaLibraryRepository
-import com.webdav.player.domain.repository.MediaLibraryRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import com.webdav.player.domain.session.FakeMusicPlayerAppSession
-import kotlinx.coroutines.CompletableDeferred
+import com.webdav.player.test.SharedFakeWebDavClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -63,7 +59,7 @@ class DirectoryBrowserViewModelTest {
             name = "My NAS",
             url = "http://nas.local",
             port = 5005,
-            isDefault = true,
+            isDefault = true
         )
 
     private val rootDir =
@@ -71,13 +67,13 @@ class DirectoryBrowserViewModelTest {
             path = "/",
             name = "根目录",
             subDirectories =
-                listOf(
-                    RemoteDirectory(path = "/Music/", name = "Music"),
-                ),
+            listOf(
+                RemoteDirectory(path = "/Music/", name = "Music")
+            ),
             files =
-                listOf(
-                    RemoteFile(name = "root_track.mp3", path = "/root_track.mp3", size = 1000),
-                ),
+            listOf(
+                RemoteFile(name = "root_track.mp3", path = "/root_track.mp3", size = 1000)
+            )
         )
 
     private val musicDir =
@@ -85,13 +81,13 @@ class DirectoryBrowserViewModelTest {
             path = "/Music/",
             name = "Music",
             subDirectories =
-                listOf(
-                    RemoteDirectory(path = "/Music/Rock/", name = "Rock"),
-                ),
+            listOf(
+                RemoteDirectory(path = "/Music/Rock/", name = "Rock")
+            ),
             files =
-                listOf(
-                    RemoteFile(name = "song.flac", path = "/Music/song.flac", size = 2000),
-                ),
+            listOf(
+                RemoteFile(name = "song.flac", path = "/Music/song.flac", size = 2000)
+            )
         )
 
     private val rockDir =
@@ -100,9 +96,9 @@ class DirectoryBrowserViewModelTest {
             name = "Rock",
             subDirectories = emptyList(),
             files =
-                listOf(
-                    RemoteFile(name = "queen.mp3", path = "/Music/Rock/queen.mp3", size = 3000),
-                ),
+            listOf(
+                RemoteFile(name = "queen.mp3", path = "/Music/Rock/queen.mp3", size = 3000)
+            )
         )
 
     @Before
@@ -123,7 +119,7 @@ class DirectoryBrowserViewModelTest {
             DirectoryBrowserViewModel(
                 serverRepository = fakeServerRepository,
                 mediaLibraryRepository = fakeMediaLibraryRepository,
-                musicPlayerAppSession = fakeMusicPlayerAppSession,
+                musicPlayerAppSession = fakeMusicPlayerAppSession
             )
     }
 
@@ -183,7 +179,7 @@ class DirectoryBrowserViewModelTest {
                 DirectoryBrowserViewModel(
                     serverRepository = fakeServerRepository,
                     mediaLibraryRepository = fakeMediaLibraryRepository,
-                    musicPlayerAppSession = unrestoredSession,
+                    musicPlayerAppSession = unrestoredSession
                 )
             advanceUntilIdle()
 
@@ -202,12 +198,12 @@ class DirectoryBrowserViewModelTest {
                     serverId = sampleServer.id,
                     remotePath = "/root_track.mp3",
                     title = "Root Track",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             unrestoredSession._sessionState.value =
                 unrestoredSession._sessionState.value.copy(
                     queue = PlaybackQueue(tracks = listOf(playingTrack), currentIndex = 0),
-                    playbackState = PlaybackState.Playing,
+                    playbackState = PlaybackState.Playing
                 )
             advanceUntilIdle()
 
@@ -328,7 +324,7 @@ class DirectoryBrowserViewModelTest {
             val emissions =
                 listOf(
                     DirectoryContent(directory = rootDir, isEnriching = true),
-                    DirectoryContent(directory = rootDir, isEnriching = false),
+                    DirectoryContent(directory = rootDir, isEnriching = false)
                 )
             fakeMediaLibraryRepository.setDirectoryContentEmissions("/", emissions)
 
@@ -389,7 +385,7 @@ class DirectoryBrowserViewModelTest {
                 RemoteDirectory(
                     path = "/CachedMusic/",
                     name = "CachedMusic",
-                    files = listOf(RemoteFile(name = "song.mp3", path = "/CachedMusic/song.mp3")),
+                    files = listOf(RemoteFile(name = "song.mp3", path = "/CachedMusic/song.mp3"))
                 )
             fakeMediaLibraryRepository.setCached("/CachedMusic/", cachedDir)
             // Initial network fails with transient timeout
@@ -457,15 +453,15 @@ class DirectoryBrowserViewModelTest {
                     artist = "Cached Artist",
                     album = "Cached Album",
                     durationMs = 240000L,
-                    coverThumbnailPath = "/covers/root_cover.jpg",
+                    coverThumbnailPath = "/covers/root_cover.jpg"
                 )
             fakeMediaLibraryRepository.setDirectoryContent(
                 "/",
                 DirectoryContent(
                     directory = rootDir,
                     metadataMap = mapOf(audioFile.path to cachedMeta),
-                    isEnriching = false,
-                ),
+                    isEnriching = false
+                )
             )
             viewModel.loadDirectory("/", forceRefresh = false)
             advanceUntilIdle()
@@ -478,7 +474,7 @@ class DirectoryBrowserViewModelTest {
             assertEquals(audioFile, fakeMusicPlayerAppSession.lastPlaySelectedFile)
             assertEquals(
                 cachedMeta,
-                fakeMusicPlayerAppSession.lastPlayInitialMetadata[audioFile.path],
+                fakeMusicPlayerAppSession.lastPlayInitialMetadata[audioFile.path]
             )
         }
 
@@ -528,17 +524,17 @@ class DirectoryBrowserViewModelTest {
                 RemoteDirectory(
                     path = "/StreamTest/",
                     name = "StreamTest",
-                    files = listOf(RemoteFile(name = "track1.mp3", path = "/StreamTest/track1.mp3")),
+                    files = listOf(RemoteFile(name = "track1.mp3", path = "/StreamTest/track1.mp3"))
                 )
             val remoteUpdatedDir =
                 RemoteDirectory(
                     path = "/StreamTest/",
                     name = "StreamTest",
                     files =
-                        listOf(
-                            RemoteFile(name = "track1.mp3", path = "/StreamTest/track1.mp3"),
-                            RemoteFile(name = "track2.mp3", path = "/StreamTest/track2.mp3"),
-                        ),
+                    listOf(
+                        RemoteFile(name = "track1.mp3", path = "/StreamTest/track1.mp3"),
+                        RemoteFile(name = "track2.mp3", path = "/StreamTest/track2.mp3")
+                    )
                 )
 
             fakeMediaLibraryRepository.setCached("/StreamTest/", cachedDir)
@@ -574,13 +570,13 @@ class DirectoryBrowserViewModelTest {
                     album = "Debut Album",
                     trackNumber = 1,
                     durationMs = 210000L,
-                    coverThumbnailPath = "/cache/covers/cover_1.jpg",
+                    coverThumbnailPath = "/cache/covers/cover_1.jpg"
                 )
 
             val emissions =
                 listOf(
                     DirectoryContent(directory = rootDir, metadataMap = emptyMap(), isEnriching = true),
-                    DirectoryContent(directory = rootDir, metadataMap = mapOf(audioFile.path to richMeta), isEnriching = false),
+                    DirectoryContent(directory = rootDir, metadataMap = mapOf(audioFile.path to richMeta), isEnriching = false)
                 )
             fakeMediaLibraryRepository.setDirectoryContentEmissions("/", emissions)
 
@@ -683,7 +679,7 @@ class DirectoryBrowserViewModelTest {
                 RemoteDirectory(
                     path = "/Music/Jazz/",
                     name = "Jazz",
-                    files = listOf(RemoteFile(name = "miles.mp3", path = "/Music/Jazz/miles.mp3")),
+                    files = listOf(RemoteFile(name = "miles.mp3", path = "/Music/Jazz/miles.mp3"))
                 )
             repo.setResult("/Music/Jazz/", ListDirectoryResult.Success(jazzDir))
             repo.setLastBrowsingPath(sampleServer.id, "/Music/Jazz/")
@@ -692,7 +688,7 @@ class DirectoryBrowserViewModelTest {
                 DirectoryBrowserViewModel(
                     serverRepository = fakeServerRepository,
                     mediaLibraryRepository = repo,
-                    musicPlayerAppSession = fakeMusicPlayerAppSession,
+                    musicPlayerAppSession = fakeMusicPlayerAppSession
                 )
             advanceUntilIdle()
 
@@ -708,7 +704,7 @@ class DirectoryBrowserViewModelTest {
             val repo = FakeMediaLibraryRepository(fakeTrackMetadataRepository)
             repo.setResult(
                 "/DeletedFolder/",
-                ListDirectoryResult.Failure("404 Not Found"),
+                ListDirectoryResult.Failure("404 Not Found")
             )
             repo.setResult("/", ListDirectoryResult.Success(rootDir))
             repo.setLastBrowsingPath(sampleServer.id, "/DeletedFolder/")
@@ -717,7 +713,7 @@ class DirectoryBrowserViewModelTest {
                 DirectoryBrowserViewModel(
                     serverRepository = fakeServerRepository,
                     mediaLibraryRepository = repo,
-                    musicPlayerAppSession = fakeMusicPlayerAppSession,
+                    musicPlayerAppSession = fakeMusicPlayerAppSession
                 )
             advanceUntilIdle()
 
@@ -754,7 +750,7 @@ class DirectoryBrowserViewModelTest {
             assertEquals(
                 "Rock",
                 viewModel.uiState.value.currentDirectory
-                    ?.name,
+                    ?.name
             )
             assertEquals(initialCalls, fakeMediaLibraryRepository.listCalls)
         }
@@ -778,7 +774,7 @@ class DirectoryBrowserViewModelTest {
                     path = "/",
                     name = "Server 2 Root",
                     subDirectories = emptyList(),
-                    files = emptyList(),
+                    files = emptyList()
                 )
             fakeMediaLibraryRepository.setResult("/", ListDirectoryResult.Success(server2RootDir))
 
@@ -824,17 +820,17 @@ class DirectoryBrowserViewModelTest {
                 RemoteDirectory(
                     path = "/CachedDir/",
                     name = "CachedDir",
-                    files = listOf(RemoteFile(name = "old.mp3", path = "/CachedDir/old.mp3")),
+                    files = listOf(RemoteFile(name = "old.mp3", path = "/CachedDir/old.mp3"))
                 )
             val freshDir =
                 RemoteDirectory(
                     path = "/CachedDir/",
                     name = "CachedDir",
                     files =
-                        listOf(
-                            RemoteFile(name = "old.mp3", path = "/CachedDir/old.mp3"),
-                            RemoteFile(name = "new.mp3", path = "/CachedDir/new.mp3"),
-                        ),
+                    listOf(
+                        RemoteFile(name = "old.mp3", path = "/CachedDir/old.mp3"),
+                        RemoteFile(name = "new.mp3", path = "/CachedDir/new.mp3")
+                    )
                 )
 
             fakeMediaLibraryRepository.setCached("/CachedDir/", cachedDir)
@@ -861,7 +857,7 @@ class DirectoryBrowserViewModelTest {
                 RemoteDirectory(
                     path = "/OfflineDir/",
                     name = "OfflineDir",
-                    files = listOf(RemoteFile(name = "local.mp3", path = "/OfflineDir/local.mp3")),
+                    files = listOf(RemoteFile(name = "local.mp3", path = "/OfflineDir/local.mp3"))
                 )
             fakeMediaLibraryRepository.setCached("/OfflineDir/", cachedDir)
             fakeMediaLibraryRepository.setResult("/OfflineDir/", ListDirectoryResult.Failure("Network timeout", 408))
@@ -938,13 +934,13 @@ class DirectoryBrowserViewModelTest {
                     serverId = sampleServer.id,
                     remotePath = "/root_track.mp3",
                     title = "Root Track",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
 
             fakeMusicPlayerAppSession._sessionState.value =
                 fakeMusicPlayerAppSession._sessionState.value.copy(
                     queue = PlaybackQueue(tracks = listOf(playingTrack), currentIndex = 0),
-                    playbackState = PlaybackState.Playing,
+                    playbackState = PlaybackState.Playing
                 )
             advanceUntilIdle()
 
@@ -966,14 +962,14 @@ class DirectoryBrowserViewModelTest {
                     serverId = sampleServer.id,
                     remotePath = "/root_track.mp3",
                     title = "Root Track",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
 
             // First playing
             fakeMusicPlayerAppSession._sessionState.value =
                 fakeMusicPlayerAppSession._sessionState.value.copy(
                     queue = PlaybackQueue(tracks = listOf(activeTrack), currentIndex = 0),
-                    playbackState = PlaybackState.Playing,
+                    playbackState = PlaybackState.Playing
                 )
             advanceUntilIdle()
             assertTrue(viewModel.uiState.value.isPlaying)
@@ -981,7 +977,7 @@ class DirectoryBrowserViewModelTest {
             // Then paused
             fakeMusicPlayerAppSession._sessionState.value =
                 fakeMusicPlayerAppSession._sessionState.value.copy(
-                    playbackState = PlaybackState.Paused,
+                    playbackState = PlaybackState.Paused
                 )
             advanceUntilIdle()
 
@@ -1002,13 +998,13 @@ class DirectoryBrowserViewModelTest {
                     serverId = sampleServer.id,
                     remotePath = "/root_track.mp3",
                     title = "Root Track",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
 
             fakeMusicPlayerAppSession._sessionState.value =
                 fakeMusicPlayerAppSession._sessionState.value.copy(
                     queue = PlaybackQueue(tracks = listOf(activeTrack), currentIndex = 0),
-                    playbackState = PlaybackState.Playing,
+                    playbackState = PlaybackState.Playing
                 )
             advanceUntilIdle()
             assertEquals("/root_track.mp3", viewModel.uiState.value.activeTrackPath)
@@ -1017,7 +1013,7 @@ class DirectoryBrowserViewModelTest {
             fakeMusicPlayerAppSession._sessionState.value =
                 fakeMusicPlayerAppSession._sessionState.value.copy(
                     queue = PlaybackQueue.EMPTY,
-                    playbackState = PlaybackState.Idle,
+                    playbackState = PlaybackState.Idle
                 )
             advanceUntilIdle()
 
@@ -1039,13 +1035,13 @@ class DirectoryBrowserViewModelTest {
                     serverId = 999L,
                     remotePath = "/root_track.mp3",
                     title = "Root Track",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
 
             fakeMusicPlayerAppSession._sessionState.value =
                 fakeMusicPlayerAppSession._sessionState.value.copy(
                     queue = PlaybackQueue(tracks = listOf(otherServerTrack), currentIndex = 0),
-                    playbackState = PlaybackState.Playing,
+                    playbackState = PlaybackState.Playing
                 )
             advanceUntilIdle()
 
@@ -1069,13 +1065,13 @@ class DirectoryBrowserViewModelTest {
                     serverId = sampleServer.id,
                     remotePath = "/root_track.mp3",
                     title = "Server 1 Track",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
 
             fakeMusicPlayerAppSession._sessionState.value =
                 fakeMusicPlayerAppSession._sessionState.value.copy(
                     queue = PlaybackQueue(tracks = listOf(server1Track), currentIndex = 0),
-                    playbackState = PlaybackState.Playing,
+                    playbackState = PlaybackState.Playing
                 )
             advanceUntilIdle()
 
@@ -1108,10 +1104,10 @@ class DirectoryBrowserViewModelTest {
                     path = "/Music/PinkFloyd/",
                     name = "PinkFloyd",
                     files =
-                        listOf(
-                            RemoteFile(name = "DarkSide.flac", path = "/Music/PinkFloyd/DarkSide.flac", size = 200_000_000L),
-                            RemoteFile(name = "DarkSide.cue", path = "/Music/PinkFloyd/DarkSide.cue", size = 1024L),
-                        ),
+                    listOf(
+                        RemoteFile(name = "DarkSide.flac", path = "/Music/PinkFloyd/DarkSide.flac", size = 200_000_000L),
+                        RemoteFile(name = "DarkSide.cue", path = "/Music/PinkFloyd/DarkSide.cue", size = 1024L)
+                    )
                 )
             fakeMediaLibraryRepository.setResult("/Music/PinkFloyd/", ListDirectoryResult.Success(albumDir))
 
@@ -1133,7 +1129,7 @@ class DirectoryBrowserViewModelTest {
                 RemoteDirectory(
                     path = "/Music/PinkFloyd/",
                     name = "PinkFloyd",
-                    files = listOf(audioFile, cueFile),
+                    files = listOf(audioFile, cueFile)
                 )
             fakeMediaLibraryRepository.setResult("/Music/PinkFloyd/", ListDirectoryResult.Success(albumDir))
 
@@ -1155,7 +1151,7 @@ class DirectoryBrowserViewModelTest {
                 RemoteDirectory(
                     path = "/Music/PinkFloyd/",
                     name = "PinkFloyd",
-                    files = listOf(cueFile),
+                    files = listOf(cueFile)
                 )
             fakeMediaLibraryRepository.setResult("/Music/PinkFloyd/", ListDirectoryResult.Success(albumDir))
 
@@ -1218,23 +1214,23 @@ class DirectoryBrowserViewModelTest {
 
         override fun getMetadataForPathsFlow(
             serverId: Long,
-            remotePaths: List<String>,
+            remotePaths: List<String>
         ): Flow<List<TrackMetadata>> = metadataFlow.map { list -> list.filter { it.remotePath in remotePaths } }
 
         override fun getMetadataFlow(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): Flow<TrackMetadata?> = metadataFlow.map { list -> list.firstOrNull { it.remotePath == remotePath } }
 
         override suspend fun getCachedMetadata(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): TrackMetadata? = metadataFlow.value.firstOrNull { it.remotePath == remotePath }
 
         override suspend fun resolveMetadata(
             server: WebDavServer,
             files: List<RemoteFile>,
-            forceRefresh: Boolean,
+            forceRefresh: Boolean
         ) {
             resolveCalls.add(files)
             onResolveListener?.invoke(files)
@@ -1242,7 +1238,7 @@ class DirectoryBrowserViewModelTest {
 
         override suspend fun resolveSingleTrackMetadata(
             server: WebDavServer,
-            file: RemoteFile,
+            file: RemoteFile
         ): TrackMetadata = TrackMetadata(serverId = server.id, remotePath = file.path, title = file.name)
     }
 
@@ -1287,12 +1283,12 @@ class DirectoryBrowserViewModelTest {
                     serverId = 1L,
                     remotePath = "/Music/Rock/queen.mp3",
                     title = "Bohemian Rhapsody",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             val result =
                 LibrarySearchResult(
                     matchedDirectories = listOf(matchedDir),
-                    matchedTracks = listOf(matchedTrack),
+                    matchedTracks = listOf(matchedTrack)
                 )
 
             fakeMediaLibraryRepository.emitResult(result)
@@ -1304,13 +1300,13 @@ class DirectoryBrowserViewModelTest {
                 "Rock",
                 viewModel.uiState.value.searchResult.matchedDirectories
                     .first()
-                    .name,
+                    .name
             )
             assertEquals(
                 "Bohemian Rhapsody",
                 viewModel.uiState.value.searchResult.matchedTracks
                     .first()
-                    .title,
+                    .title
             )
         }
 
@@ -1370,7 +1366,7 @@ class DirectoryBrowserViewModelTest {
             viewModel.onClearSearchHistory()
             assertTrue(
                 viewModel.uiState.value.searchHistory
-                    .isEmpty(),
+                    .isEmpty()
             )
         }
 
@@ -1411,7 +1407,7 @@ class DirectoryBrowserViewModelTest {
                     serverId = 1L,
                     remotePath = "/track1.mp3",
                     title = "Track 1",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             val track2 =
                 AudioTrack(
@@ -1419,7 +1415,7 @@ class DirectoryBrowserViewModelTest {
                     serverId = 1L,
                     remotePath = "/track2.mp3",
                     title = "Track 2",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             fakeMusicPlayerAppSession.playTrack(track1)
             fakeMusicPlayerAppSession.playNext(track2)
@@ -1433,7 +1429,7 @@ class DirectoryBrowserViewModelTest {
                     serverId = 1L,
                     remotePath = "/track3.mp3",
                     title = "Track 3",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             viewModel.onSearchActiveChanged(true)
             viewModel.onSearchQueryChanged("Track 3")
@@ -1453,7 +1449,7 @@ class DirectoryBrowserViewModelTest {
             // Query was recorded in history
             assertTrue(
                 viewModel.uiState.value.searchHistory
-                    .contains("Track 3"),
+                    .contains("Track 3")
             )
         }
 
@@ -1465,7 +1461,7 @@ class DirectoryBrowserViewModelTest {
                 DirectoryBrowserViewModel(
                     serverRepository = fakeServerRepository,
                     mediaLibraryRepository = sharedRepo,
-                    musicPlayerAppSession = fakeMusicPlayerAppSession,
+                    musicPlayerAppSession = fakeMusicPlayerAppSession
                 )
             vm1.onSearchSubmitted("Beethoven")
             vm1.onSearchSubmitted("Mozart")
@@ -1478,7 +1474,7 @@ class DirectoryBrowserViewModelTest {
                 DirectoryBrowserViewModel(
                     serverRepository = fakeServerRepository,
                     mediaLibraryRepository = sharedRepo,
-                    musicPlayerAppSession = fakeMusicPlayerAppSession,
+                    musicPlayerAppSession = fakeMusicPlayerAppSession
                 )
             assertEquals(listOf("Mozart", "Beethoven"), vm2.uiState.value.searchHistory)
         }
@@ -1495,7 +1491,7 @@ class DirectoryBrowserViewModelTest {
                     name = "Office NAS",
                     url = "http://192.168.1.100:8080/",
                     username = "user",
-                    password = "pwd",
+                    password = "pwd"
                 )
             fakeServerRepository.saveServer(server2)
             advanceUntilIdle()
@@ -1512,7 +1508,7 @@ class DirectoryBrowserViewModelTest {
             assertEquals(
                 2L,
                 viewModel.uiState.value.activeServer
-                    ?.id,
+                    ?.id
             )
             assertEquals("/Music/Jazz/", viewModel.uiState.value.currentPath)
         }
@@ -1528,13 +1524,13 @@ class DirectoryBrowserViewModelTest {
                     serverId = sampleServer.id,
                     remotePath = "/root_track.mp3",
                     title = "Root Track",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             fakeMusicPlayerAppSession._sessionState.value =
                 fakeMusicPlayerAppSession._sessionState.value.copy(
                     activeServer = sampleServer,
                     queue = PlaybackQueue(tracks = listOf(playingTrack), currentIndex = 0),
-                    playbackState = PlaybackState.Playing,
+                    playbackState = PlaybackState.Playing
                 )
 
             val server2 =
@@ -1543,7 +1539,7 @@ class DirectoryBrowserViewModelTest {
                     name = "Office NAS",
                     url = "http://192.168.1.100:8080/",
                     username = "user",
-                    password = "pwd",
+                    password = "pwd"
                 )
             fakeServerRepository.saveServer(server2)
             advanceUntilIdle()
@@ -1596,7 +1592,7 @@ class DirectoryBrowserViewModelTest {
                     serverId = 1L,
                     remotePath = "/track1.flac",
                     title = "Track 1",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
             val track2 =
                 AudioTrack(
@@ -1604,7 +1600,7 @@ class DirectoryBrowserViewModelTest {
                     serverId = 1L,
                     remotePath = "/track2.flac",
                     title = "Track 2",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
             fakeMediaLibraryRepository.emitResult(LibrarySearchResult(matchedTracks = listOf(track1, track2)))
             viewModel.onSearchActiveChanged(true)
@@ -1634,7 +1630,7 @@ class DirectoryBrowserViewModelTest {
                     serverId = 1L,
                     remotePath = "/initial.mp3",
                     title = "Initial Track",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             fakeMusicPlayerAppSession.playTrack(initialTrack)
             advanceUntilIdle()
@@ -1646,22 +1642,22 @@ class DirectoryBrowserViewModelTest {
                         serverId = 1L,
                         remotePath = "/track_a.flac",
                         title = "Track A",
-                        format = AudioFormat.FLAC,
+                        format = AudioFormat.FLAC
                     ),
                     AudioTrack(
                         id = "1:/track_b.flac",
                         serverId = 1L,
                         remotePath = "/track_b.flac",
                         title = "Track B",
-                        format = AudioFormat.FLAC,
+                        format = AudioFormat.FLAC
                     ),
                     AudioTrack(
                         id = "1:/track_c.flac",
                         serverId = 1L,
                         remotePath = "/track_c.flac",
                         title = "Track C",
-                        format = AudioFormat.FLAC,
-                    ),
+                        format = AudioFormat.FLAC
+                    )
                 )
             fakeMediaLibraryRepository.emitResult(LibrarySearchResult(matchedTracks = selectedTracks))
             viewModel.onSearchActiveChanged(true)
@@ -1697,7 +1693,7 @@ class DirectoryBrowserViewModelTest {
                     serverId = 1L,
                     remotePath = "/track1.flac",
                     title = "Track 1",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
             val track2 =
                 AudioTrack(
@@ -1705,7 +1701,7 @@ class DirectoryBrowserViewModelTest {
                     serverId = 1L,
                     remotePath = "/track2.flac",
                     title = "Track 2",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
             val track3 =
                 AudioTrack(
@@ -1713,7 +1709,7 @@ class DirectoryBrowserViewModelTest {
                     serverId = 1L,
                     remotePath = "/track3.flac",
                     title = "Track 3",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
             fakeMediaLibraryRepository.emitResult(LibrarySearchResult(matchedTracks = listOf(track1, track2, track3)))
             viewModel.onSearchActiveChanged(true)
@@ -1759,17 +1755,17 @@ class DirectoryBrowserViewModelTest {
                     path = "/Mixed/",
                     name = "Mixed",
                     subDirectories =
-                        listOf(
-                            RemoteDirectory(path = "/Mixed/SubDir/", name = "SubDir"),
-                        ),
+                    listOf(
+                        RemoteDirectory(path = "/Mixed/SubDir/", name = "SubDir")
+                    ),
                     files =
-                        listOf(
-                            RemoteFile(name = "track1.mp3", path = "/Mixed/track1.mp3", size = 1000),
-                            RemoteFile(name = "cover.jpg", path = "/Mixed/cover.jpg", size = 5000),
-                            RemoteFile(name = "track2.flac", path = "/Mixed/track2.flac", size = 2000),
-                            RemoteFile(name = "lyrics.lrc", path = "/Mixed/lyrics.lrc", size = 300),
-                            RemoteFile(name = "track3.wav", path = "/Mixed/track3.wav", size = 3000),
-                        ),
+                    listOf(
+                        RemoteFile(name = "track1.mp3", path = "/Mixed/track1.mp3", size = 1000),
+                        RemoteFile(name = "cover.jpg", path = "/Mixed/cover.jpg", size = 5000),
+                        RemoteFile(name = "track2.flac", path = "/Mixed/track2.flac", size = 2000),
+                        RemoteFile(name = "lyrics.lrc", path = "/Mixed/lyrics.lrc", size = 300),
+                        RemoteFile(name = "track3.wav", path = "/Mixed/track3.wav", size = 3000)
+                    )
                 )
             fakeMediaLibraryRepository.setResult("/Mixed/", ListDirectoryResult.Success(mixedDir))
 
@@ -1803,13 +1799,13 @@ class DirectoryBrowserViewModelTest {
                     path = "/Empty/",
                     name = "Empty",
                     subDirectories =
-                        listOf(
-                            RemoteDirectory(path = "/Empty/SubDir/", name = "SubDir"),
-                        ),
+                    listOf(
+                        RemoteDirectory(path = "/Empty/SubDir/", name = "SubDir")
+                    ),
                     files =
-                        listOf(
-                            RemoteFile(name = "notes.txt", path = "/Empty/notes.txt", size = 100),
-                        ),
+                    listOf(
+                        RemoteFile(name = "notes.txt", path = "/Empty/notes.txt", size = 100)
+                    )
                 )
             fakeMediaLibraryRepository.setResult("/Empty/", ListDirectoryResult.Success(emptyDir))
 
@@ -1845,11 +1841,11 @@ class DirectoryBrowserViewModelTest {
                     name = "Batch",
                     subDirectories = emptyList(),
                     files =
-                        listOf(
-                            RemoteFile(name = "track1.flac", path = "/Batch/track1.flac", size = 1000),
-                            RemoteFile(name = "track2.flac", path = "/Batch/track2.flac", size = 2000),
-                            RemoteFile(name = "track3.flac", path = "/Batch/track3.flac", size = 3000),
-                        ),
+                    listOf(
+                        RemoteFile(name = "track1.flac", path = "/Batch/track1.flac", size = 1000),
+                        RemoteFile(name = "track2.flac", path = "/Batch/track2.flac", size = 2000),
+                        RemoteFile(name = "track3.flac", path = "/Batch/track3.flac", size = 3000)
+                    )
                 )
             fakeMediaLibraryRepository.setResult("/Batch/", ListDirectoryResult.Success(batchDir))
 
@@ -1862,7 +1858,7 @@ class DirectoryBrowserViewModelTest {
                     serverId = 1L,
                     remotePath = "/initial.mp3",
                     title = "Initial Track",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             fakeMusicPlayerAppSession.playTrack(initialTrack)
             advanceUntilIdle()
@@ -1900,11 +1896,11 @@ class DirectoryBrowserViewModelTest {
                     name = "Batch",
                     subDirectories = emptyList(),
                     files =
-                        listOf(
-                            RemoteFile(name = "track1.flac", path = "/Batch/track1.flac", size = 1000),
-                            RemoteFile(name = "track2.flac", path = "/Batch/track2.flac", size = 2000),
-                            RemoteFile(name = "track3.flac", path = "/Batch/track3.flac", size = 3000),
-                        ),
+                    listOf(
+                        RemoteFile(name = "track1.flac", path = "/Batch/track1.flac", size = 1000),
+                        RemoteFile(name = "track2.flac", path = "/Batch/track2.flac", size = 2000),
+                        RemoteFile(name = "track3.flac", path = "/Batch/track3.flac", size = 3000)
+                    )
                 )
             fakeMediaLibraryRepository.setResult("/Batch/", ListDirectoryResult.Success(batchDir))
 
@@ -1973,7 +1969,7 @@ class DirectoryBrowserViewModelTest {
             val freshViewModel = DirectoryBrowserViewModel(
                 serverRepository = fakeServerRepository,
                 mediaLibraryRepository = fakeMediaLibraryRepository,
-                musicPlayerAppSession = fakeMusicPlayerAppSession,
+                musicPlayerAppSession = fakeMusicPlayerAppSession
             )
             assertEquals(
                 DirectorySortOrder(SortField.SIZE, SortDirection.DESCENDING),
@@ -1993,12 +1989,12 @@ class DirectoryBrowserViewModelTest {
                 subDirectories = listOf(
                     RemoteDirectory(path = "/Album/Disc2/", name = "Disc 2"),
                     RemoteDirectory(path = "/Album/Disc10/", name = "Disc 10"),
-                    RemoteDirectory(path = "/Album/Disc1/", name = "Disc 1"),
+                    RemoteDirectory(path = "/Album/Disc1/", name = "Disc 1")
                 ),
                 files = listOf(
                     RemoteFile(name = "Track 10.flac", path = "/Album/Track 10.flac", size = 3000),
                     RemoteFile(name = "Track 2.flac", path = "/Album/Track 2.flac", size = 2000),
-                    RemoteFile(name = "Track 1.flac", path = "/Album/Track 1.flac", size = 1000),
+                    RemoteFile(name = "Track 1.flac", path = "/Album/Track 1.flac", size = 1000)
                 )
             )
             fakeMediaLibraryRepository.setResult("/Album/", ListDirectoryResult.Success(albumDir))
@@ -2024,7 +2020,7 @@ class DirectoryBrowserViewModelTest {
                 files = listOf(
                     RemoteFile(name = "A.flac", path = "/Album/A.flac", size = 1000),
                     RemoteFile(name = "B.flac", path = "/Album/B.flac", size = 5000),
-                    RemoteFile(name = "C.flac", path = "/Album/C.flac", size = 2000),
+                    RemoteFile(name = "C.flac", path = "/Album/C.flac", size = 2000)
                 )
             )
             fakeMediaLibraryRepository.setResult("/Album/", ListDirectoryResult.Success(albumDir))
@@ -2061,7 +2057,7 @@ class DirectoryBrowserViewModelTest {
                 files = listOf(
                     RemoteFile(name = "Track 10.flac", path = "/Album/Track 10.flac", size = 3000),
                     RemoteFile(name = "Track 2.flac", path = "/Album/Track 2.flac", size = 2000),
-                    RemoteFile(name = "Track 1.flac", path = "/Album/Track 1.flac", size = 1000),
+                    RemoteFile(name = "Track 1.flac", path = "/Album/Track 1.flac", size = 1000)
                 )
             )
             fakeMediaLibraryRepository.setResult("/Album/", ListDirectoryResult.Success(albumDir))
@@ -2091,7 +2087,7 @@ class DirectoryBrowserViewModelTest {
                 serverId = 1L,
                 remotePath = "/initial.mp3",
                 title = "Initial Track",
-                format = AudioFormat.MP3,
+                format = AudioFormat.MP3
             )
             fakeMusicPlayerAppSession.playTrack(initialTrack)
 
@@ -2101,7 +2097,7 @@ class DirectoryBrowserViewModelTest {
                 files = listOf(
                     RemoteFile(name = "Track 1.flac", path = "/Album/Track 1.flac", size = 1000),
                     RemoteFile(name = "Track 2.flac", path = "/Album/Track 2.flac", size = 5000),
-                    RemoteFile(name = "Track 3.flac", path = "/Album/Track 3.flac", size = 3000),
+                    RemoteFile(name = "Track 3.flac", path = "/Album/Track 3.flac", size = 3000)
                 )
             )
             fakeMediaLibraryRepository.setResult("/Album/", ListDirectoryResult.Success(albumDir))

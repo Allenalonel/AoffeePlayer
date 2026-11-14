@@ -14,6 +14,8 @@ import com.webdav.player.data.local.LocalStorageFolderDao
 import com.webdav.player.data.local.LocalStorageFolderEntity
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.RemoteFileType
+import java.io.File
+import java.net.URLEncoder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
@@ -25,8 +27,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
-import java.io.File
-import java.net.URLEncoder
 
 @RunWith(RobolectricTestRunner::class)
 class LocalStorageDirectoryResolverTest {
@@ -55,7 +55,7 @@ class LocalStorageDirectoryResolverTest {
             val displayName: String,
             val mimeType: String,
             val size: Long = 0L,
-            val lastModified: Long = 0L,
+            val lastModified: Long = 0L
         )
 
         override fun onCreate(): Boolean = true
@@ -64,7 +64,7 @@ class LocalStorageDirectoryResolverTest {
             val cols =
                 projection ?: arrayOf(
                     DocumentsContract.Root.COLUMN_ROOT_ID,
-                    DocumentsContract.Root.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Root.COLUMN_DOCUMENT_ID
                 )
             return MatrixCursor(cols).apply {
                 addRow(arrayOf("root", "primary:Music"))
@@ -73,13 +73,13 @@ class LocalStorageDirectoryResolverTest {
 
         override fun queryDocument(
             documentId: String?,
-            projection: Array<out String>?,
+            projection: Array<out String>?
         ): Cursor {
             val cols =
                 projection ?: arrayOf(
                     Document.COLUMN_DOCUMENT_ID,
                     Document.COLUMN_DISPLAY_NAME,
-                    Document.COLUMN_MIME_TYPE,
+                    Document.COLUMN_MIME_TYPE
                 )
             return MatrixCursor(cols).apply {
                 addRow(arrayOf(documentId, documentId ?: "root", Document.MIME_TYPE_DIR))
@@ -89,7 +89,7 @@ class LocalStorageDirectoryResolverTest {
         override fun queryChildDocuments(
             parentDocumentId: String?,
             projection: Array<out String>?,
-            sortOrder: String?,
+            sortOrder: String?
         ): Cursor {
             val defaultCols =
                 arrayOf(
@@ -97,7 +97,7 @@ class LocalStorageDirectoryResolverTest {
                     Document.COLUMN_DISPLAY_NAME,
                     Document.COLUMN_MIME_TYPE,
                     Document.COLUMN_SIZE,
-                    Document.COLUMN_LAST_MODIFIED,
+                    Document.COLUMN_LAST_MODIFIED
                 )
             val cols = projection ?: defaultCols
             val cursor = MatrixCursor(cols)
@@ -122,13 +122,13 @@ class LocalStorageDirectoryResolverTest {
 
         override fun isChildDocument(
             parentDocumentId: String?,
-            documentId: String?,
+            documentId: String?
         ): Boolean = true
 
         override fun openDocument(
             documentId: String?,
             mode: String?,
-            signal: CancellationSignal?,
+            signal: CancellationSignal?
         ): ParcelFileDescriptor {
             val bytes =
                 fileBytes[documentId]
@@ -154,7 +154,7 @@ class LocalStorageDirectoryResolverTest {
     }
 
     private class FakeLocalStorageFolderDao(
-        initialFolders: List<LocalStorageFolderEntity> = emptyList(),
+        initialFolders: List<LocalStorageFolderEntity> = emptyList()
     ) : LocalStorageFolderDao {
         private val foldersFlow = MutableStateFlow(initialFolders)
 
@@ -174,7 +174,7 @@ class LocalStorageDirectoryResolverTest {
     private lateinit var folderDao: FakeLocalStorageFolderDao
     private val mountedFolderEntities =
         listOf(
-            LocalStorageFolderEntity(TREE_URI_STRING, "音乐库", 1000L),
+            LocalStorageFolderEntity(TREE_URI_STRING, "音乐库", 1000L)
         )
 
     @Before
@@ -221,26 +221,26 @@ class LocalStorageDirectoryResolverTest {
                     TestDocumentsProvider.DocEntry(
                         docId = "primary:Music/Rock",
                         displayName = "Rock",
-                        mimeType = Document.MIME_TYPE_DIR,
+                        mimeType = Document.MIME_TYPE_DIR
                     ),
                     TestDocumentsProvider.DocEntry(
                         docId = "primary:Music/Song.flac",
                         displayName = "Song.flac",
                         mimeType = "audio/flac",
-                        size = 20480000L,
+                        size = 20480000L
                     ),
                     TestDocumentsProvider.DocEntry(
                         docId = "primary:Music/Song.lrc",
                         displayName = "Song.lrc",
                         mimeType = "text/plain",
-                        size = 512L,
+                        size = 512L
                     ),
                     TestDocumentsProvider.DocEntry(
                         docId = "primary:Music/cover.jpg",
                         displayName = "cover.jpg",
                         mimeType = "image/jpeg",
-                        size = 40960L,
-                    ),
+                        size = 40960L
+                    )
                 )
 
             val encodedTreeUri = URLEncoder.encode(TREE_URI_STRING, "UTF-8")
@@ -277,8 +277,8 @@ class LocalStorageDirectoryResolverTest {
                     TestDocumentsProvider.DocEntry(
                         docId = "primary:Music/Rock",
                         displayName = "Rock",
-                        mimeType = Document.MIME_TYPE_DIR,
-                    ),
+                        mimeType = Document.MIME_TYPE_DIR
+                    )
                 )
 
             TestDocumentsProvider.childrenMap["primary:Music/Rock"] =
@@ -287,8 +287,8 @@ class LocalStorageDirectoryResolverTest {
                         docId = "primary:Music/Rock/Queen.mp3",
                         displayName = "Queen.mp3",
                         mimeType = "audio/mpeg",
-                        size = 5000000L,
-                    ),
+                        size = 5000000L
+                    )
                 )
 
             val encodedTreeUri = URLEncoder.encode(TREE_URI_STRING, "UTF-8")
@@ -316,14 +316,14 @@ class LocalStorageDirectoryResolverTest {
                         docId = cueDocId,
                         displayName = "Album.cue",
                         mimeType = "application/x-cue",
-                        size = 1000L,
+                        size = 1000L
                     ),
                     TestDocumentsProvider.DocEntry(
                         docId = audioDocId,
                         displayName = "Album.flac",
                         mimeType = "audio/flac",
-                        size = 50000000L,
-                    ),
+                        size = 50000000L
+                    )
                 )
 
             val encodedTreeUri = URLEncoder.encode(TREE_URI_STRING, "UTF-8")
@@ -346,14 +346,14 @@ class LocalStorageDirectoryResolverTest {
                         docId = "primary:Music/Song.flac",
                         displayName = "Song.flac",
                         mimeType = "audio/flac",
-                        size = 20480000L,
+                        size = 20480000L
                     ),
                     TestDocumentsProvider.DocEntry(
                         docId = "primary:Music/cover.jpg",
                         displayName = "cover.jpg",
                         mimeType = "image/jpeg",
-                        size = 22L,
-                    ),
+                        size = 22L
+                    )
                 )
             val encodedTreeUri = URLEncoder.encode(TREE_URI_STRING, "UTF-8")
             val result = resolver.resolve("/local/$encodedTreeUri/")
@@ -373,23 +373,23 @@ class LocalStorageDirectoryResolverTest {
                     TestDocumentsProvider.DocEntry(
                         docId = "primary:Music/Jazz",
                         displayName = "Jazz",
-                        mimeType = Document.MIME_TYPE_DIR,
+                        mimeType = Document.MIME_TYPE_DIR
                     ),
                     TestDocumentsProvider.DocEntry(
                         docId = "primary:Music/.thumbnails",
                         displayName = ".thumbnails",
-                        mimeType = Document.MIME_TYPE_DIR,
+                        mimeType = Document.MIME_TYPE_DIR
                     ),
                     TestDocumentsProvider.DocEntry(
                         docId = "primary:Music/.@eaDir",
                         displayName = ".@eaDir",
-                        mimeType = Document.MIME_TYPE_DIR,
+                        mimeType = Document.MIME_TYPE_DIR
                     ),
                     TestDocumentsProvider.DocEntry(
                         docId = "primary:Music/#recycle",
                         displayName = "#recycle",
-                        mimeType = Document.MIME_TYPE_DIR,
-                    ),
+                        mimeType = Document.MIME_TYPE_DIR
+                    )
                 )
 
             val encodedTreeUri = URLEncoder.encode(TREE_URI_STRING, "UTF-8")
@@ -400,7 +400,7 @@ class LocalStorageDirectoryResolverTest {
                 "Jazz",
                 result.directory.subDirectories
                     .first()
-                    .name,
+                    .name
             )
         }
 }

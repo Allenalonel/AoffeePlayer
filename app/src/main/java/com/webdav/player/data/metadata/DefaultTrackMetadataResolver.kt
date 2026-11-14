@@ -7,23 +7,24 @@ import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
+import com.webdav.player.domain.model.TrackIdentity
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
+import java.io.File
+import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.IOException
-import java.util.concurrent.ConcurrentHashMap
 
 internal class DefaultTrackMetadataResolver(
     private val webDavClient: WebDavClient,
     private val coverArtStorage: CoverArtStorage,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val context: Context? = null,
+    private val context: Context? = null
 ) {
     private val folderArtworkCache = ConcurrentHashMap<String, String>()
     private val folderLocks = ConcurrentHashMap<String, Mutex>()
@@ -41,10 +42,10 @@ internal class DefaultTrackMetadataResolver(
         server: WebDavServer,
         file: RemoteFile,
         directoryFiles: Collection<RemoteFile>? = null,
-        logicalDirectoryPath: String? = null,
+        logicalDirectoryPath: String? = null
     ): TrackMetadata? =
         withContext(ioDispatcher) {
-            val cleanFallbackTitle = file.name.substringBeforeLast('.').ifBlank { file.name }
+            val cleanFallbackTitle = TrackIdentity.cleanTitle(file.name) ?: file.name
 
             val rangeBytes =
                 if (server.isLocal || file.path.startsWith("content://") || file.path.startsWith("file://")) {
@@ -53,16 +54,28 @@ internal class DefaultTrackMetadataResolver(
                         if (cleanPath.startsWith("content://")) {
                             context?.contentResolver?.openInputStream(Uri.parse(cleanPath))?.use { input ->
                                 val buffer = ByteArray((INITIAL_RANGE_END + 1).toInt())
-                                val bytesRead = input.read(buffer)
-                                if (bytesRead > 0) buffer.copyOf(bytesRead) else null
+                                var total = 0
+                                while (total < buffer.size) {
+                                    val count = input.read(buffer, total, buffer.size - total)
+                                    if (count <= 0) break
+                                    total += count
+                                }
+                                if (total > 0) buffer.copyOf(total) else null
                             }
                         } else {
                             val localFile = File(cleanPath)
                             if (localFile.exists()) {
                                 val maxToRead = minOf(localFile.length(), INITIAL_RANGE_END + 1).toInt()
-                                val bytes = ByteArray(maxToRead)
-                                localFile.inputStream().use { it.read(bytes, 0, maxToRead) }
-                                bytes
+                                val buffer = ByteArray(maxToRead)
+                                localFile.inputStream().use { input ->
+                                    var total = 0
+                                    while (total < buffer.size) {
+                                        val count = input.read(buffer, total, buffer.size - total)
+                                        if (count <= 0) break
+                                        total += count
+                                    }
+                                    if (total > 0) buffer.copyOf(total) else null
+                                }
                             } else {
                                 null
                             }
@@ -169,6 +182,10 @@ internal class DefaultTrackMetadataResolver(
                 coverThumbnailPath = thumbnailPath,
                 lyrics = parsed.lyrics?.takeIf { it.isNotBlank() },
                 companionLyricsPath = companionLyricsPath,
+                sampleRate = parsed.sampleRate,
+                bitDepth = parsed.bitDepth,
+                bitrateKbps = parsed.bitrateKbps,
+                channels = parsed.channels
             )
         }
 
@@ -176,7 +193,7 @@ internal class DefaultTrackMetadataResolver(
         server: WebDavServer,
         files: List<RemoteFile>,
         directoryFiles: Collection<RemoteFile>?,
-        logicalDirectoryPath: String? = null,
+        logicalDirectoryPath: String? = null
     ): Map<String, TrackMetadata> =
         withContext(ioDispatcher) {
             val audioFiles = files.filter { it.isAudio }
@@ -192,7 +209,7 @@ internal class DefaultTrackMetadataResolver(
 
             val result = mutableMapOf<String, TrackMetadata>()
             for (audio in audioFiles) {
-                val baseName = audio.name.substringBeforeLast('.').ifBlank { audio.name }
+                val baseName = TrackIdentity.cleanTitle(audio.name) ?: audio.name
                 val companionLrc =
                     directoryFiles.firstOrNull {
                         it.isLyrics && it.name.substringBeforeLast('.').equals(baseName, ignoreCase = true)
@@ -207,7 +224,7 @@ internal class DefaultTrackMetadataResolver(
                         durationMs = 0L,
                         coverThumbnailPath = sharedFolderThumb,
                         lyrics = null,
-                        companionLyricsPath = companionLrc?.path ?: NO_COMPANION_LRC,
+                        companionLyricsPath = companionLrc?.path ?: NO_COMPANION_LRC
                     )
             }
             result
@@ -229,7 +246,7 @@ internal class DefaultTrackMetadataResolver(
     private suspend fun fetchSecondaryRangeIfNeeded(
         server: WebDavServer,
         file: RemoteFile,
-        initialBytes: ByteArray,
+        initialBytes: ByteArray
     ): ByteArray {
         val requiredTagSize = AudioMetadataParser.detectRequiredTagSize(initialBytes) ?: return initialBytes
         if (requiredTagSize <= initialBytes.size) return initialBytes
@@ -276,7 +293,7 @@ internal class DefaultTrackMetadataResolver(
                 server = server,
                 remotePath = file.path,
                 startByte = initialBytes.size.toLong(),
-                endByte = targetSize - 1L,
+                endByte = targetSize - 1L
             ) ?: throw IOException("Secondary range fetch returned null for ${file.path}")
 
         if (secondChunk.isEmpty()) {
@@ -288,14 +305,14 @@ internal class DefaultTrackMetadataResolver(
                 return secondChunk
             } else {
                 throw IOException(
-                    "Secondary range fetch returned full-stream chunk from byte 0 with insufficient length (${secondChunk.size} < $targetSize)",
+                    "Secondary range fetch returned full-stream chunk from byte 0 with insufficient length (${secondChunk.size} < $targetSize)"
                 )
             }
         }
 
         if (secondChunk.size < expectedBytes) {
             throw IOException(
-                "Secondary range fetch returned partial chunk (${secondChunk.size} < $expectedBytes)",
+                "Secondary range fetch returned partial chunk (${secondChunk.size} < $expectedBytes)"
             )
         }
 
@@ -309,7 +326,7 @@ internal class DefaultTrackMetadataResolver(
         server: WebDavServer,
         file: RemoteFile,
         directoryFiles: Collection<RemoteFile>? = null,
-        logicalDirectoryPath: String? = null,
+        logicalDirectoryPath: String? = null
     ): String? {
         val parentDir =
             logicalDirectoryPath?.takeIf { it.isNotBlank() }
@@ -340,7 +357,7 @@ internal class DefaultTrackMetadataResolver(
                 "$baseName.jpg",
                 "$baseName.png",
                 "${file.name}.jpg",
-                "${file.name}.png",
+                "${file.name}.png"
             )
         val trackCandidates = filterCandidatesByManifest(rawTrackCandidates, manifestMap, isContentUri)
         if (trackCandidates.isNotEmpty()) {
@@ -391,7 +408,7 @@ internal class DefaultTrackMetadataResolver(
                     "cover.jpg",
                     "folder.jpg",
                     "front.jpg",
-                    "cover.png",
+                    "cover.png"
                 )
             val folderCandidates = filterCandidatesByManifest(rawFolderCandidates, manifestMap, isContentUri)
             if (folderCandidates.isEmpty()) {
@@ -421,7 +438,7 @@ internal class DefaultTrackMetadataResolver(
     private fun filterCandidatesByManifest(
         candidateNames: List<String>,
         manifestMap: Map<String, RemoteFile>?,
-        isContentUri: Boolean = false,
+        isContentUri: Boolean = false
     ): List<String> {
         if (manifestMap == null) {
             return if (isContentUri) emptyList() else candidateNames
@@ -434,20 +451,20 @@ internal class DefaultTrackMetadataResolver(
 
     private sealed interface ProbeResult {
         data class Found(
-            val path: String,
+            val path: String
         ) : ProbeResult
 
         data object NotFound : ProbeResult
 
         data class NetworkError(
-            val cause: IOException,
+            val cause: IOException
         ) : ProbeResult
     }
 
     private suspend fun probeCandidates(
         server: WebDavServer,
         parentDir: String,
-        candidateFileNames: List<String>,
+        candidateFileNames: List<String>
     ): ProbeResult {
         for (name in candidateFileNames) {
             val path =
@@ -470,7 +487,7 @@ internal class DefaultTrackMetadataResolver(
 
     private suspend fun probeAndCacheArtwork(
         server: WebDavServer,
-        candidatePath: String,
+        candidatePath: String
     ): String? {
         val localThumb = coverArtStorage.getThumbnailFile(server.id, candidatePath)
         if (localThumb != null && coverArtStorage.isValidThumbnailFile(localThumb.absolutePath)) {
@@ -505,7 +522,7 @@ internal class DefaultTrackMetadataResolver(
                 server = server,
                 remotePath = candidatePath,
                 startByte = 0L,
-                endByte = COVER_PROBE_MAX_SIZE - 1L,
+                endByte = COVER_PROBE_MAX_SIZE - 1L
             )
 
         if (imageBytes != null && imageBytes.isNotEmpty()) {
@@ -519,7 +536,7 @@ internal class DefaultTrackMetadataResolver(
 
     private fun buildCandidatePath(
         directory: String,
-        fileName: String,
+        fileName: String
     ): String =
         when {
             directory.isEmpty() -> fileName

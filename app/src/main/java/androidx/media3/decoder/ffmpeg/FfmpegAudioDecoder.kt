@@ -17,9 +17,11 @@ class FfmpegAudioDecoder(
     val outputFloat: Boolean = false
 ) : SimpleDecoder<DecoderInputBuffer, SimpleDecoderOutputBuffer, FfmpegDecoderException>(
     @Suppress("UNCHECKED_CAST")
-    arrayOfNulls<DecoderInputBuffer>(numInputBuffers) as Array<DecoderInputBuffer>,
+    arrayOfNulls<DecoderInputBuffer>(numInputBuffers)
+        as Array<DecoderInputBuffer>,
     @Suppress("UNCHECKED_CAST")
-    arrayOfNulls<SimpleDecoderOutputBuffer>(numOutputBuffers) as Array<SimpleDecoderOutputBuffer>
+    arrayOfNulls<SimpleDecoderOutputBuffer>(numOutputBuffers)
+        as Array<SimpleDecoderOutputBuffer>
 ) {
     companion object {
         private const val OUTPUT_BUFFER_SIZE_16BIT = 65536

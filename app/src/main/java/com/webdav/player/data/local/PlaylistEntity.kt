@@ -10,7 +10,7 @@ data class PlaylistEntity(
     val id: Long = 0L,
     val name: String,
     val createdAtMs: Long,
-    val updatedAtMs: Long,
+    val updatedAtMs: Long
 ) {
     fun toDomain(trackCount: Int = 0): Playlist =
         Playlist(
@@ -18,7 +18,7 @@ data class PlaylistEntity(
             name = name,
             createdAtMs = createdAtMs,
             updatedAtMs = updatedAtMs,
-            trackCount = trackCount,
+            trackCount = trackCount
         )
 
     companion object {
@@ -27,7 +27,7 @@ data class PlaylistEntity(
                 id = domain.id,
                 name = domain.name,
                 createdAtMs = domain.createdAtMs,
-                updatedAtMs = domain.updatedAtMs,
+                updatedAtMs = domain.updatedAtMs
             )
     }
 }

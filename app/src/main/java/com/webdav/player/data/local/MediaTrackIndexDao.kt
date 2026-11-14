@@ -23,7 +23,7 @@ interface MediaTrackIndexDao {
     @Query("DELETE FROM media_track_index WHERE serverId = :serverId AND remotePath = :remotePath")
     suspend fun deleteByServerAndPath(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     )
 
     @Query(
@@ -31,11 +31,11 @@ interface MediaTrackIndexDao {
         DELETE FROM media_track_index 
         WHERE serverId = :serverId 
           AND (remotePath LIKE :prefix || '%' OR parentPath LIKE :prefix || '%')
-        """,
+        """
     )
     suspend fun deleteByServerAndPathPrefix(
         serverId: Long,
-        prefix: String,
+        prefix: String
     )
 
     @Query(
@@ -50,11 +50,11 @@ interface MediaTrackIndexDao {
             OR remotePath LIKE '%' || :query || '%'
           )
         ORDER BY parsedTitle ASC
-        """,
+        """
     )
     fun search(
         query: String,
-        serverId: Long? = null,
+        serverId: Long? = null
     ): Flow<List<MediaTrackIndexEntity>>
 
     @Query(
@@ -69,11 +69,11 @@ interface MediaTrackIndexDao {
             OR remotePath LIKE '%' || :query || '%'
           )
         ORDER BY parsedTitle ASC
-        """,
+        """
     )
     suspend fun searchList(
         query: String,
-        serverId: Long? = null,
+        serverId: Long? = null
     ): List<MediaTrackIndexEntity>
 
     @Query("SELECT * FROM media_track_index WHERE serverId = :serverId ORDER BY parsedTitle ASC")
@@ -85,19 +85,19 @@ interface MediaTrackIndexDao {
     @Query("SELECT * FROM media_track_index WHERE serverId = :serverId AND remotePath = :remotePath LIMIT 1")
     suspend fun getTrack(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ): MediaTrackIndexEntity?
 
     @Query("SELECT * FROM media_track_index WHERE serverId = :serverId AND parentPath = :parentPath")
     suspend fun getTracksByParentPath(
         serverId: Long,
-        parentPath: String,
+        parentPath: String
     ): List<MediaTrackIndexEntity>
 
     @Query("DELETE FROM media_track_index WHERE serverId = :serverId AND remotePath IN (:remotePaths)")
     suspend fun deleteByServerAndPaths(
         serverId: Long,
-        remotePaths: List<String>,
+        remotePaths: List<String>
     )
 
     @Query("SELECT COUNT(*) FROM media_track_index WHERE serverId = :serverId")

@@ -6,7 +6,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +35,6 @@ import androidx.compose.ui.graphics.RadialGradientShader
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
@@ -69,7 +67,7 @@ internal fun rememberArtworkBackgroundBrush(
     artworkColors: ArtworkColors? = null,
     defaultSurfaceColor: Color = SurfaceContainerDark,
     defaultBackgroundColor: Color = BackgroundDark,
-    isDarkTheme: Boolean = true,
+    isDarkTheme: Boolean = true
 ): Brush {
     val activeColors =
         artworkColors
@@ -77,7 +75,7 @@ internal fun rememberArtworkBackgroundBrush(
                 thumbnailPath = thumbnailPath,
                 defaultSurfaceColor = defaultSurfaceColor,
                 defaultBackgroundColor = defaultBackgroundColor,
-                isDarkTheme = true,
+                isDarkTheme = true
             ).value
 
     val targetStops =
@@ -85,23 +83,23 @@ internal fun rememberArtworkBackgroundBrush(
             artworkColors = activeColors,
             isDarkTheme = isDarkTheme,
             surfaceColor = defaultSurfaceColor,
-            backgroundColor = defaultBackgroundColor,
+            backgroundColor = defaultBackgroundColor
         )
 
     val animatedTopColor by animateColorAsState(
         targetValue = targetStops.topColor,
         animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
-        label = "FullPlayerBackgroundTop",
+        label = "FullPlayerBackgroundTop"
     )
     val animatedMidColor by animateColorAsState(
         targetValue = targetStops.midColor,
         animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
-        label = "FullPlayerBackgroundMid",
+        label = "FullPlayerBackgroundMid"
     )
     val animatedBottomColor by animateColorAsState(
         targetValue = targetStops.bottomColor,
         animationSpec = tween(durationMillis = FLUID_THEME_DURATION_MS, easing = FluidThemeAnimationEasing),
-        label = "FullPlayerBackgroundBottom",
+        label = "FullPlayerBackgroundBottom"
     )
 
     return remember(animatedTopColor, animatedMidColor, animatedBottomColor) {
@@ -114,7 +112,7 @@ internal fun rememberArtworkBackgroundBrush(
                     colorStops = listOf(0.0f, 0.48f, 1.0f),
                     center = center,
                     radius = radius.coerceAtLeast(1f),
-                    tileMode = TileMode.Clamp,
+                    tileMode = TileMode.Clamp
                 )
             }
         }
@@ -132,15 +130,15 @@ internal fun PlayerVinylArtwork(
     onArtworkClick: () -> Unit,
     modifier: Modifier = Modifier,
     isArtworkVisible: Boolean = true,
-    onArtworkPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    onArtworkPositioned: ((LayoutCoordinates) -> Unit)? = null
 ) {
     Column(
         modifier =
-            modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
+        modifier
+            .fillMaxSize()
+            .padding(horizontal = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Center
     ) {
         // Large Album Artwork Card with 28dp Squircle & Ambient Glow
         val artworkModifier =
@@ -153,37 +151,37 @@ internal fun PlayerVinylArtwork(
                         Modifier.onGloballyPositioned(onArtworkPositioned)
                     } else {
                         Modifier
-                    },
+                    }
                 ).clickable { onArtworkClick() }
 
         Box(
             modifier = artworkModifier,
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
             if (isArtworkVisible) {
                 Box(
                     modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .shadow(
-                                elevation = 24.dp,
-                                shape = FullPlayerDefaults.ArtworkSquircleShape,
-                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                            ).clip(FullPlayerDefaults.ArtworkSquircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center,
+                    Modifier
+                        .fillMaxSize()
+                        .shadow(
+                            elevation = 24.dp,
+                            shape = FullPlayerDefaults.ArtworkSquircleShape,
+                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                        ).clip(FullPlayerDefaults.ArtworkSquircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
                 ) {
                     CoverThumbnailImage(
                         thumbnailPath = currentTrack?.coverThumbnailPath,
                         contentDescription = "专辑封面",
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         Icon(
                             imageVector = AppIcons.Audiotrack,
                             contentDescription = "专辑封面",
                             modifier = Modifier.size(100.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -202,9 +200,9 @@ internal fun PlayerVinylArtwork(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .basicMarquee(),
+            Modifier
+                .fillMaxWidth()
+                .basicMarquee()
         )
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -222,7 +220,7 @@ internal fun PlayerVinylArtwork(
             color = if (sessionState.isWeakNetwork) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Ellipsis
         )
 
         // Audiophile Specification Capsule
@@ -240,19 +238,19 @@ private fun PlayerVinylArtworkPreview() {
     MaterialTheme {
         PlayerVinylArtwork(
             currentTrack =
-                AudioTrack(
-                    id = "1:/Music/demo.flac",
-                    serverId = 1L,
-                    remotePath = "/Music/demo.flac",
-                    title = "Sample Hi-Res Song",
-                    artist = "Master Artist",
-                    album = "Masterpiece Album",
-                    durationMs = 240000L,
-                    size = 30000000L,
-                    format = AudioFormat.FLAC,
-                ),
+            AudioTrack(
+                id = "1:/Music/demo.flac",
+                serverId = 1L,
+                remotePath = "/Music/demo.flac",
+                title = "Sample Hi-Res Song",
+                artist = "Master Artist",
+                album = "Masterpiece Album",
+                durationMs = 240000L,
+                size = 30000000L,
+                format = AudioFormat.FLAC
+            ),
             sessionState = PlayerSessionState(),
-            onArtworkClick = {},
+            onArtworkClick = {}
         )
     }
 }

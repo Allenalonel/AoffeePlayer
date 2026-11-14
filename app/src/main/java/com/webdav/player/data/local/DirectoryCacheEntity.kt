@@ -9,7 +9,7 @@ import androidx.room.Index
     indices = [
         Index(value = ["serverId"]),
         Index(value = ["serverId", "path"]),
-        Index(value = ["path"]),
+        Index(value = ["path"])
     ]
 )
 data class DirectoryCacheEntity(

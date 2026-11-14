@@ -10,6 +10,9 @@ import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.TrackIdentity
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.storage.StorageReachabilityTracker
+import java.io.File
+import java.io.FileNotFoundException
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -21,16 +24,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileNotFoundException
-import java.util.concurrent.atomic.AtomicBoolean
 
 class StorageReachabilityTrackerImpl(
     private val webDavClient: WebDavClient? = null,
     private val serverRepository: ServerRepository? = null,
     private val context: Context? = null,
     private val localUriReachabilityChecker: ((String) -> Boolean)? = null,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : StorageReachabilityTracker {
     private val _inactiveTracks = MutableStateFlow<Map<TrackIdentity, InactiveReason>>(emptyMap())
     override val inactiveTracks: StateFlow<Map<TrackIdentity, InactiveReason>> = _inactiveTracks.asStateFlow()
@@ -46,7 +46,7 @@ class StorageReachabilityTrackerImpl(
     override fun reportTrackUnavailable(
         serverId: Long,
         remotePath: String,
-        reason: InactiveReason,
+        reason: InactiveReason
     ) {
         _inactiveTracks.update { current ->
             current + (TrackIdentity(serverId, remotePath) to reason)
@@ -55,7 +55,7 @@ class StorageReachabilityTrackerImpl(
 
     override fun reportServerUnavailable(
         serverId: Long,
-        reason: InactiveReason,
+        reason: InactiveReason
     ) {
         _serverReachability.update { current ->
             current + (serverId to false)
@@ -100,7 +100,7 @@ class StorageReachabilityTrackerImpl(
                             arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
                             null,
                             null,
-                            null,
+                            null
                         )
                     } catch (_: SecurityException) {
                         null

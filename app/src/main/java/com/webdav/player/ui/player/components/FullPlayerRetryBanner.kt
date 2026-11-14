@@ -41,39 +41,39 @@ internal fun isFullPlayerRetryBannerVisible(sessionState: PlayerSessionState): B
 @Composable
 internal fun FullPlayerRetryBanner(
     onRetryPlayback: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Card(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .clickable { onRetryPlayback() }
-                .testTag("FullPlayerRetryBanner"),
+        modifier
+            .fillMaxWidth()
+            .clickable { onRetryPlayback() }
+            .testTag("FullPlayerRetryBanner"),
         shape = RoundedCornerShape(12.dp),
         colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f),
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-            ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f)),
+        CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f),
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f))
     ) {
         Row(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             ) {
                 Icon(
                     imageVector = AppIcons.Warning,
                     contentDescription = "网络连接受阻",
                     tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
@@ -82,30 +82,30 @@ internal fun FullPlayerRetryBanner(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onErrorContainer,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             FilledTonalButton(
                 onClick = onRetryPlayback,
                 shape = RoundedCornerShape(8.dp),
                 colors =
-                    ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError,
-                    ),
+                ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                ),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                modifier = Modifier.testTag("FullPlayerRetryButton"),
+                modifier = Modifier.testTag("FullPlayerRetryButton")
             ) {
                 Icon(
                     imageVector = AppIcons.Refresh,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = PlayerSessionState.RETRY_BUTTON_LABEL,
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -117,8 +117,7 @@ internal fun FullPlayerRetryBanner(
 private fun FullPlayerRetryBannerPreview() {
     MaterialTheme {
         FullPlayerRetryBanner(
-            onRetryPlayback = {},
+            onRetryPlayback = {}
         )
     }
 }
-

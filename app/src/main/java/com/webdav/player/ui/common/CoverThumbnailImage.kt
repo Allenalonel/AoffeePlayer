@@ -19,9 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
 
 object ThumbnailMemoryCache {
     private val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
@@ -33,7 +33,7 @@ object ThumbnailMemoryCache {
         object : LruCache<String, ImageBitmap>(cacheSize) {
             override fun sizeOf(
                 key: String,
-                value: ImageBitmap,
+                value: ImageBitmap
             ): Int {
                 return (value.width * value.height * 2) / 1024 // RGB_565 is 2 bytes per pixel
             }
@@ -46,7 +46,7 @@ object ThumbnailMemoryCache {
 
     fun put(
         path: String,
-        bitmap: ImageBitmap,
+        bitmap: ImageBitmap
     ) {
         synchronized(cache) {
             cache.put(path, bitmap)
@@ -66,7 +66,7 @@ fun CoverThumbnailImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     crossfadeDurationMs: Int = 250,
-    fallback: @Composable () -> Unit,
+    fallback: @Composable () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
 
@@ -134,18 +134,18 @@ fun CoverThumbnailImage(
             targetState = imageBitmap,
             animationSpec = tween(durationMillis = crossfadeDurationMs),
             label = "CoverThumbnailCrossfade",
-            modifier = modifier,
+            modifier = modifier
         ) { currentBitmap ->
             Box(
                 modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
+                contentAlignment = Alignment.Center
             ) {
                 if (currentBitmap != null) {
                     Image(
                         bitmap = currentBitmap,
                         contentDescription = contentDescription,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
+                        contentScale = ContentScale.Crop
                     )
                 } else {
                     fallback()
@@ -155,7 +155,7 @@ fun CoverThumbnailImage(
     } else {
         Box(
             modifier = modifier,
-            contentAlignment = Alignment.Center,
+            contentAlignment = Alignment.Center
         ) {
             val currentBitmap = imageBitmap ?: initialCached
             if (currentBitmap != null) {
@@ -163,7 +163,7 @@ fun CoverThumbnailImage(
                     bitmap = currentBitmap,
                     contentDescription = contentDescription,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
+                    contentScale = ContentScale.Crop
                 )
             } else {
                 fallback()

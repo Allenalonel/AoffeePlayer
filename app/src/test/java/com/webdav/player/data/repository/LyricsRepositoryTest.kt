@@ -9,17 +9,14 @@ import com.webdav.player.data.local.TrackMetadataDao
 import com.webdav.player.data.local.TrackMetadataEntity
 import com.webdav.player.data.local.WebDavServerEntity
 import com.webdav.player.data.metadata.DefaultTrackMetadataResolver
-import com.webdav.player.data.remote.ConnectionResult
-import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
-import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.test.SharedFakeWebDavClient
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
-import com.webdav.player.test.SharedFakeWebDavClient
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -29,7 +26,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -44,7 +40,7 @@ class LyricsRepositoryTest {
         WebDavServer(
             id = 1L,
             name = "Test Server",
-            url = "http://example.com",
+            url = "http://example.com"
         )
 
     private val testTrack =
@@ -55,7 +51,7 @@ class LyricsRepositoryTest {
             title = "Bohemian Rhapsody",
             artist = "Queen",
             album = "A Night at the Opera",
-            format = AudioFormat.MP3,
+            format = AudioFormat.MP3
         )
 
     @Before
@@ -80,7 +76,7 @@ class LyricsRepositoryTest {
                 webDavServerDao = database.webDavServerDao(),
                 context = context,
                 maxConcurrency = 2,
-                ioDispatcher = Dispatchers.Unconfined,
+                ioDispatcher = Dispatchers.Unconfined
             )
     }
 
@@ -111,8 +107,8 @@ class LyricsRepositoryTest {
                     durationMs = 0L,
                     coverThumbnailPath = null,
                     lyrics = "[00:10.00]Should not be used",
-                    companionLyricsPath = expectedLrcPath,
-                ),
+                    companionLyricsPath = expectedLrcPath
+                )
             )
 
             val lyrics = repository.resolveLyrics(testServer, testTrack)
@@ -145,8 +141,8 @@ class LyricsRepositoryTest {
                     durationMs = 0L,
                     coverThumbnailPath = null,
                     lyrics = embeddedLyrics,
-                    companionLyricsPath = DefaultTrackMetadataResolver.NO_COMPANION_LRC,
-                ),
+                    companionLyricsPath = DefaultTrackMetadataResolver.NO_COMPANION_LRC
+                )
             )
 
             val lyrics = repository.resolveLyrics(testServer, testTrack)
@@ -160,7 +156,7 @@ class LyricsRepositoryTest {
             assertEquals(
                 "When directory manifest confirms no companion .lrc, zero WebDAV fetchText calls must be made",
                 0,
-                fakeClient.fetchTextCount.get(),
+                fakeClient.fetchTextCount.get()
             )
         }
 
@@ -185,8 +181,8 @@ class LyricsRepositoryTest {
                     durationMs = 0L,
                     coverThumbnailPath = null,
                     lyrics = embeddedLyrics,
-                    companionLyricsPath = brokenLrcPath,
-                ),
+                    companionLyricsPath = brokenLrcPath
+                )
             )
 
             val lyrics = repository.resolveLyrics(testServer, testTrack)
@@ -222,8 +218,8 @@ class LyricsRepositoryTest {
                     durationMs = 0L,
                     coverThumbnailPath = null,
                     lyrics = null,
-                    companionLyricsPath = expectedLrcPath,
-                ),
+                    companionLyricsPath = expectedLrcPath
+                )
             )
 
             val firstCall = repository.resolveLyrics(testServer, testTrack)
@@ -250,8 +246,8 @@ class LyricsRepositoryTest {
                     durationMs = 0L,
                     coverThumbnailPath = null,
                     lyrics = null,
-                    companionLyricsPath = lrcPath,
-                ),
+                    companionLyricsPath = lrcPath
+                )
             )
 
             repository.resolveLyrics(testServer, testTrack)
@@ -277,7 +273,7 @@ class LyricsRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = "/storage/emulated/0/Music/Song.mp3",
                     title = "Song",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
 
             dao.insertOrUpdate(
@@ -291,8 +287,8 @@ class LyricsRepositoryTest {
                     durationMs = 0L,
                     coverThumbnailPath = null,
                     lyrics = "[00:01.00]Embedded fallback",
-                    companionLyricsPath = lrcFile.absolutePath,
-                ),
+                    companionLyricsPath = lrcFile.absolutePath
+                )
             )
 
             val lyrics = repository.resolveLyrics(localServer, localTrack)
@@ -319,7 +315,7 @@ class LyricsRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = mp3File.absolutePath,
                     title = "Track01",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
 
             val lyrics = repository.resolveLyrics(localServer, localTrack)
@@ -341,7 +337,7 @@ class LyricsRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = "content://media/external/audio/media/9999",
                     title = "Streaming Content Audio",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
 
             val lyrics = repository.resolveLyrics(localServer, localTrack)
@@ -352,17 +348,17 @@ class LyricsRepositoryTest {
         override suspend fun saveThumbnail(
             serverId: Long,
             remotePath: String,
-            artworkBytes: ByteArray,
+            artworkBytes: ByteArray
         ): String? = "/fake/covers/cover_$serverId.jpg"
 
         override fun getThumbnailFile(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): java.io.File? = null
 
         override fun deleteThumbnail(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ) {}
 
         override suspend fun deleteServerCovers(serverId: Long) {}

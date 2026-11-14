@@ -13,6 +13,7 @@ import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.StorageCascadeInvalidator
+import java.io.File
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -27,7 +28,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -55,7 +55,7 @@ class ServerRepositoryTest {
                 trackMetadataDao = database.trackMetadataDao(),
                 localStorageFolderDao = database.localStorageFolderDao(),
                 context = context,
-                cascadeInvalidator = fakeCascadeInvalidator,
+                cascadeInvalidator = fakeCascadeInvalidator
             )
     }
 
@@ -88,7 +88,7 @@ class ServerRepositoryTest {
                     pathPrefix = "/dav",
                     username = "admin",
                     password = "pwd",
-                    allowSelfSigned = true,
+                    allowSelfSigned = true
                 )
 
             val id = repository.saveServer(server)
@@ -254,7 +254,7 @@ class ServerRepositoryTest {
                 ServerRepositoryImpl(
                     serverDao = database.webDavServerDao(),
                     coverArtStorage = coverArtStorage,
-                    webDavClient = webDavClient,
+                    webDavClient = webDavClient
                 )
 
             val server1 = WebDavServer(name = "Cached Server", url = "http://cached-srv", port = 80)
@@ -288,7 +288,7 @@ class ServerRepositoryTest {
             val metaDao = database.trackMetadataDao()
 
             dirDao.insertOrUpdate(
-                DirectoryCacheEntity(serverId = id1, path = "/Music/", dataJson = "{}", lastUpdatedMs = System.currentTimeMillis()),
+                DirectoryCacheEntity(serverId = id1, path = "/Music/", dataJson = "{}", lastUpdatedMs = System.currentTimeMillis())
             )
             metaDao.insertOrUpdate(
                 TrackMetadataEntity(
@@ -299,8 +299,8 @@ class ServerRepositoryTest {
                     album = null,
                     trackNumber = null,
                     durationMs = 0L,
-                    coverThumbnailPath = null,
-                ),
+                    coverThumbnailPath = null
+                )
             )
 
             assertNotNull(dirDao.getCache(id1, "/Music/"))
@@ -333,7 +333,7 @@ class ServerRepositoryTest {
                     coverArtStorage = coverArtStorage,
                     trackMetadataDao = database.trackMetadataDao(),
                     localStorageFolderDao = database.localStorageFolderDao(),
-                    context = context,
+                    context = context
                 )
 
             val coldStartActive = restartedRepo.getActiveServer().first()
@@ -363,7 +363,7 @@ class ServerRepositoryTest {
                     coverArtStorage = coverArtStorage,
                     trackMetadataDao = database.trackMetadataDao(),
                     localStorageFolderDao = database.localStorageFolderDao(),
-                    context = context,
+                    context = context
                 )
 
             val coldStartActive = restartedRepo.getActiveServer().first()
@@ -382,7 +382,7 @@ class ServerRepositoryTest {
                     trackMetadataDao = database.trackMetadataDao(),
                     localStorageFolderDao = database.localStorageFolderDao(),
                     context = context,
-                    cascadeInvalidator = fakeInvalidator,
+                    cascadeInvalidator = fakeInvalidator
                 )
 
             val serverId = repoWithFake.saveServer(WebDavServer(name = "Cascade NAS", url = "http://nas"))

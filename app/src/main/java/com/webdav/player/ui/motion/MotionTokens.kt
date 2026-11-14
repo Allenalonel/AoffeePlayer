@@ -51,19 +51,19 @@ object MotionTokens {
     val SpatialSpring: SpringSpec<Float> =
         spring(
             dampingRatio = SpatialDampingRatio,
-            stiffness = SpatialStiffness,
+            stiffness = SpatialStiffness
         )
 
     val EffectsSpring: SpringSpec<Float> =
         spring(
             dampingRatio = EffectsDampingRatio,
-            stiffness = EffectsStiffness,
+            stiffness = EffectsStiffness
         )
 
     val FastSpatialSpring: SpringSpec<Float> =
         spring(
             dampingRatio = FastSpatialDampingRatio,
-            stiffness = FastSpatialStiffness,
+            stiffness = FastSpatialStiffness
         )
 
     /**
@@ -73,7 +73,7 @@ object MotionTokens {
         spring(
             dampingRatio = SpatialDampingRatio,
             stiffness = SpatialStiffness,
-            visibilityThreshold = visibilityThreshold,
+            visibilityThreshold = visibilityThreshold
         )
 
     /**
@@ -83,7 +83,7 @@ object MotionTokens {
         spring(
             dampingRatio = EffectsDampingRatio,
             stiffness = EffectsStiffness,
-            visibilityThreshold = visibilityThreshold,
+            visibilityThreshold = visibilityThreshold
         )
 
     /**
@@ -93,7 +93,7 @@ object MotionTokens {
         spring(
             dampingRatio = FastSpatialDampingRatio,
             stiffness = FastSpatialStiffness,
-            visibilityThreshold = visibilityThreshold,
+            visibilityThreshold = visibilityThreshold
         )
 
     // --- Accessibility / Reduce Motion Support ---
@@ -113,7 +113,7 @@ object MotionTokens {
                 Settings.Global.getFloat(
                     context.contentResolver,
                     Settings.Global.ANIMATOR_DURATION_SCALE,
-                    1.0f,
+                    1.0f
                 )
             durationScale <= 0f
         } catch (_: Exception) {
@@ -128,7 +128,7 @@ object MotionTokens {
      */
     fun <T> resolveSpec(
         springSpec: SpringSpec<T>,
-        reduceMotion: Boolean,
+        reduceMotion: Boolean
     ): FiniteAnimationSpec<T> =
         if (reduceMotion) {
             snap()
@@ -141,7 +141,7 @@ object MotionTokens {
      */
     fun <T> resolveSpec(
         springSpec: SpringSpec<T>,
-        context: Context,
+        context: Context
     ): FiniteAnimationSpec<T> = resolveSpec(springSpec, isReduceMotionEnabled(context))
 
     /**
@@ -149,7 +149,7 @@ object MotionTokens {
      */
     fun <T> spatialSpec(
         reduceMotion: Boolean = false,
-        visibilityThreshold: T? = null,
+        visibilityThreshold: T? = null
     ): FiniteAnimationSpec<T> = if (reduceMotion) snap() else spatialSpring(visibilityThreshold)
 
     /**
@@ -157,7 +157,7 @@ object MotionTokens {
      */
     fun <T> effectsSpec(
         reduceMotion: Boolean = false,
-        visibilityThreshold: T? = null,
+        visibilityThreshold: T? = null
     ): FiniteAnimationSpec<T> = if (reduceMotion) snap() else effectsSpring(visibilityThreshold)
 
     /**
@@ -165,7 +165,7 @@ object MotionTokens {
      */
     fun <T> fastSpatialSpec(
         reduceMotion: Boolean = false,
-        visibilityThreshold: T? = null,
+        visibilityThreshold: T? = null
     ): FiniteAnimationSpec<T> = if (reduceMotion) snap() else fastSpatialSpring(visibilityThreshold)
 }
 

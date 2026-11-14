@@ -20,12 +20,10 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.CoverArtStorageImpl
-import com.webdav.player.data.metadata.AudioMetadataParser
 import com.webdav.player.data.metadata.ImageHeaderValidator
 import com.webdav.player.data.player.AsfExtractor
 import com.webdav.player.data.player.Media3AudioPlayerEngine
 import com.webdav.player.data.player.UnsupportedRangeReconnectionException
-import com.webdav.player.data.player.WebDavLoadErrorHandlingPolicy
 import com.webdav.player.data.player.WebDavMediaSourceBuilder
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.OkHttpWebDavClient
@@ -36,11 +34,7 @@ import com.webdav.player.data.service.PlaybackSessionHost
 import com.webdav.player.data.service.WebDavMediaService
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
-import com.webdav.player.domain.model.ListDirectoryResult
-import com.webdav.player.domain.model.LyricLine
-import com.webdav.player.domain.model.Lyrics
 import com.webdav.player.domain.model.PlaybackErrorKind
-import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
@@ -52,6 +46,12 @@ import com.webdav.player.domain.player.FakeAudioPlayerEngine
 import com.webdav.player.domain.session.FakePlaybackSessionStore
 import com.webdav.player.domain.session.MusicPlayerAppSessionImpl
 import com.webdav.player.ui.common.ThumbnailMemoryCache
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
@@ -71,12 +71,10 @@ import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
-import okhttp3.mockwebserver.SocketPolicy
 import okio.Buffer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -87,12 +85,6 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.android.controller.ServiceController
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.IOException
-import java.net.SocketTimeoutException
-import java.nio.charset.StandardCharsets
-import java.util.concurrent.TimeUnit
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @kotlin.OptIn(ExperimentalCoroutinesApi::class)
@@ -139,7 +131,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 trackMetadataDao = database.trackMetadataDao(),
                 webDavClient = webDavClient,
                 coverArtStorage = coverArtStorage,
-                ioDispatcher = testDispatcher,
+                ioDispatcher = testDispatcher
             )
         mediaLibraryRepository =
             MediaLibraryRepositoryImpl(
@@ -149,7 +141,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 mediaTrackIndexDao = database.mediaTrackIndexDao(),
                 directorySyncCheckpointDao = database.directorySyncCheckpointDao(),
                 context = context,
-                ioDispatcher = testDispatcher,
+                ioDispatcher = testDispatcher
             )
 
         testServer =
@@ -162,7 +154,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 username = "streamer",
                 password = "stream_secret_password",
                 allowSelfSigned = true,
-                isDefault = true,
+                isDefault = true
             )
         val savedId = kotlinx.coroutines.runBlocking { serverRepository.saveServer(testServer) }
         testServer = testServer.copy(id = savedId)
@@ -180,7 +172,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
 
     private fun createMediaButtonIntent(
         keyCode: Int,
-        action: Int = KeyEvent.ACTION_DOWN,
+        action: Int = KeyEvent.ACTION_DOWN
     ): Intent {
         val intent = Intent(Intent.ACTION_MEDIA_BUTTON)
         val event = KeyEvent(action, keyCode)
@@ -202,7 +194,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 MockResponse()
                     .setResponseCode(207)
                     .setHeader("Content-Type", "application/xml; charset=utf-8")
-                    .setBody("""<?xml version="1.0" encoding="utf-8"?><multistatus xmlns="DAV:"></multistatus>"""),
+                    .setBody("""<?xml version="1.0" encoding="utf-8"?><multistatus xmlns="DAV:"></multistatus>""")
             )
 
             val connectionResult = webDavClient.testConnection(testServer)
@@ -271,7 +263,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 MockResponse()
                     .setResponseCode(207)
                     .setHeader("Content-Type", "application/xml; charset=utf-8")
-                    .setBody(directoryXml),
+                    .setBody(directoryXml)
             )
 
             val contentList = mediaLibraryRepository.observeDirectoryContent(testServer, "/Music/").toList()
@@ -295,7 +287,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 Media3AudioPlayerEngine(
                     context = context,
                     mediaSourceBuilder = mediaSourceBuilder,
-                    coroutineScope = this,
+                    coroutineScope = this
                 )
 
             val sessionScope = TestScope(testDispatcher)
@@ -305,7 +297,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     serverRepository = serverRepository,
                     sessionStore = sessionStore,
                     coroutineScope = sessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
 
             // User taps 01-Symphony.flac to play directory
@@ -333,7 +325,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 engine.player
                     .getMediaItemAt(0)
                     .localConfiguration
-                    ?.mimeType,
+                    ?.mimeType
             )
 
             // Step 6: Verify seek and progress propagation
@@ -349,7 +341,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
             assertEquals(
                 "02-Allegro.mp3",
                 appSession.sessionState.value.currentTrack
-                    ?.title,
+                    ?.title
             )
 
             // Clean up
@@ -372,7 +364,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     remotePath = "/Music/test.flac",
                     title = "Resilient Stream",
                     format = AudioFormat.FLAC,
-                    size = 2048L,
+                    size = 2048L
                 )
 
             val policy = mediaSourceBuilder.loadErrorHandlingPolicy
@@ -388,7 +380,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     "Connection timed out",
                     SocketTimeoutException("Read timed out"),
                     dataSpec,
-                    HttpDataSource.HttpDataSourceException.TYPE_READ,
+                    HttpDataSource.HttpDataSourceException.TYPE_READ
                 )
 
             val errorInfoAttempt1 =
@@ -396,7 +388,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     LoadEventInfo(0L, dataSpec, 0L),
                     MediaLoadData(C.DATA_TYPE_MEDIA),
                     timeoutException,
-                    1,
+                    1
                 )
             assertEquals("Attempt 1 must back off with 1000ms delay", 1000L, policy.getRetryDelayMsFor(errorInfoAttempt1))
 
@@ -405,7 +397,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     LoadEventInfo(0L, dataSpec, 0L),
                     MediaLoadData(C.DATA_TYPE_MEDIA),
                     timeoutException,
-                    2,
+                    2
                 )
             assertEquals("Attempt 2 must back off with 2000ms delay", 2000L, policy.getRetryDelayMsFor(errorInfoAttempt2))
 
@@ -414,7 +406,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     LoadEventInfo(0L, dataSpec, 0L),
                     MediaLoadData(C.DATA_TYPE_MEDIA),
                     timeoutException,
-                    3,
+                    3
                 )
             assertEquals("Attempt 3 must back off with 4000ms delay", 4000L, policy.getRetryDelayMsFor(errorInfoAttempt3))
 
@@ -424,7 +416,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     LoadEventInfo(0L, dataSpec, 0L),
                     MediaLoadData(C.DATA_TYPE_MEDIA),
                     timeoutException,
-                    4,
+                    4
                 )
             assertEquals("Attempt 4 must escalate to C.TIME_UNSET", C.TIME_UNSET, policy.getRetryDelayMsFor(errorInfoAttempt4))
 
@@ -434,14 +426,14 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     "Broken pipe",
                     java.net.SocketException("Broken pipe"),
                     dataSpec,
-                    HttpDataSource.HttpDataSourceException.TYPE_READ,
+                    HttpDataSource.HttpDataSourceException.TYPE_READ
                 )
             val brokenPipeInfo =
                 LoadErrorHandlingPolicy.LoadErrorInfo(
                     LoadEventInfo(0L, dataSpec, 0L),
                     MediaLoadData(C.DATA_TYPE_MEDIA),
                     brokenPipeException,
-                    1,
+                    1
                 )
             assertEquals("Broken pipe must retry", 1000L, policy.getRetryDelayMsFor(brokenPipeInfo))
 
@@ -455,14 +447,14 @@ class EndToEndPlaybackPipelineIntegrationTest {
                         null,
                         emptyMap(),
                         dataSpec,
-                        byteArrayOf(),
+                        byteArrayOf()
                     )
                 val errorInfo =
                     LoadErrorHandlingPolicy.LoadErrorInfo(
                         LoadEventInfo(0L, dataSpec, 0L),
                         MediaLoadData(C.DATA_TYPE_MEDIA),
                         httpException,
-                        1,
+                        1
                     )
                 assertEquals("HTTP $code must fail fast", C.TIME_UNSET, policy.getRetryDelayMsFor(errorInfo))
             }
@@ -473,7 +465,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     .setResponseCode(200)
                     .setHeader("Content-Type", "audio/flac")
                     .setHeader("Content-Length", "2048")
-                    .setBody("recovered-audio-stream-chunk-data"),
+                    .setBody("recovered-audio-stream-chunk-data")
             )
 
             val dataSource = mediaSourceBuilder.getDataSourceFactory(testServer).createDataSource()
@@ -490,14 +482,14 @@ class EndToEndPlaybackPipelineIntegrationTest {
             assertNotNull(chunkRequest)
             assertEquals(
                 Credentials.basic(testServer.username, testServer.password),
-                chunkRequest!!.getHeader("Authorization"),
+                chunkRequest!!.getHeader("Authorization")
             )
 
             // 6. Verify streaming client has >=30s read timeout for resilient streaming
             val streamingClient = mediaSourceBuilder.getStreamingClientForServer(testServer)
             assertTrue(
                 "Streaming client read timeout must be >= 30s",
-                streamingClient.readTimeoutMillis >= 30_000,
+                streamingClient.readTimeoutMillis >= 30_000
             )
         }
 
@@ -522,9 +514,9 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 context = context,
                 playerEngine = fakeEngine,
                 audioFocusHandler =
-                    com.webdav.player.data.service
-                        .AudioFocusHandler(context),
-                sessionPlayer = exoPlayer,
+                com.webdav.player.data.service
+                    .AudioFocusHandler(context),
+                sessionPlayer = exoPlayer
             )
         host.bindAppSession(fakeSession)
         PlaybackSessionHost.setInstanceForTesting(host)
@@ -555,7 +547,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
             val activeNotifications = notificationManager.activeNotifications
             assertTrue(
                 "Notification remains in NotificationManager for user resumption",
-                activeNotifications.any { it.id == host.notificationProvider.notificationId },
+                activeNotifications.any { it.id == host.notificationProvider.notificationId }
             )
 
             // 4. Audio Focus Interruption: incoming call causes AUDIOFOCUS_LOSS_TRANSIENT while playing
@@ -614,7 +606,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     context = context,
                     playerEngine = fakeEngine,
                     sessionPlayer = exoPlayer,
-                    coroutineScope = kotlinx.coroutines.CoroutineScope(testDispatcher + hostJob),
+                    coroutineScope = kotlinx.coroutines.CoroutineScope(testDispatcher + hostJob)
                 )
             val sessionJob = SupervisorJob()
             val appSession =
@@ -623,7 +615,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     serverRepository = serverRepository,
                     sessionStore = sessionStore,
                     coroutineScope = kotlinx.coroutines.CoroutineScope(testDispatcher + sessionJob),
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
             host.bindAppSession(appSession)
             PlaybackSessionHost.setInstanceForTesting(host)
@@ -643,7 +635,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
 
             fun assertLocks(
                 expectedHeld: Boolean,
-                phase: String,
+                phase: String
             ) {
                 assertEquals("WakeLock held during $phase", expectedHeld, host.hardwareLockManager.isWakeLockHeld)
                 assertEquals("WifiLock held during $phase", expectedHeld, host.hardwareLockManager.isWifiLockHeld)
@@ -739,7 +731,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 RemoteDirectory(
                     path = "/",
                     name = "Root",
-                    files = listOf(sampleFile1, sampleFile2),
+                    files = listOf(sampleFile1, sampleFile2)
                 )
 
             val appSession =
@@ -748,7 +740,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     serverRepository = serverRepository,
                     sessionStore = sessionStore,
                     coroutineScope = sessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
 
             appSession.playDirectoryTrack(testServer, sampleDirectory, sampleFile1)
@@ -785,14 +777,14 @@ class EndToEndPlaybackPipelineIntegrationTest {
             assertEquals(
                 "Structural session state must NOT emit on high-frequency progress updates, but emitted $newStructuralCount times",
                 0,
-                newStructuralCount,
+                newStructuralCount
             )
 
             // Progress stream MUST receive the high-frequency updates for smooth full-player rendering
             val newProgressCount = progressEmissions.size - initialProgressCount
             assertTrue(
                 "Playback progress stream must receive high-frequency updates, received $newProgressCount",
-                newProgressCount > 0,
+                newProgressCount > 0
             )
             assertEquals(50000L, appSession.playbackProgress.value.currentPositionMs)
 
@@ -805,7 +797,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
             assertEquals(
                 "track2.mp3",
                 appSession.sessionState.value.currentTrack
-                    ?.title,
+                    ?.title
             )
 
             structuralJob.cancel()
@@ -824,7 +816,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
         val streamingClient = webDavClient.buildStreamingClientForServer(testServer)
         assertNull(
             "ADR-0002 Violation: OkHttp streaming client must have no disk cache configured",
-            streamingClient.cache,
+            streamingClient.cache
         )
 
         // 2. Snapshot local disk storage before streaming operations
@@ -846,7 +838,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                             file.name.endsWith(".chunk") ||
                             file.name.contains("exo_") ||
                             file.name.contains("cache-")
-                    )
+                        )
                 }.toList()
         }
 
@@ -863,7 +855,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 .setResponseCode(200)
                 .setHeader("Content-Type", "audio/flac")
                 .setHeader("Content-Length", "4096")
-                .setBody("test-in-memory-audio-chunk-bytes-must-not-be-written-to-disk"),
+                .setBody("test-in-memory-audio-chunk-bytes-must-not-be-written-to-disk")
         )
 
         val track =
@@ -873,7 +865,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 remotePath = "/Music/memory_test.flac",
                 title = "Memory Test",
                 format = AudioFormat.FLAC,
-                size = 4096L,
+                size = 4096L
             )
 
         val dataSource = mediaSourceBuilder.getDataSourceFactory(testServer).createDataSource()
@@ -899,7 +891,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
         assertEquals(
             "ADR-0002 Violation: Audio stream chunk was persisted to local disk storage! Files found: $postStreamingAudioFiles",
             0,
-            postStreamingAudioFiles.size,
+            postStreamingAudioFiles.size
         )
     }
 
@@ -931,7 +923,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
         title: String,
         artist: String,
         album: String,
-        artworkBytes: ByteArray? = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte()),
+        artworkBytes: ByteArray? = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())
     ): ByteArray {
         val stream = ByteArrayOutputStream()
         stream.write("ID3".toByteArray(StandardCharsets.US_ASCII))
@@ -943,7 +935,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
 
         fun writeFrame(
             id: String,
-            text: String,
+            text: String
         ) {
             val p = ByteArrayOutputStream()
             p.write(3) // UTF-8
@@ -1008,7 +1000,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
         title: String,
         artist: String,
         album: String,
-        artworkBytes: ByteArray? = null,
+        artworkBytes: ByteArray? = null
     ): ByteArray {
         val stream = ByteArrayOutputStream()
         // "fLaC"
@@ -1108,7 +1100,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
 
     private fun createRangeMockResponse(
         fullBytes: ByteArray,
-        rangeHeader: String?,
+        rangeHeader: String?
     ): MockResponse {
         if (rangeHeader == null || !rangeHeader.startsWith("bytes=")) {
             return MockResponse()
@@ -1170,7 +1162,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     title = "Symphony No. 9",
                     artist = "Ludwig van Beethoven",
                     album = "Masterpieces in Hi-Res",
-                    artworkBytes = highResArtwork,
+                    artworkBytes = highResArtwork
                 )
             assertTrue("MP3 bytes must exceed 512KB to test adaptive secondary range fetch", mp3Bytes.size > 524288)
 
@@ -1192,13 +1184,13 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     name = "HighRes.mp3",
                     path = "/Music/HighRes.mp3",
                     size = mp3Bytes.size.toLong(),
-                    fileType = RemoteFileType.Audio(AudioFormat.MP3),
+                    fileType = RemoteFileType.Audio(AudioFormat.MP3)
                 )
             val directory =
                 RemoteDirectory(
                     path = "/Music/",
                     name = "Music",
-                    files = listOf(remoteFile),
+                    files = listOf(remoteFile)
                 )
 
             // Step 1: Resolve metadata through TrackMetadataRepository
@@ -1219,7 +1211,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 Media3AudioPlayerEngine(
                     context = context,
                     mediaSourceBuilder = mediaSourceBuilder,
-                    coroutineScope = this,
+                    coroutineScope = this
                 )
             val sessionScope = TestScope(testDispatcher)
             val appSession =
@@ -1229,7 +1221,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     trackMetadataRepository = trackMetadataRepository,
                     sessionStore = sessionStore,
                     coroutineScope = sessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
 
             appSession.playDirectoryTrack(testServer, directory, remoteFile, mapOf(remoteFile.path to resolvedMeta))
@@ -1283,14 +1275,14 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     title = "Sonata 1",
                     artist = "Chopin",
                     album = "Nocturnes",
-                    artworkBytes = null,
+                    artworkBytes = null
                 )
             val track2Bytes =
                 buildSampleFlacBytes(
                     title = "Sonata 2",
                     artist = "Chopin",
                     album = "Nocturnes",
-                    artworkBytes = null,
+                    artworkBytes = null
                 )
 
             // Companion folder cover.jpg (valid JPEG)
@@ -1338,20 +1330,20 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     name = "Sonata1.mp3",
                     path = "/Albums/Chopin/Sonata1.mp3",
                     size = track1Bytes.size.toLong(),
-                    fileType = RemoteFileType.Audio(AudioFormat.MP3),
+                    fileType = RemoteFileType.Audio(AudioFormat.MP3)
                 )
             val file2 =
                 RemoteFile(
                     name = "Sonata2.flac",
                     path = "/Albums/Chopin/Sonata2.flac",
                     size = track2Bytes.size.toLong(),
-                    fileType = RemoteFileType.Audio(AudioFormat.FLAC),
+                    fileType = RemoteFileType.Audio(AudioFormat.FLAC)
                 )
             val directory =
                 RemoteDirectory(
                     path = "/Albums/Chopin/",
                     name = "Chopin",
-                    files = listOf(file1, file2),
+                    files = listOf(file1, file2)
                 )
 
             // Step 1: Resolve metadata for both tracks in directory
@@ -1378,7 +1370,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                 Media3AudioPlayerEngine(
                     context = context,
                     mediaSourceBuilder = mediaSourceBuilder,
-                    coroutineScope = this,
+                    coroutineScope = this
                 )
             val sessionScope = TestScope(testDispatcher)
             val appSession =
@@ -1388,14 +1380,14 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     trackMetadataRepository = trackMetadataRepository,
                     sessionStore = sessionStore,
                     coroutineScope = sessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
 
             appSession.playDirectoryTrack(
                 testServer,
                 directory,
                 file1,
-                mapOf(file1.path to meta1, file2.path to meta2!!),
+                mapOf(file1.path to meta1, file2.path to meta2!!)
             )
             advanceUntilIdle()
 
@@ -1403,12 +1395,12 @@ class EndToEndPlaybackPipelineIntegrationTest {
             assertEquals(
                 "Sonata 1",
                 appSession.sessionState.value.currentTrack
-                    ?.title,
+                    ?.title
             )
             assertEquals(
                 coverPath1,
                 appSession.sessionState.value.currentTrack
-                    ?.coverThumbnailPath,
+                    ?.coverThumbnailPath
             )
 
             // Verify ThumbnailMemoryCache rendering
@@ -1423,13 +1415,13 @@ class EndToEndPlaybackPipelineIntegrationTest {
             assertEquals(
                 "Sonata 2",
                 appSession.sessionState.value.currentTrack
-                    ?.title,
+                    ?.title
             )
             assertEquals(
                 "Track 2 must immediately retain folder cover after transition",
                 coverPath1,
                 appSession.sessionState.value.currentTrack
-                    ?.coverThumbnailPath,
+                    ?.coverThumbnailPath
             )
             assertNotNull("Bitmap remains accessible in memory cache across transition", ThumbnailMemoryCache.get(coverPath1))
 
@@ -1451,7 +1443,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     title = "Karaoke Hit",
                     artist = "Ensemble",
                     album = "Acoustic Sessions",
-                    artworkBytes = null,
+                    artworkBytes = null
                 )
 
             val enhancedLrcContent =
@@ -1494,20 +1486,20 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     name = "KaraokeHit.mp3",
                     path = "/Music/KaraokeHit.mp3",
                     size = audioBytes.size.toLong(),
-                    fileType = RemoteFileType.Audio(AudioFormat.MP3),
+                    fileType = RemoteFileType.Audio(AudioFormat.MP3)
                 )
             val directory =
                 RemoteDirectory(
                     path = "/Music/",
                     name = "Music",
-                    files = listOf(karaokeFile),
+                    files = listOf(karaokeFile)
                 )
 
             val engine =
                 Media3AudioPlayerEngine(
                     context = context,
                     mediaSourceBuilder = mediaSourceBuilder,
-                    coroutineScope = this,
+                    coroutineScope = this
                 )
             val sessionScope = TestScope(testDispatcher)
             val appSession =
@@ -1517,7 +1509,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     trackMetadataRepository = trackMetadataRepository,
                     sessionStore = sessionStore,
                     coroutineScope = sessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
 
             appSession.playDirectoryTrack(testServer, directory, karaokeFile)
@@ -1583,7 +1575,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     title = "Bilingual Song 1",
                     artist = "Global Artist",
                     album = "Harmony",
-                    artworkBytes = null,
+                    artworkBytes = null
                 )
 
             val lrc1 =
@@ -1648,27 +1640,27 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     name = "Bilingual01.mp3",
                     path = "/Music/Bilingual01.mp3",
                     size = audioBytes.size.toLong(),
-                    fileType = RemoteFileType.Audio(AudioFormat.MP3),
+                    fileType = RemoteFileType.Audio(AudioFormat.MP3)
                 )
             val file2 =
                 RemoteFile(
                     name = "Bilingual02.mp3",
                     path = "/Music/Bilingual02.mp3",
                     size = audioBytes.size.toLong(),
-                    fileType = RemoteFileType.Audio(AudioFormat.MP3),
+                    fileType = RemoteFileType.Audio(AudioFormat.MP3)
                 )
             val directory =
                 RemoteDirectory(
                     path = "/Music/",
                     name = "Music",
-                    files = listOf(file1, file2),
+                    files = listOf(file1, file2)
                 )
 
             val engine =
                 Media3AudioPlayerEngine(
                     context = context,
                     mediaSourceBuilder = mediaSourceBuilder,
-                    coroutineScope = this,
+                    coroutineScope = this
                 )
             val sessionScope = TestScope(testDispatcher)
             val appSession =
@@ -1678,7 +1670,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     trackMetadataRepository = trackMetadataRepository,
                     sessionStore = sessionStore,
                     coroutineScope = sessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
 
             appSession.playDirectoryTrack(testServer, directory, file1)
@@ -1736,7 +1728,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
             assertEquals(
                 "Bilingual02.mp3",
                 appSession.sessionState.value.currentTrack
-                    ?.title,
+                    ?.title
             )
 
             // Wait for Track 2 lyrics to load reactively
@@ -1746,7 +1738,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                         ?.lines
                         ?.firstOrNull()
                         ?.mainText != "The sun rises again"
-                ) && attempts < 50
+                    ) && attempts < 50
             ) {
                 advanceTimeBy(50L)
                 advanceUntilIdle()
@@ -1773,7 +1765,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     trackMetadataRepository = trackMetadataRepository,
                     sessionStore = sessionStore,
                     coroutineScope = sessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
             advanceUntilIdle()
 
@@ -1821,7 +1813,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     context = context,
                     mediaSourceBuilder = mediaSourceBuilder,
                     customPlayer = controllablePlayer,
-                    coroutineScope = kotlinx.coroutines.CoroutineScope(testDispatcher + SupervisorJob()),
+                    coroutineScope = kotlinx.coroutines.CoroutineScope(testDispatcher + SupervisorJob())
                 )
             val sessionJob = SupervisorJob()
             val appSession =
@@ -1830,7 +1822,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     serverRepository = serverRepository,
                     sessionStore = sessionStore,
                     coroutineScope = kotlinx.coroutines.CoroutineScope(testDispatcher + sessionJob),
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
 
             val file1 = RemoteFile("01.mp3", "/Music/01.mp3", 1_000L, fileType = RemoteFileType.Audio(AudioFormat.MP3))
@@ -1863,13 +1855,13 @@ class EndToEndPlaybackPipelineIntegrationTest {
                         null,
                         emptyMap(),
                         DataSpec.Builder().setUri("http://127.0.0.1/01.mp3").build(),
-                        byteArrayOf(),
+                        byteArrayOf()
                     )
                 val notFoundEx =
                     androidx.media3.common.PlaybackException(
                         "HTTP 404",
                         http404,
-                        androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,
+                        androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS
                     )
                 listeners.forEach { it.onPlayerError(notFoundEx) }
                 shadowOf(android.os.Looper.getMainLooper()).idle()
@@ -1885,7 +1877,7 @@ class EndToEndPlaybackPipelineIntegrationTest {
                     androidx.media3.common.PlaybackException(
                         "Wrapper error",
                         IOException("Nested IO", rangeEx),
-                        androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+                        androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED
                     )
                 listeners.forEach { it.onPlayerError(wrappedRangeEx) }
                 shadowOf(android.os.Looper.getMainLooper()).idle()

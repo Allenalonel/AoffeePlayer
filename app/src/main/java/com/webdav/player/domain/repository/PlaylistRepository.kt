@@ -18,14 +18,14 @@ interface PlaylistRepository {
 
     suspend fun renamePlaylist(
         playlistId: Long,
-        newName: String,
+        newName: String
     )
 
     suspend fun deletePlaylist(playlistId: Long)
 
     suspend fun isPlaylistNameExists(
         name: String,
-        excludePlaylistId: Long? = null,
+        excludePlaylistId: Long? = null
     ): Boolean
 
     fun getTracksForPlaylistFlow(playlistId: Long): Flow<List<PlaylistTrackEntry>>
@@ -34,28 +34,28 @@ interface PlaylistRepository {
 
     suspend fun addTrackToPlaylist(
         playlistId: Long,
-        track: AudioTrack,
+        track: AudioTrack
     ): Long
 
     suspend fun addTracksToPlaylist(
         playlistId: Long,
-        tracks: List<AudioTrack>,
+        tracks: List<AudioTrack>
     ): List<Long>
 
     suspend fun removeTrackFromPlaylist(trackEntryId: Long)
 
     suspend fun updateTrackCover(
         trackEntryId: Long,
-        coverThumbnailPath: String?,
+        coverThumbnailPath: String?
     ) {}
 
     suspend fun removeTracksFromPlaylist(
         playlistId: Long,
-        trackEntryIds: List<Long>,
+        trackEntryIds: List<Long>
     )
 
     suspend fun updateTrackOrders(
         playlistId: Long,
-        orderedTrackIds: List<Long>,
+        orderedTrackIds: List<Long>
     )
 }

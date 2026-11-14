@@ -39,11 +39,11 @@ class DirectoryBrowserSyncTest {
             name = "Test NAS",
             url = "http://nas.local",
             port = 5005,
-            isDefault = true,
+            isDefault = true
         )
 
     private class FakeSyncServerRepository(
-        private val activeServer: WebDavServer,
+        private val activeServer: WebDavServer
     ) : ServerRepository {
         override fun getAllServers(): Flow<List<WebDavServer>> = flowOf(listOf(activeServer))
 
@@ -72,7 +72,7 @@ class DirectoryBrowserSyncTest {
             DirectoryBrowserViewModel(
                 serverRepository = fakeServerRepository,
                 mediaLibraryRepository = fakeMediaLibraryRepository,
-                musicPlayerAppSession = fakeMusicPlayerAppSession,
+                musicPlayerAppSession = fakeMusicPlayerAppSession
             )
     }
 
@@ -90,7 +90,7 @@ class DirectoryBrowserSyncTest {
                 sampleServer.id,
                 fakeMediaLibraryRepository.syncServerCalls
                     .first()
-                    .first.id,
+                    .first.id
             )
             assertFalse(fakeMediaLibraryRepository.syncServerCalls.first().second)
 
@@ -167,7 +167,7 @@ class DirectoryBrowserSyncTest {
                     serverId = 1L,
                     remotePath = "/Music/hit.flac",
                     title = "Hit Song",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
 
             viewModel.onSearchActiveChanged(true)
@@ -192,7 +192,7 @@ class DirectoryBrowserSyncTest {
                 RemoteDirectory(
                     path = "/Music/Rock/",
                     name = "Rock",
-                    serverId = sampleServer.id,
+                    serverId = sampleServer.id
                 )
 
             viewModel.onSearchActiveChanged(true)
@@ -207,9 +207,9 @@ class DirectoryBrowserSyncTest {
                 listOf(
                     Breadcrumb(name = sampleServer.name, path = "/"),
                     Breadcrumb(name = "Music", path = "/Music/"),
-                    Breadcrumb(name = "Rock", path = "/Music/Rock/"),
+                    Breadcrumb(name = "Rock", path = "/Music/Rock/")
                 ),
-                breadcrumbs,
+                breadcrumbs
             )
         }
 }

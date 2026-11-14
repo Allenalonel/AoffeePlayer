@@ -2,12 +2,12 @@ package com.webdav.player.data.remote
 
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
-import org.w3c.dom.Element
-import org.w3c.dom.Node
-import org.xml.sax.InputSource
 import java.io.StringReader
 import java.net.URI
 import javax.xml.parsers.DocumentBuilderFactory
+import org.w3c.dom.Element
+import org.w3c.dom.Node
+import org.xml.sax.InputSource
 
 object WebDavXmlParser {
 
@@ -35,8 +35,11 @@ object WebDavXmlParser {
         }
 
         val responses = (0 until numResponses).map { i ->
-            if (responseNodes.length > 0) responseNodes.item(i) as Element
-            else doc.getElementsByTagName("response").item(i) as Element
+            if (responseNodes.length > 0) {
+                responseNodes.item(i) as Element
+            } else {
+                doc.getElementsByTagName("response").item(i) as Element
+            }
         }
 
         var dirName: String? = null
@@ -73,7 +76,7 @@ object WebDavXmlParser {
                             path = normalizedPath,
                             name = folderName,
                             lastModified = parseHttpDate(subLastModified),
-                            etag = subEtag?.trim('"', ' '),
+                            etag = subEtag?.trim('"', ' ')
                         )
                     )
                 }
@@ -107,7 +110,7 @@ object WebDavXmlParser {
             subDirectories = subDirectories.sortedBy { it.name.lowercase() },
             files = files.sortedBy { it.name.lowercase() },
             lastModified = parseHttpDate(dirLastModified),
-            etag = dirEtag?.trim('"', ' '),
+            etag = dirEtag?.trim('"', ' ')
         )
     }
 

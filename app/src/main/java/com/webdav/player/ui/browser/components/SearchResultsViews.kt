@@ -63,51 +63,51 @@ fun SearchScopeSegmentedPill(
     isGlobalSearch: Boolean,
     onToggleSearchScope: () -> Unit,
     activeSourceName: String?,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val isLocal = activeSourceName == "本地存储"
     val sourceIcon = if (isLocal) AppIcons.Storage else AppIcons.Cloud
     val sliderOffsetFraction by animateFloatAsState(
         targetValue = if (isGlobalSearch) 1f else 0f,
         animationSpec =
-            spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow,
-            ),
-        label = "scope_slider_offset",
+        spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "scope_slider_offset"
     )
 
     BoxWithConstraints(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp)
-                .height(44.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = RoundedCornerShape(22.dp),
-                ).padding(4.dp),
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .height(44.dp)
+            .background(
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(22.dp)
+            ).padding(4.dp)
     ) {
         val halfWidth = maxWidth / 2
 
         // Animated Active Slider Pill
         Box(
             modifier =
-                Modifier
-                    .width(halfWidth)
-                    .fillMaxHeight()
-                    .offset(x = halfWidth * sliderOffsetFraction)
-                    .shadow(elevation = 2.dp, shape = RoundedCornerShape(18.dp))
-                    .background(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(18.dp),
-                    ),
+            Modifier
+                .width(halfWidth)
+                .fillMaxHeight()
+                .offset(x = halfWidth * sliderOffsetFraction)
+                .shadow(elevation = 2.dp, shape = RoundedCornerShape(18.dp))
+                .background(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(18.dp)
+                )
         )
 
         // Labels Row
         Row(
             modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             // Left Half: Current Source
             val activeColorCurrent =
@@ -118,34 +118,34 @@ fun SearchScopeSegmentedPill(
                 }
             Row(
                 modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = { if (isGlobalSearch) onToggleSearchScope() },
-                        ).padding(horizontal = 8.dp),
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { if (isGlobalSearch) onToggleSearchScope() }
+                    ).padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.Center
             ) {
                 Icon(
                     imageVector = sourceIcon,
                     contentDescription = null,
                     tint = activeColorCurrent,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = activeSourceName?.let { "当前源 ($it)" } ?: "当前源",
                     style =
-                        MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = if (!isGlobalSearch) FontWeight.Bold else FontWeight.Medium,
-                        ),
+                    MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = if (!isGlobalSearch) FontWeight.Bold else FontWeight.Medium
+                    ),
                     color = activeColorCurrent,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -158,34 +158,34 @@ fun SearchScopeSegmentedPill(
                 }
             Row(
                 modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = { if (!isGlobalSearch) onToggleSearchScope() },
-                        ).padding(horizontal = 8.dp),
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { if (!isGlobalSearch) onToggleSearchScope() }
+                    ).padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.Center
             ) {
                 Icon(
                     imageVector = AppIcons.Language,
                     contentDescription = null,
                     tint = activeColorGlobal,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "全库搜索",
                     style =
-                        MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = if (isGlobalSearch) FontWeight.Bold else FontWeight.Medium,
-                        ),
+                    MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = if (isGlobalSearch) FontWeight.Bold else FontWeight.Medium
+                    ),
                     color = activeColorGlobal,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -214,7 +214,7 @@ fun SearchResultsContent(
     isGlobalSearch: Boolean = false,
     onToggleSearchScope: () -> Unit = {},
     activeSourceName: String? = null,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val cleanQuery = query.trim()
 
@@ -223,7 +223,7 @@ fun SearchResultsContent(
             SearchScopeSegmentedPill(
                 isGlobalSearch = isGlobalSearch,
                 onToggleSearchScope = onToggleSearchScope,
-                activeSourceName = activeSourceName,
+                activeSourceName = activeSourceName
             )
         }
 
@@ -234,14 +234,14 @@ fun SearchResultsContent(
                         history = searchHistory,
                         onSelectQuery = onSelectHistoryQuery,
                         onClearHistory = onClearHistory,
-                        onRemoveHistoryItem = onRemoveHistoryItem,
+                        onRemoveHistoryItem = onRemoveHistoryItem
                     )
                 }
 
                 isSearching -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator()
@@ -249,7 +249,7 @@ fun SearchResultsContent(
                             Text(
                                 text = "正在检索曲库快照...",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -258,30 +258,30 @@ fun SearchResultsContent(
                 searchResult.isEmpty -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.Center
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(24.dp),
+                            modifier = Modifier.padding(24.dp)
                         ) {
                             Icon(
                                 imageVector = AppIcons.Search,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = "未找到匹配的目录或歌曲",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = "请检查输入的关键词，或尝试切换搜索范围",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -295,7 +295,7 @@ fun SearchResultsContent(
                         onAddToPlaylist = onAddToPlaylist,
                         isSelectionMode = isSelectionMode,
                         selectedTrackIds = selectedTrackIds,
-                        onTrackLongClick = onTrackLongClick,
+                        onTrackLongClick = onTrackLongClick
                     )
                 }
             }
@@ -312,16 +312,16 @@ internal fun SearchResultsList(
     isSelectionMode: Boolean = false,
     selectedTrackIds: Set<String> = emptySet(),
     onTrackLongClick: ((AudioTrack) -> Unit)? = null,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = MiniPlayerDefaults.PenetrativeContentBottomPadding),
+        contentPadding = PaddingValues(bottom = MiniPlayerDefaults.PenetrativeContentBottomPadding)
     ) {
         searchDirectoriesSection(
             directories = searchResult.matchedDirectories,
             onDirectoryClick = onDirectoryClick,
-            isSelectionMode = isSelectionMode,
+            isSelectionMode = isSelectionMode
         )
         searchTracksSection(
             tracks = searchResult.matchedTracks,
@@ -329,7 +329,7 @@ internal fun SearchResultsList(
             onAddToPlaylist = onAddToPlaylist,
             isSelectionMode = isSelectionMode,
             selectedTrackIds = selectedTrackIds,
-            onTrackLongClick = onTrackLongClick,
+            onTrackLongClick = onTrackLongClick
         )
     }
 }
@@ -341,33 +341,33 @@ internal fun SearchHistorySection(
     onSelectQuery: (String) -> Unit,
     onClearHistory: () -> Unit,
     onRemoveHistoryItem: (String) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = MiniPlayerDefaults.PenetrativeContentBottomPadding),
+        contentPadding = PaddingValues(bottom = MiniPlayerDefaults.PenetrativeContentBottomPadding)
     ) {
         if (history.isNotEmpty()) {
             item(key = "header_recent") {
                 Row(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "最近搜索",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.primary
                     )
                     TextButton(onClick = onClearHistory) {
                         Text(
                             text = "全部清空",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.error,
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -376,44 +376,44 @@ internal fun SearchHistorySection(
             item(key = "recent_chips") {
                 FlowRow(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 4.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     history.forEach { query ->
                         Surface(
                             shape = RoundedCornerShape(100.dp),
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            modifier = Modifier.clickable { onSelectQuery(query) },
+                            modifier = Modifier.clickable { onSelectQuery(query) }
                         ) {
                             Row(
                                 modifier = Modifier.padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     imageVector = AppIcons.History,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(16.dp),
+                                    modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = query,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 IconButton(
                                     onClick = { onRemoveHistoryItem(query) },
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier.size(20.dp)
                                 ) {
                                     Icon(
                                         imageVector = AppIcons.Close,
                                         contentDescription = "删除",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(14.dp),
+                                        modifier = Modifier.size(14.dp)
                                     )
                                 }
                             }
@@ -430,22 +430,22 @@ internal fun SearchSectionHeader(
     title: String,
     containerColor: Color,
     contentColor: Color,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
             shape = RoundedCornerShape(100.dp),
-            color = containerColor,
+            color = containerColor
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = contentColor,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
             )
         }
     }
@@ -456,7 +456,7 @@ internal fun SearchDirectoryItem(
     directory: RemoteDirectory,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isSelectionMode: Boolean = false,
+    isSelectionMode: Boolean = false
 ) {
     val alpha = if (isSelectionMode) 0.38f else 1f
     val clickModifier = if (isSelectionMode) Modifier else Modifier.clickable(onClick = onClick)
@@ -467,7 +467,7 @@ internal fun SearchDirectoryItem(
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         },
         supportingContent = {
@@ -476,21 +476,21 @@ internal fun SearchDirectoryItem(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis
             )
         },
         leadingContent = {
             Surface(
                 shape = RoundedCornerShape(10.dp),
                 color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(40.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = AppIcons.Folder,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -500,32 +500,32 @@ internal fun SearchDirectoryItem(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(18.dp)
             )
         },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = modifier.alpha(alpha).then(clickModifier),
+        modifier = modifier.alpha(alpha).then(clickModifier)
     )
 }
 
 internal fun LazyListScope.searchDirectoriesSection(
     directories: List<RemoteDirectory>,
     onDirectoryClick: (RemoteDirectory) -> Unit,
-    isSelectionMode: Boolean = false,
+    isSelectionMode: Boolean = false
 ) {
     if (directories.isEmpty()) return
     item(key = "header_directories") {
         SearchSectionHeader(
             title = "文件夹目录 (${directories.size})",
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
         )
     }
     items(directories, key = { "dir_${it.path}" }) { dir ->
         SearchDirectoryItem(
             directory = dir,
             onClick = { onDirectoryClick(dir) },
-            isSelectionMode = isSelectionMode,
+            isSelectionMode = isSelectionMode
         )
     }
 }
@@ -533,7 +533,7 @@ internal fun LazyListScope.searchDirectoriesSection(
 internal fun resolveSearchTrackSubtitle(track: AudioTrack): String =
     AudioTrackRowDefaults.formatTrackSubtitle(
         artist = track.artist,
-        album = track.album,
+        album = track.album
     )
 
 @Composable
@@ -544,7 +544,7 @@ internal fun SearchTrackItem(
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     onAddToPlaylist: (AudioTrack) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     AudioTrackRow(
         title = track.title,
@@ -555,7 +555,7 @@ internal fun SearchTrackItem(
         leadingContent = {
             TrackThumbnailLeading(
                 coverThumbnailPath = track.coverThumbnailPath,
-                fallbackIcon = AppIcons.Audiotrack,
+                fallbackIcon = AppIcons.Audiotrack
             )
         },
         onClick = onClick,
@@ -569,15 +569,15 @@ internal fun SearchTrackItem(
                     Icon(
                         imageVector = AppIcons.PlaylistAdd,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(20.dp)
                     )
                 },
                 onClick = {
                     dismiss()
                     onAddToPlaylist(track)
-                },
+                }
             )
-        },
+        }
     )
 }
 
@@ -587,14 +587,14 @@ internal fun LazyListScope.searchTracksSection(
     onAddToPlaylist: (AudioTrack) -> Unit,
     isSelectionMode: Boolean = false,
     selectedTrackIds: Set<String> = emptySet(),
-    onTrackLongClick: ((AudioTrack) -> Unit)? = null,
+    onTrackLongClick: ((AudioTrack) -> Unit)? = null
 ) {
     if (tracks.isEmpty()) return
     item(key = "header_tracks") {
         SearchSectionHeader(
             title = "单曲与分轨 (${tracks.size})",
             containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         )
     }
     items(tracks, key = { "track_${it.id}" }) { track ->
@@ -604,7 +604,7 @@ internal fun LazyListScope.searchTracksSection(
             onLongClick = onTrackLongClick?.let { { it(track) } },
             isSelectionMode = isSelectionMode,
             isSelected = track.id in selectedTrackIds,
-            onAddToPlaylist = onAddToPlaylist,
+            onAddToPlaylist = onAddToPlaylist
         )
     }
 }

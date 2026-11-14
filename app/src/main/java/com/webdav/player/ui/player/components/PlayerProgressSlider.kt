@@ -45,7 +45,7 @@ internal fun PlayerProgressSlider(
     isScrubbing: Boolean,
     onScrubbingChange: (Boolean, Long) -> Unit,
     onSeek: (Long) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     var showRemainingTime by remember { mutableStateOf(false) }
     var isDragging by remember { mutableStateOf(false) }
@@ -75,54 +75,54 @@ internal fun PlayerProgressSlider(
     Column(modifier = modifier.fillMaxWidth()) {
         Box(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .semantics {
-                        progressBarRangeInfo =
-                            ProgressBarRangeInfo(
-                                current = currentPosition.toFloat(),
-                                range = 0f..(if (maxDuration > 0L) maxDuration.toFloat() else 1f),
-                            )
-                    }.pointerInput(maxDuration) {
-                        if (maxDuration <= 0L) return@pointerInput
-                        awaitEachGesture {
-                            val down = awaitFirstDown(requireUnconsumed = false)
-                            val trackWidth = size.width
-                            if (trackWidth <= 0) return@awaitEachGesture
+            Modifier
+                .fillMaxWidth()
+                .height(36.dp)
+                .semantics {
+                    progressBarRangeInfo =
+                        ProgressBarRangeInfo(
+                            current = currentPosition.toFloat(),
+                            range = 0f..(if (maxDuration > 0L) maxDuration.toFloat() else 1f)
+                        )
+                }.pointerInput(maxDuration) {
+                    if (maxDuration <= 0L) return@pointerInput
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val trackWidth = size.width
+                        if (trackWidth <= 0) return@awaitEachGesture
 
-                            var frac = (down.position.x / trackWidth).coerceIn(0f, 1f)
-                            var seekMs = (frac * maxDuration).toLong().coerceIn(0L, maxDuration)
-                            isDragging = true
+                        var frac = (down.position.x / trackWidth).coerceIn(0f, 1f)
+                        var seekMs = (frac * maxDuration).toLong().coerceIn(0L, maxDuration)
+                        isDragging = true
+                        dragPositionMs = seekMs
+                        onScrubbingChange(true, seekMs)
+                        down.consume()
+
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) {
+                                change.consume()
+                                isDragging = false
+                                onSeek(seekMs)
+                                onScrubbingChange(false, seekMs)
+                                break
+                            }
+                            frac = (change.position.x / trackWidth).coerceIn(0f, 1f)
+                            seekMs = (frac * maxDuration).toLong().coerceIn(0L, maxDuration)
                             dragPositionMs = seekMs
                             onScrubbingChange(true, seekMs)
-                            down.consume()
-
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                if (!change.pressed) {
-                                    change.consume()
-                                    isDragging = false
-                                    onSeek(seekMs)
-                                    onScrubbingChange(false, seekMs)
-                                    break
-                                }
-                                frac = (change.position.x / trackWidth).coerceIn(0f, 1f)
-                                seekMs = (frac * maxDuration).toLong().coerceIn(0L, maxDuration)
-                                dragPositionMs = seekMs
-                                onScrubbingChange(true, seekMs)
-                                change.consume()
-                            }
+                            change.consume()
                         }
-                    },
-            contentAlignment = Alignment.CenterStart,
+                    }
+                },
+            contentAlignment = Alignment.CenterStart
         ) {
             Canvas(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(36.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
             ) {
                 val trackY = size.height / 2f
                 val barHeight = if (isDragging) 6.dp.toPx() else 4.dp.toPx()
@@ -134,7 +134,7 @@ internal fun PlayerProgressSlider(
                     color = inactiveTrackColor,
                     topLeft = Offset(0f, trackY - barHeight / 2f),
                     size = Size(size.width, barHeight),
-                    cornerRadius = cornerRadius,
+                    cornerRadius = cornerRadius
                 )
 
                 // 2. Buffered progress track
@@ -143,7 +143,7 @@ internal fun PlayerProgressSlider(
                         color = bufferedTrackColor,
                         topLeft = Offset(0f, trackY - barHeight / 2f),
                         size = Size(size.width * bufferedFraction, barHeight),
-                        cornerRadius = cornerRadius,
+                        cornerRadius = cornerRadius
                     )
                 }
 
@@ -153,7 +153,7 @@ internal fun PlayerProgressSlider(
                         color = activeTrackColor,
                         topLeft = Offset(0f, trackY - barHeight / 2f),
                         size = Size(size.width * progressFraction, barHeight),
-                        cornerRadius = cornerRadius,
+                        cornerRadius = cornerRadius
                     )
                 }
 
@@ -164,13 +164,13 @@ internal fun PlayerProgressSlider(
                         drawCircle(
                             color = activeTrackColor.copy(alpha = 0.22f),
                             radius = thumbRadius + 5.dp.toPx(),
-                            center = Offset(thumbX, trackY),
+                            center = Offset(thumbX, trackY)
                         )
                     }
                     drawCircle(
                         color = thumbColor,
                         radius = thumbRadius,
-                        center = Offset(thumbX, trackY),
+                        center = Offset(thumbX, trackY)
                     )
                 }
             }
@@ -178,36 +178,36 @@ internal fun PlayerProgressSlider(
 
         Row(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text =
-                    if (isDragging || isScrubbing) {
-                        PlaybackProgress.formatMs(currentPosition)
-                    } else {
-                        playbackProgress.formattedCurrentPosition
-                    },
+                if (isDragging || isScrubbing) {
+                    PlaybackProgress.formatMs(currentPosition)
+                } else {
+                    playbackProgress.formattedCurrentPosition
+                },
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text =
-                    if (showRemainingTime && maxDuration > currentPosition) {
-                        "-${PlaybackProgress.formatMs(maxDuration - currentPosition)}"
-                    } else if (!isDragging && !isScrubbing) {
-                        playbackProgress.formattedDuration
-                    } else {
-                        PlaybackProgress.formatMs(maxDuration)
-                    },
+                if (showRemainingTime && maxDuration > currentPosition) {
+                    "-${PlaybackProgress.formatMs(maxDuration - currentPosition)}"
+                } else if (!isDragging && !isScrubbing) {
+                    playbackProgress.formattedDuration
+                } else {
+                    PlaybackProgress.formatMs(maxDuration)
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier =
-                    Modifier.clickable {
-                        showRemainingTime = !showRemainingTime
-                    },
+                Modifier.clickable {
+                    showRemainingTime = !showRemainingTime
+                }
             )
         }
     }
@@ -223,7 +223,7 @@ private fun PlayerProgressSliderPreview() {
             displayPositionMs = 60000L,
             isScrubbing = false,
             onScrubbingChange = { _, _ -> },
-            onSeek = {},
+            onSeek = {}
         )
     }
 }

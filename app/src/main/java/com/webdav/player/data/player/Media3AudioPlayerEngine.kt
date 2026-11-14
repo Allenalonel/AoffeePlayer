@@ -2,7 +2,6 @@ package com.webdav.player.data.player
 
 import android.content.Context
 import android.media.AudioRouting
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.OptIn
@@ -31,6 +30,12 @@ import com.webdav.player.domain.model.PlaybackErrorKind
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.player.AudioPlayerEngine
+import java.io.FileNotFoundException
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,13 +48,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileNotFoundException
-import java.net.ConnectException
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicReference
 
 data class StreamingLoadControlConfig(
     val backBufferDurationMs: Int = 10_000,
@@ -58,7 +56,7 @@ data class StreamingLoadControlConfig(
     val maxBufferMs: Int = 50_000,
     val bufferForPlaybackMs: Int = 1_500,
     val bufferForPlaybackAfterRebufferMs: Int = 3_000,
-    val prioritizeTimeOverSizeThresholds: Boolean = true,
+    val prioritizeTimeOverSizeThresholds: Boolean = true
 ) {
     companion object {
         const val DEFAULT_MIN_BUFFER_MS: Int = 15_000
@@ -73,7 +71,7 @@ data class StreamingLoadControlConfig(
         fun createWeakNetworkResilientConfig(): StreamingLoadControlConfig =
             StreamingLoadControlConfig(
                 minBufferMs = EXPANDED_WEAK_NETWORK_MIN_BUFFER_MS,
-                maxBufferMs = EXPANDED_WEAK_NETWORK_MAX_BUFFER_MS,
+                maxBufferMs = EXPANDED_WEAK_NETWORK_MAX_BUFFER_MS
             )
     }
 }
@@ -91,7 +89,7 @@ class Media3AudioPlayerEngine internal constructor(
     val canonicalAudioProcessor: CanonicalResamplingAudioProcessor = CanonicalResamplingAudioProcessor(),
     customAudioSink: AudioSink? = null,
     customAudioRoutingObserver: AudioRoutingObserver? = null,
-    customAudioRouting: AudioRouting? = null,
+    customAudioRouting: AudioRouting? = null
 ) : AudioPlayerEngine {
     private val activeAudioSinkRef = AtomicReference<AudioSink?>(customAudioSink)
 
@@ -103,7 +101,7 @@ class Media3AudioPlayerEngine internal constructor(
     internal val audioRoutingObserver: AudioRoutingObserver =
         customAudioRoutingObserver ?: AudioRoutingObserver(
             context = context,
-            audioRouting = customAudioRouting,
+            audioRouting = customAudioRouting
         ) { onAudioRoutingChanged() }
     private val activeServerRef = AtomicReference<WebDavServer?>(null)
 
@@ -130,12 +128,12 @@ class Media3AudioPlayerEngine internal constructor(
                     .Builder()
                     .setBackBuffer(
                         loadControlConfig.backBufferDurationMs,
-                        loadControlConfig.retainBackBufferFromKeyframe,
+                        loadControlConfig.retainBackBufferFromKeyframe
                     ).setBufferDurationsMs(
                         loadControlConfig.minBufferMs,
                         loadControlConfig.maxBufferMs,
                         loadControlConfig.bufferForPlaybackMs,
-                        loadControlConfig.bufferForPlaybackAfterRebufferMs,
+                        loadControlConfig.bufferForPlaybackAfterRebufferMs
                     ).setPrioritizeTimeOverSizeThresholds(loadControlConfig.prioritizeTimeOverSizeThresholds)
                     .build()
 
@@ -144,7 +142,7 @@ class Media3AudioPlayerEngine internal constructor(
                     override fun buildAudioSink(
                         context: Context,
                         enableFloatOutput: Boolean,
-                        enableAudioTrackPlaybackParams: Boolean,
+                        enableAudioTrackPlaybackParams: Boolean
                     ): AudioSink? {
                         val sink =
                             customAudioSink ?: DefaultAudioSink
@@ -162,7 +160,7 @@ class Media3AudioPlayerEngine internal constructor(
                 ExtractorsFactory {
                     arrayOf(
                         *DefaultExtractorsFactory().createExtractors(),
-                        AsfExtractor(),
+                        AsfExtractor()
                     )
                 }
 
@@ -183,7 +181,7 @@ class Media3AudioPlayerEngine internal constructor(
                         .setUsage(C.USAGE_MEDIA)
                         .build(),
                     // handleAudioFocus =
-                    false, // Audio focus is exclusively managed by audioFocusHandler
+                    false // Audio focus is exclusively managed by audioFocusHandler
                 ).build()
         }
 
@@ -257,7 +255,7 @@ class Media3AudioPlayerEngine internal constructor(
 
             override fun onPlayWhenReadyChanged(
                 playWhenReady: Boolean,
-                reason: Int,
+                reason: Int
             ) {
                 updatePositionAndDuration()
                 updatePlaybackState()
@@ -275,7 +273,7 @@ class Media3AudioPlayerEngine internal constructor(
 
             override fun onMediaItemTransition(
                 mediaItem: MediaItem?,
-                reason: Int,
+                reason: Int
             ) {
                 val playerIndex = player.currentMediaItemIndex
 
@@ -302,7 +300,7 @@ class Media3AudioPlayerEngine internal constructor(
             override fun onPositionDiscontinuity(
                 oldPosition: Player.PositionInfo,
                 newPosition: Player.PositionInfo,
-                reason: Int,
+                reason: Int
             ) {
                 updatePositionAndDuration()
                 updatePlaybackState()
@@ -310,7 +308,7 @@ class Media3AudioPlayerEngine internal constructor(
 
             override fun onTimelineChanged(
                 timeline: androidx.media3.common.Timeline,
-                reason: Int,
+                reason: Int
             ) {
                 updatePositionAndDuration()
             }
@@ -334,7 +332,7 @@ class Media3AudioPlayerEngine internal constructor(
     override fun loadTrack(
         server: WebDavServer,
         track: AudioTrack,
-        startPositionMs: Long,
+        startPositionMs: Long
     ) {
         runOnApplicationLooper {
             pendingEnrichedItems.clear()
@@ -401,7 +399,7 @@ class Media3AudioPlayerEngine internal constructor(
 
     override fun prerollTrack(
         server: WebDavServer,
-        track: AudioTrack,
+        track: AudioTrack
     ) {
         runOnApplicationLooper {
             if (player.mediaItemCount >= 2) return@runOnApplicationLooper
@@ -620,7 +618,7 @@ class Media3AudioPlayerEngine internal constructor(
         return PlaybackState.Error(
             message = message,
             cause = error,
-            kind = kind,
+            kind = kind
         )
     }
 

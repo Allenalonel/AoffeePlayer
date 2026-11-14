@@ -53,7 +53,7 @@ class SessionPersistenceCoordinatorTest {
             name = "TestServer",
             url = "https://webdav.example.com",
             username = "user",
-            password = "pwd",
+            password = "pwd"
         )
 
     private val testTrack =
@@ -66,11 +66,11 @@ class SessionPersistenceCoordinatorTest {
             album = "Test Album",
             durationMs = 200_000L,
             size = 5_000_000L,
-            format = AudioFormat.MP3,
+            format = AudioFormat.MP3
         )
 
     private class TestServerRepo(
-        private val servers: List<WebDavServer> = emptyList(),
+        private val servers: List<WebDavServer> = emptyList()
     ) : ServerRepository {
         override fun getAllServers(): Flow<List<WebDavServer>> = flowOf(servers)
 
@@ -92,28 +92,28 @@ class SessionPersistenceCoordinatorTest {
 
         override fun getMetadataForPathsFlow(
             serverId: Long,
-            remotePaths: List<String>,
+            remotePaths: List<String>
         ): Flow<List<TrackMetadata>> = emptyFlow()
 
         override fun getMetadataFlow(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): Flow<TrackMetadata?> = emptyFlow()
 
         override suspend fun getCachedMetadata(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): TrackMetadata? = cached[serverId to remotePath]
 
         override suspend fun resolveMetadata(
             server: WebDavServer,
             files: List<RemoteFile>,
-            forceRefresh: Boolean,
+            forceRefresh: Boolean
         ) {}
 
         override suspend fun resolveSingleTrackMetadata(
             server: WebDavServer,
-            file: RemoteFile,
+            file: RemoteFile
         ): TrackMetadata = cached[server.id to file.path] ?: TrackMetadata(serverId = server.id, remotePath = file.path, title = "Resolved")
     }
 
@@ -132,7 +132,7 @@ class SessionPersistenceCoordinatorTest {
 
     private fun createCoordinator(
         serverRepo: ServerRepository? = TestServerRepo(listOf(testServer)),
-        metadataRepo: TrackMetadataRepository? = null,
+        metadataRepo: TrackMetadataRepository? = null
     ): SessionPersistenceCoordinator =
         SessionPersistenceCoordinator(
             sessionStore = fakeStore,
@@ -142,7 +142,7 @@ class SessionPersistenceCoordinatorTest {
             sessionStateFlow = sessionStateFlow,
             playbackProgressFlow = playbackProgressFlow,
             coroutineScope = testScope,
-            periodicDispatcher = testDispatcher,
+            periodicDispatcher = testDispatcher
         )
 
     @Test
@@ -155,7 +155,7 @@ class SessionPersistenceCoordinatorTest {
                     currentTrackIndex = 0,
                     positionMs = 45_000L,
                     playbackMode = PlaybackMode.SHUFFLE,
-                    cleanExit = false,
+                    cleanExit = false
                 )
             fakeStore.savedSession = savedSession
 
@@ -186,7 +186,7 @@ class SessionPersistenceCoordinatorTest {
                     remotePath = testTrack.remotePath,
                     title = "Enriched Title",
                     artist = "Enriched Artist",
-                    album = "Enriched Album",
+                    album = "Enriched Album"
                 )
 
             val savedSession =
@@ -196,7 +196,7 @@ class SessionPersistenceCoordinatorTest {
                     currentTrackIndex = 0,
                     positionMs = 10_000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cleanExit = true,
+                    cleanExit = true
                 )
             fakeStore.savedSession = savedSession
 
@@ -220,7 +220,7 @@ class SessionPersistenceCoordinatorTest {
                     queueTracks = listOf(testTrack),
                     currentTrackIndex = 0,
                     positionMs = 10_000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = savedSession
 
@@ -242,7 +242,7 @@ class SessionPersistenceCoordinatorTest {
                     remotePath = "/album/disc.flac",
                     title = "disc.flac",
                     durationMs = 180_000L,
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
 
             val savedSession =
@@ -252,7 +252,7 @@ class SessionPersistenceCoordinatorTest {
                     currentTrackIndex = 0,
                     positionMs = 75_000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cleanExit = false,
+                    cleanExit = false
                 )
             fakeStore.savedSession = savedSession
 
@@ -281,7 +281,7 @@ class SessionPersistenceCoordinatorTest {
                 PlayerSessionState(
                     activeServer = testServer,
                     queue = PlaybackQueue(listOf(testTrack), currentIndex = 0),
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             playbackProgressFlow.value = PlaybackProgress(currentPositionMs = 30_000L, durationMs = 200_000L)
 
@@ -306,7 +306,7 @@ class SessionPersistenceCoordinatorTest {
                 PlayerSessionState(
                     activeServer = testServer,
                     queue = PlaybackQueue(listOf(testTrack), currentIndex = 0),
-                    playbackState = PlaybackState.Playing,
+                    playbackState = PlaybackState.Playing
                 )
             fakeEngine._playbackState.value = PlaybackState.Playing
             fakeEngine._currentPositionMs.value = 12_345L
@@ -336,7 +336,7 @@ class SessionPersistenceCoordinatorTest {
             sessionStateFlow.value =
                 sessionStateFlow.value.copy(
                     errorMessage = "Network warning",
-                    wasKilledBySystem = false,
+                    wasKilledBySystem = false
                 )
             advanceTimeBy(2000L)
             assertEquals(0, fakeStore.saveSessionCount)
@@ -346,7 +346,7 @@ class SessionPersistenceCoordinatorTest {
                 sessionStateFlow.value.copy(
                     activeServer = testServer,
                     queue = PlaybackQueue(listOf(testTrack), currentIndex = 0),
-                    playbackState = PlaybackState.Paused,
+                    playbackState = PlaybackState.Paused
                 )
             coordinator.flushSession()
             assertEquals(1, fakeStore.saveSessionCount)
@@ -364,7 +364,7 @@ class SessionPersistenceCoordinatorTest {
             val secondTrack = testTrack.copy(id = "1:/music/track2.mp3", remotePath = "/music/track2.mp3")
             sessionStateFlow.value =
                 sessionStateFlow.value.copy(
-                    queue = PlaybackQueue(listOf(testTrack, secondTrack), currentIndex = 1),
+                    queue = PlaybackQueue(listOf(testTrack, secondTrack), currentIndex = 1)
                 )
             coordinator.flushSession()
             assertEquals(3, fakeStore.saveSessionCount)
@@ -382,7 +382,7 @@ class SessionPersistenceCoordinatorTest {
                     serverId = 0L,
                     remotePath = "content://media/audio/local1",
                     title = "raw_local",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
             val remoteTrack2 =
                 AudioTrack(
@@ -390,7 +390,7 @@ class SessionPersistenceCoordinatorTest {
                     serverId = 2L,
                     remotePath = "/music/remote2.mp3",
                     title = "raw_remote2",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
 
             val metadataRepo = TestMetadataRepo()
@@ -400,7 +400,7 @@ class SessionPersistenceCoordinatorTest {
                     remotePath = localTrack.remotePath,
                     title = "Local Masterpiece",
                     artist = "Local Artist",
-                    coverThumbnailPath = "/covers/local.jpg",
+                    coverThumbnailPath = "/covers/local.jpg"
                 )
             metadataRepo.cached[2L to remoteTrack2.remotePath] =
                 TrackMetadata(
@@ -408,7 +408,7 @@ class SessionPersistenceCoordinatorTest {
                     remotePath = remoteTrack2.remotePath,
                     title = "Remote Symphony",
                     artist = "Remote Artist",
-                    coverThumbnailPath = "/covers/remote2.jpg",
+                    coverThumbnailPath = "/covers/remote2.jpg"
                 )
 
             val savedSession =
@@ -418,14 +418,14 @@ class SessionPersistenceCoordinatorTest {
                     currentTrackIndex = 0,
                     positionMs = 5_000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cleanExit = true,
+                    cleanExit = true
                 )
             fakeStore.savedSession = savedSession
 
             val coordinator =
                 createCoordinator(
                     serverRepo = TestServerRepo(listOf(testServer, server2)),
-                    metadataRepo = metadataRepo,
+                    metadataRepo = metadataRepo
                 )
             coordinator.restoreSession()
 
@@ -448,36 +448,36 @@ class SessionPersistenceCoordinatorTest {
 
                     override fun getMetadataForPathsFlow(
                         serverId: Long,
-                        remotePaths: List<String>,
+                        remotePaths: List<String>
                     ): Flow<List<TrackMetadata>> = emptyFlow()
 
                     override fun getMetadataFlow(
                         serverId: Long,
-                        remotePath: String,
+                        remotePath: String
                     ): Flow<TrackMetadata?> = emptyFlow()
 
                     override suspend fun getCachedMetadata(
                         serverId: Long,
-                        remotePath: String,
+                        remotePath: String
                     ): TrackMetadata? {
                         cachedMetadataLookupCount++
                         metadataGate.await()
                         return TrackMetadata(
                             serverId = serverId,
                             remotePath = remotePath,
-                            title = "Restored Title",
+                            title = "Restored Title"
                         )
                     }
 
                     override suspend fun resolveMetadata(
                         server: WebDavServer,
                         files: List<RemoteFile>,
-                        forceRefresh: Boolean,
+                        forceRefresh: Boolean
                     ) {}
 
                     override suspend fun resolveSingleTrackMetadata(
                         server: WebDavServer,
-                        file: RemoteFile,
+                        file: RemoteFile
                     ): TrackMetadata = TrackMetadata(serverId = server.id, remotePath = file.path, title = file.name)
                 }
 
@@ -488,7 +488,7 @@ class SessionPersistenceCoordinatorTest {
                     currentTrackIndex = 0,
                     positionMs = 45_000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cleanExit = true,
+                    cleanExit = true
                 )
             fakeStore.savedSession = savedSession
 

@@ -13,7 +13,7 @@ class RemoteDirectoryTest {
             name = "My NAS",
             url = "http://nas.local",
             port = 5005,
-            isDefault = true,
+            isDefault = true
         )
 
     @Test

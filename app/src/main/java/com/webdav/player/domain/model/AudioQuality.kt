@@ -4,7 +4,7 @@ enum class AudioQualityLevel {
     LOSSLESS,
     HIGH_QUALITY,
     STANDARD,
-    COMPRESSED,
+    COMPRESSED
 }
 
 data class AudioQualityBadge(
@@ -12,7 +12,7 @@ data class AudioQualityBadge(
     val format: AudioFormat? = null,
     val isLossless: Boolean = false,
     val estimatedBitrateKbps: Int? = null,
-    val qualityLevel: AudioQualityLevel = AudioQualityLevel.STANDARD,
+    val qualityLevel: AudioQualityLevel = AudioQualityLevel.STANDARD
 )
 
 data class AudiophileSpecs(
@@ -20,38 +20,20 @@ data class AudiophileSpecs(
     val sampleRate: String? = null,
     val bitDepth: String? = null,
     val bitrateKbps: Int? = null,
+    val channels: Int? = null,
     val isHiRes: Boolean = false,
     val isLossless: Boolean = false,
-    val formatted: String,
+    val formatted: String
 )
 
 object AudioQuality {
     private val BITRATE_PATTERN = Regex("""(?:\[|\(|\b)(\d{2,4})\s*k(?:bps)?(?:\]|\)|\b)""", RegexOption.IGNORE_CASE)
     private val BITRATE_EXTENDED_PATTERN = Regex("""(?:\[|\(|\b)(\d{2,5})\s*k(?:bps)?(?:\]|\)|\b)""", RegexOption.IGNORE_CASE)
 
-    private val SAMPLE_RATE_KHZ_PATTERN =
-        Regex("""\b(44\.1|48|88\.2|96|176\.4|192|352\.8|384)\s*kHz\b""", RegexOption.IGNORE_CASE)
-    private val SAMPLE_RATE_44_1K_PATTERN =
-        Regex("""\b(44\.1)\s*k(?:Hz)?\b""", RegexOption.IGNORE_CASE)
-    private val SAMPLE_RATE_HZ_PATTERN =
-        Regex("""\b(44100|48000|88200|96000|176400|192000)\s*Hz\b""", RegexOption.IGNORE_CASE)
-    private val SAMPLE_RATE_COMBO_PATTERN =
-        Regex("""\b(44\.1|48|88\.2|96|176\.4|192)k\b""", RegexOption.IGNORE_CASE)
-
-    private val BIT_DEPTH_PATTERN =
-        Regex("""\b(16|24|32)\s*[-_ ]?bit\b""", RegexOption.IGNORE_CASE)
-    private val BIT_DEPTH_SHORT_PATTERN =
-        Regex("""\b(16|24|32)b\b""", RegexOption.IGNORE_CASE)
-
-    private val HI_RES_SAMPLE_RATES =
-        setOf("88.2kHz", "96kHz", "176.4kHz", "192kHz", "352.8kHz", "384kHz")
-    private val HI_RES_BIT_DEPTHS =
-        setOf("24-bit", "32-bit")
-
     fun estimateBitrateKbps(
         fileName: String,
         fileSize: Long,
-        durationMs: Long,
+        durationMs: Long
     ): Int? {
         // 1. Check if filename contains explicit bitrate tag like [320k] or (256kbps)
         val match = BITRATE_PATTERN.find(fileName)
@@ -86,7 +68,7 @@ object AudioQuality {
         format: AudioFormat,
         fileName: String,
         fileSize: Long = 0L,
-        durationMs: Long = 0L,
+        durationMs: Long = 0L
     ): AudioQualityBadge =
         when (format) {
             AudioFormat.FLAC -> {
@@ -95,7 +77,7 @@ object AudioQuality {
                     format = AudioFormat.FLAC,
                     isLossless = true,
                     estimatedBitrateKbps = null,
-                    qualityLevel = AudioQualityLevel.LOSSLESS,
+                    qualityLevel = AudioQualityLevel.LOSSLESS
                 )
             }
 
@@ -105,7 +87,7 @@ object AudioQuality {
                     format = AudioFormat.WAV,
                     isLossless = true,
                     estimatedBitrateKbps = null,
-                    qualityLevel = AudioQualityLevel.LOSSLESS,
+                    qualityLevel = AudioQualityLevel.LOSSLESS
                 )
             }
 
@@ -124,7 +106,7 @@ object AudioQuality {
                     format = AudioFormat.MP3,
                     isLossless = false,
                     estimatedBitrateKbps = bitrate,
-                    qualityLevel = level,
+                    qualityLevel = level
                 )
             }
 
@@ -137,7 +119,7 @@ object AudioQuality {
                     format = AudioFormat.AAC,
                     isLossless = false,
                     estimatedBitrateKbps = bitrate,
-                    qualityLevel = level,
+                    qualityLevel = level
                 )
             }
 
@@ -149,7 +131,7 @@ object AudioQuality {
                     format = AudioFormat.OGG,
                     isLossless = false,
                     estimatedBitrateKbps = bitrate,
-                    qualityLevel = AudioQualityLevel.STANDARD,
+                    qualityLevel = AudioQualityLevel.STANDARD
                 )
             }
 
@@ -161,7 +143,7 @@ object AudioQuality {
                     format = AudioFormat.M4A,
                     isLossless = false,
                     estimatedBitrateKbps = bitrate,
-                    qualityLevel = AudioQualityLevel.STANDARD,
+                    qualityLevel = AudioQualityLevel.STANDARD
                 )
             }
 
@@ -173,7 +155,7 @@ object AudioQuality {
                     format = AudioFormat.WMA,
                     isLossless = false,
                     estimatedBitrateKbps = bitrate,
-                    qualityLevel = AudioQualityLevel.COMPRESSED,
+                    qualityLevel = AudioQualityLevel.COMPRESSED
                 )
             }
 
@@ -183,14 +165,14 @@ object AudioQuality {
                     format = AudioFormat.APE,
                     isLossless = true,
                     estimatedBitrateKbps = null,
-                    qualityLevel = AudioQualityLevel.LOSSLESS,
+                    qualityLevel = AudioQualityLevel.LOSSLESS
                 )
             }
         }
 
     fun resolveBadge(
         file: RemoteFile,
-        metadata: TrackMetadata? = null,
+        metadata: TrackMetadata? = null
     ): AudioQualityBadge? =
         when (val type = file.fileType) {
             is RemoteFileType.Audio -> {
@@ -198,7 +180,7 @@ object AudioQuality {
                     format = type.format,
                     fileName = file.name,
                     fileSize = file.size,
-                    durationMs = metadata?.durationMs ?: 0L,
+                    durationMs = metadata?.durationMs ?: 0L
                 )
             }
 
@@ -207,7 +189,7 @@ object AudioQuality {
                     label = "LRC",
                     format = null,
                     isLossless = false,
-                    qualityLevel = AudioQualityLevel.STANDARD,
+                    qualityLevel = AudioQualityLevel.STANDARD
                 )
             }
 
@@ -222,7 +204,7 @@ object AudioQuality {
                         label = ext,
                         format = null,
                         isLossless = false,
-                        qualityLevel = AudioQualityLevel.COMPRESSED,
+                        qualityLevel = AudioQualityLevel.COMPRESSED
                     )
                 } else {
                     null
@@ -232,7 +214,7 @@ object AudioQuality {
 
     fun formatQualitySummary(
         badge: AudioQualityBadge,
-        isLyrics: Boolean = false,
+        isLyrics: Boolean = false
     ): String {
         val bitrateStr = badge.estimatedBitrateKbps?.let { " ($it kbps)" } ?: ""
         return when {
@@ -264,67 +246,28 @@ object AudioQuality {
 
     fun formatQualitySummary(
         file: RemoteFile,
-        metadata: TrackMetadata? = null,
+        metadata: TrackMetadata? = null
     ): String {
         val badge = resolveBadge(file, metadata) ?: return "未知文件"
         return formatQualitySummary(badge, isLyrics = file.isLyrics)
     }
 
-    fun parseSampleRate(text: String): String? {
-        val khzMatch = SAMPLE_RATE_KHZ_PATTERN.find(text)
-        if (khzMatch != null) {
-            return "${khzMatch.groupValues[1]}kHz"
+    fun formatSampleRate(hz: Int): String =
+        if (hz % 1000 == 0) {
+            "${hz / 1000}kHz"
+        } else if (hz % 100 == 0) {
+            "${hz / 1000.0}kHz"
+        } else {
+            val khz = String.format(java.util.Locale.US, "%.1f", hz / 1000.0)
+            "${khz}kHz"
         }
-        val rate441Match = SAMPLE_RATE_44_1K_PATTERN.find(text)
-        if (rate441Match != null) {
-            return "${rate441Match.groupValues[1]}kHz"
-        }
-        val hzMatch = SAMPLE_RATE_HZ_PATTERN.find(text)
-        if (hzMatch != null) {
-            return when (hzMatch.groupValues[1]) {
-                "44100" -> "44.1kHz"
-                "48000" -> "48kHz"
-                "88200" -> "88.2kHz"
-                "96000" -> "96kHz"
-                "176400" -> "176.4kHz"
-                "192000" -> "192kHz"
-                else -> null
-            }
-        }
-        val comboMatch = SAMPLE_RATE_COMBO_PATTERN.find(text)
-        if (comboMatch != null &&
-            (text.contains("bit", ignoreCase = true) || text.contains("24b", ignoreCase = true) || text.contains("16b", ignoreCase = true))
-        ) {
-            return "${comboMatch.groupValues[1]}kHz"
-        }
-        return null
-    }
 
-    fun parseBitDepth(text: String): String? {
-        val match = BIT_DEPTH_PATTERN.find(text)
-        if (match != null) {
-            return "${match.groupValues[1]}-bit"
-        }
-        val shortMatch = BIT_DEPTH_SHORT_PATTERN.find(text)
-        if (shortMatch != null &&
-            (
-                text.contains(
-                    "kHz",
-                    ignoreCase = true,
-                ) || text.contains("96k", ignoreCase = true) || text.contains("192k", ignoreCase = true) ||
-                    text.contains("44.1k", ignoreCase = true) ||
-                    text.contains("48k", ignoreCase = true)
-            )
-        ) {
-            return "${shortMatch.groupValues[1]}-bit"
-        }
-        return null
-    }
+    fun formatBitDepth(bits: Int): String = "$bits-bit"
 
     fun calculateBitrateKbps(
         fileName: String,
         fileSize: Long,
-        durationMs: Long,
+        durationMs: Long
     ): Int? {
         val match = BITRATE_EXTENDED_PATTERN.find(fileName)
         if (match != null) {
@@ -347,83 +290,125 @@ object AudioQuality {
 
     fun resolveAudiophileSpecs(
         format: AudioFormat,
-        fileName: String,
+        sampleRate: Int? = null,
+        bitDepth: Int? = null,
+        bitrateKbps: Int? = null,
+        channels: Int? = null,
+        @Suppress("UNUSED_PARAMETER") fileName: String = "",
         fileSize: Long = 0L,
-        durationMs: Long = 0L,
+        durationMs: Long = 0L
     ): AudiophileSpecs {
         val formatName = format.extension.uppercase()
-        val parsedSampleRate = parseSampleRate(fileName)
-        val parsedBitDepth = parseBitDepth(fileName)
-        val bitrate = calculateBitrateKbps(fileName, fileSize, durationMs)
         val isLossless = format == AudioFormat.FLAC || format == AudioFormat.WAV
-
-        if (isLossless) {
-            val sampleRate =
-                parsedSampleRate ?: when {
-                    format == AudioFormat.FLAC && bitrate != null && bitrate >= 2000 -> "96kHz"
-                    format == AudioFormat.FLAC && bitrate != null && bitrate >= 1500 -> "48kHz"
-                    format == AudioFormat.WAV && bitrate != null && bitrate >= 4000 -> "96kHz"
-                    format == AudioFormat.WAV && bitrate != null && bitrate >= 2000 -> "48kHz"
-                    else -> "44.1kHz"
-                }
-
-            val bitDepth =
-                parsedBitDepth ?: when {
-                    sampleRate in HI_RES_SAMPLE_RATES -> "24-bit"
-                    bitrate != null && bitrate >= 2000 -> "24-bit"
-                    else -> "16-bit"
-                }
-
-            val isHiRes =
-                bitDepth in HI_RES_BIT_DEPTHS ||
-                    sampleRate in HI_RES_SAMPLE_RATES ||
-                    (bitrate != null && bitrate >= 2000) ||
-                    fileName.contains("Hi-Res", ignoreCase = true) ||
-                    fileName.contains("HiRes", ignoreCase = true)
-
-            val prefix = if (isHiRes) "⚡ " else ""
-            val formatted =
-                if (bitrate != null) {
-                    "${prefix}$formatName · $sampleRate / $bitDepth · $bitrate kbps"
+        val resolvedBitrate =
+            bitrateKbps ?: if (fileSize > 0L && durationMs >= 1000L) {
+                val raw = (fileSize * 8L) / durationMs
+                if (raw in 1380..1440) {
+                    1411
+                } else if (raw in 32..9999) {
+                    raw.toInt()
                 } else {
-                    "${prefix}$formatName · $sampleRate / $bitDepth"
+                    null
                 }
+            } else {
+                null
+            }
 
-            return AudiophileSpecs(
-                format = format,
-                sampleRate = sampleRate,
-                bitDepth = bitDepth,
-                bitrateKbps = bitrate,
-                isHiRes = isHiRes,
-                isLossless = true,
-                formatted = formatted,
-            )
-        } else {
-            val formatted =
-                if (bitrate != null) {
-                    "$formatName · $bitrate kbps"
-                } else {
+        val sampleRateStr = if (sampleRate != null && sampleRate > 0) formatSampleRate(sampleRate) else null
+        val bitDepthStr = if (bitDepth != null && bitDepth > 0) formatBitDepth(bitDepth) else null
+
+        val isHiRes = (sampleRate != null && sampleRate >= 88200) || (bitDepth != null && bitDepth >= 24)
+        val prefix = if (isHiRes) "⚡ " else ""
+
+        val formatted =
+            when {
+                sampleRateStr != null && bitDepthStr != null -> {
+                    if (resolvedBitrate != null) {
+                        "${prefix}$formatName · $sampleRateStr / $bitDepthStr · $resolvedBitrate kbps"
+                    } else {
+                        "${prefix}$formatName · $sampleRateStr / $bitDepthStr"
+                    }
+                }
+                sampleRateStr != null -> {
+                    if (resolvedBitrate != null) {
+                        "${prefix}$formatName · $sampleRateStr · $resolvedBitrate kbps"
+                    } else {
+                        "${prefix}$formatName · $sampleRateStr"
+                    }
+                }
+                bitDepthStr != null -> {
+                    if (resolvedBitrate != null) {
+                        "${prefix}$formatName · $bitDepthStr · $resolvedBitrate kbps"
+                    } else {
+                        "${prefix}$formatName · $bitDepthStr"
+                    }
+                }
+                resolvedBitrate != null -> {
+                    "$formatName · $resolvedBitrate kbps"
+                }
+                else -> {
                     formatName
                 }
-            return AudiophileSpecs(
-                format = format,
-                sampleRate = parsedSampleRate,
-                bitDepth = parsedBitDepth,
-                bitrateKbps = bitrate,
-                isHiRes = false,
-                isLossless = false,
-                formatted = formatted,
-            )
-        }
+            }
+
+        return AudiophileSpecs(
+            format = format,
+            sampleRate = sampleRateStr,
+            bitDepth = bitDepthStr,
+            bitrateKbps = resolvedBitrate,
+            channels = channels,
+            isHiRes = isHiRes,
+            isLossless = isLossless,
+            formatted = formatted
+        )
     }
+
+    fun resolveAudiophileSpecs(
+        format: AudioFormat,
+        specs: AudioPhysicalSpecs?,
+        fileName: String = "",
+        fileSize: Long = 0L,
+        durationMs: Long = 0L
+    ): AudiophileSpecs =
+        resolveAudiophileSpecs(
+            format = format,
+            sampleRate = specs?.sampleRate,
+            bitDepth = specs?.bitDepth,
+            bitrateKbps = specs?.bitrateKbps,
+            channels = specs?.channels,
+            fileName = fileName,
+            fileSize = fileSize,
+            durationMs = durationMs
+        )
+
+    fun resolveAudiophileSpecs(
+        format: AudioFormat,
+        fileName: String,
+        fileSize: Long = 0L,
+        durationMs: Long = 0L
+    ): AudiophileSpecs =
+        resolveAudiophileSpecs(
+            format = format,
+            sampleRate = null,
+            bitDepth = null,
+            bitrateKbps = null,
+            channels = null,
+            fileName = fileName,
+            fileSize = fileSize,
+            durationMs = durationMs
+        )
 
     fun resolveAudiophileSpecs(track: AudioTrack?): AudiophileSpecs? {
         if (track == null) return null
         return resolveAudiophileSpecs(
             format = track.format,
+            sampleRate = track.sampleRate,
+            bitDepth = track.bitDepth,
+            bitrateKbps = track.bitrateKbps,
+            channels = track.channels,
             fileName = track.fileName,
             fileSize = track.size,
-            durationMs = track.durationMs,
+            durationMs = track.durationMs
         )
     }
 
@@ -434,14 +419,18 @@ object AudioQuality {
 
     fun formatAudiophileSpecs(
         file: RemoteFile,
-        metadata: TrackMetadata? = null,
+        metadata: TrackMetadata? = null
     ): String {
         val audioType = file.fileType as? RemoteFileType.Audio ?: return ""
         return resolveAudiophileSpecs(
             format = audioType.format,
+            sampleRate = metadata?.sampleRate,
+            bitDepth = metadata?.bitDepth,
+            bitrateKbps = metadata?.bitrateKbps,
+            channels = metadata?.channels,
             fileName = file.name,
             fileSize = file.size,
-            durationMs = metadata?.durationMs ?: 0L,
+            durationMs = metadata?.durationMs ?: 0L
         ).formatted
     }
 }
@@ -453,40 +442,40 @@ fun formatAudiophileSpecs(track: AudioTrack?): String = AudioQuality.formatAudio
 
 fun formatAudiophileSpecs(
     file: RemoteFile,
-    metadata: TrackMetadata? = null,
+    metadata: TrackMetadata? = null
 ): String = AudioQuality.formatAudiophileSpecs(file, metadata)
 
 fun resolveAudiophileSpecs(
     format: AudioFormat,
     fileName: String,
     fileSize: Long = 0L,
-    durationMs: Long = 0L,
+    durationMs: Long = 0L
 ): AudiophileSpecs = AudioQuality.resolveAudiophileSpecs(format, fileName, fileSize, durationMs)
 
 fun estimateBitrateKbps(
     fileName: String,
     fileSize: Long,
-    durationMs: Long,
+    durationMs: Long
 ): Int? = AudioQuality.estimateBitrateKbps(fileName, fileSize, durationMs)
 
 fun resolveBadge(
     file: RemoteFile,
-    metadata: TrackMetadata? = null,
+    metadata: TrackMetadata? = null
 ): AudioQualityBadge? = AudioQuality.resolveBadge(file, metadata)
 
 fun resolveBadge(
     format: AudioFormat,
     fileName: String,
     fileSize: Long = 0L,
-    durationMs: Long = 0L,
+    durationMs: Long = 0L
 ): AudioQualityBadge = AudioQuality.resolveBadge(format, fileName, fileSize, durationMs)
 
 fun formatQualitySummary(
     file: RemoteFile,
-    metadata: TrackMetadata? = null,
+    metadata: TrackMetadata? = null
 ): String = AudioQuality.formatQualitySummary(file, metadata)
 
 fun formatQualitySummary(
     badge: AudioQualityBadge,
-    isLyrics: Boolean = false,
+    isLyrics: Boolean = false
 ): String = AudioQuality.formatQualitySummary(badge, isLyrics)

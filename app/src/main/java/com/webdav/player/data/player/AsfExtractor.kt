@@ -16,7 +16,6 @@ import androidx.media3.extractor.SeekPoint
 import androidx.media3.extractor.TrackOutput
 import com.webdav.player.data.metadata.ByteSliceReader
 import com.webdav.player.domain.model.AudioFormat
-import java.io.EOFException
 
 @OptIn(UnstableApi::class)
 class AsfExtractor : Extractor {
@@ -42,7 +41,7 @@ class AsfExtractor : Extractor {
                 0x00.toByte(),
                 0x62.toByte(),
                 0xCE.toByte(),
-                0x6C.toByte(),
+                0x6C.toByte()
             )
 
         val STREAM_PROPERTIES_GUID =
@@ -62,7 +61,7 @@ class AsfExtractor : Extractor {
                 0x0C.toByte(),
                 0x20.toByte(),
                 0x53.toByte(),
-                0x65.toByte(),
+                0x65.toByte()
             )
 
         val FILE_PROPERTIES_GUID =
@@ -82,7 +81,7 @@ class AsfExtractor : Extractor {
                 0x0C.toByte(),
                 0x20.toByte(),
                 0x53.toByte(),
-                0x65.toByte(),
+                0x65.toByte()
             )
 
         val DATA_OBJECT_GUID =
@@ -102,7 +101,7 @@ class AsfExtractor : Extractor {
                 0x00.toByte(),
                 0x62.toByte(),
                 0xCE.toByte(),
-                0x6C.toByte(),
+                0x6C.toByte()
             )
 
         val AUDIO_MEDIA_TYPE_GUID =
@@ -122,7 +121,7 @@ class AsfExtractor : Extractor {
                 0x5F.toByte(),
                 0x5C.toByte(),
                 0x44.toByte(),
-                0x2B.toByte(),
+                0x2B.toByte()
             )
     }
 
@@ -167,7 +166,7 @@ class AsfExtractor : Extractor {
 
     override fun read(
         input: ExtractorInput,
-        seekPosition: PositionHolder,
+        seekPosition: PositionHolder
     ): Int {
         val track = trackOutput ?: return Extractor.RESULT_END_OF_INPUT
 
@@ -273,7 +272,7 @@ class AsfExtractor : Extractor {
 
     private fun readNativeFrame(
         input: ExtractorInput,
-        track: TrackOutput,
+        track: TrackOutput
     ): Int {
         val ret = nativeReadFrame(nativeHandle, input, frameByteArray, metaArray)
         if (ret == 0) {
@@ -426,7 +425,7 @@ class AsfExtractor : Extractor {
 
     private fun initTracksFallback(
         input: ExtractorInput,
-        track: TrackOutput,
+        track: TrackOutput
     ) {
         val formatBuilder =
             Format
@@ -464,7 +463,7 @@ class AsfExtractor : Extractor {
 
     private fun readFallbackPacket(
         input: ExtractorInput,
-        track: TrackOutput,
+        track: TrackOutput
     ): Int {
         val targetSize = packetSize.coerceIn(512, 65536)
         val packetBuffer = ByteArray(targetSize)
@@ -493,7 +492,7 @@ class AsfExtractor : Extractor {
             C.BUFFER_FLAG_KEY_FRAME,
             bytesRead,
             0,
-            null,
+            null
         )
         val bytesPerSec = sampleRate * channelCount * 2L
         if (bytesPerSec > 0) {
@@ -505,7 +504,7 @@ class AsfExtractor : Extractor {
 
     override fun seek(
         position: Long,
-        timeUs: Long,
+        timeUs: Long
     ) {
         currentTimeUs = timeUs
         if (useNative && nativeHandle != 0L) {
@@ -528,7 +527,7 @@ class AsfExtractor : Extractor {
         private val durationUs: Long,
         private val dataStartOffset: Long,
         private val packetSize: Int,
-        private val totalDataPackets: Long,
+        private val totalDataPackets: Long
     ) : SeekMap {
         override fun isSeekable(): Boolean = durationUs > 0 && packetSize > 0
 
@@ -554,7 +553,7 @@ class AsfExtractor : Extractor {
 
     private external fun nativeOpen(
         handle: Long,
-        input: ExtractorInput,
+        input: ExtractorInput
     ): Int
 
     private external fun nativeGetSampleRate(handle: Long): Int
@@ -575,13 +574,13 @@ class AsfExtractor : Extractor {
         handle: Long,
         input: ExtractorInput,
         outputArray: ByteArray,
-        outMeta: LongArray,
+        outMeta: LongArray
     ): Int
 
     private external fun nativeSeek(
         handle: Long,
         position: Long,
-        timeUs: Long,
+        timeUs: Long
     ): Int
 
     private external fun nativeRelease(handle: Long)

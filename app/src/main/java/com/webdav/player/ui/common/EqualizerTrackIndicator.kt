@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 enum class EqualizerWaveState {
     IDLE,
     PLAYING,
-    PAUSED,
+    PAUSED
 }
 
 object EqualizerStateHelper {
@@ -42,7 +42,7 @@ object EqualizerStateHelper {
 
     fun resolveEqualizerState(
         isActive: Boolean,
-        isPlaying: Boolean,
+        isPlaying: Boolean
     ): EqualizerWaveState =
         when {
             !isActive -> EqualizerWaveState.IDLE
@@ -53,16 +53,16 @@ object EqualizerStateHelper {
     fun resolveEqualizerState(
         trackPath: String,
         activeTrackPath: String?,
-        isPlaying: Boolean,
+        isPlaying: Boolean
     ): EqualizerWaveState =
         resolveEqualizerState(
             isActive = isTrackActive(trackPath, activeTrackPath),
-            isPlaying = isPlaying,
+            isPlaying = isPlaying
         )
 
     fun isTrackActive(
         trackPath: String,
-        activeTrackPath: String?,
+        activeTrackPath: String?
     ): Boolean = activeTrackPath != null && trackPath == activeTrackPath
 }
 
@@ -70,7 +70,7 @@ object EqualizerStateHelper {
 fun EqualizerTrackIndicator(
     waveState: EqualizerWaveState,
     modifier: Modifier = Modifier,
-    barColor: Color = MaterialTheme.colorScheme.primary,
+    barColor: Color = MaterialTheme.colorScheme.primary
 ) {
     if (waveState == EqualizerWaveState.IDLE) return
     val isPlaying = waveState == EqualizerWaveState.PLAYING
@@ -80,33 +80,33 @@ fun EqualizerTrackIndicator(
         initialValue = EqualizerStateHelper.MinAnimatedBarHeight.value,
         targetValue = 18f,
         animationSpec =
-            infiniteRepeatable(
-                animation = tween(durationMillis = 450, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-        label = "bar1_height",
+        infiniteRepeatable(
+            animation = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bar1_height"
     )
 
     val bar2Height by transition.animateFloat(
         initialValue = 18f,
         targetValue = 5f,
         animationSpec =
-            infiniteRepeatable(
-                animation = tween(durationMillis = 580, delayMillis = 100, easing = LinearOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-        label = "bar2_height",
+        infiniteRepeatable(
+            animation = tween(durationMillis = 580, delayMillis = 100, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bar2_height"
     )
 
     val bar3Height by transition.animateFloat(
         initialValue = 6f,
         targetValue = EqualizerStateHelper.MaxAnimatedBarHeight.value,
         animationSpec =
-            infiniteRepeatable(
-                animation = tween(durationMillis = 500, delayMillis = 60, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-        label = "bar3_height",
+        infiniteRepeatable(
+            animation = tween(durationMillis = 500, delayMillis = 60, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bar3_height"
     )
 
     val (h1, h2, h3) =
@@ -116,19 +116,19 @@ fun EqualizerTrackIndicator(
             Triple(
                 EqualizerStateHelper.FrozenBar1Height,
                 EqualizerStateHelper.FrozenBar2Height,
-                EqualizerStateHelper.FrozenBar3Height,
+                EqualizerStateHelper.FrozenBar3Height
             )
         }
 
     Row(
         modifier =
-            modifier
-                .height(EqualizerStateHelper.MaxAnimatedBarHeight)
-                .semantics {
-                    contentDescription = if (isPlaying) "正在播放音轨" else "已暂停音轨"
-                },
+        modifier
+            .height(EqualizerStateHelper.MaxAnimatedBarHeight)
+            .semantics {
+                contentDescription = if (isPlaying) "正在播放音轨" else "已暂停音轨"
+            },
         horizontalArrangement = Arrangement.spacedBy(2.5.dp),
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = Alignment.Bottom
     ) {
         EqualizerBar(height = h1, color = barColor)
         EqualizerBar(height = h2, color = barColor)
@@ -140,12 +140,12 @@ fun EqualizerTrackIndicator(
 fun EqualizerTrackIndicator(
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
-    barColor: Color = MaterialTheme.colorScheme.primary,
+    barColor: Color = MaterialTheme.colorScheme.primary
 ) {
     EqualizerTrackIndicator(
         waveState = if (isPlaying) EqualizerWaveState.PLAYING else EqualizerWaveState.PAUSED,
         modifier = modifier,
-        barColor = barColor,
+        barColor = barColor
     )
 }
 
@@ -153,14 +153,14 @@ fun EqualizerTrackIndicator(
 private fun EqualizerBar(
     height: Dp,
     color: Color,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Box(
         modifier =
-            modifier
-                .width(3.dp)
-                .height(height)
-                .clip(RoundedCornerShape(1.5.dp))
-                .background(color),
+        modifier
+            .width(3.dp)
+            .height(height)
+            .clip(RoundedCornerShape(1.5.dp))
+            .background(color)
     )
 }

@@ -21,13 +21,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class PlaylistSortOption(
-    val displayName: String,
+    val displayName: String
 ) {
     CUSTOM("自定义排序"),
     DATE_ADDED_DESC("添加时间（最新优先）"),
     DATE_ADDED_ASC("添加时间（最早优先）"),
     TITLE_ASC("歌曲标题（A-Z）"),
-    ARTIST_ASC("艺术家（A-Z）"),
+    ARTIST_ASC("艺术家（A-Z）")
 }
 
 data class PlaylistDetailUiState(
@@ -40,7 +40,7 @@ data class PlaylistDetailUiState(
     val errorMessage: String? = null,
     val activeTrackPath: String? = null,
     val activeTrackId: String? = null,
-    val isPlaying: Boolean = false,
+    val isPlaying: Boolean = false
 ) {
     fun isTrackActive(track: PlaylistTrackEntry): Boolean {
         if (activeTrackId != null && track.toAudioTrack().id == activeTrackId) return true
@@ -53,7 +53,7 @@ class PlaylistDetailViewModel(
     val playlistId: Long,
     private val playlistRepository: PlaylistRepository,
     private val musicPlayerAppSession: MusicPlayerAppSession? = null,
-    private val storageReachabilityTracker: StorageReachabilityTracker? = null,
+    private val storageReachabilityTracker: StorageReachabilityTracker? = null
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PlaylistDetailUiState(isLoading = true))
     val uiState: StateFlow<PlaylistDetailUiState> = _uiState.asStateFlow()
@@ -75,7 +75,7 @@ class PlaylistDetailViewModel(
                     it.copy(
                         activeTrackPath = currentTrack?.remotePath,
                         activeTrackId = currentTrack?.id,
-                        isPlaying = sessionState.isPlaying,
+                        isPlaying = sessionState.isPlaying
                     )
                 }
             }
@@ -141,7 +141,7 @@ class PlaylistDetailViewModel(
 
     fun moveTrack(
         fromIndex: Int,
-        toIndex: Int,
+        toIndex: Int
     ) {
         val currentTracks = _uiState.value.tracks.toMutableList()
         if (fromIndex !in currentTracks.indices || toIndex !in currentTracks.indices || fromIndex == toIndex) {
@@ -153,7 +153,7 @@ class PlaylistDetailViewModel(
             it.copy(
                 tracks = currentTracks,
                 isReordering = true,
-                activeSortOption = PlaylistSortOption.CUSTOM,
+                activeSortOption = PlaylistSortOption.CUSTOM
             )
         }
     }
@@ -183,7 +183,7 @@ class PlaylistDetailViewModel(
             it.copy(
                 tracks = reordered,
                 isReordering = false,
-                activeSortOption = PlaylistSortOption.CUSTOM,
+                activeSortOption = PlaylistSortOption.CUSTOM
             )
         }
         viewModelScope.launch {
@@ -210,20 +210,20 @@ class PlaylistDetailViewModel(
 
                 PlaylistSortOption.DATE_ADDED_DESC -> {
                     currentTracks.sortedWith(
-                        compareByDescending<PlaylistTrackEntry> { it.id },
+                        compareByDescending<PlaylistTrackEntry> { it.id }
                     )
                 }
 
                 PlaylistSortOption.DATE_ADDED_ASC -> {
                     currentTracks.sortedWith(
-                        compareBy<PlaylistTrackEntry> { it.id },
+                        compareBy<PlaylistTrackEntry> { it.id }
                     )
                 }
 
                 PlaylistSortOption.TITLE_ASC -> {
                     currentTracks.sortedWith(
                         compareBy<PlaylistTrackEntry, String>(String.CASE_INSENSITIVE_ORDER) { it.title }
-                            .thenBy { it.id },
+                            .thenBy { it.id }
                     )
                 }
 
@@ -231,7 +231,7 @@ class PlaylistDetailViewModel(
                     currentTracks.sortedWith(
                         compareBy<PlaylistTrackEntry, String>(String.CASE_INSENSITIVE_ORDER) { it.artist.orEmpty() }
                             .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title }
-                            .thenBy { it.id },
+                            .thenBy { it.id }
                     )
                 }
             }
@@ -241,7 +241,7 @@ class PlaylistDetailViewModel(
             it.copy(
                 tracks = reindexed,
                 isReordering = false,
-                activeSortOption = sortOption,
+                activeSortOption = sortOption
             )
         }
 
@@ -291,7 +291,7 @@ class PlaylistDetailViewModel(
         index: Int =
             _uiState.value.tracks
                 .indexOfFirst { it.id == track.id }
-                .coerceAtLeast(0),
+                .coerceAtLeast(0)
     ) {
         if (track.isInactive) {
             val message =

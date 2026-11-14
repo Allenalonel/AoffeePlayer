@@ -1,7 +1,6 @@
 package com.webdav.player.domain.session
 
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
-import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlaybackSessionData
@@ -40,7 +39,7 @@ internal class SessionPersistenceCoordinator(
     private val sessionStateFlow: MutableStateFlow<PlayerSessionState>,
     private val playbackProgressFlow: MutableStateFlow<PlaybackProgress>,
     private val coroutineScope: CoroutineScope,
-    private val periodicDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val periodicDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
     private val _isRestored = MutableStateFlow(sessionStore == null)
     val isRestored: StateFlow<Boolean> = _isRestored.asStateFlow()
@@ -54,7 +53,7 @@ internal class SessionPersistenceCoordinator(
 
     fun savePosition(
         positionMs: Long,
-        isCleanExit: Boolean = false,
+        isCleanExit: Boolean = false
     ) {
         if (!_isRestored.value) return
         val store = sessionStore ?: return
@@ -104,7 +103,7 @@ internal class SessionPersistenceCoordinator(
 
     private suspend fun restoreSessionFromData(
         server: WebDavServer?,
-        savedSession: PlaybackSessionData,
+        savedSession: PlaybackSessionData
     ) {
         val isPlaylist =
             savedSession.queueOrigin == QueueOrigin.PLAYLIST ||
@@ -118,7 +117,7 @@ internal class SessionPersistenceCoordinator(
                 tracks = savedSession.queueTracks,
                 currentIndex = savedSession.currentTrackIndex.coerceIn(-1, savedSession.queueTracks.lastIndex),
                 originalTracks = savedSession.originalTracks,
-                origin = origin,
+                origin = origin
             )
         val restoredTrack = restoredQueue.currentTrack
         val restoredPlaybackState = if (restoredTrack != null) PlaybackState.Paused else PlaybackState.Idle
@@ -151,7 +150,7 @@ internal class SessionPersistenceCoordinator(
                     tracks = updatedTracks,
                     currentIndex = savedSession.currentTrackIndex.coerceIn(-1, updatedTracks.lastIndex),
                     originalTracks = updatedOriginal,
-                    origin = origin,
+                    origin = origin
                 )
             } else {
                 restoredQueue
@@ -167,14 +166,14 @@ internal class SessionPersistenceCoordinator(
                 playbackMode = savedSession.playbackMode,
                 durationMs = durationMs,
                 errorMessage = null,
-                wasKilledBySystem = wasKilled,
+                wasKilledBySystem = wasKilled
             )
         }
         playbackProgressFlow.value =
             PlaybackProgress(
                 currentPositionMs = savedSession.positionMs,
                 durationMs = durationMs,
-                bufferedPositionMs = 0L,
+                bufferedPositionMs = 0L
             )
     }
 
@@ -217,7 +216,7 @@ internal class SessionPersistenceCoordinator(
                 playbackMode = current.playbackMode,
                 cleanExit = isCleanExit,
                 queueOrigin = current.queue.origin,
-                originalTracks = current.queue.originalTracks,
+                originalTracks = current.queue.originalTracks
             )
         store.saveSession(sessionData)
     }

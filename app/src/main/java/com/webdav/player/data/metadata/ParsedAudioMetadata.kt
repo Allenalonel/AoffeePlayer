@@ -8,16 +8,31 @@ data class ParsedAudioMetadata(
     val durationMs: Long = 0L,
     val artworkData: ByteArray? = null,
     val artworkMimeType: String? = null,
-    val lyrics: String? = null
+    val lyrics: String? = null,
+    val sampleRate: Int? = null,
+    val bitDepth: Int? = null,
+    val bitrateKbps: Int? = null,
+    val channels: Int? = null
 ) {
+    val physicalSpecs: com.webdav.player.domain.model.AudioPhysicalSpecs
+        get() = com.webdav.player.domain.model.AudioPhysicalSpecs(
+            sampleRate = sampleRate,
+            bitDepth = bitDepth,
+            bitrateKbps = bitrateKbps,
+            channels = channels
+        )
+
     val hasTags: Boolean
         get() = !title.isNullOrBlank() ||
-                !artist.isNullOrBlank() ||
-                !album.isNullOrBlank() ||
-                trackNumber != null ||
-                durationMs > 0L ||
-                artworkData != null ||
-                !lyrics.isNullOrBlank()
+            !artist.isNullOrBlank() ||
+            !album.isNullOrBlank() ||
+            trackNumber != null ||
+            durationMs > 0L ||
+            artworkData != null ||
+            !lyrics.isNullOrBlank() ||
+            sampleRate != null ||
+            bitDepth != null ||
+            channels != null
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -36,6 +51,10 @@ data class ParsedAudioMetadata(
         } else if (other.artworkData != null) return false
         if (artworkMimeType != other.artworkMimeType) return false
         if (lyrics != other.lyrics) return false
+        if (sampleRate != other.sampleRate) return false
+        if (bitDepth != other.bitDepth) return false
+        if (bitrateKbps != other.bitrateKbps) return false
+        if (channels != other.channels) return false
 
         return true
     }
@@ -49,6 +68,10 @@ data class ParsedAudioMetadata(
         result = 31 * result + (artworkData?.contentHashCode() ?: 0)
         result = 31 * result + (artworkMimeType?.hashCode() ?: 0)
         result = 31 * result + (lyrics?.hashCode() ?: 0)
+        result = 31 * result + (sampleRate ?: 0)
+        result = 31 * result + (bitDepth ?: 0)
+        result = 31 * result + (bitrateKbps ?: 0)
+        result = 31 * result + (channels ?: 0)
         return result
     }
 }

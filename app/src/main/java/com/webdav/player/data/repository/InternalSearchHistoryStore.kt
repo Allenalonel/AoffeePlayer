@@ -10,7 +10,7 @@ import org.json.JSONException
  */
 class InternalSearchHistoryStore(
     private val context: Context? = null,
-    private val prefsName: String = DEFAULT_PREFS_NAME,
+    private val prefsName: String = DEFAULT_PREFS_NAME
 ) {
     companion object {
         const val DEFAULT_PREFS_NAME = "webdav_search_history"

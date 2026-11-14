@@ -7,7 +7,6 @@ import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.domain.model.Playlist
-import com.webdav.player.domain.model.QueueOrigin
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
@@ -23,7 +22,7 @@ import kotlinx.coroutines.flow.update
 class FakeMusicPlayerAppSession(
     initialState: PlayerSessionState = PlayerSessionState(),
     initialProgress: PlaybackProgress = PlaybackProgress.ZERO,
-    initialIsRestored: Boolean = true,
+    initialIsRestored: Boolean = true
 ) : MusicPlayerAppSession {
     val _sessionState = MutableStateFlow(initialState)
     override val sessionState: StateFlow<PlayerSessionState> = _sessionState.asStateFlow()
@@ -85,7 +84,7 @@ class FakeMusicPlayerAppSession(
         server: WebDavServer,
         directory: RemoteDirectory,
         selectedFile: RemoteFile,
-        initialMetadata: Map<String, TrackMetadata>,
+        initialMetadata: Map<String, TrackMetadata>
     ) {
         pausedByTransientAudioFocusInternal = false
         lastPlayServer = server
@@ -96,7 +95,7 @@ class FakeMusicPlayerAppSession(
 
     override fun playPlaylist(
         playlist: Playlist,
-        startIndex: Int,
+        startIndex: Int
     ) {
         pausedByTransientAudioFocusInternal = false
         lastPlayPlaylist = playlist

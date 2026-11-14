@@ -31,7 +31,7 @@ interface PlaylistDao {
         LEFT JOIN playlist_tracks t ON p.id = t.playlistId
         GROUP BY p.id
         ORDER BY p.updatedAtMs DESC
-        """,
+        """
     )
     fun getAllPlaylistsWithTrackCountFlow(): Flow<List<PlaylistWithTrackCount>>
 
@@ -42,7 +42,7 @@ interface PlaylistDao {
         LEFT JOIN playlist_tracks t ON p.id = t.playlistId
         GROUP BY p.id
         ORDER BY p.updatedAtMs DESC
-        """,
+        """
     )
     suspend fun getAllPlaylistsWithTrackCount(): List<PlaylistWithTrackCount>
 
@@ -53,7 +53,7 @@ interface PlaylistDao {
         LEFT JOIN playlist_tracks t ON p.id = t.playlistId
         WHERE p.id = :playlistId
         GROUP BY p.id
-        """,
+        """
     )
     fun getPlaylistWithTrackCountFlow(playlistId: Long): Flow<PlaylistWithTrackCount?>
 
@@ -64,7 +64,7 @@ interface PlaylistDao {
         LEFT JOIN playlist_tracks t ON p.id = t.playlistId
         WHERE p.id = :playlistId
         GROUP BY p.id
-        """,
+        """
     )
     suspend fun getPlaylistWithTrackCount(playlistId: Long): PlaylistWithTrackCount?
 
@@ -75,13 +75,13 @@ interface PlaylistDao {
     suspend fun renamePlaylist(
         playlistId: Long,
         newName: String,
-        updatedAtMs: Long,
+        updatedAtMs: Long
     ): Int
 
     @Query("UPDATE playlists SET updatedAtMs = :updatedAtMs WHERE id = :playlistId")
     suspend fun updatePlaylistTimestamp(
         playlistId: Long,
-        updatedAtMs: Long,
+        updatedAtMs: Long
     ): Int
 
     // Playlist Tracks Operations
@@ -103,14 +103,14 @@ interface PlaylistDao {
     @Query("UPDATE playlist_tracks SET coverThumbnailPath = :coverThumbnailPath WHERE id = :trackEntryId")
     suspend fun updateTrackCover(
         trackEntryId: Long,
-        coverThumbnailPath: String?,
+        coverThumbnailPath: String?
     ): Int
 
     @Query("UPDATE playlist_tracks SET coverThumbnailPath = :coverThumbnailPath WHERE serverId = :serverId AND remotePath = :remotePath")
     suspend fun updateTrackCoverByServerAndPath(
         serverId: Long,
         remotePath: String,
-        coverThumbnailPath: String?,
+        coverThumbnailPath: String?
     ): Int
 
     @Query("SELECT * FROM playlist_tracks WHERE id = :trackEntryId LIMIT 1")
@@ -135,12 +135,12 @@ interface PlaylistDao {
           AND serverId = :serverId 
           AND remotePath = :remotePath
         LIMIT 1
-        """,
+        """
     )
     suspend fun findTrackInPlaylist(
         playlistId: Long,
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ): PlaylistTrackEntity?
 
     @Query("SELECT * FROM playlist_tracks WHERE serverId = :serverId")

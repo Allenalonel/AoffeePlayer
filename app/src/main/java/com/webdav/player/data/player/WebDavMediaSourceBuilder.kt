@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.annotation.VisibleForTesting
-import androidx.core.content.FileProvider
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
@@ -22,24 +21,24 @@ import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
-import okhttp3.ConnectionPool
-import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import okhttp3.ConnectionPool
+import okhttp3.OkHttpClient
 
 @OptIn(UnstableApi::class)
 internal class WebDavMediaSourceBuilder(
     val context: Context? = null,
     val webDavClient: WebDavClient = OkHttpWebDavClient(),
     val loadErrorHandlingPolicy: LoadErrorHandlingPolicy = WebDavLoadErrorHandlingPolicy(),
-    val resilientSleeper: ((Long) -> Unit)? = null,
+    val resilientSleeper: ((Long) -> Unit)? = null
 ) {
     private data class DataSourceCacheKey(
         val serverId: Long,
         val endpointUrl: String,
         val username: String,
         val password: String,
-        val allowSelfSigned: Boolean,
+        val allowSelfSigned: Boolean
     )
 
     private val dataSourceFactoryCache = ConcurrentHashMap<DataSourceCacheKey, DataSource.Factory>()
@@ -74,7 +73,7 @@ internal class WebDavMediaSourceBuilder(
                 endpointUrl = server.endpointUrl,
                 username = server.username,
                 password = server.password,
-                allowSelfSigned = server.allowSelfSigned,
+                allowSelfSigned = server.allowSelfSigned
             )
         return dataSourceFactoryCache.computeIfAbsent(cacheKey) {
             val client = getStreamingClientForServer(server)
@@ -92,7 +91,7 @@ internal class WebDavMediaSourceBuilder(
 
     fun createMediaSource(
         server: WebDavServer,
-        track: AudioTrack,
+        track: AudioTrack
     ): MediaSource {
         val mediaItem = createMediaItem(server, track)
         val isLocalTrack = server.isLocal || track.isLocal
@@ -113,7 +112,7 @@ internal class WebDavMediaSourceBuilder(
 
     fun createMediaSources(
         server: WebDavServer,
-        tracks: List<AudioTrack>,
+        tracks: List<AudioTrack>
     ): List<MediaSource> = tracks.map { track -> createMediaSource(server, track) }
 
     internal fun resolveExtractorsFactory(format: AudioFormat): ExtractorsFactory =
@@ -129,7 +128,7 @@ internal class WebDavMediaSourceBuilder(
                     arrayOf(
                         androidx.media3.extractor.flac
                             .FlacExtractor(),
-                        *DefaultExtractorsFactory().createExtractors(),
+                        *DefaultExtractorsFactory().createExtractors()
                     )
                 }
             }
@@ -139,7 +138,7 @@ internal class WebDavMediaSourceBuilder(
                     arrayOf(
                         androidx.media3.extractor.mp3
                             .Mp3Extractor(),
-                        *DefaultExtractorsFactory().createExtractors(),
+                        *DefaultExtractorsFactory().createExtractors()
                     )
                 }
             }
@@ -149,7 +148,7 @@ internal class WebDavMediaSourceBuilder(
                     arrayOf(
                         androidx.media3.extractor.wav
                             .WavExtractor(),
-                        *DefaultExtractorsFactory().createExtractors(),
+                        *DefaultExtractorsFactory().createExtractors()
                     )
                 }
             }
@@ -158,7 +157,7 @@ internal class WebDavMediaSourceBuilder(
                 ExtractorsFactory {
                     arrayOf(
                         *DefaultExtractorsFactory().createExtractors(),
-                        AsfExtractor(),
+                        AsfExtractor()
                     )
                 }
             }
@@ -166,7 +165,7 @@ internal class WebDavMediaSourceBuilder(
 
     fun attachArtwork(
         metaBuilder: MediaMetadata.Builder,
-        coverThumbnailPath: String?,
+        coverThumbnailPath: String?
     ) {
         if (coverThumbnailPath.isNullOrBlank()) {
             metaBuilder.setArtworkUri(null)
@@ -209,7 +208,7 @@ internal class WebDavMediaSourceBuilder(
 
     fun createMediaItem(
         server: WebDavServer,
-        track: AudioTrack,
+        track: AudioTrack
     ): MediaItem {
         val uri = Uri.parse(track.streamUrl(server))
         val metaBuilder =

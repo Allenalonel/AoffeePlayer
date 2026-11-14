@@ -20,7 +20,7 @@ import java.nio.ByteOrder
  */
 @OptIn(UnstableApi::class)
 class CanonicalResamplingAudioProcessor(
-    val canonicalSampleRateHz: Int = CANONICAL_SAMPLE_RATE_HZ,
+    val canonicalSampleRateHz: Int = CANONICAL_SAMPLE_RATE_HZ
 ) : AudioProcessor {
     companion object {
         const val CANONICAL_SAMPLE_RATE_HZ: Int = 44_100
@@ -61,7 +61,7 @@ class CanonicalResamplingAudioProcessor(
             AudioFormat(
                 canonicalSampleRateHz,
                 outputChannelCount,
-                C.ENCODING_PCM_16BIT,
+                C.ENCODING_PCM_16BIT
             )
 
         try {

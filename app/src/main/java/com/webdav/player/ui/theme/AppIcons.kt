@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.materialIcon
 import androidx.compose.material.icons.materialPath
@@ -166,7 +165,7 @@ object AppIcons {
                 materialIcon(
                     name = "AutoMirrored.Filled.InsertDriveFile",
                     autoMirror =
-                    true,
+                    true
                 ) {
                     materialPath {
                         moveTo(6.0f, 2.0f)
@@ -410,7 +409,7 @@ object AppIcons {
                 materialIcon(
                     name = "AutoMirrored.Filled.ArrowForwardIos",
                     autoMirror =
-                    true,
+                    true
                 ) {
                     materialPath {
                         moveTo(6.23f, 20.23f)

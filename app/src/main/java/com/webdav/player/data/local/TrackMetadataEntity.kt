@@ -2,7 +2,7 @@ package com.webdav.player.data.local
 
 import androidx.room.Entity
 import androidx.room.Index
-import com.webdav.player.domain.model.LOCAL_STORAGE_ID
+import com.webdav.player.domain.model.TrackIdentity
 import com.webdav.player.domain.model.TrackMetadata
 
 @Entity(
@@ -14,26 +14,30 @@ import com.webdav.player.domain.model.TrackMetadata
         Index(value = ["title"]),
         Index(value = ["artist"]),
         Index(value = ["album"]),
-        Index(value = ["remotePath"]),
-    ],
+        Index(value = ["remotePath"])
+    ]
 )
 data class TrackMetadataEntity(
     val serverId: Long,
     val remotePath: String,
-    val title: String?,
-    val artist: String?,
-    val album: String?,
-    val trackNumber: Int?,
-    val durationMs: Long,
-    val coverThumbnailPath: String?,
+    val title: String? = null,
+    val artist: String? = null,
+    val album: String? = null,
+    val trackNumber: Int? = null,
+    val durationMs: Long = 0L,
+    val coverThumbnailPath: String? = null,
     val lyrics: String? = null,
     val companionLyricsPath: String? = null,
+    val sampleRate: Int? = null,
+    val bitDepth: Int? = null,
+    val bitrateKbps: Int? = null,
+    val channels: Int? = null
 ) {
     fun toDomain(): TrackMetadata =
         TrackMetadata(
             serverId = serverId,
             remotePath = remotePath,
-            title = title,
+            title = TrackIdentity.sanitizePersistedTitle(title),
             artist = artist,
             album = album,
             trackNumber = trackNumber,
@@ -41,6 +45,10 @@ data class TrackMetadataEntity(
             coverThumbnailPath = coverThumbnailPath,
             lyrics = lyrics,
             companionLyricsPath = companionLyricsPath,
+            sampleRate = sampleRate,
+            bitDepth = bitDepth,
+            bitrateKbps = bitrateKbps,
+            channels = channels
         )
 
     companion object {
@@ -57,6 +65,10 @@ data class TrackMetadataEntity(
                 coverThumbnailPath = domain.coverThumbnailPath,
                 lyrics = domain.lyrics,
                 companionLyricsPath = domain.companionLyricsPath,
+                sampleRate = domain.sampleRate,
+                bitDepth = domain.bitDepth,
+                bitrateKbps = domain.bitrateKbps,
+                channels = domain.channels
             )
         }
     }

@@ -10,13 +10,13 @@ import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.InactiveReason
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
-import com.webdav.player.domain.model.PlaylistTrackEntry
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackIdentity
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import com.webdav.player.domain.storage.FakeStorageReachabilityTracker
+import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
@@ -33,7 +33,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -55,7 +54,7 @@ class PlaylistRepositoryTest {
         repository =
             PlaylistRepositoryImpl(
                 playlistDao = dao,
-                timeProvider = { simulatedTime },
+                timeProvider = { simulatedTime }
             )
     }
 
@@ -159,7 +158,7 @@ class PlaylistRepositoryTest {
                     serverId = 1L,
                     remotePath = "/music/a.mp3",
                     title = "Song A",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             repository.addTrackToPlaylist(playlistId, track)
 
@@ -351,7 +350,7 @@ class PlaylistRepositoryTest {
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
                     storageReachabilityTracker = tracker,
-                    timeProvider = { simulatedTime },
+                    timeProvider = { simulatedTime }
                 )
             val playlistId = repo.createPlaylist("单曲失效响应流测试")
             val track1 = AudioTrack(id = "1:/1.mp3", serverId = 1L, remotePath = "/1.mp3", title = "T1", format = AudioFormat.MP3)
@@ -387,7 +386,7 @@ class PlaylistRepositoryTest {
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
                     storageReachabilityTracker = tracker,
-                    timeProvider = { simulatedTime },
+                    timeProvider = { simulatedTime }
                 )
             val playlistId = repo.createPlaylist("服务器失效与恢复响应流测试")
             val track1 = AudioTrack(id = "10:/s1.mp3", serverId = 10L, remotePath = "/s1.mp3", title = "S1", format = AudioFormat.MP3)
@@ -440,7 +439,7 @@ class PlaylistRepositoryTest {
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
                     storageReachabilityTracker = tracker,
-                    timeProvider = { simulatedTime },
+                    timeProvider = { simulatedTime }
                 )
 
             // Reactive flow must eliminate persistent dirty state
@@ -462,7 +461,7 @@ class PlaylistRepositoryTest {
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
                     storageReachabilityTracker = null,
-                    timeProvider = { simulatedTime },
+                    timeProvider = { simulatedTime }
                 )
             val playlistId = repoWithoutTracker.createPlaylist("无Tracker默认在线测试")
             val track = AudioTrack(id = "1:/track.mp3", serverId = 1L, remotePath = "/track.mp3", title = "T", format = AudioFormat.MP3)
@@ -485,23 +484,23 @@ class PlaylistRepositoryTest {
 
         override fun getMetadataForPathsFlow(
             serverId: Long,
-            remotePaths: List<String>,
+            remotePaths: List<String>
         ): Flow<List<TrackMetadata>> = emptyFlow()
 
         override fun getMetadataFlow(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): Flow<TrackMetadata?> = emptyFlow()
 
         override suspend fun getCachedMetadata(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): TrackMetadata? = cachedMap["$serverId:$remotePath"]
 
         override suspend fun batchQueryAndHealMetadata(
             identities: List<TrackIdentity>,
             eligibleForHealing: Set<TrackIdentity>,
-            onCoverHealed: (suspend (TrackIdentity, String) -> Unit)?,
+            onCoverHealed: (suspend (TrackIdentity, String) -> Unit)?
         ): Map<TrackIdentity, TrackMetadata> {
             batchQueryCalls++
             val result = mutableMapOf<TrackIdentity, TrackMetadata>()
@@ -532,12 +531,12 @@ class PlaylistRepositoryTest {
         override suspend fun resolveMetadata(
             server: WebDavServer,
             files: List<RemoteFile>,
-            forceRefresh: Boolean,
+            forceRefresh: Boolean
         ) {}
 
         override suspend fun resolveSingleTrackMetadata(
             server: WebDavServer,
-            file: RemoteFile,
+            file: RemoteFile
         ): TrackMetadata {
             singleResolveCalls++
             return singleResolvedMap["${server.id}:${file.path}"] ?: TrackMetadata(serverId = server.id, remotePath = file.path)
@@ -555,14 +554,14 @@ class PlaylistRepositoryTest {
                     serverId = 1L,
                     remotePath = "/cached.mp3",
                     title = "Cached Song",
-                    coverThumbnailPath = "/covers/cached_thumb.jpg",
+                    coverThumbnailPath = "/covers/cached_thumb.jpg"
                 )
 
             val repo =
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
                     trackMetadataRepository = metadataRepo,
-                    timeProvider = { simulatedTime },
+                    timeProvider = { simulatedTime }
                 )
 
             val playlistId = repo.createPlaylist("封面丰富测试")
@@ -603,14 +602,14 @@ class PlaylistRepositoryTest {
                     serverId = 1L,
                     remotePath = "/cached.mp3",
                     title = "Cached Song",
-                    coverThumbnailPath = "/covers/cached_thumb.jpg",
+                    coverThumbnailPath = "/covers/cached_thumb.jpg"
                 )
 
             val repo =
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
                     trackMetadataRepository = metadataRepo,
-                    timeProvider = { simulatedTime },
+                    timeProvider = { simulatedTime }
                 )
 
             val playlistId = repo.createPlaylist("快照封面丰富测试")
@@ -639,7 +638,7 @@ class PlaylistRepositoryTest {
                     serverId = 1L,
                     remotePath = "/cached.mp3",
                     title = "Cached Song",
-                    coverThumbnailPath = "/covers/cached_thumb.jpg",
+                    coverThumbnailPath = "/covers/cached_thumb.jpg"
                 )
 
             val repo =
@@ -647,7 +646,7 @@ class PlaylistRepositoryTest {
                     playlistDao = dao,
                     trackMetadataRepository = metadataRepo,
                     storageReachabilityTracker = tracker,
-                    timeProvider = { simulatedTime },
+                    timeProvider = { simulatedTime }
                 )
 
             val playlistId = repo.createPlaylist("全流程对账一致性测试")
@@ -658,7 +657,7 @@ class PlaylistRepositoryTest {
                     serverId = 1L,
                     remotePath = "/cached.mp3",
                     title = "T1",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             val track2 =
                 AudioTrack(
@@ -666,7 +665,7 @@ class PlaylistRepositoryTest {
                     serverId = 2L,
                     remotePath = "/offline.mp3",
                     title = "T2",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             val track1Duplicate =
                 AudioTrack(
@@ -674,7 +673,7 @@ class PlaylistRepositoryTest {
                     serverId = 1L,
                     remotePath = "/cached.mp3",
                     title = "T1 Dup",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
 
             repo.addTrackToPlaylist(playlistId, track1)
@@ -688,8 +687,8 @@ class PlaylistRepositoryTest {
                     remotePath = track1Duplicate.remotePath,
                     sortOrder = 2,
                     title = track1Duplicate.title,
-                    format = "MP3",
-                ),
+                    format = "MP3"
+                )
             )
 
             assertEquals(3, dao.getTracksForPlaylist(playlistId).size)
@@ -722,7 +721,7 @@ class PlaylistRepositoryTest {
             val repo =
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
-                    timeProvider = { simulatedTime },
+                    timeProvider = { simulatedTime }
                 )
 
             val playlistId = repo.createPlaylist("混合源歌单")
@@ -734,7 +733,7 @@ class PlaylistRepositoryTest {
                     remotePath = "/cloud/song.mp3",
                     title = "Cloud Song",
                     format = AudioFormat.MP3,
-                    durationMs = 200_000L,
+                    durationMs = 200_000L
                 )
             val localTrack =
                 AudioTrack(
@@ -743,7 +742,7 @@ class PlaylistRepositoryTest {
                     remotePath = "content://media/external/audio/1234",
                     title = "Local Lossless Song",
                     format = AudioFormat.FLAC,
-                    durationMs = 300_000L,
+                    durationMs = 300_000L
                 )
 
             val webDavEntryId = repo.addTrackToPlaylist(playlistId, webDavTrack)
@@ -790,7 +789,7 @@ class PlaylistRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = "content://media/audio/1",
                     title = "Local 1",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
             val local2 =
                 AudioTrack(
@@ -798,7 +797,7 @@ class PlaylistRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = "content://media/audio/2",
                     title = "Local 2",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
             val remoteTrack =
                 AudioTrack(
@@ -806,7 +805,7 @@ class PlaylistRepositoryTest {
                     serverId = 1L,
                     remotePath = "/remote/audio/1",
                     title = "Remote Track",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
 
             // First batch: add local1, local2, and a remote track
@@ -834,7 +833,7 @@ class PlaylistRepositoryTest {
                     serverId = 2L,
                     remotePath = "content://media/audio/1",
                     title = "Local 1 with mismatched serverId",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
             val mismatchedBatchResult = repository.addTracksToPlaylist(playlistId, listOf(local1WithMismatchedServerId))
             assertTrue(mismatchedBatchResult.isEmpty())
@@ -851,14 +850,14 @@ class PlaylistRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = localUri,
                     title = "Local Healed Song",
-                    coverThumbnailPath = "/covers/local_healed.jpg",
+                    coverThumbnailPath = "/covers/local_healed.jpg"
                 )
 
             val repo =
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
                     trackMetadataRepository = metadataRepo,
-                    timeProvider = { simulatedTime },
+                    timeProvider = { simulatedTime }
                 )
 
             val playlistId = repo.createPlaylist("本地封面自愈测试")
@@ -868,7 +867,7 @@ class PlaylistRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = localUri,
                     title = "Local Song Without Cover",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
             val entryId = repo.addTrackToPlaylist(playlistId, localTrack)
 
@@ -898,14 +897,14 @@ class PlaylistRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = localUri,
                     title = "Melody (Live)",
-                    coverThumbnailPath = validCoverFile.absolutePath,
+                    coverThumbnailPath = validCoverFile.absolutePath
                 )
 
             val repo =
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
                     trackMetadataRepository = metadataRepo,
-                    timeProvider = { simulatedTime },
+                    timeProvider = { simulatedTime }
                 )
 
             val playlistId = repo.createPlaylist("本地测试歌单")
@@ -919,7 +918,7 @@ class PlaylistRepositoryTest {
                     remotePath = localUri,
                     title = "Melody (Live)",
                     coverThumbnailPath = deadPath,
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
             val entryId = repo.addTrackToPlaylist(playlistId, localTrack)
 
@@ -947,21 +946,21 @@ class PlaylistRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = localUri,
                     title = "Local Healed",
-                    coverThumbnailPath = "/covers/local_healed_cross.jpg",
+                    coverThumbnailPath = "/covers/local_healed_cross.jpg"
                 )
             metadataRepo.singleResolvedMap["1:$remotePath"] =
                 TrackMetadata(
                     serverId = 1L,
                     remotePath = remotePath,
                     title = "Remote Healed",
-                    coverThumbnailPath = "/covers/remote_healed_cross.jpg",
+                    coverThumbnailPath = "/covers/remote_healed_cross.jpg"
                 )
 
             val repo =
                 PlaylistRepositoryImpl(
                     playlistDao = dao,
                     trackMetadataRepository = metadataRepo,
-                    timeProvider = { simulatedTime },
+                    timeProvider = { simulatedTime }
                 )
 
             val playlistId = repo.createPlaylist("跨源封面自愈测试")
@@ -971,7 +970,7 @@ class PlaylistRepositoryTest {
                     serverId = LOCAL_STORAGE_ID,
                     remotePath = localUri,
                     title = "Local Song",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
             val remoteTrack =
                 AudioTrack(
@@ -979,7 +978,7 @@ class PlaylistRepositoryTest {
                     serverId = 1L,
                     remotePath = remotePath,
                     title = "Remote Song",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
 
             val entry1 = repo.addTrackToPlaylist(playlistId, localTrack)
@@ -1011,7 +1010,7 @@ class PlaylistRepositoryTest {
                     playlistDao = dao,
                     trackMetadataRepository = metadataRepo,
                     storageReachabilityTracker = tracker,
-                    timeProvider = { simulatedTime },
+                    timeProvider = { simulatedTime }
                 )
 
             val playlistId = repo.createPlaylist("离线曲目测试")
@@ -1021,7 +1020,7 @@ class PlaylistRepositoryTest {
                     serverId = 1L,
                     remotePath = remotePath,
                     title = "Unreachable Song",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
 
             repo.addTrackToPlaylist(playlistId, remoteTrack)

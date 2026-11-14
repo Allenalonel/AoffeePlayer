@@ -11,24 +11,23 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import androidx.datastore.preferences.preferencesDataStoreFile
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackSessionData
 import com.webdav.player.domain.repository.PlaybackSessionStore
+import java.io.File
+import java.io.IOException
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
-import java.io.IOException
 
 private val Context.sessionDataStore: DataStore<Preferences> by preferencesDataStore(name = "playback_session_prefs")
 
 class DataStorePlaybackSessionStore(
     private val dataStore: DataStore<Preferences>,
-    private val testFileProvider: (() -> File)? = null,
+    private val testFileProvider: (() -> File)? = null
 ) : PlaybackSessionStore {
     constructor(context: Context) : this(context.sessionDataStore, null)
 
@@ -65,7 +64,7 @@ class DataStorePlaybackSessionStore(
 
     override suspend fun savePosition(
         positionMs: Long,
-        isCleanExit: Boolean,
+        isCleanExit: Boolean
     ) {
         val clamped = positionMs.coerceAtLeast(0L)
         dataStore.edit { prefs ->
@@ -130,7 +129,7 @@ class DataStorePlaybackSessionStore(
             playbackMode = mode,
             cleanExit = cleanExit,
             queueOrigin = queueOrigin,
-            originalTracks = originalTracks,
+            originalTracks = originalTracks
         )
     }
 
@@ -147,7 +146,7 @@ class DataStorePlaybackSessionStore(
         tracksJson: String,
         trackIndex: Int,
         posMs: Long,
-        mode: String,
+        mode: String
     ) {
         dataStore.edit { prefs ->
             testFileProvider?.invoke()?.let { file -> if (file.exists()) file.delete() }
@@ -206,12 +205,12 @@ class DataStorePlaybackSessionStore(
                         size = obj.optLong("size", 0L),
                         format = format,
                         coverThumbnailPath =
-                            if (obj.has("coverThumbnailPath") && !obj.isNull("coverThumbnailPath")) {
-                                obj.getString("coverThumbnailPath")
-                            } else {
-                                null
-                            },
-                    ),
+                        if (obj.has("coverThumbnailPath") && !obj.isNull("coverThumbnailPath")) {
+                            obj.getString("coverThumbnailPath")
+                        } else {
+                            null
+                        }
+                    )
                 )
             }
             list

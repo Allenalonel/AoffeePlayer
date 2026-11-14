@@ -5,5 +5,5 @@ data class Playlist(
     val name: String,
     val createdAtMs: Long,
     val updatedAtMs: Long,
-    val trackCount: Int = 0,
+    val trackCount: Int = 0
 )

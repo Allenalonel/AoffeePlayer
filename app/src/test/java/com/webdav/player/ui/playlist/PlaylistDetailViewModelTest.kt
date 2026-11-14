@@ -34,7 +34,7 @@ import org.junit.Before
 import org.junit.Test
 
 class DetailFakeServerRepository(
-    initialServers: List<WebDavServer> = emptyList(),
+    initialServers: List<WebDavServer> = emptyList()
 ) : ServerRepository {
     val serversFlow = MutableStateFlow(initialServers)
 
@@ -85,7 +85,7 @@ class DetailFakePlaylistRepository : PlaylistRepository {
 
     override suspend fun renamePlaylist(
         playlistId: Long,
-        newName: String,
+        newName: String
     ) {
         playlistsFlow.update { current ->
             current.map { if (it.id == playlistId) it.copy(name = newName) else it }
@@ -100,7 +100,7 @@ class DetailFakePlaylistRepository : PlaylistRepository {
 
     override suspend fun isPlaylistNameExists(
         name: String,
-        excludePlaylistId: Long?,
+        excludePlaylistId: Long?
     ): Boolean =
         playlistsFlow.value.any {
             it.name.equals(name.trim(), ignoreCase = true) && (excludePlaylistId == null || it.id != excludePlaylistId)
@@ -113,7 +113,7 @@ class DetailFakePlaylistRepository : PlaylistRepository {
 
     override suspend fun addTrackToPlaylist(
         playlistId: Long,
-        track: AudioTrack,
+        track: AudioTrack
     ): Long {
         val list = tracksMap.getOrPut(playlistId) { mutableListOf() }
         val id = (tracksMap.values.flatten().maxOfOrNull { it.id } ?: 0L) + 1L
@@ -128,12 +128,12 @@ class DetailFakePlaylistRepository : PlaylistRepository {
 
     override suspend fun addTracksToPlaylist(
         playlistId: Long,
-        tracks: List<AudioTrack>,
+        tracks: List<AudioTrack>
     ): List<Long> = tracks.map { addTrackToPlaylist(playlistId, it) }
 
     override suspend fun removeTracksFromPlaylist(
         playlistId: Long,
-        trackEntryIds: List<Long>,
+        trackEntryIds: List<Long>
     ) {
         val list = tracksMap[playlistId] ?: return
         list.removeAll { it.id in trackEntryIds }
@@ -158,7 +158,7 @@ class DetailFakePlaylistRepository : PlaylistRepository {
 
     override suspend fun updateTrackCover(
         trackEntryId: Long,
-        coverThumbnailPath: String?,
+        coverThumbnailPath: String?
     ) {
         for ((pId, list) in tracksMap) {
             val idx = list.indexOfFirst { it.id == trackEntryId }
@@ -172,7 +172,7 @@ class DetailFakePlaylistRepository : PlaylistRepository {
 
     override suspend fun updateTrackOrders(
         playlistId: Long,
-        orderedTrackIds: List<Long>,
+        orderedTrackIds: List<Long>
     ) {
         val list = tracksMap[playlistId] ?: return
         val map = list.associateBy { it.id }
@@ -188,7 +188,7 @@ class DetailFakePlaylistRepository : PlaylistRepository {
     fun markTrackInactive(
         serverId: Long,
         remotePath: String,
-        reason: InactiveReason,
+        reason: InactiveReason
     ) {
         for ((pId, list) in tracksMap) {
             val updated =
@@ -222,7 +222,7 @@ class PlaylistDetailViewModelTest {
             remotePath = "/track_a.mp3",
             title = "Alpha",
             artist = "Zoe",
-            format = AudioFormat.MP3,
+            format = AudioFormat.MP3
         )
     private val trackB =
         AudioTrack(
@@ -231,7 +231,7 @@ class PlaylistDetailViewModelTest {
             remotePath = "/track_b.mp3",
             title = "Charlie",
             artist = "Alice",
-            format = AudioFormat.MP3,
+            format = AudioFormat.MP3
         )
     private val trackC =
         AudioTrack(
@@ -240,7 +240,7 @@ class PlaylistDetailViewModelTest {
             remotePath = "/track_c.flac",
             title = "Bravo",
             artist = "Bob",
-            format = AudioFormat.FLAC,
+            format = AudioFormat.FLAC
         )
 
     @Before
@@ -261,7 +261,7 @@ class PlaylistDetailViewModelTest {
                     playlistId = playlistId,
                     playlistRepository = fakeRepo,
                     musicPlayerAppSession = fakeSession,
-                    storageReachabilityTracker = fakeTracker,
+                    storageReachabilityTracker = fakeTracker
                 )
         }
 
@@ -479,7 +479,7 @@ class PlaylistDetailViewModelTest {
                     serverId = 2L,
                     remotePath = "/missing.mp3",
                     title = "Offline Server Song",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             fakeRepo.addTrackToPlaylist(playlistId, trackOnMissingServer)
             fakeRepo.markTrackInactive(2L, "/missing.mp3", InactiveReason.SERVER_UNREACHABLE)
@@ -489,7 +489,7 @@ class PlaylistDetailViewModelTest {
                     playlistId = playlistId,
                     playlistRepository = fakeRepo,
                     musicPlayerAppSession = fakeSession,
-                    storageReachabilityTracker = fakeTracker,
+                    storageReachabilityTracker = fakeTracker
                 )
             advanceUntilIdle()
 
@@ -508,7 +508,7 @@ class PlaylistDetailViewModelTest {
                     serverId = 999L,
                     remotePath = "/offline.mp3",
                     title = "Unreachable Song",
-                    format = AudioFormat.MP3,
+                    format = AudioFormat.MP3
                 )
             fakeRepo.addTrackToPlaylist(playlistId, offlineTrackEntry)
             fakeRepo.markTrackInactive(999L, "/offline.mp3", InactiveReason.SERVER_UNREACHABLE)
@@ -518,7 +518,7 @@ class PlaylistDetailViewModelTest {
                     playlistId = playlistId,
                     playlistRepository = fakeRepo,
                     musicPlayerAppSession = fakeSession,
-                    storageReachabilityTracker = fakeTracker,
+                    storageReachabilityTracker = fakeTracker
                 )
             advanceUntilIdle()
 
@@ -550,7 +550,7 @@ class PlaylistDetailViewModelTest {
             val notFoundTrack =
                 unreachableTrack.copy(
                     isInactive = true,
-                    inactiveReason = InactiveReason.FILE_NOT_FOUND,
+                    inactiveReason = InactiveReason.FILE_NOT_FOUND
                 )
             vm.onTrackClick(notFoundTrack)
             advanceUntilIdle()
@@ -578,7 +578,7 @@ class PlaylistDetailViewModelTest {
                     playlistId = playlistId,
                     playlistRepository = fakeRepo,
                     musicPlayerAppSession = fakeSession,
-                    storageReachabilityTracker = fakeTracker,
+                    storageReachabilityTracker = fakeTracker
                 )
             advanceUntilIdle()
 
@@ -587,7 +587,7 @@ class PlaylistDetailViewModelTest {
             assertEquals(
                 2,
                 vm.uiState.value.tracks
-                    .count { it.isInactive },
+                    .count { it.isInactive }
             )
 
             vm.cleanInactiveTracks()
@@ -633,9 +633,9 @@ class PlaylistDetailViewModelTest {
             fakeSession._sessionState.value =
                 com.webdav.player.domain.model.PlayerSessionState(
                     queue =
-                        com.webdav.player.domain.model
-                            .PlaybackQueue(listOf(targetTrack.toAudioTrack()), 0),
-                    playbackState = com.webdav.player.domain.model.PlaybackState.Playing,
+                    com.webdav.player.domain.model
+                        .PlaybackQueue(listOf(targetTrack.toAudioTrack()), 0),
+                    playbackState = com.webdav.player.domain.model.PlaybackState.Playing
                 )
             advanceUntilIdle()
 
@@ -661,9 +661,9 @@ class PlaylistDetailViewModelTest {
             fakeSession._sessionState.value =
                 com.webdav.player.domain.model.PlayerSessionState(
                     queue =
-                        com.webdav.player.domain.model
-                            .PlaybackQueue(listOf(targetTrack.toAudioTrack()), 0),
-                    playbackState = com.webdav.player.domain.model.PlaybackState.Paused,
+                    com.webdav.player.domain.model
+                        .PlaybackQueue(listOf(targetTrack.toAudioTrack()), 0),
+                    playbackState = com.webdav.player.domain.model.PlaybackState.Paused
                 )
             advanceUntilIdle()
 
@@ -684,9 +684,9 @@ class PlaylistDetailViewModelTest {
             fakeSession._sessionState.value =
                 com.webdav.player.domain.model.PlayerSessionState(
                     queue =
-                        com.webdav.player.domain.model
-                            .PlaybackQueue(listOf(targetTrack.toAudioTrack()), 0),
-                    playbackState = com.webdav.player.domain.model.PlaybackState.Playing,
+                    com.webdav.player.domain.model
+                        .PlaybackQueue(listOf(targetTrack.toAudioTrack()), 0),
+                    playbackState = com.webdav.player.domain.model.PlaybackState.Playing
                 )
             advanceUntilIdle()
             assertTrue(viewModel.uiState.value.isTrackActive(targetTrack))
@@ -712,7 +712,7 @@ class PlaylistDetailViewModelTest {
                 serverId = 1L,
                 remotePath = "/track1.flac",
                 title = "Track 1",
-                sortOrder = 1,
+                sortOrder = 1
             )
         val trackEntry2 =
             PlaylistTrackEntry(
@@ -721,14 +721,14 @@ class PlaylistDetailViewModelTest {
                 serverId = 1L,
                 remotePath = "/track2.flac",
                 title = "Track 2",
-                sortOrder = 2,
+                sortOrder = 2
             )
 
         val stateActiveTrack1 =
             PlaylistDetailUiState(
                 activeTrackPath = "/track1.flac",
                 activeTrackId = "1:/track1.flac",
-                isPlaying = true,
+                isPlaying = true
             )
 
         assertTrue(stateActiveTrack1.isTrackActive(trackEntry1))

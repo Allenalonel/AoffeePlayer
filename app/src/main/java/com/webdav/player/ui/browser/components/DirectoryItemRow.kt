@@ -28,43 +28,43 @@ import com.webdav.player.ui.theme.AppIcons
 fun DirectoryItemRow(
     directory: RemoteDirectory,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     ElevatedCard(
         onClick = onClick,
         modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 4.dp),
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 4.dp),
         shape = MaterialTheme.shapes.medium,
         colors =
-            CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            ),
+        CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
         elevation =
-            CardDefaults.elevatedCardElevation(
-                defaultElevation = 1.dp,
-                pressedElevation = 3.dp,
-            ),
+        CardDefaults.elevatedCardElevation(
+            defaultElevation = 1.dp,
+            pressedElevation = 3.dp
+        )
     ) {
         Row(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
                 shape = MaterialTheme.shapes.small,
                 color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(44.dp),
+                modifier = Modifier.size(44.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = AppIcons.Folder,
                         contentDescription = "文件夹",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(26.dp),
+                        modifier = Modifier.size(26.dp)
                     )
                 }
             }
@@ -78,7 +78,7 @@ fun DirectoryItemRow(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 val hint =
@@ -90,7 +90,7 @@ fun DirectoryItemRow(
                 Text(
                     text = hint,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -98,7 +98,7 @@ fun DirectoryItemRow(
                 imageVector = AppIcons.ArrowForwardIos,
                 contentDescription = "进入目录",
                 modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             )
         }
     }

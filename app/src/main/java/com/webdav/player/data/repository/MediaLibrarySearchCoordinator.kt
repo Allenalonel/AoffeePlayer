@@ -25,11 +25,11 @@ import kotlinx.coroutines.flow.flowOf
 class MediaLibrarySearchCoordinator(
     private val mediaTrackIndexDao: MediaTrackIndexDao?,
     private val directorySyncCheckpointDao: DirectorySyncCheckpointDao?,
-    private val trackMetadataDao: TrackMetadataDao?,
+    private val trackMetadataDao: TrackMetadataDao?
 ) {
     fun search(
         query: String,
-        serverId: Long? = null,
+        serverId: Long? = null
     ): Flow<LibrarySearchResult> {
         val cleanQuery = query.trim()
         if (cleanQuery.isEmpty()) {
@@ -46,7 +46,7 @@ class MediaLibrarySearchCoordinator(
         return combine(
             indexFlow,
             checkpointFlow,
-            metaFlow,
+            metaFlow
         ) { indexedTracks, checkpoints, metaEntities ->
             val metadataMap = metaEntities.associateBy { "${it.serverId}:${it.remotePath}" }
             val matchedDirs = mutableMapOf<String, RemoteDirectory>()
@@ -65,7 +65,7 @@ class MediaLibrarySearchCoordinator(
                                 name = dirName,
                                 subDirectories = emptyList(),
                                 files = emptyList(),
-                                serverId = identity.serverId,
+                                serverId = identity.serverId
                             )
                     }
                 }
@@ -90,7 +90,7 @@ class MediaLibrarySearchCoordinator(
                         format = format,
                         metadata = meta,
                         titleFallback = entity.parsedTitle,
-                        artistFallback = entity.parsedArtist,
+                        artistFallback = entity.parsedArtist
                     )
                 matchedTracks[identity.compositeKey] = track
 
@@ -107,7 +107,7 @@ class MediaLibrarySearchCoordinator(
                                 name = dirName,
                                 subDirectories = emptyList(),
                                 files = emptyList(),
-                                serverId = parentIdentity.serverId,
+                                serverId = parentIdentity.serverId
                             )
                     }
                 }
@@ -120,7 +120,7 @@ class MediaLibrarySearchCoordinator(
                 if (!matchedTracks.containsKey(dedupeKey) &&
                     isMatch(cleanQuery, meta.title, meta.artist, meta.album, meta.remotePath)
                 ) {
-                    val fileName = meta.remotePath.substringAfterLast('/')
+                    val fileName = TrackIdentity.extractFileName(meta.remotePath)
                     val format = (RemoteFileType.fromFileName(fileName) as? RemoteFileType.Audio)?.format ?: AudioFormat.MP3
                     matchedTracks[dedupeKey] =
                         createAudioTrack(
@@ -129,21 +129,21 @@ class MediaLibrarySearchCoordinator(
                             fileName = fileName,
                             fileSize = 0L,
                             format = format,
-                            metadata = meta,
+                            metadata = meta
                         )
                 }
             }
 
             LibrarySearchResult(
                 matchedDirectories = matchedDirs.values.toList(),
-                matchedTracks = matchedTracks.values.toList(),
+                matchedTracks = matchedTracks.values.toList()
             )
         }
     }
 
     private fun isMatch(
         query: String,
-        vararg candidates: String?,
+        vararg candidates: String?
     ): Boolean = candidates.any { it?.contains(query, ignoreCase = true) == true }
 
     private fun createAudioTrack(
@@ -155,7 +155,7 @@ class MediaLibrarySearchCoordinator(
         metadata: TrackMetadataEntity?,
         titleFallback: String? = null,
         artistFallback: String? = null,
-        albumFallback: String? = null,
+        albumFallback: String? = null
     ): AudioTrack =
         AudioTrack(
             id = "$serverId:$remotePath",
@@ -168,5 +168,9 @@ class MediaLibrarySearchCoordinator(
             size = fileSize,
             format = format,
             coverThumbnailPath = metadata?.coverThumbnailPath,
+            sampleRate = metadata?.sampleRate,
+            bitDepth = metadata?.bitDepth,
+            bitrateKbps = metadata?.bitrateKbps,
+            channels = metadata?.channels
         )
 }

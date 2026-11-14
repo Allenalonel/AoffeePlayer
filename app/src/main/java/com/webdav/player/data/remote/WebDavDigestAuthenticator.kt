@@ -1,21 +1,20 @@
 package com.webdav.player.data.remote
 
-import okhttp3.Authenticator
-import okhttp3.Credentials
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.Route
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import okhttp3.Authenticator
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.Route
 
 internal data class DigestChallenge(
     val realm: String,
     val nonce: String,
     val qop: String? = null,
     val opaque: String? = null,
-    val algorithm: String? = null,
+    val algorithm: String? = null
 )
 
 /**
@@ -28,13 +27,13 @@ internal class WebDavDigestAuthenticator(
     private val username: String,
     private val password: String,
     private val secureRandom: SecureRandom = SecureRandom(),
-    private val onDigestAuthenticated: (() -> Unit)? = null,
+    private val onDigestAuthenticated: (() -> Unit)? = null
 ) : Authenticator {
     private val nonceCountMap = ConcurrentHashMap<String, AtomicInteger>()
 
     override fun authenticate(
         route: Route?,
-        response: Response,
+        response: Response
     ): Request? {
         if (username.isBlank()) return null
         if (priorResponseCount(response) >= 2) return null
@@ -77,7 +76,7 @@ internal class WebDavDigestAuthenticator(
             nonce = nonce,
             qop = directives["qop"],
             opaque = directives["opaque"],
-            algorithm = directives["algorithm"],
+            algorithm = directives["algorithm"]
         )
     }
 
@@ -96,7 +95,7 @@ internal class WebDavDigestAuthenticator(
 
     private fun extractDirective(
         header: String,
-        directive: String,
+        directive: String
     ): String? {
         val directives = parseDirectives(header.substringAfter("Digest").trim())
         return directives[directive.lowercase()]
@@ -105,7 +104,7 @@ internal class WebDavDigestAuthenticator(
     internal fun buildDigestAuthorization(
         request: Request,
         challenge: DigestChallenge,
-        fixedCnonce: String? = null,
+        fixedCnonce: String? = null
     ): String {
         val uri = request.url.encodedPath + (request.url.encodedQuery?.let { "?$it" } ?: "")
         val method = request.method
@@ -138,7 +137,7 @@ internal class WebDavDigestAuthenticator(
                     qop = "auth",
                     method = method,
                     uri = uri,
-                    algorithm = challenge.algorithm,
+                    algorithm = challenge.algorithm
                 )
 
             params.add("""response="$responseHash"""")
@@ -157,7 +156,7 @@ internal class WebDavDigestAuthenticator(
                     qop = null,
                     method = method,
                     uri = uri,
-                    algorithm = challenge.algorithm,
+                    algorithm = challenge.algorithm
                 )
             params.add("""response="$responseHash"""")
         }
@@ -189,7 +188,7 @@ internal class WebDavDigestAuthenticator(
             qop: String?,
             method: String,
             uri: String,
-            algorithm: String?,
+            algorithm: String?
         ): String {
             val ha1 =
                 if (algorithm?.equals("MD5-sess", ignoreCase = true) == true && cnonce != null) {

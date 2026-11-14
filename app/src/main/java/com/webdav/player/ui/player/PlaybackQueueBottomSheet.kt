@@ -68,7 +68,7 @@ fun HoistedPlaybackQueueSheet(
     playbackActions: PlaybackActions,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    onAddToPlaylist: (AudioTrack) -> Unit = {},
+    onAddToPlaylist: (AudioTrack) -> Unit = {}
 ) {
     PlaybackQueueBottomSheet(
         queue = sessionState.queue,
@@ -80,7 +80,7 @@ fun HoistedPlaybackQueueSheet(
         onCyclePlaybackMode = { playbackActions.cyclePlaybackMode() },
         onDismissRequest = onDismissRequest,
         modifier = modifier,
-        onAddToPlaylist = onAddToPlaylist,
+        onAddToPlaylist = onAddToPlaylist
     )
 }
 
@@ -97,7 +97,7 @@ fun PlaybackQueueBottomSheet(
     playbackProgress: PlaybackProgress = PlaybackProgress.ZERO,
     isPlaying: Boolean = false,
     onAddToPlaylist: (AudioTrack) -> Unit = {},
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 ) {
     val coroutineScope = rememberCoroutineScope()
     val animateDismiss: () -> Unit = {
@@ -119,39 +119,39 @@ fun PlaybackQueueBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
         properties =
-            ModalBottomSheetProperties(
-                securePolicy = SecureFlagPolicy.Inherit,
-                isFocusable = false,
-                shouldDismissOnBackPress = true,
-            ),
-        modifier = modifier,
+        ModalBottomSheetProperties(
+            securePolicy = SecureFlagPolicy.Inherit,
+            isFocusable = false,
+            shouldDismissOnBackPress = true
+        ),
+        modifier = modifier
     ) {
         Column(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp)
         ) {
             // Header
             Row(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "播放队列",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "(${queue.size})",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -162,20 +162,20 @@ fun PlaybackQueueBottomSheet(
                         label = {
                             Text(
                                 text = playbackMode.label,
-                                style = MaterialTheme.typography.labelMedium,
+                                style = MaterialTheme.typography.labelMedium
                             )
                         },
                         leadingIcon = {
                             Icon(
                                 imageVector = resolvePlaybackModeIcon(playbackMode),
                                 contentDescription = playbackMode.label,
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(16.dp)
                             )
                         },
                         colors =
-                            AssistChipDefaults.assistChipColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                            ),
+                        AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                        )
                     )
 
                     Spacer(modifier = Modifier.width(8.dp))
@@ -188,22 +188,22 @@ fun PlaybackQueueBottomSheet(
 
             HorizontalDivider(
                 thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
+                color = MaterialTheme.colorScheme.outlineVariant
             )
 
             // Queue List
             if (queue.isEmpty) {
                 Box(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                    contentAlignment = Alignment.Center,
+                    Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "播放队列为空",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -220,14 +220,14 @@ fun PlaybackQueueBottomSheet(
                 LazyColumn(
                     state = listState,
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 450.dp),
-                    contentPadding = PaddingValues(vertical = 4.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 450.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp)
                 ) {
                     itemsIndexed(
                         items = queue.tracks,
-                        key = { _, track -> track.id },
+                        key = { _, track -> track.id }
                     ) { index, track ->
                         val isActive = index == queue.currentIndex
 
@@ -240,7 +240,7 @@ fun PlaybackQueueBottomSheet(
                             onClick = { onTrackClick(index) },
                             onRemove = { onRemoveTrack(index) },
                             onAddToPlaylist = onAddToPlaylist,
-                            modifier = Modifier.animateItemPlacement(MotionTokens.spatialSpring()),
+                            modifier = Modifier.animateItemPlacement(MotionTokens.spatialSpring())
                         )
                     }
                 }
@@ -274,7 +274,7 @@ internal fun cyclePlaybackMode(current: PlaybackMode): PlaybackMode = current.ne
 internal fun resolveQueueTrackSubtitle(
     track: AudioTrack,
     isActive: Boolean,
-    playbackProgress: PlaybackProgress,
+    playbackProgress: PlaybackProgress
 ): String {
     val progressIndicator =
         if (isActive && playbackProgress.durationMs > 0L) {
@@ -284,14 +284,14 @@ internal fun resolveQueueTrackSubtitle(
         }
     return AudioTrackRowDefaults.formatTrackSubtitle(
         artist = track.artist,
-        extra = progressIndicator,
+        extra = progressIndicator
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 internal fun handleQueueDismiss(
     value: SwipeToDismissBoxValue,
-    onRemove: () -> Unit,
+    onRemove: () -> Unit
 ): Boolean =
     if (value == SwipeToDismissBoxValue.EndToStart || value == SwipeToDismissBoxValue.StartToEnd) {
         onRemove()
@@ -306,25 +306,25 @@ internal fun QueueLeadingContent(
     coverThumbnailPath: String?,
     isActive: Boolean,
     isPlaying: Boolean,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
             text = "${index + 1}",
             style = MaterialTheme.typography.labelMedium,
             color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.widthIn(min = 20.dp),
-            textAlign = TextAlign.Center,
+            textAlign = TextAlign.Center
         )
         TrackThumbnailLeading(
             coverThumbnailPath = coverThumbnailPath,
             isActive = isActive,
             isPlaying = isPlaying,
-            size = 36.dp,
+            size = 36.dp
         )
     }
 }
@@ -340,11 +340,11 @@ internal fun QueueTrackItemRow(
     onRemove: () -> Unit,
     onAddToPlaylist: (AudioTrack) -> Unit = {},
     modifier: Modifier = Modifier,
-    playbackProgress: PlaybackProgress = PlaybackProgress.ZERO,
+    playbackProgress: PlaybackProgress = PlaybackProgress.ZERO
 ) {
     val dismissState =
         rememberSwipeToDismissBoxState(
-            confirmValueChange = { handleQueueDismiss(it, onRemove) },
+            confirmValueChange = { handleQueueDismiss(it, onRemove) }
         )
 
     SwipeToDismissBox(
@@ -353,23 +353,23 @@ internal fun QueueTrackItemRow(
         backgroundContent = {
             Box(
                 modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.errorContainer)
-                        .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.CenterEnd,
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd
             ) {
                 Icon(
                     imageVector = AppIcons.DeleteOutline,
                     contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                    tint = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
-        },
+        }
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.surface
         ) {
             AudioTrackRow(
                 title = track.title,
@@ -383,7 +383,7 @@ internal fun QueueTrackItemRow(
                         index = index,
                         coverThumbnailPath = track.coverThumbnailPath,
                         isActive = isActive,
-                        isPlaying = isPlaying,
+                        isPlaying = isPlaying
                     )
                 },
                 actionsMenu = { dismiss ->
@@ -393,13 +393,13 @@ internal fun QueueTrackItemRow(
                             Icon(
                                 imageVector = AppIcons.PlaylistAdd,
                                 contentDescription = null,
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(20.dp)
                             )
                         },
                         onClick = {
                             dismiss()
                             onAddToPlaylist(track)
-                        },
+                        }
                     )
                     DropdownMenuItem(
                         text = { Text("从队列移除") },
@@ -407,15 +407,15 @@ internal fun QueueTrackItemRow(
                             Icon(
                                 imageVector = AppIcons.Close,
                                 contentDescription = null,
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(20.dp)
                             )
                         },
                         onClick = {
                             dismiss()
                             onRemove()
-                        },
+                        }
                     )
-                },
+                }
             )
         }
     }

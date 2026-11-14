@@ -37,7 +37,7 @@ class WebDavMediaSessionCallbackTest {
 
     private fun createMediaButtonIntent(
         keyCode: Int,
-        action: Int = KeyEvent.ACTION_DOWN,
+        action: Int = KeyEvent.ACTION_DOWN
     ): Intent {
         val intent = Intent(Intent.ACTION_MEDIA_BUTTON)
         val event = KeyEvent(action, keyCode)

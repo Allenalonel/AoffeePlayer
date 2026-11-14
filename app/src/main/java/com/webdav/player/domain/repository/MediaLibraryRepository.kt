@@ -20,18 +20,18 @@ interface MediaLibraryRepository : StorageCascadeInvalidator {
     fun observeDirectoryContent(
         server: WebDavServer,
         path: String,
-        forceRefresh: Boolean = false,
+        forceRefresh: Boolean = false
     ): Flow<DirectoryContent>
 
     suspend fun getCachedDirectory(
         server: WebDavServer,
-        path: String,
+        path: String
     ): RemoteDirectory?
 
     // Multi-source & Single-source B-Tree Search
     fun search(
         query: String,
-        serverId: Long? = null,
+        serverId: Long? = null
     ): Flow<LibrarySearchResult>
 
     // Incremental Background Sync & Progress
@@ -39,7 +39,7 @@ interface MediaLibraryRepository : StorageCascadeInvalidator {
 
     suspend fun syncServer(
         server: WebDavServer,
-        force: Boolean = false,
+        force: Boolean = false
     ): LibrarySyncResult
 
     suspend fun rebuildIndex(server: WebDavServer): LibrarySyncResult
@@ -58,7 +58,7 @@ interface MediaLibraryRepository : StorageCascadeInvalidator {
 
     fun setLastBrowsingPath(
         serverId: Long,
-        path: String,
+        path: String
     )
 
     // Sort Order Retention

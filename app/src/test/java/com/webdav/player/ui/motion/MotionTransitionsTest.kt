@@ -3,7 +3,6 @@ package com.webdav.player.ui.motion
 import androidx.compose.animation.togetherWith
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -62,7 +61,7 @@ class MotionTransitionsTest {
             MotionTransitions.resolveHierarchyDirection(
                 initialPath = "/Music/",
                 targetPath = "/Music/Lossless/",
-                isFocalLanding = false,
+                isFocalLanding = false
             )
         assertEquals(HierarchyNavigationDirection.FORWARD, direction)
 
@@ -70,7 +69,7 @@ class MotionTransitionsTest {
             MotionTransitions.resolveHierarchyDirection(
                 initialPath = "/",
                 targetPath = "/Music/",
-                isFocalLanding = false,
+                isFocalLanding = false
             )
         assertEquals(HierarchyNavigationDirection.FORWARD, rootToSub)
     }
@@ -81,7 +80,7 @@ class MotionTransitionsTest {
             MotionTransitions.resolveHierarchyDirection(
                 initialPath = "/Music/Lossless/",
                 targetPath = "/Music/",
-                isFocalLanding = false,
+                isFocalLanding = false
             )
         assertEquals(HierarchyNavigationDirection.BACKWARD, direction)
     }
@@ -92,7 +91,7 @@ class MotionTransitionsTest {
             MotionTransitions.resolveHierarchyDirection(
                 initialPath = "/Music/Lossless/Pink Floyd/",
                 targetPath = "/",
-                isFocalLanding = false,
+                isFocalLanding = false
             )
         assertEquals(HierarchyNavigationDirection.BACKWARD, direction)
     }
@@ -103,7 +102,7 @@ class MotionTransitionsTest {
             MotionTransitions.resolveHierarchyDirection(
                 initialPath = "/Music/",
                 targetPath = "/Audiobooks/SciFi/",
-                isFocalLanding = true,
+                isFocalLanding = true
             )
         assertEquals(HierarchyNavigationDirection.FOCAL_LANDING, direction)
     }
@@ -114,7 +113,7 @@ class MotionTransitionsTest {
             MotionTransitions.resolveHierarchyDirection(
                 initialPath = "/Music/",
                 targetPath = "/Music/",
-                isFocalLanding = false,
+                isFocalLanding = false
             )
         assertEquals(HierarchyNavigationDirection.NONE, samePath)
 
@@ -122,7 +121,7 @@ class MotionTransitionsTest {
             MotionTransitions.resolveHierarchyDirection(
                 initialPath = "/Music",
                 targetPath = "/Music/",
-                isFocalLanding = false,
+                isFocalLanding = false
             )
         assertEquals(HierarchyNavigationDirection.NONE, normalizedSame)
 
@@ -130,7 +129,7 @@ class MotionTransitionsTest {
             MotionTransitions.resolveHierarchyDirection(
                 initialPath = "",
                 targetPath = "/Music/",
-                isFocalLanding = false,
+                isFocalLanding = false
             )
         assertEquals(HierarchyNavigationDirection.NONE, emptyInitial)
     }
@@ -142,7 +141,7 @@ class MotionTransitionsTest {
             MotionTransitions.resolveHierarchyDirection(
                 initialPath = "/Classical/Beethoven/Symphonies/",
                 targetPath = "/Jazz/",
-                isFocalLanding = false,
+                isFocalLanding = false
             )
         assertEquals(HierarchyNavigationDirection.BACKWARD, shallowing)
 
@@ -151,7 +150,7 @@ class MotionTransitionsTest {
             MotionTransitions.resolveHierarchyDirection(
                 initialPath = "/Jazz/",
                 targetPath = "/Classical/Beethoven/Symphonies/",
-                isFocalLanding = false,
+                isFocalLanding = false
             )
         assertEquals(HierarchyNavigationDirection.FORWARD, deepening)
     }
@@ -161,7 +160,7 @@ class MotionTransitionsTest {
         val forwardTransform =
             MotionTransitions.hierarchyContentTransform(
                 direction = HierarchyNavigationDirection.FORWARD,
-                reduceMotion = false,
+                reduceMotion = false
             )
         assertNotNull(forwardTransform)
         assertEquals(1f, forwardTransform.targetContentZIndex, 0.001f)
@@ -169,7 +168,7 @@ class MotionTransitionsTest {
         val backwardTransform =
             MotionTransitions.hierarchyContentTransform(
                 direction = HierarchyNavigationDirection.BACKWARD,
-                reduceMotion = false,
+                reduceMotion = false
             )
         assertNotNull(backwardTransform)
         assertEquals(-1f, backwardTransform.targetContentZIndex, 0.001f)
@@ -177,14 +176,14 @@ class MotionTransitionsTest {
         val focalTransform =
             MotionTransitions.hierarchyContentTransform(
                 direction = HierarchyNavigationDirection.FOCAL_LANDING,
-                reduceMotion = false,
+                reduceMotion = false
             )
         assertNotNull(focalTransform)
 
         val noneTransform =
             MotionTransitions.hierarchyContentTransform(
                 direction = HierarchyNavigationDirection.NONE,
-                reduceMotion = false,
+                reduceMotion = false
             )
         assertNotNull(noneTransform)
     }

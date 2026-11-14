@@ -3,6 +3,7 @@ package com.webdav.player.data.local
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.webdav.player.domain.model.TrackMetadata
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -126,7 +127,7 @@ class TrackMetadataDaoTest {
             listOf(
                 TrackMetadataEntity(1L, "/s1.mp3", "S1", "A1", "Alb1", 1, 1000L, null),
                 TrackMetadataEntity(1L, "/s2.mp3", "S2", "A2", "Alb2", 2, 2000L, null),
-                TrackMetadataEntity(2L, "/s3.mp3", "S3", "A3", "Alb3", 3, 3000L, null),
+                TrackMetadataEntity(2L, "/s3.mp3", "S3", "A3", "Alb3", 3, 3000L, null)
             )
         )
         val all = dao.getAllMetadata()
@@ -138,5 +139,32 @@ class TrackMetadataDaoTest {
         val server2 = dao.getAllMetadataForServer(2L)
         assertEquals(1, server2.size)
         assertEquals("S3", server2.first().title)
+    }
+
+    @Test
+    fun insertAndQueryMetadata_withPhysicalSpecs_persistsAndRetrievesAuthoritativeParameters() = runTest {
+        val domain = TrackMetadata(
+            serverId = 1L,
+            remotePath = "/music/hires.flac",
+            title = "HiRes Track",
+            artist = "Audiophile Artist",
+            album = "Studio Master",
+            trackNumber = 1,
+            durationMs = 300000L,
+            sampleRate = 96000,
+            bitDepth = 24,
+            bitrateKbps = 2450,
+            channels = 2
+        )
+
+        dao.insertOrUpdate(TrackMetadataEntity.fromDomain(domain))
+
+        val retrieved = dao.getMetadata(1L, "/music/hires.flac")
+        assertNotNull(retrieved)
+        val domainRetrieved = retrieved!!.toDomain()
+        assertEquals(96000, domainRetrieved.sampleRate)
+        assertEquals(24, domainRetrieved.bitDepth)
+        assertEquals(2450, domainRetrieved.bitrateKbps)
+        assertEquals(2, domainRetrieved.channels)
     }
 }

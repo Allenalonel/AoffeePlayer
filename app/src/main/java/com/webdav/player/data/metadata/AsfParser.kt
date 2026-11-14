@@ -20,7 +20,7 @@ object AsfParser {
             0x00.toByte(),
             0x62.toByte(),
             0xCE.toByte(),
-            0x6C.toByte(),
+            0x6C.toByte()
         )
 
     private val FILE_PROPERTIES_GUID =
@@ -40,7 +40,7 @@ object AsfParser {
             0x0C.toByte(),
             0x20.toByte(),
             0x53.toByte(),
-            0x65.toByte(),
+            0x65.toByte()
         )
 
     private val CONTENT_DESCRIPTION_GUID =
@@ -60,7 +60,7 @@ object AsfParser {
             0x00.toByte(),
             0x62.toByte(),
             0xCE.toByte(),
-            0x6C.toByte(),
+            0x6C.toByte()
         )
 
     private val EXTENDED_CONTENT_DESCRIPTION_GUID =
@@ -80,12 +80,12 @@ object AsfParser {
             0xC9.toByte(),
             0x5E.toByte(),
             0xA8.toByte(),
-            0x50.toByte(),
+            0x50.toByte()
         )
 
     fun parse(
         bytes: ByteArray,
-        offset: Int = 0,
+        offset: Int = 0
     ): ParsedAudioMetadata? {
         val reader = ByteSliceReader(bytes, offset)
         if (!reader.hasRemaining(30)) return null
@@ -246,7 +246,7 @@ object AsfParser {
             durationMs = durationMs,
             artworkData = artworkData,
             artworkMimeType = artworkMimeType,
-            lyrics = lyrics,
+            lyrics = lyrics
         )
     }
 }

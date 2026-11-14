@@ -67,7 +67,7 @@ class LyricsViewPresentationTest {
             LyricLine(
                 timestampMs = 45000L,
                 text = "Welcome to the Hotel California",
-                translation = "欢迎来到加州旅馆",
+                translation = "欢迎来到加州旅馆"
             )
         assertTrue(bilingual.hasTranslation)
         assertEquals("Welcome to the Hotel California", bilingual.mainText)
@@ -77,7 +77,7 @@ class LyricsViewPresentationTest {
             LyricLine(
                 timestampMs = 50000L,
                 text = "Such a lovely place",
-                translation = null,
+                translation = null
             )
         assertFalse(monolingual.hasTranslation)
         assertEquals("Such a lovely place", monolingual.mainText)
@@ -87,7 +87,7 @@ class LyricsViewPresentationTest {
             LyricLine(
                 timestampMs = 55000L,
                 text = "Such a lovely face",
-                translation = "   ",
+                translation = "   "
             )
         assertFalse(blankTranslation.hasTranslation)
     }
@@ -97,13 +97,13 @@ class LyricsViewPresentationTest {
         val lyrics =
             Lyrics(
                 lines =
-                    listOf(
-                        LyricLine(timestampMs = 0L, text = "Intro instrumental", translation = null),
-                        LyricLine(timestampMs = 15000L, text = "Verse 1 Line 1", translation = "主歌第一句"),
-                        LyricLine(timestampMs = 28000L, text = "Verse 1 Line 2", translation = "主歌第二句"),
-                        LyricLine(timestampMs = 42000L, text = "Chorus Line 1", translation = "副歌第一句"),
-                    ),
-                isSynchronized = true,
+                listOf(
+                    LyricLine(timestampMs = 0L, text = "Intro instrumental", translation = null),
+                    LyricLine(timestampMs = 15000L, text = "Verse 1 Line 1", translation = "主歌第一句"),
+                    LyricLine(timestampMs = 28000L, text = "Verse 1 Line 2", translation = "主歌第二句"),
+                    LyricLine(timestampMs = 42000L, text = "Chorus Line 1", translation = "副歌第一句")
+                ),
+                isSynchronized = true
             )
 
         assertEquals(0, lyrics.findActiveLineIndex(0L))

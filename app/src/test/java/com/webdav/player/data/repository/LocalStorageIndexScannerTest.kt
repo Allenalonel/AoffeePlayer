@@ -29,8 +29,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
-import java.io.File
-import java.net.URLEncoder
 
 @RunWith(RobolectricTestRunner::class)
 class LocalStorageIndexScannerTest {
@@ -55,7 +53,7 @@ class LocalStorageIndexScannerTest {
             val displayName: String,
             val mimeType: String,
             val size: Long = 0L,
-            val lastModified: Long = 0L,
+            val lastModified: Long = 0L
         )
 
         override fun onCreate(): Boolean = true
@@ -64,7 +62,7 @@ class LocalStorageIndexScannerTest {
             val cols =
                 projection ?: arrayOf(
                     DocumentsContract.Root.COLUMN_ROOT_ID,
-                    DocumentsContract.Root.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Root.COLUMN_DOCUMENT_ID
                 )
             return MatrixCursor(cols).apply {
                 addRow(arrayOf("root", "primary:Music"))
@@ -73,13 +71,13 @@ class LocalStorageIndexScannerTest {
 
         override fun queryDocument(
             documentId: String?,
-            projection: Array<out String>?,
+            projection: Array<out String>?
         ): Cursor {
             val cols =
                 projection ?: arrayOf(
                     Document.COLUMN_DOCUMENT_ID,
                     Document.COLUMN_DISPLAY_NAME,
-                    Document.COLUMN_MIME_TYPE,
+                    Document.COLUMN_MIME_TYPE
                 )
             return MatrixCursor(cols).apply {
                 addRow(arrayOf(documentId, documentId ?: "root", Document.MIME_TYPE_DIR))
@@ -89,7 +87,7 @@ class LocalStorageIndexScannerTest {
         override fun queryChildDocuments(
             parentDocumentId: String?,
             projection: Array<out String>?,
-            sortOrder: String?,
+            sortOrder: String?
         ): Cursor {
             queryCount++
             val defaultCols =
@@ -98,7 +96,7 @@ class LocalStorageIndexScannerTest {
                     Document.COLUMN_DISPLAY_NAME,
                     Document.COLUMN_MIME_TYPE,
                     Document.COLUMN_SIZE,
-                    Document.COLUMN_LAST_MODIFIED,
+                    Document.COLUMN_LAST_MODIFIED
                 )
             val cols = projection ?: defaultCols
             val cursor = MatrixCursor(cols)
@@ -123,13 +121,13 @@ class LocalStorageIndexScannerTest {
 
         override fun isChildDocument(
             parentDocumentId: String?,
-            documentId: String?,
+            documentId: String?
         ): Boolean = true
 
         override fun openDocument(
             documentId: String?,
             mode: String?,
-            signal: CancellationSignal?,
+            signal: CancellationSignal?
         ): ParcelFileDescriptor = throw UnsupportedOperationException()
     }
 
@@ -168,7 +166,7 @@ class LocalStorageIndexScannerTest {
                 context = context,
                 mediaTrackIndexDao = mediaTrackIndexDao,
                 checkpointDao = checkpointDao,
-                localStorageFolderDao = folderDao,
+                localStorageFolderDao = folderDao
             )
     }
 
@@ -188,37 +186,37 @@ class LocalStorageIndexScannerTest {
                         displayName = "01 - Queen - Bohemian Rhapsody.flac",
                         mimeType = "audio/flac",
                         size = 35000000L,
-                        lastModified = 1700000000L,
+                        lastModified = 1700000000L
                     ),
                     ScannerTestDocumentsProvider.DocEntry(
                         docId = "primary:Music/Album.cue",
                         displayName = "Album.cue",
                         mimeType = "application/x-cue",
                         size = 1024L,
-                        lastModified = 1700000000L,
+                        lastModified = 1700000000L
                     ),
                     ScannerTestDocumentsProvider.DocEntry(
                         docId = "primary:Music/Rock",
                         displayName = "Rock",
                         mimeType = Document.MIME_TYPE_DIR,
-                        lastModified = 1700000100L,
+                        lastModified = 1700000100L
                     ),
                     ScannerTestDocumentsProvider.DocEntry(
                         docId = "primary:Music/readme.txt",
                         displayName = "readme.txt",
                         mimeType = "text/plain",
-                        size = 200L,
+                        size = 200L
                     ),
                     ScannerTestDocumentsProvider.DocEntry(
                         docId = "primary:Music/.@eaDir",
                         displayName = ".@eaDir",
-                        mimeType = Document.MIME_TYPE_DIR,
+                        mimeType = Document.MIME_TYPE_DIR
                     ),
                     ScannerTestDocumentsProvider.DocEntry(
                         docId = "primary:Music/#recycle",
                         displayName = "#recycle",
-                        mimeType = Document.MIME_TYPE_DIR,
-                    ),
+                        mimeType = Document.MIME_TYPE_DIR
+                    )
                 )
 
             ScannerTestDocumentsProvider.childrenMap["primary:Music/Rock"] =
@@ -228,8 +226,8 @@ class LocalStorageIndexScannerTest {
                         displayName = "Hotel California.mp3",
                         mimeType = "audio/mpeg",
                         size = 9000000L,
-                        lastModified = 1700000200L,
-                    ),
+                        lastModified = 1700000200L
+                    )
                 )
 
             val count = scanner.indexFolder(Uri.parse(TREE_URI_STRING))
@@ -268,8 +266,8 @@ class LocalStorageIndexScannerTest {
                         docId = "primary:Music/Rock",
                         displayName = "Rock",
                         mimeType = Document.MIME_TYPE_DIR,
-                        lastModified = 5555L,
-                    ),
+                        lastModified = 5555L
+                    )
                 )
             ScannerTestDocumentsProvider.childrenMap["primary:Music/Rock"] =
                 listOf(
@@ -278,8 +276,8 @@ class LocalStorageIndexScannerTest {
                         displayName = "Song.mp3",
                         mimeType = "audio/mpeg",
                         size = 1000L,
-                        lastModified = 5555L,
-                    ),
+                        lastModified = 5555L
+                    )
                 )
 
             // Initial scan: queries root and Rock (2 queries)
@@ -306,8 +304,8 @@ class LocalStorageIndexScannerTest {
                         docId = "primary:Music/Song.mp3",
                         displayName = "Song.mp3",
                         mimeType = "audio/mpeg",
-                        size = 1000L,
-                    ),
+                        size = 1000L
+                    )
                 )
 
             scanner.indexFolder(Uri.parse(TREE_URI_STRING))
@@ -329,16 +327,16 @@ class LocalStorageIndexScannerTest {
                         docId = "primary:Music/Song.flac",
                         displayName = "Song.flac",
                         mimeType = "audio/flac",
-                        size = 1000L,
-                    ),
+                        size = 1000L
+                    )
                 )
 
             folderDao.insertFolder(
                 LocalStorageFolderEntity(
                     uriString = TREE_URI_STRING,
                     displayName = "Music",
-                    dateAdded = System.currentTimeMillis(),
-                ),
+                    dateAdded = System.currentTimeMillis()
+                )
             )
 
             val count = scanner.indexAllMountedFolders()
@@ -356,14 +354,14 @@ class LocalStorageIndexScannerTest {
                         docId = "primary:Music/Keep.mp3",
                         displayName = "Keep.mp3",
                         mimeType = "audio/mpeg",
-                        size = 1000L,
+                        size = 1000L
                     ),
                     ScannerTestDocumentsProvider.DocEntry(
                         docId = "primary:Music/DeleteMe.flac",
                         displayName = "DeleteMe.flac",
                         mimeType = "audio/flac",
-                        size = 2000L,
-                    ),
+                        size = 2000L
+                    )
                 )
 
             scanner.indexFolder(Uri.parse(TREE_URI_STRING))
@@ -376,8 +374,8 @@ class LocalStorageIndexScannerTest {
                         docId = "primary:Music/Keep.mp3",
                         displayName = "Keep.mp3",
                         mimeType = "audio/mpeg",
-                        size = 1000L,
-                    ),
+                        size = 1000L
+                    )
                 )
 
             scanner.indexFolder(Uri.parse(TREE_URI_STRING), force = true)

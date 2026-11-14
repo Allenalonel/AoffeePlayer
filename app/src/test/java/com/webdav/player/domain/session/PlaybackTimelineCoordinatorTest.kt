@@ -10,8 +10,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -53,7 +51,7 @@ class PlaybackTimelineCoordinatorTest {
                 onPlaybackStateChanged = { observedStates.add(it) },
                 onTrackTransition = { transitionCount++ },
                 onProgressUpdated = { observedProgress.add(it) },
-                onDurationChanged = { observedDurations.add(it) },
+                onDurationChanged = { observedDurations.add(it) }
             )
         coordinator.startObservations()
     }
@@ -121,11 +119,11 @@ class PlaybackTimelineCoordinatorTest {
     fun mapEngineProgress_prefersPositiveEngineDuration_andFallsBackOtherwise() {
         assertEquals(
             PlaybackProgress(5_000L, 240_000L, 10_000L),
-            coordinator.mapEngineProgress(5_000L, 240_000L, 10_000L, fallbackDurationMs = 180_000L),
+            coordinator.mapEngineProgress(5_000L, 240_000L, 10_000L, fallbackDurationMs = 180_000L)
         )
         assertEquals(
             PlaybackProgress(5_000L, 180_000L, 10_000L),
-            coordinator.mapEngineProgress(5_000L, 0L, 10_000L, fallbackDurationMs = 180_000L),
+            coordinator.mapEngineProgress(5_000L, 0L, 10_000L, fallbackDurationMs = 180_000L)
         )
     }
 
@@ -139,12 +137,12 @@ class PlaybackTimelineCoordinatorTest {
         override fun loadTrack(
             server: WebDavServer,
             track: AudioTrack,
-            startPositionMs: Long,
+            startPositionMs: Long
         ) {}
 
         override fun prerollTrack(
             server: WebDavServer,
-            track: AudioTrack,
+            track: AudioTrack
         ) {}
 
         override fun clearPrerollTrack() {}

@@ -5,18 +5,14 @@ import com.webdav.player.data.local.PlaylistEntity
 import com.webdav.player.data.local.PlaylistTrackEntity
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.InactiveReason
-import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.Playlist
 import com.webdav.player.domain.model.PlaylistTrackEntry
-import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackIdentity
-import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import com.webdav.player.domain.storage.StorageReachabilityTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -31,8 +27,8 @@ class PlaylistRepositoryImpl(
     private val timeProvider: () -> Long = { System.currentTimeMillis() },
     private val coroutineScope: CoroutineScope =
         CoroutineScope(
-            SupervisorJob() + Dispatchers.IO + kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> },
-        ),
+            SupervisorJob() + Dispatchers.IO + kotlinx.coroutines.CoroutineExceptionHandler { _, _ -> }
+        )
 ) : PlaylistRepository {
     override fun getAllPlaylistsFlow(): Flow<List<Playlist>> =
         playlistDao.getAllPlaylistsWithTrackCountFlow().map { list ->
@@ -57,14 +53,14 @@ class PlaylistRepositoryImpl(
             PlaylistEntity(
                 name = trimmed,
                 createdAtMs = now,
-                updatedAtMs = now,
+                updatedAtMs = now
             )
         return playlistDao.insertPlaylist(entity)
     }
 
     override suspend fun renamePlaylist(
         playlistId: Long,
-        newName: String,
+        newName: String
     ) {
         val trimmed = newName.trim()
         require(trimmed.isNotEmpty()) { "歌单名称不能为空" }
@@ -84,7 +80,7 @@ class PlaylistRepositoryImpl(
 
     override suspend fun isPlaylistNameExists(
         name: String,
-        excludePlaylistId: Long?,
+        excludePlaylistId: Long?
     ): Boolean {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return false
@@ -101,7 +97,7 @@ class PlaylistRepositoryImpl(
             playlistDao.getTracksForPlaylistFlow(playlistId),
             inactiveFlow,
             serverFlow,
-            reasonsFlow,
+            reasonsFlow
         ) { entities, inactiveMap, serverReachability, serverReasons ->
             reconcilePlaylistTracks(entities, inactiveMap, serverReachability, serverReasons)
         }
@@ -119,7 +115,7 @@ class PlaylistRepositoryImpl(
         entities: List<PlaylistTrackEntity>,
         inactiveMap: Map<TrackIdentity, InactiveReason>,
         serverReachability: Map<Long, Boolean>,
-        serverReasons: Map<Long, InactiveReason>,
+        serverReasons: Map<Long, InactiveReason>
     ): List<PlaylistTrackEntry> {
         val seenKeys = mutableSetOf<TrackIdentity>()
         val duplicateIds = mutableListOf<Long>()
@@ -178,13 +174,13 @@ class PlaylistRepositoryImpl(
                                 playlistDao.updateTrackCoverByServerAndPath(
                                     serverId = identity.serverId,
                                     remotePath = identity.remotePath,
-                                    coverThumbnailPath = newCoverPath,
+                                    coverThumbnailPath = newCoverPath
                                 )
                             } catch (_: Throwable) {
                                 // Non-fatal
                             }
                         }
-                    },
+                    }
                 )
 
             reconciled.map { track ->
@@ -198,11 +194,24 @@ class PlaylistRepositoryImpl(
                             // Non-fatal
                         }
                     }
-                    track.copy(coverThumbnailPath = effectiveCover)
-                } else if (meta != null && effectiveCover == null && track.coverThumbnailPath != null) {
-                    track.copy(coverThumbnailPath = null)
+                }
+                val base =
+                    if (effectiveCover != null && effectiveCover != track.coverThumbnailPath) {
+                        track.copy(coverThumbnailPath = effectiveCover)
+                    } else if (meta != null && effectiveCover == null && track.coverThumbnailPath != null) {
+                        track.copy(coverThumbnailPath = null)
+                    } else {
+                        track
+                    }
+                if (meta != null) {
+                    base.copy(
+                        sampleRate = meta.sampleRate ?: base.sampleRate,
+                        bitDepth = meta.bitDepth ?: base.bitDepth,
+                        bitrateKbps = meta.bitrateKbps ?: base.bitrateKbps,
+                        channels = meta.channels ?: base.channels
+                    )
                 } else {
-                    track
+                    base
                 }
             }
         } else {
@@ -212,14 +221,14 @@ class PlaylistRepositoryImpl(
 
     override suspend fun addTrackToPlaylist(
         playlistId: Long,
-        track: AudioTrack,
+        track: AudioTrack
     ): Long {
         val identity = track.identity
         val existing =
             playlistDao.findTrackInPlaylist(
                 playlistId = playlistId,
                 serverId = identity.serverId,
-                remotePath = identity.remotePath,
+                remotePath = identity.remotePath
             )
         if (existing != null) {
             return -1L
@@ -235,7 +244,7 @@ class PlaylistRepositoryImpl(
             PlaylistTrackEntry.fromAudioTrack(
                 playlistId = playlistId,
                 track = track.copy(coverThumbnailPath = effectiveCover),
-                sortOrder = newSortOrder,
+                sortOrder = newSortOrder
             )
         val insertedId = playlistDao.insertTrack(PlaylistTrackEntity.fromDomain(entry))
         playlistDao.updatePlaylistTimestamp(playlistId, timeProvider())
@@ -244,7 +253,7 @@ class PlaylistRepositoryImpl(
 
     override suspend fun addTracksToPlaylist(
         playlistId: Long,
-        tracks: List<AudioTrack>,
+        tracks: List<AudioTrack>
     ): List<Long> {
         if (tracks.isEmpty()) return emptyList()
         val existing = playlistDao.getTracksForPlaylist(playlistId)
@@ -266,7 +275,7 @@ class PlaylistRepositoryImpl(
                     PlaylistTrackEntry.fromAudioTrack(
                         playlistId = playlistId,
                         track = track.copy(coverThumbnailPath = effectiveCover),
-                        sortOrder = startSort + index,
+                        sortOrder = startSort + index
                     )
                 PlaylistTrackEntity.fromDomain(entry)
             }
@@ -285,7 +294,7 @@ class PlaylistRepositoryImpl(
 
     override suspend fun removeTracksFromPlaylist(
         playlistId: Long,
-        trackEntryIds: List<Long>,
+        trackEntryIds: List<Long>
     ) {
         if (trackEntryIds.isEmpty()) return
         playlistDao.deleteTracksByIds(trackEntryIds)
@@ -294,14 +303,14 @@ class PlaylistRepositoryImpl(
 
     override suspend fun updateTrackCover(
         trackEntryId: Long,
-        coverThumbnailPath: String?,
+        coverThumbnailPath: String?
     ) {
         playlistDao.updateTrackCover(trackEntryId, coverThumbnailPath)
     }
 
     override suspend fun updateTrackOrders(
         playlistId: Long,
-        orderedTrackIds: List<Long>,
+        orderedTrackIds: List<Long>
     ) {
         val currentTracks = playlistDao.getTracksForPlaylist(playlistId)
         val trackMap = currentTracks.associateBy { it.id }

@@ -11,13 +11,13 @@ interface TrackMetadataDao {
     @Query("SELECT * FROM track_metadata WHERE serverId = :serverId AND remotePath = :remotePath LIMIT 1")
     suspend fun getMetadata(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ): TrackMetadataEntity?
 
     @Query("SELECT * FROM track_metadata WHERE serverId = :serverId AND remotePath = :remotePath LIMIT 1")
     fun getMetadataFlow(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ): Flow<TrackMetadataEntity?>
 
     @Query("SELECT * FROM track_metadata WHERE serverId = :serverId")
@@ -48,11 +48,11 @@ interface TrackMetadataDao {
                     )
               )
           )
-        """,
+        """
     )
     fun searchMetadataFlow(
         query: String,
-        serverId: Long? = null,
+        serverId: Long? = null
     ): Flow<List<TrackMetadataEntity>>
 
     @Query("SELECT * FROM track_metadata")
@@ -64,13 +64,13 @@ interface TrackMetadataDao {
     @Query("SELECT * FROM track_metadata WHERE serverId = :serverId AND remotePath IN (:remotePaths)")
     suspend fun getMetadataForPaths(
         serverId: Long,
-        remotePaths: List<String>,
+        remotePaths: List<String>
     ): List<TrackMetadataEntity>
 
     @Query("SELECT * FROM track_metadata WHERE serverId = :serverId AND remotePath IN (:remotePaths)")
     fun getMetadataForPathsFlow(
         serverId: Long,
-        remotePaths: List<String>,
+        remotePaths: List<String>
     ): Flow<List<TrackMetadataEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -82,7 +82,7 @@ interface TrackMetadataDao {
     @Query("DELETE FROM track_metadata WHERE serverId = :serverId AND remotePath = :remotePath")
     suspend fun deleteMetadata(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ): Int
 
     @Query("DELETE FROM track_metadata WHERE serverId = :serverId")

@@ -33,12 +33,12 @@ interface MusicPlayerAppSession {
         server: WebDavServer,
         directory: RemoteDirectory,
         selectedFile: RemoteFile,
-        initialMetadata: Map<String, TrackMetadata> = emptyMap(),
+        initialMetadata: Map<String, TrackMetadata> = emptyMap()
     )
 
     fun playPlaylist(
         playlist: Playlist,
-        startIndex: Int = 0,
+        startIndex: Int = 0
     )
 
     fun playTrack(track: AudioTrack)

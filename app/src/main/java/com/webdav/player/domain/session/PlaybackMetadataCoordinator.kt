@@ -26,7 +26,7 @@ internal class PlaybackMetadataCoordinator(
     private val trackMetadataRepository: TrackMetadataRepository?,
     private val playerEngine: AudioPlayerEngine,
     private val sessionStateFlow: MutableStateFlow<PlayerSessionState>,
-    private val coroutineScope: CoroutineScope,
+    private val coroutineScope: CoroutineScope
 ) {
     fun startMetadataObservation() {
         val repo = trackMetadataRepository ?: return
@@ -91,18 +91,18 @@ internal class PlaybackMetadataCoordinator(
 
     fun enrichQueueTracksFromCache(
         server: WebDavServer,
-        currentQueue: PlaybackQueue,
+        currentQueue: PlaybackQueue
     ) {
         val repo = trackMetadataRepository ?: return
         coroutineScope.launch {
-            val unpopulatedPaths = currentQueue.tracks.filter { it.coverThumbnailPath == null }.map { it.remotePath }
+            val unpopulatedPaths = currentQueue.tracks.filter { it.coverThumbnailPath == null || it.sampleRate == null }.map { it.remotePath }
             if (unpopulatedPaths.isNotEmpty()) {
                 val tracksToUpdate = mutableListOf<Pair<Int, AudioTrack>>()
                 sessionStateFlow.update { state ->
                     var anyChanged = false
                     val updated =
                         state.queue.tracks.mapIndexed { index, track ->
-                            if (track.coverThumbnailPath == null) {
+                            if (track.coverThumbnailPath == null || track.sampleRate == null) {
                                 val trackServerId =
                                     when {
                                         track.isLocal -> LOCAL_STORAGE_ID
@@ -138,14 +138,21 @@ internal class PlaybackMetadataCoordinator(
 
     suspend fun enrichSingleTrackMetadata(
         server: WebDavServer?,
-        track: AudioTrack,
+        track: AudioTrack
     ) {
         val repo = trackMetadataRepository ?: return
         val isLocalTrack = track.isLocal
         val s = if (isLocalTrack) WebDavServer.createLocalStorage() else (server ?: return)
         val cachedMeta = repo.getCachedMetadata(s.id, track.remotePath)
         val meta =
-            cachedMeta ?: repo.resolveSingleTrackMetadata(s, RemoteFile(name = track.fileName, path = track.remotePath))
+            if (cachedMeta != null && (cachedMeta.sampleRate != null || cachedMeta.bitDepth != null)) {
+                cachedMeta
+            } else {
+                repo.resolveSingleTrackMetadata(
+                    s,
+                    RemoteFile(name = track.fileName, path = track.remotePath, size = track.size)
+                )
+            }
         var enrichedTrack: AudioTrack? = null
 
         sessionStateFlow.update { current ->
@@ -176,7 +183,7 @@ internal class PlaybackMetadataCoordinator(
     fun enrichTrack(
         track: AudioTrack,
         meta: TrackMetadata,
-        isCurrentActiveTrack: Boolean,
+        isCurrentActiveTrack: Boolean
     ): AudioTrack {
         val enriched = track.withMetadata(meta)
         val physicalDuration =

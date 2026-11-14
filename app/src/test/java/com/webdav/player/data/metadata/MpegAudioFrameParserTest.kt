@@ -1,7 +1,6 @@
 package com.webdav.player.data.metadata
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MpegAudioFrameParserTest {

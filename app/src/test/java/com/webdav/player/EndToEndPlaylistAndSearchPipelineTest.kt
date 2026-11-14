@@ -12,9 +12,7 @@ import com.webdav.player.data.repository.MediaLibraryRepositoryImpl
 import com.webdav.player.data.repository.PlaylistRepositoryImpl
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
-import com.webdav.player.domain.model.InactiveReason
 import com.webdav.player.domain.model.PlaybackErrorKind
-import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.QueueOrigin
 import com.webdav.player.domain.model.RemoteDirectory
@@ -25,6 +23,7 @@ import com.webdav.player.domain.player.FakeAudioPlayerEngine
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.session.FakePlaybackSessionStore
 import com.webdav.player.domain.session.MusicPlayerAppSessionImpl
+import java.io.FileNotFoundException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
@@ -36,17 +35,14 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import okhttp3.internal.http2.StreamResetException
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.FileNotFoundException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -72,7 +68,7 @@ class EndToEndPlaylistAndSearchPipelineTest {
             username = "home_user",
             password = "password1",
             allowSelfSigned = true,
-            isDefault = true,
+            isDefault = true
         )
 
     private val server2 =
@@ -85,7 +81,7 @@ class EndToEndPlaylistAndSearchPipelineTest {
             username = "office_user",
             password = "password2",
             allowSelfSigned = false,
-            isDefault = false,
+            isDefault = false
         )
 
     private val server1File =
@@ -93,7 +89,7 @@ class EndToEndPlaylistAndSearchPipelineTest {
             name = "Beethoven-Symphony9.flac",
             path = "/Classical/Beethoven-Symphony9.flac",
             size = 450_000_000L,
-            fileType = RemoteFileType.Audio(AudioFormat.FLAC),
+            fileType = RemoteFileType.Audio(AudioFormat.FLAC)
         )
 
     private val server1CueFile =
@@ -101,7 +97,7 @@ class EndToEndPlaylistAndSearchPipelineTest {
             name = "Beethoven-Symphony9.cue",
             path = "/Classical/Beethoven-Symphony9.cue",
             size = 2_000L,
-            fileType = RemoteFileType.Other,
+            fileType = RemoteFileType.Other
         )
 
     private val server2File =
@@ -109,12 +105,11 @@ class EndToEndPlaylistAndSearchPipelineTest {
             name = "Chopin-Nocturne.mp3",
             path = "/Piano/Chopin-Nocturne.mp3",
             size = 12_000_000L,
-            fileType = RemoteFileType.Audio(AudioFormat.MP3),
+            fileType = RemoteFileType.Audio(AudioFormat.MP3)
         )
 
-
     private class TestServerRepository(
-        initialServers: List<WebDavServer>,
+        initialServers: List<WebDavServer>
     ) : ServerRepository {
         private val serversFlow = MutableStateFlow(initialServers)
         private val activeServerFlow = MutableStateFlow(initialServers.firstOrNull { it.isDefault } ?: initialServers.firstOrNull())
@@ -153,7 +148,7 @@ class EndToEndPlaylistAndSearchPipelineTest {
                 trackMetadataDao = database.trackMetadataDao(),
                 mediaTrackIndexDao = database.mediaTrackIndexDao(),
                 directorySyncCheckpointDao = database.directorySyncCheckpointDao(),
-                context = context,
+                context = context
             )
 
         fakeEngine = FakeAudioPlayerEngine()
@@ -169,7 +164,7 @@ class EndToEndPlaylistAndSearchPipelineTest {
                 serverRepository = fakeServerRepo,
                 sessionStore = fakeStore,
                 playlistRepository = playlistRepository,
-                coroutineScope = sessionScope,
+                coroutineScope = sessionScope
             )
 
         // Populate Room directory cache
@@ -178,7 +173,7 @@ class EndToEndPlaylistAndSearchPipelineTest {
                 path = "/Classical/",
                 name = "Classical",
                 subDirectories = emptyList(),
-                files = listOf(server1File, server1CueFile),
+                files = listOf(server1File, server1CueFile)
             )
         kotlinx.coroutines.runBlocking {
             database.directoryCacheDao().insertOrUpdate(
@@ -186,8 +181,8 @@ class EndToEndPlaylistAndSearchPipelineTest {
                     serverId = server1.id,
                     path = dir1.path,
                     dataJson = RemoteDirectoryJsonSerializer.serialize(dir1),
-                    lastUpdatedMs = System.currentTimeMillis(),
-                ),
+                    lastUpdatedMs = System.currentTimeMillis()
+                )
             )
 
             val dir2 =
@@ -195,15 +190,15 @@ class EndToEndPlaylistAndSearchPipelineTest {
                     path = "/Piano/",
                     name = "Piano",
                     subDirectories = emptyList(),
-                    files = listOf(server2File),
+                    files = listOf(server2File)
                 )
             database.directoryCacheDao().insertOrUpdate(
                 DirectoryCacheEntity(
                     serverId = server2.id,
                     path = dir2.path,
                     dataJson = RemoteDirectoryJsonSerializer.serialize(dir2),
-                    lastUpdatedMs = System.currentTimeMillis(),
-                ),
+                    lastUpdatedMs = System.currentTimeMillis()
+                )
             )
 
             // Populate track metadata
@@ -216,8 +211,8 @@ class EndToEndPlaylistAndSearchPipelineTest {
                     album = "Beethoven Complete",
                     trackNumber = 1,
                     durationMs = 3900000L,
-                    coverThumbnailPath = null,
-                ),
+                    coverThumbnailPath = null
+                )
             )
             database.trackMetadataDao().insertOrUpdate(
                 TrackMetadataEntity(
@@ -228,8 +223,8 @@ class EndToEndPlaylistAndSearchPipelineTest {
                     album = "Romantic Piano Works",
                     trackNumber = 2,
                     durationMs = 280000L,
-                    coverThumbnailPath = null,
-                ),
+                    coverThumbnailPath = null
+                )
             )
         }
     }
@@ -360,9 +355,9 @@ class EndToEndPlaylistAndSearchPipelineTest {
                 PlaybackState.Error(
                     "HTTP 404 error",
                     FileNotFoundException("HTTP 404: Remote file not found"),
-                    kind = PlaybackErrorKind.FILE_NOT_FOUND,
+                    kind = PlaybackErrorKind.FILE_NOT_FOUND
                 )
-            
+
             // Session catches 404, marks track inactive, and automatically self-heals by advancing to track 2!
             val stateAfterHealing = session.sessionState.first { it.queue.currentIndex == 1 && it.activeServer?.id == server2.id }
             assertEquals(1, stateAfterHealing.queue.currentIndex)
@@ -377,7 +372,6 @@ class EndToEndPlaylistAndSearchPipelineTest {
             assertEquals("Chopin-Nocturne.mp3", remainingTracks[0].title)
             assertEquals(id2, remainingTracks[0].id)
         }
-
 
     @Test
     fun e2e_sessionPersistenceAndColdStartRestoration_withPlaylistQueue() =
@@ -415,7 +409,7 @@ class EndToEndPlaylistAndSearchPipelineTest {
                     serverRepository = fakeServerRepo,
                     sessionStore = fakeStore,
                     playlistRepository = playlistRepository,
-                    coroutineScope = newScope,
+                    coroutineScope = newScope
                 )
 
             restoredSession.restoreSession()

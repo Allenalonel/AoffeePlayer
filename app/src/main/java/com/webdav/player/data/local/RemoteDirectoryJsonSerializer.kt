@@ -83,7 +83,7 @@ object RemoteDirectoryJsonSerializer {
                 name = name,
                 subDirectories = subDirsList,
                 files = filesList,
-                serverId = serverId,
+                serverId = serverId
             )
         } catch (e: Exception) {
             null

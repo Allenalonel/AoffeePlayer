@@ -5,14 +5,14 @@ import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.WebDavServer
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
-import okhttp3.ConnectionPool
-import okhttp3.OkHttpClient
 import java.io.IOException
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import okhttp3.ConnectionPool
+import okhttp3.OkHttpClient
 
 /**
  * Single authoritative, highly configurable test double for [WebDavClient].
@@ -86,14 +86,14 @@ class SharedFakeWebDavClient : WebDavClient {
 
     fun stubFileBytes(
         path: String,
-        bytes: ByteArray,
+        bytes: ByteArray
     ) {
         files[path] = bytes
     }
 
     fun stubText(
         path: String,
-        text: String?,
+        text: String?
     ) {
         if (text != null) {
             textFiles[path] = text
@@ -104,14 +104,14 @@ class SharedFakeWebDavClient : WebDavClient {
 
     fun stubDirectory(
         path: String,
-        directory: RemoteDirectory,
+        directory: RemoteDirectory
     ) {
         directoryTree[RemoteDirectory.normalizePath(path)] = directory
     }
 
     fun stubDirectoryResult(
         path: String,
-        result: ListDirectoryResult,
+        result: ListDirectoryResult
     ) {
         directoryResults[path] = result
     }
@@ -124,7 +124,7 @@ class SharedFakeWebDavClient : WebDavClient {
 
     override suspend fun listDirectory(
         server: WebDavServer,
-        path: String,
+        path: String
     ): ListDirectoryResult {
         val normalizedPath = RemoteDirectory.normalizePath(path)
         visitedPaths.add(normalizedPath)
@@ -162,8 +162,8 @@ class SharedFakeWebDavClient : WebDavClient {
                 ?: ListDirectoryResult.Success(
                     RemoteDirectory(
                         path = path,
-                        name = path.trim('/').substringAfterLast('/'),
-                    ),
+                        name = path.trim('/').substringAfterLast('/')
+                    )
                 )
         } finally {
             activeCalls.decrementAndGet()
@@ -174,7 +174,7 @@ class SharedFakeWebDavClient : WebDavClient {
         server: WebDavServer,
         remotePath: String,
         startByte: Long,
-        endByte: Long,
+        endByte: Long
     ): ByteArray? {
         fetchRangeException?.let { throw it }
         onFetchRange?.invoke(remotePath)
@@ -200,7 +200,7 @@ class SharedFakeWebDavClient : WebDavClient {
 
     override suspend fun fetchText(
         server: WebDavServer,
-        remotePath: String,
+        remotePath: String
     ): String? {
         fetchTextCount.incrementAndGet()
         fetchTextException?.let { throw it }

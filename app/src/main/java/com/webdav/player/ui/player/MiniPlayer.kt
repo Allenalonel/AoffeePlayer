@@ -1,6 +1,5 @@
 package com.webdav.player.ui.player
 
-import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -31,9 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -89,14 +86,14 @@ enum class MiniPlayerGestureAction {
     NONE,
     SKIP_TO_NEXT,
     SKIP_TO_PREVIOUS,
-    EXPAND_FULL_PLAYER,
+    EXPAND_FULL_PLAYER
 }
 
 fun resolveMiniPlayerGesture(
     dragX: Float,
     dragY: Float,
     swipeThresholdPx: Float,
-    verticalDragThresholdPx: Float = MiniPlayerDefaults.VerticalDragThreshold,
+    verticalDragThresholdPx: Float = MiniPlayerDefaults.VerticalDragThreshold
 ): MiniPlayerGestureAction {
     val absX = kotlin.math.abs(dragX)
     val absY = kotlin.math.abs(dragY)
@@ -122,7 +119,7 @@ fun MiniPlayer(
     isPlayButtonVisible: Boolean = true,
     onPlayButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
     isQueueButtonVisible: Boolean = true,
-    onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null
 ) {
     val currentTrack = sessionState.currentTrack ?: return
     val density = LocalDensity.current
@@ -133,164 +130,164 @@ fun MiniPlayer(
     val borderStroke =
         BorderStroke(
             MiniPlayerDefaults.SurfaceBorderWidth,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = MiniPlayerDefaults.SurfaceBorderAlpha),
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = MiniPlayerDefaults.SurfaceBorderAlpha)
         )
 
     Surface(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .heightIn(min = MiniPlayerDefaults.CapsuleHeight)
-                .clip(MiniPlayerDefaults.CapsuleShape)
-                .pointerInput(playbackActions, onMiniPlayerClick, swipeThresholdPx) {
-                    var totalDragX = 0f
-                    var totalDragY = 0f
-                    var actionTriggered = false
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = MiniPlayerDefaults.CapsuleHeight)
+            .clip(MiniPlayerDefaults.CapsuleShape)
+            .pointerInput(playbackActions, onMiniPlayerClick, swipeThresholdPx) {
+                var totalDragX = 0f
+                var totalDragY = 0f
+                var actionTriggered = false
 
-                    detectDragGestures(
-                        onDragStart = {
-                            totalDragX = 0f
-                            totalDragY = 0f
-                            actionTriggered = false
-                        },
-                        onDragEnd = {
-                            totalDragX = 0f
-                            totalDragY = 0f
-                            actionTriggered = false
-                        },
-                        onDragCancel = {
-                            totalDragX = 0f
-                            totalDragY = 0f
-                            actionTriggered = false
-                        },
-                        onDrag = { change, dragAmount ->
-                            if (actionTriggered) return@detectDragGestures
+                detectDragGestures(
+                    onDragStart = {
+                        totalDragX = 0f
+                        totalDragY = 0f
+                        actionTriggered = false
+                    },
+                    onDragEnd = {
+                        totalDragX = 0f
+                        totalDragY = 0f
+                        actionTriggered = false
+                    },
+                    onDragCancel = {
+                        totalDragX = 0f
+                        totalDragY = 0f
+                        actionTriggered = false
+                    },
+                    onDrag = { change, dragAmount ->
+                        if (actionTriggered) return@detectDragGestures
 
-                            totalDragX += dragAmount.x
-                            totalDragY += dragAmount.y
+                        totalDragX += dragAmount.x
+                        totalDragY += dragAmount.y
 
-                            when (resolveMiniPlayerGesture(totalDragX, totalDragY, swipeThresholdPx)) {
-                                MiniPlayerGestureAction.EXPAND_FULL_PLAYER -> {
-                                    actionTriggered = true
-                                    change.consume()
-                                    onMiniPlayerClick()
-                                }
-
-                                MiniPlayerGestureAction.SKIP_TO_NEXT -> {
-                                    actionTriggered = true
-                                    change.consume()
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    playbackActions.skipToNext()
-                                }
-
-                                MiniPlayerGestureAction.SKIP_TO_PREVIOUS -> {
-                                    actionTriggered = true
-                                    change.consume()
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    playbackActions.skipToPrevious()
-                                }
-
-                                MiniPlayerGestureAction.NONE -> {
-                                    // Keep accumulating drag
-                                }
+                        when (resolveMiniPlayerGesture(totalDragX, totalDragY, swipeThresholdPx)) {
+                            MiniPlayerGestureAction.EXPAND_FULL_PLAYER -> {
+                                actionTriggered = true
+                                change.consume()
+                                onMiniPlayerClick()
                             }
-                        },
-                    )
-                }.clickable { onMiniPlayerClick() },
+
+                            MiniPlayerGestureAction.SKIP_TO_NEXT -> {
+                                actionTriggered = true
+                                change.consume()
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                playbackActions.skipToNext()
+                            }
+
+                            MiniPlayerGestureAction.SKIP_TO_PREVIOUS -> {
+                                actionTriggered = true
+                                change.consume()
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                playbackActions.skipToPrevious()
+                            }
+
+                            MiniPlayerGestureAction.NONE -> {
+                                // Keep accumulating drag
+                            }
+                        }
+                    }
+                )
+            }.clickable { onMiniPlayerClick() },
         shape = MiniPlayerDefaults.CapsuleShape,
         color = surfaceColor,
         border = borderStroke,
         tonalElevation = 3.dp,
-        shadowElevation = 0.dp,
+        shadowElevation = 0.dp
     ) {
         Box(
-            modifier = Modifier.fillMaxWidth().height(MiniPlayerDefaults.CapsuleHeight),
+            modifier = Modifier.fillMaxWidth().height(MiniPlayerDefaults.CapsuleHeight)
         ) {
             // Scheme 3: Liquid Fill Fluid Background Progress
             val progressFraction = playbackProgress.progressFraction.coerceIn(0f, 1f)
             if (progressFraction > 0f) {
                 Box(
                     modifier =
-                        Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(progressFraction)
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.24f),
-                                    ),
-                                ),
-                            ),
+                    Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(progressFraction)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
+                                )
+                            )
+                        )
                 ) {
                     Box(
                         modifier =
-                            Modifier
-                                .align(Alignment.CenterEnd)
-                                .width(2.dp)
-                                .fillMaxHeight()
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.70f),
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
-                                        ),
-                                    ),
-                                ),
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .width(2.dp)
+                            .fillMaxHeight()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.70f),
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+                                    )
+                                )
+                            )
                     )
                 }
             }
 
             Column(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.Center
             ) {
                 if (isMiniPlayerRetryBannerVisible(sessionState)) {
                     MiniPlayerRetryBanner(
-                        onRetryPlayback = { playbackActions.retryPlayback() },
+                        onRetryPlayback = { playbackActions.retryPlayback() }
                     )
                 }
                 Row(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(start = 10.dp, end = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 10.dp, end = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Circular Album Art Disc (CircleShape matching capsule geometry)
                     Box(
                         modifier =
-                            Modifier
-                                .size(MiniPlayerDefaults.CoverSize)
-                                .then(
-                                    if (onCoverPositioned != null) {
-                                        Modifier.onGloballyPositioned(onCoverPositioned)
-                                    } else {
-                                        Modifier
-                                    },
-                                ),
-                        contentAlignment = Alignment.Center,
+                        Modifier
+                            .size(MiniPlayerDefaults.CoverSize)
+                            .then(
+                                if (onCoverPositioned != null) {
+                                    Modifier.onGloballyPositioned(onCoverPositioned)
+                                } else {
+                                    Modifier
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         if (isCoverVisible) {
                             Box(
                                 modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                                contentAlignment = Alignment.Center,
+                                Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center
                             ) {
                                 CoverThumbnailImage(
                                     thumbnailPath = currentTrack.coverThumbnailPath,
                                     contentDescription = "封面",
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
                                 ) {
                                     Icon(
                                         imageVector = AppIcons.Audiotrack,
                                         contentDescription = "音轨",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                        modifier = Modifier.size(22.dp),
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
                             }
@@ -302,7 +299,7 @@ fun MiniPlayer(
                     // Title and State Column
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.Center,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = currentTrack.title,
@@ -310,12 +307,12 @@ fun MiniPlayer(
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         PlaybackStateIndicator(
                             sessionState = sessionState,
-                            playbackProgress = playbackProgress,
+                            playbackProgress = playbackProgress
                         )
                     }
 
@@ -332,16 +329,16 @@ fun MiniPlayer(
                             }
                         },
                         modifier =
-                            Modifier
-                                .then(
-                                    if (onPlayButtonPositioned != null) {
-                                        Modifier.onGloballyPositioned(onPlayButtonPositioned)
-                                    } else {
-                                        Modifier
-                                    },
-                                ).graphicsLayer {
-                                    alpha = if (isPlayButtonVisible) 1f else 0f
-                                },
+                        Modifier
+                            .then(
+                                if (onPlayButtonPositioned != null) {
+                                    Modifier.onGloballyPositioned(onPlayButtonPositioned)
+                                } else {
+                                    Modifier
+                                }
+                            ).graphicsLayer {
+                                alpha = if (isPlayButtonVisible) 1f else 0f
+                            }
                     )
 
                     Spacer(modifier = Modifier.width(MiniPlayerDefaults.ButtonSpacing))
@@ -350,27 +347,27 @@ fun MiniPlayer(
                     FilledTonalIconButton(
                         onClick = onOpenQueue,
                         modifier =
-                            Modifier
-                                .size(MiniPlayerDefaults.QueueMusicButtonSize)
-                                .then(
-                                    if (onQueueButtonPositioned != null) {
-                                        Modifier.onGloballyPositioned(onQueueButtonPositioned)
-                                    } else {
-                                        Modifier
-                                    },
-                                ).graphicsLayer {
-                                    alpha = if (isQueueButtonVisible) 1f else 0f
-                                },
+                        Modifier
+                            .size(MiniPlayerDefaults.QueueMusicButtonSize)
+                            .then(
+                                if (onQueueButtonPositioned != null) {
+                                    Modifier.onGloballyPositioned(onQueueButtonPositioned)
+                                } else {
+                                    Modifier
+                                }
+                            ).graphicsLayer {
+                                alpha = if (isQueueButtonVisible) 1f else 0f
+                            },
                         colors =
-                            IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ),
+                        IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        )
                     ) {
                         Icon(
                             imageVector = AppIcons.QueueMusic,
                             contentDescription = "播放队列",
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -383,18 +380,18 @@ fun MiniPlayer(
 private fun PlaybackStateIndicator(
     sessionState: PlayerSessionState,
     modifier: Modifier = Modifier,
-    playbackProgress: PlaybackProgress = PlaybackProgress.ZERO,
+    playbackProgress: PlaybackProgress = PlaybackProgress.ZERO
 ) {
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         when {
             sessionState.isBuffering -> {
                 CircularProgressIndicator(
                     strokeWidth = 2.dp,
                     color = if (sessionState.isWeakNetwork) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(10.dp),
+                    modifier = Modifier.size(10.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 val bufferText =
@@ -406,7 +403,7 @@ private fun PlaybackStateIndicator(
                 Text(
                     text = bufferText,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (sessionState.isWeakNetwork) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    color = if (sessionState.isWeakNetwork) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -422,7 +419,7 @@ private fun PlaybackStateIndicator(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -438,7 +435,7 @@ private fun PlaybackStateIndicator(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -448,7 +445,7 @@ private fun PlaybackStateIndicator(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -458,7 +455,7 @@ private fun PlaybackStateIndicator(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -469,21 +466,21 @@ private fun PlaybackStateIndicator(
 private fun PlayPauseToggleButton(
     sessionState: PlayerSessionState,
     onTogglePlayPause: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     FilledIconButton(
         onClick = onTogglePlayPause,
         modifier = modifier.size(MiniPlayerDefaults.PlayPauseButtonSize),
         colors =
-            IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
+        IconButtonDefaults.filledIconButtonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        )
     ) {
         AnimatedContent(
             targetState = sessionState.playbackState,
             transitionSpec = { fadeIn() togetherWith fadeOut() },
-            label = "PlayPauseTransition",
+            label = "PlayPauseTransition"
         ) { state ->
             when (state) {
                 is PlaybackState.Buffering -> {
@@ -491,13 +488,13 @@ private fun PlayPauseToggleButton(
                         Icon(
                             imageVector = AppIcons.Refresh,
                             contentDescription = "重试",
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier.size(22.dp)
                         )
                     } else {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }
@@ -506,7 +503,7 @@ private fun PlayPauseToggleButton(
                     Icon(
                         imageVector = AppIcons.Pause,
                         contentDescription = "暂停",
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
@@ -514,7 +511,7 @@ private fun PlayPauseToggleButton(
                     Icon(
                         imageVector = AppIcons.PlayArrow,
                         contentDescription = "播放",
-                        modifier = Modifier.size(22.dp),
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -527,34 +524,34 @@ fun isMiniPlayerRetryBannerVisible(sessionState: PlayerSessionState): Boolean = 
 @Composable
 fun MiniPlayerRetryBanner(
     onRetryPlayback: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         onClick = onRetryPlayback,
         modifier =
-            modifier
-                .fillMaxWidth()
-                .testTag("MiniPlayerRetryBanner"),
+        modifier
+            .fillMaxWidth()
+            .testTag("MiniPlayerRetryBanner"),
         color = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer
     ) {
         Row(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
             ) {
                 Icon(
                     imageVector = AppIcons.Warning,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = MaterialTheme.colorScheme.error
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
@@ -563,19 +560,19 @@ fun MiniPlayerRetryBanner(
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    color = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
             TextButton(
                 onClick = onRetryPlayback,
                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                modifier = Modifier.testTag("MiniPlayerRetryButton"),
+                modifier = Modifier.testTag("MiniPlayerRetryButton")
             ) {
                 Text(
                     text = PlayerSessionState.RETRY_BUTTON_LABEL,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.error
                 )
             }
         }

@@ -27,7 +27,7 @@ class WebDavPlayerThemeTest {
 
     private fun contrastRatio(
         colorA: Color,
-        colorB: Color,
+        colorB: Color
     ): Double = ArtworkColorExtractor.contrastRatio(colorA, colorB)
 
     @Test
@@ -152,7 +152,7 @@ class WebDavPlayerThemeTest {
         val darkPillContrast = contrastRatio(ExpressiveDarkColorScheme.onPrimaryContainer, ExpressiveDarkColorScheme.primaryContainer)
         assertTrue(
             "Dark onPrimaryContainer vs primaryContainer must be >= 8.5:1, got $darkPillContrast",
-            darkPillContrast >= 8.5,
+            darkPillContrast >= 8.5
         )
     }
 
@@ -168,7 +168,7 @@ class WebDavPlayerThemeTest {
                 primary = Color(0xFF66B2FF),
                 primaryContainer = Color(0xFF004C99),
                 onPrimary = Color(0xFF001933),
-                onPrimaryContainer = Color(0xFFD6EBFF),
+                onPrimaryContainer = Color(0xFFD6EBFF)
             )
 
         var composedScheme: ColorScheme? = null
@@ -213,7 +213,7 @@ class WebDavPlayerThemeTest {
                 accentColor = Color(0xFF445566),
                 isFallback = false,
                 darkColorScheme = customDarkScheme,
-                lightColorScheme = customLightScheme,
+                lightColorScheme = customLightScheme
             )
 
         // When artworkColors is supplied, theme is 100% driven by artworkColors
@@ -234,7 +234,7 @@ class WebDavPlayerThemeTest {
             resolveBaseColorScheme(
                 darkTheme = true,
                 artworkColors = customArtwork,
-                targetColorScheme = explicitOverride,
+                targetColorScheme = explicitOverride
             )
         assertEquals(explicitOverride, resolvedOverride)
 

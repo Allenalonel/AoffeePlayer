@@ -7,18 +7,16 @@ import android.os.Bundle
 import android.provider.DocumentsContract
 import com.webdav.player.data.local.CoverArtStorage
 import com.webdav.player.data.local.LocalStorageFolderDao
-import com.webdav.player.data.metadata.ImageHeaderValidator
 import com.webdav.player.domain.model.DirectoryContent
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
-import com.webdav.player.domain.model.TrackMetadata
+import java.net.URLDecoder
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import java.net.URLDecoder
 
 /**
  * Resolves local directories mounted via Android's Storage Access Framework (SAF).
@@ -33,7 +31,7 @@ class LocalStorageDirectoryResolver(
     private val localStorageFolderDao: LocalStorageFolderDao,
     private val coverArtStorage: CoverArtStorage? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val contentResolver: ContentResolver = context.contentResolver,
+    private val contentResolver: ContentResolver = context.contentResolver
 ) {
     suspend fun resolve(path: String): DirectoryContent =
         withContext(ioDispatcher) {
@@ -106,8 +104,8 @@ class LocalStorageDirectoryResolver(
                                     name = displayName,
                                     subDirectories = emptyList(),
                                     files = emptyList(),
-                                    serverId = LOCAL_STORAGE_ID,
-                                ),
+                                    serverId = LOCAL_STORAGE_ID
+                                )
                             )
                         } else {
                             val docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId)
@@ -117,7 +115,7 @@ class LocalStorageDirectoryResolver(
                                     path = docUri.toString(),
                                     size = size,
                                     lastModified = if (lastModified > 0L) lastModified.toString() else null,
-                                    contentType = mimeType.ifBlank { null },
+                                    contentType = mimeType.ifBlank { null }
                                 )
                             files.add(remoteFile)
                         }
@@ -136,13 +134,13 @@ class LocalStorageDirectoryResolver(
                     name = dirName,
                     subDirectories = sortedSubDirs,
                     files = sortedFiles,
-                    serverId = LOCAL_STORAGE_ID,
+                    serverId = LOCAL_STORAGE_ID
                 )
 
             DirectoryContent(
                 directory = directory,
                 metadataMap = emptyMap(),
-                isEnriching = false,
+                isEnriching = false
             )
         }
 
@@ -156,7 +154,7 @@ class LocalStorageDirectoryResolver(
                     name = folder.displayName,
                     subDirectories = emptyList(),
                     files = emptyList(),
-                    serverId = LOCAL_STORAGE_ID,
+                    serverId = LOCAL_STORAGE_ID
                 )
             }
         val rootDir =
@@ -165,26 +163,26 @@ class LocalStorageDirectoryResolver(
                 name = "本地存储",
                 subDirectories = subDirs,
                 files = emptyList(),
-                serverId = LOCAL_STORAGE_ID,
+                serverId = LOCAL_STORAGE_ID
             )
         return DirectoryContent(
             directory = rootDir,
             metadataMap = emptyMap(),
-            isEnriching = false,
+            isEnriching = false
         )
     }
 
     private fun findChildDirectoryDocId(
         treeUri: Uri,
         parentDocId: String,
-        targetName: String,
+        targetName: String
     ): String? {
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentDocId)
         val projection =
             arrayOf(
                 DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                 DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                DocumentsContract.Document.COLUMN_MIME_TYPE,
+                DocumentsContract.Document.COLUMN_MIME_TYPE
             )
         return try {
             contentResolver.query(childrenUri, projection, Bundle.EMPTY, null)?.use { cursor ->

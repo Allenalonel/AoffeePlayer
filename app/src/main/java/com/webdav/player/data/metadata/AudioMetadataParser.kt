@@ -6,22 +6,48 @@ object AudioMetadataParser {
     fun parse(
         bytes: ByteArray,
         formatHint: AudioFormat? = null,
-        fileSize: Long = 0L,
+        fileSize: Long = 0L
     ): ParsedAudioMetadata {
-        val parsed = parseRaw(bytes, formatHint)
-        if (parsed.durationMs == 0L && (formatHint == AudioFormat.MP3 || isId3At(bytes, 0) || findId3HeaderOffset(bytes) != null)) {
-            val id3EndOffset = detectRequiredTagSize(bytes)?.toInt() ?: 0
-            val mpegDuration = MpegAudioFrameParser.parseDuration(bytes, offset = id3EndOffset, fileSize = fileSize)
-            if (mpegDuration > 0L) {
-                return parsed.copy(durationMs = mpegDuration)
+        val parsed = parseRaw(bytes, formatHint, fileSize = fileSize)
+        val mpegInfo =
+            if (formatHint == AudioFormat.MP3 || isId3At(bytes, 0) || findId3HeaderOffset(bytes) != null) {
+                val id3EndOffset = detectRequiredTagSize(bytes)?.toInt() ?: 0
+                MpegAudioFrameParser.parseFrameInfo(bytes, offset = id3EndOffset, fileSize = fileSize)
+            } else {
+                null
             }
-        }
-        return parsed
+
+        val enrichedDuration =
+            if (parsed.durationMs > 0L) {
+                parsed.durationMs
+            } else {
+                mpegInfo?.durationMs ?: 0L
+            }
+
+        val enrichedSampleRate = parsed.sampleRate ?: mpegInfo?.sampleRate
+        val enrichedChannels = parsed.channels ?: mpegInfo?.channels
+
+        val initialBitrate = parsed.bitrateKbps ?: mpegInfo?.bitrateKbps
+        val enrichedBitrate =
+            if (initialBitrate == null && fileSize > 0L && enrichedDuration > 0L) {
+                val derived = ((fileSize * 8L) / enrichedDuration).toInt()
+                if (derived in 32..50000) derived else null
+            } else {
+                initialBitrate
+            }
+
+        return parsed.copy(
+            durationMs = enrichedDuration,
+            sampleRate = enrichedSampleRate,
+            bitrateKbps = enrichedBitrate,
+            channels = enrichedChannels
+        )
     }
 
     private fun parseRaw(
         bytes: ByteArray,
         formatHint: AudioFormat? = null,
+        fileSize: Long = 0L
     ): ParsedAudioMetadata {
         if (bytes.size < 4) {
             return ParsedAudioMetadata()
@@ -30,7 +56,7 @@ object AudioMetadataParser {
         // If format hint is specified, test that specialized parser first
         when (formatHint) {
             AudioFormat.FLAC -> {
-                val flac = FlacParser.parse(bytes)
+                val flac = FlacParser.parse(bytes, totalBytes = fileSize)
                 if (flac != null && flac.hasTags) return flac
             }
 
@@ -60,7 +86,7 @@ object AudioMetadataParser {
 
         // 2. Direct FLAC ("fLaC")
         if (isFlacAt(bytes, 0)) {
-            val flac = FlacParser.parse(bytes)
+            val flac = FlacParser.parse(bytes, totalBytes = fileSize)
             if (flac != null) return flac
         }
 
@@ -121,7 +147,7 @@ object AudioMetadataParser {
 
     private fun findId3HeaderOffset(
         bytes: ByteArray,
-        maxScanLimit: Int = 65536,
+        maxScanLimit: Int = 65536
     ): Int? {
         if (bytes.size < 10) return null
         if (isId3At(bytes, 0)) return 0
@@ -134,7 +160,7 @@ object AudioMetadataParser {
 
     private fun isId3At(
         bytes: ByteArray,
-        offset: Int,
+        offset: Int
     ): Boolean =
         bytes.size >= offset + 3 &&
             bytes[offset] == 'I'.code.toByte() &&
@@ -143,7 +169,7 @@ object AudioMetadataParser {
 
     private fun isFlacAt(
         bytes: ByteArray,
-        offset: Int = 0,
+        offset: Int = 0
     ): Boolean =
         bytes.size >= offset + 4 &&
             bytes[offset] == 0x66.toByte() &&
@@ -153,7 +179,7 @@ object AudioMetadataParser {
 
     private fun isAsfAt(
         bytes: ByteArray,
-        offset: Int = 0,
+        offset: Int = 0
     ): Boolean =
         bytes.size >= offset + 16 &&
             bytes[offset] == 0x30.toByte() &&
@@ -163,7 +189,7 @@ object AudioMetadataParser {
 
     private fun extractId3TagSize(
         bytes: ByteArray,
-        offset: Int,
+        offset: Int
     ): Long? {
         if (offset + 10 > bytes.size) return null
         val majorVersion = bytes[offset + 3].toInt() and 0xFF
@@ -204,7 +230,7 @@ object AudioMetadataParser {
 
     private fun isWavAt(
         bytes: ByteArray,
-        offset: Int = 0,
+        offset: Int = 0
     ): Boolean =
         bytes.size >= offset + 12 &&
             bytes[offset] == 'R'.code.toByte() &&

@@ -15,12 +15,19 @@ data class PlaylistTrackEntry(
     val coverThumbnailPath: String? = null,
     val isInactive: Boolean = false,
     val inactiveReason: InactiveReason? = null,
+    val sampleRate: Int? = null,
+    val bitDepth: Int? = null,
+    val bitrateKbps: Int? = null,
+    val channels: Int? = null
 ) {
     val identity: TrackIdentity
         get() = TrackIdentity(serverId, remotePath)
 
     val isLocal: Boolean
         get() = identity.isLocal
+
+    val physicalSpecs: AudioPhysicalSpecs
+        get() = AudioPhysicalSpecs(sampleRate, bitDepth, bitrateKbps, channels)
 
     fun toAudioTrack(): AudioTrack {
         val ident = identity
@@ -35,6 +42,10 @@ data class PlaylistTrackEntry(
             size = size,
             format = format,
             coverThumbnailPath = coverThumbnailPath,
+            sampleRate = sampleRate,
+            bitDepth = bitDepth,
+            bitrateKbps = bitrateKbps,
+            channels = channels
         )
     }
 
@@ -42,7 +53,7 @@ data class PlaylistTrackEntry(
         fun fromAudioTrack(
             playlistId: Long,
             track: AudioTrack,
-            sortOrder: Int,
+            sortOrder: Int
         ): PlaylistTrackEntry =
             PlaylistTrackEntry(
                 id = 0L,
@@ -57,6 +68,10 @@ data class PlaylistTrackEntry(
                 size = track.size,
                 format = track.format,
                 coverThumbnailPath = track.coverThumbnailPath,
+                sampleRate = track.sampleRate,
+                bitDepth = track.bitDepth,
+                bitrateKbps = track.bitrateKbps,
+                channels = track.channels
             )
     }
 }
@@ -64,5 +79,5 @@ data class PlaylistTrackEntry(
 enum class InactiveReason {
     SERVER_UNREACHABLE,
     FILE_NOT_FOUND,
-    SERVER_CREDENTIAL_INVALID,
+    SERVER_CREDENTIAL_INVALID
 }

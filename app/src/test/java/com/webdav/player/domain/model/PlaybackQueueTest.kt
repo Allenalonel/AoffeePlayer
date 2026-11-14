@@ -9,14 +9,14 @@ import org.junit.Test
 class PlaybackQueueTest {
     private fun createTrack(
         id: String,
-        title: String,
+        title: String
     ): AudioTrack =
         AudioTrack(
             id = id,
             serverId = 1L,
             remotePath = "/$id",
             title = title,
-            format = AudioFormat.MP3,
+            format = AudioFormat.MP3
         )
 
     @Test
@@ -39,7 +39,7 @@ class PlaybackQueueTest {
             PlaybackQueue(
                 tracks = listOf(t1),
                 currentIndex = 0,
-                origin = QueueOrigin.PLAYLIST,
+                origin = QueueOrigin.PLAYLIST
             )
         assertEquals(QueueOrigin.PLAYLIST, playlistQueue.origin)
         assertTrue(playlistQueue.isPlaylistQueue)
@@ -48,7 +48,7 @@ class PlaybackQueueTest {
         val fromTracksQueue =
             PlaybackQueue.fromTracks(
                 tracks = listOf(t1),
-                origin = QueueOrigin.PLAYLIST,
+                origin = QueueOrigin.PLAYLIST
             )
         assertEquals(QueueOrigin.PLAYLIST, fromTracksQueue.origin)
         assertTrue(fromTracksQueue.isPlaylistQueue)
@@ -297,7 +297,7 @@ class PlaybackQueueTest {
         val tAlbum =
             createTrack("parent_album", "Full Album").copy(
                 remotePath = "/music/album.flac",
-                format = AudioFormat.FLAC,
+                format = AudioFormat.FLAC
             )
         val t3 = createTrack("track_3", "Outro").copy(remotePath = "/music/03.mp3")
 

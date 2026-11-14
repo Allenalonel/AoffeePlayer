@@ -2,7 +2,6 @@ package com.webdav.player.ui.player
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -45,7 +44,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -101,7 +99,7 @@ fun FullPlayerView(
     isQueueButtonVisible: Boolean = true,
     onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
     renderBackground: Boolean = true,
-    onOpenQueue: () -> Unit = {},
+    onOpenQueue: () -> Unit = {}
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -109,7 +107,7 @@ fun FullPlayerView(
     val pagerState =
         rememberPagerState(
             initialPage = 0,
-            pageCount = { 2 },
+            pageCount = { 2 }
         )
 
     val currentTrack = sessionState.currentTrack
@@ -120,7 +118,7 @@ fun FullPlayerView(
             val backgroundBrush =
                 rememberArtworkBackgroundBrush(
                     thumbnailPath = currentTrack?.coverThumbnailPath,
-                    artworkColors = artworkColors,
+                    artworkColors = artworkColors
                 )
             Modifier.background(backgroundBrush)
         } else {
@@ -140,77 +138,77 @@ fun FullPlayerView(
 
     WebDavPlayerTheme(
         darkTheme = true,
-        artworkColors = artworkColors,
+        artworkColors = artworkColors
     ) {
         Surface(
             modifier =
-                modifier
-                    .fillMaxSize()
-                    .then(backgroundModifier),
-            color = Color.Transparent,
+            modifier
+                .fillMaxSize()
+                .then(backgroundModifier),
+            color = Color.Transparent
         ) {
             Column(
                 modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Top lightweight bar: collapse handle / chevron, "正在播放自 WebDAV", album/source, and options
                 Row(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .padding(horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
                         onClick = onCollapse,
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
                             imageVector = AppIcons.KeyboardArrowDown,
                             contentDescription = "收起",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     Box(
                         modifier =
-                            Modifier
-                                .weight(1f)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = onCollapse,
-                                ),
-                        contentAlignment = Alignment.Center,
+                        Modifier
+                            .weight(1f)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onCollapse
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         val serverName = sessionState.activeServer?.name?.takeIf { it.isNotBlank() } ?: "WebDAV"
                         Text(
                             text = "正在播放自 $serverName",
                             style =
-                                MaterialTheme.typography.titleSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.5.sp,
-                                ),
+                            MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp
+                            ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
                     IconButton(
                         onClick = { currentTrack?.let(onAddToPlaylist) },
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
                             imageVector = AppIcons.MoreVert,
                             contentDescription = "添加到歌单",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -218,22 +216,22 @@ fun FullPlayerView(
                 BatteryWhitelistBanner(
                     wasKilledBySystem = sessionState.wasKilledBySystem,
                     whitelistManager = batteryWhitelistManager,
-                    onDismiss = onDismissBatteryBanner,
+                    onDismiss = onDismissBatteryBanner
                 )
 
                 if (isFullPlayerRetryBannerVisible(sessionState)) {
                     FullPlayerRetryBanner(
                         onRetryPlayback = { playbackActions.retryPlayback() },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
                 }
 
                 // Upper Main Area: Responsive Dual-Pane (660dp+) or Horizontal Pager
                 BoxWithConstraints(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
                 ) {
                     val isWideScreen = FullPlayerDefaults.isDualPaneLayout(maxWidth)
                     val transportControls = @Composable { modifier: Modifier ->
@@ -257,30 +255,30 @@ fun FullPlayerView(
                             isPlayButtonVisible = isPlayButtonVisible,
                             onPlayButtonPositioned = onPlayButtonPositioned,
                             isQueueButtonVisible = isQueueButtonVisible,
-                            onQueueButtonPositioned = onQueueButtonPositioned,
+                            onQueueButtonPositioned = onQueueButtonPositioned
                         )
                     }
 
                     if (isWideScreen) {
                         Row(
                             modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                            Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Left Pane: Square Artwork & Transport Controls
                             Column(
                                 modifier =
-                                    Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight(),
+                                Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.SpaceBetween,
+                                verticalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Box(
                                     modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.Center,
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     PlayerVinylArtwork(
                                         currentTrack = currentTrack,
@@ -288,7 +286,7 @@ fun FullPlayerView(
                                         onArtworkClick = {},
                                         modifier = Modifier,
                                         isArtworkVisible = isArtworkVisible,
-                                        onArtworkPositioned = onArtworkPositioned,
+                                        onArtworkPositioned = onArtworkPositioned
                                     )
                                 }
 
@@ -300,31 +298,31 @@ fun FullPlayerView(
                             // Right Pane: Immersive Synchronized Lyrics
                             Box(
                                 modifier =
-                                    Modifier
-                                        .weight(1.2f)
-                                        .fillMaxHeight(),
-                                contentAlignment = Alignment.Center,
+                                Modifier
+                                    .weight(1.2f)
+                                    .fillMaxHeight(),
+                                contentAlignment = Alignment.Center
                             ) {
                                 LyricsPage(
                                     sessionState = sessionState,
                                     playbackProgress = playbackProgress,
                                     currentPositionMs = displayPositionMs,
                                     onSeekTo = { playbackActions.seekTo(it) },
-                                    onReturnToArtwork = {},
+                                    onReturnToArtwork = {}
                                 )
                             }
                         }
                     } else {
                         Column(
                             modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             HorizontalPager(
                                 state = pagerState,
                                 modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .weight(1f),
+                                Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
                             ) { page ->
                                 when (page) {
                                     0 -> {
@@ -339,7 +337,7 @@ fun FullPlayerView(
                                             },
                                             modifier = Modifier,
                                             isArtworkVisible = isArtworkVisible,
-                                            onArtworkPositioned = onArtworkPositioned,
+                                            onArtworkPositioned = onArtworkPositioned
                                         )
                                     }
 
@@ -354,7 +352,7 @@ fun FullPlayerView(
                                                 coroutineScope.launch {
                                                     pagerState.animateScrollToPage(0)
                                                 }
-                                            },
+                                            }
                                         )
                                     }
                                 }
@@ -364,28 +362,28 @@ fun FullPlayerView(
                             Row(
                                 modifier = Modifier.padding(vertical = 8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 repeat(2) { index ->
                                     val isSelected = pagerState.currentPage == index
                                     Box(
                                         modifier =
-                                            Modifier
-                                                .size(
-                                                    width = if (isSelected) 18.dp else 6.dp,
-                                                    height = 6.dp,
-                                                ).clip(CircleShape)
-                                                .background(
-                                                    if (isSelected) {
-                                                        MaterialTheme.colorScheme.primary
-                                                    } else {
-                                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                                                    },
-                                                ).clickable {
-                                                    coroutineScope.launch {
-                                                        pagerState.animateScrollToPage(index)
-                                                    }
-                                                },
+                                        Modifier
+                                            .size(
+                                                width = if (isSelected) 18.dp else 6.dp,
+                                                height = 6.dp
+                                            ).clip(CircleShape)
+                                            .background(
+                                                if (isSelected) {
+                                                    MaterialTheme.colorScheme.primary
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                                                }
+                                            ).clickable {
+                                                coroutineScope.launch {
+                                                    pagerState.animateScrollToPage(index)
+                                                }
+                                            }
                                     )
                                 }
                             }
@@ -415,7 +413,7 @@ fun FullPlayerView(
                     TextButton(onClick = onDismissUnsupportedRange) {
                         Text("取消")
                     }
-                },
+                }
             )
         }
     }
@@ -429,10 +427,10 @@ private fun LyricsPage(
     currentPositionMs: Long = 0L,
     onSeekTo: (Long) -> Unit,
     onReturnToArtwork: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize()
     ) {
         // M3 Expressive Synchronized, smooth-scrolling Lyrics View with Tap-to-Seek
         LyricsView(
@@ -442,7 +440,7 @@ private fun LyricsPage(
             currentPositionMs = currentPositionMs,
             onSeekTo = onSeekTo,
             onToggleCover = onReturnToArtwork,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize()
         )
     }
 }

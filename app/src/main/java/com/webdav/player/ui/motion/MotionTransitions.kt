@@ -30,7 +30,7 @@ enum class HierarchyNavigationDirection {
     FOCAL_LANDING,
 
     /** Same level or unchanged path (no spatial animation). */
-    NONE,
+    NONE
 }
 
 /**
@@ -67,10 +67,10 @@ object MotionTransitions {
     fun dialogEnter(reduceMotion: Boolean = false): EnterTransition =
         scaleIn(
             initialScale = DialogInitialScale,
-            animationSpec = MotionTokens.spatialSpec(reduceMotion),
+            animationSpec = MotionTokens.spatialSpec(reduceMotion)
         ) +
             fadeIn(
-                animationSpec = MotionTokens.effectsSpec(reduceMotion),
+                animationSpec = MotionTokens.effectsSpec(reduceMotion)
             )
 
     /**
@@ -86,10 +86,10 @@ object MotionTransitions {
     fun dialogExit(reduceMotion: Boolean = false): ExitTransition =
         scaleOut(
             targetScale = DialogInitialScale,
-            animationSpec = MotionTokens.spatialSpec(reduceMotion),
+            animationSpec = MotionTokens.spatialSpec(reduceMotion)
         ) +
             fadeOut(
-                animationSpec = MotionTokens.effectsSpec(reduceMotion),
+                animationSpec = MotionTokens.effectsSpec(reduceMotion)
             )
 
     /**
@@ -107,7 +107,7 @@ object MotionTransitions {
     fun sharedAxisX(
         isForward: Boolean,
         reduceMotion: Boolean = false,
-        slideFraction: Float = SharedAxisSlideFraction,
+        slideFraction: Float = SharedAxisSlideFraction
     ): ContentTransform {
         val spatialSpec = MotionTokens.spatialSpec<IntOffset>(reduceMotion)
         val effectsSpec = MotionTokens.effectsSpec<Float>(reduceMotion)
@@ -116,12 +116,12 @@ object MotionTransitions {
             if (isForward) {
                 slideInHorizontally(
                     animationSpec = spatialSpec,
-                    initialOffsetX = { fullWidth -> (fullWidth * slideFraction).roundToInt() },
+                    initialOffsetX = { fullWidth -> (fullWidth * slideFraction).roundToInt() }
                 ) + fadeIn(animationSpec = effectsSpec)
             } else {
                 slideInHorizontally(
                     animationSpec = spatialSpec,
-                    initialOffsetX = { fullWidth -> -(fullWidth * slideFraction).roundToInt() },
+                    initialOffsetX = { fullWidth -> -(fullWidth * slideFraction).roundToInt() }
                 ) + fadeIn(animationSpec = effectsSpec)
             }
 
@@ -129,12 +129,12 @@ object MotionTransitions {
             if (isForward) {
                 slideOutHorizontally(
                     animationSpec = spatialSpec,
-                    targetOffsetX = { fullWidth -> -(fullWidth * slideFraction).roundToInt() },
+                    targetOffsetX = { fullWidth -> -(fullWidth * slideFraction).roundToInt() }
                 ) + fadeOut(animationSpec = effectsSpec)
             } else {
                 slideOutHorizontally(
                     animationSpec = spatialSpec,
-                    targetOffsetX = { fullWidth -> (fullWidth * slideFraction).roundToInt() },
+                    targetOffsetX = { fullWidth -> (fullWidth * slideFraction).roundToInt() }
                 ) + fadeOut(animationSpec = effectsSpec)
             }
 
@@ -149,10 +149,10 @@ object MotionTransitions {
     fun hierarchyPushEnter(reduceMotion: Boolean = false): EnterTransition =
         slideInHorizontally(
             animationSpec = MotionTokens.spatialSpec(reduceMotion),
-            initialOffsetX = { fullWidth -> fullWidth },
+            initialOffsetX = { fullWidth -> fullWidth }
         ) +
             fadeIn(
-                animationSpec = MotionTokens.effectsSpec(reduceMotion),
+                animationSpec = MotionTokens.effectsSpec(reduceMotion)
             )
 
     /**
@@ -162,11 +162,11 @@ object MotionTransitions {
     fun hierarchyPushExit(reduceMotion: Boolean = false): ExitTransition =
         slideOutHorizontally(
             animationSpec = MotionTokens.spatialSpec(reduceMotion),
-            targetOffsetX = { fullWidth -> -(fullWidth * ParallaxRetreatFraction).toInt() },
+            targetOffsetX = { fullWidth -> -(fullWidth * ParallaxRetreatFraction).toInt() }
         ) +
             fadeOut(
                 animationSpec = MotionTokens.effectsSpec(reduceMotion),
-                targetAlpha = 0.0f,
+                targetAlpha = 0.0f
             )
 
     // --- Hierarchy Pop (Back / Reverse) ---
@@ -177,10 +177,10 @@ object MotionTransitions {
     fun hierarchyPopEnter(reduceMotion: Boolean = false): EnterTransition =
         slideInHorizontally(
             animationSpec = MotionTokens.spatialSpec(reduceMotion),
-            initialOffsetX = { fullWidth -> -(fullWidth * ParallaxRetreatFraction).toInt() },
+            initialOffsetX = { fullWidth -> -(fullWidth * ParallaxRetreatFraction).toInt() }
         ) +
             fadeIn(
-                animationSpec = MotionTokens.effectsSpec(reduceMotion),
+                animationSpec = MotionTokens.effectsSpec(reduceMotion)
             )
 
     /**
@@ -189,10 +189,10 @@ object MotionTransitions {
     fun hierarchyPopExit(reduceMotion: Boolean = false): ExitTransition =
         slideOutHorizontally(
             animationSpec = MotionTokens.spatialSpec(reduceMotion),
-            targetOffsetX = { fullWidth -> fullWidth },
+            targetOffsetX = { fullWidth -> fullWidth }
         ) +
             fadeOut(
-                animationSpec = MotionTokens.effectsSpec(reduceMotion),
+                animationSpec = MotionTokens.effectsSpec(reduceMotion)
             )
 
     // --- Focal Landing (Search result -> Directory) ---
@@ -203,15 +203,15 @@ object MotionTransitions {
     fun focalLandingEnter(reduceMotion: Boolean = false): EnterTransition =
         scaleIn(
             initialScale = FocalLandingScale,
-            animationSpec = MotionTokens.spatialSpec(reduceMotion),
+            animationSpec = MotionTokens.spatialSpec(reduceMotion)
         ) +
             fadeIn(
-                animationSpec = MotionTokens.effectsSpec(reduceMotion),
+                animationSpec = MotionTokens.effectsSpec(reduceMotion)
             )
 
     fun focalLandingExit(reduceMotion: Boolean = false): ExitTransition =
         fadeOut(
-            animationSpec = MotionTokens.effectsSpec(reduceMotion),
+            animationSpec = MotionTokens.effectsSpec(reduceMotion)
         )
 
     // --- Combined ContentTransforms ---
@@ -221,7 +221,7 @@ object MotionTransitions {
      */
     fun hierarchyContentTransform(
         direction: HierarchyNavigationDirection,
-        reduceMotion: Boolean = false,
+        reduceMotion: Boolean = false
     ): ContentTransform =
         when (direction) {
             HierarchyNavigationDirection.FORWARD -> {
@@ -253,10 +253,10 @@ object MotionTransitions {
     fun searchOverlayEnter(reduceMotion: Boolean = false): EnterTransition =
         slideInVertically(
             animationSpec = MotionTokens.spatialSpec(reduceMotion),
-            initialOffsetY = { -it / 4 },
+            initialOffsetY = { -it / 4 }
         ) +
             fadeIn(
-                animationSpec = MotionTokens.effectsSpec(reduceMotion),
+                animationSpec = MotionTokens.effectsSpec(reduceMotion)
             )
 
     /**
@@ -265,10 +265,10 @@ object MotionTransitions {
     fun searchOverlayExit(reduceMotion: Boolean = false): ExitTransition =
         slideOutVertically(
             animationSpec = MotionTokens.spatialSpec(reduceMotion),
-            targetOffsetY = { -it / 4 },
+            targetOffsetY = { -it / 4 }
         ) +
             fadeOut(
-                animationSpec = MotionTokens.effectsSpec(reduceMotion),
+                animationSpec = MotionTokens.effectsSpec(reduceMotion)
             )
 
     /**
@@ -277,7 +277,7 @@ object MotionTransitions {
     fun resolveHierarchyDirection(
         initialPath: String,
         targetPath: String,
-        isFocalLanding: Boolean,
+        isFocalLanding: Boolean
     ): HierarchyNavigationDirection {
         if (isFocalLanding) return HierarchyNavigationDirection.FOCAL_LANDING
         if (initialPath == targetPath || initialPath.isEmpty()) return HierarchyNavigationDirection.NONE

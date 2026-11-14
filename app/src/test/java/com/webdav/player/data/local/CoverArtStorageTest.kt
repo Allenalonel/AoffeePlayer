@@ -2,6 +2,7 @@ package com.webdav.player.data.local
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import java.io.File
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -14,7 +15,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -50,7 +50,7 @@ class CoverArtStorageTest {
                 storage.saveThumbnail(
                     serverId = 1L,
                     remotePath = "/music/song1.mp3",
-                    artworkBytes = dummyBytes,
+                    artworkBytes = dummyBytes
                 )
 
             assertNotNull(path)
@@ -70,7 +70,7 @@ class CoverArtStorageTest {
                 storage.saveThumbnail(
                     serverId = 1L,
                     remotePath = "/music/empty.mp3",
-                    artworkBytes = ByteArray(0),
+                    artworkBytes = ByteArray(0)
                 )
             assertNull(path)
             assertNull(storage.getThumbnailFile(1L, "/music/empty.mp3"))
@@ -91,7 +91,7 @@ class CoverArtStorageTest {
                 storage.saveThumbnail(
                     serverId = 1L,
                     remotePath = "/music/truncated.mp3",
-                    artworkBytes = truncatedJpeg,
+                    artworkBytes = truncatedJpeg
                 )
             assertNull("Truncated JPEG image must not be saved to disk as a thumbnail", path)
             assertNull(storage.getThumbnailFile(1L, "/music/truncated.mp3"))
@@ -113,7 +113,7 @@ class CoverArtStorageTest {
                 storage.saveThumbnail(
                     serverId = 1L,
                     remotePath = "/music/complete.mp3",
-                    artworkBytes = completeJpeg,
+                    artworkBytes = completeJpeg
                 )
             assertNotNull(path)
             val file = storage.getThumbnailFile(1L, "/music/complete.mp3")
@@ -198,7 +198,7 @@ class CoverArtStorageTest {
             val quotaStorage =
                 CoverArtStorageImpl(
                     context = context,
-                    maxCacheSizeBytes = quotaLimit,
+                    maxCacheSizeBytes = quotaLimit
                 )
 
             // Save file 1
@@ -379,7 +379,7 @@ class CoverArtStorageTest {
                 storage.saveThumbnail(
                     serverId = 1L,
                     remotePath = "/music/hires_large_cover.flac",
-                    artworkBytes = largeBytes,
+                    artworkBytes = largeBytes
                 )
 
             assertNotNull("Large bitmap should be successfully downsampled and saved", path)

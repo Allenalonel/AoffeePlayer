@@ -6,10 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -25,10 +22,8 @@ import com.webdav.player.data.service.PlaybackSessionHost
 import com.webdav.player.data.service.WebDavNotificationProvider
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
-import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackSessionData
-import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
@@ -37,10 +32,12 @@ import com.webdav.player.domain.session.FakePlaybackSessionStore
 import com.webdav.player.domain.session.MusicPlayerAppSessionImpl
 import com.webdav.player.ui.browser.DirectoryBrowserViewModel
 import com.webdav.player.ui.common.ThumbnailMemoryCache
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -65,9 +62,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.nio.charset.StandardCharsets
 
 /**
  * End-to-end integration tests verifying cache invalidation, disk eviction recovery,
@@ -126,7 +120,7 @@ class EndToEndCacheResilienceIntegrationTest {
                 webDavClient = webDavClient,
                 coverArtStorage = coverArtStorage,
                 webDavServerDao = database.webDavServerDao(),
-                ioDispatcher = testDispatcher,
+                ioDispatcher = testDispatcher
             )
         mediaLibraryRepository =
             MediaLibraryRepositoryImpl(
@@ -137,7 +131,7 @@ class EndToEndCacheResilienceIntegrationTest {
                 directorySyncCheckpointDao = database.directorySyncCheckpointDao(),
                 trackMetadataRepository = trackMetadataRepository,
                 context = context,
-                ioDispatcher = testDispatcher,
+                ioDispatcher = testDispatcher
             )
 
         testServer =
@@ -150,7 +144,7 @@ class EndToEndCacheResilienceIntegrationTest {
                 username = "resilience_user",
                 password = "resilience_password",
                 allowSelfSigned = true,
-                isDefault = true,
+                isDefault = true
             )
         val savedId = kotlinx.coroutines.runBlocking { serverRepository.saveServer(testServer) }
         testServer = testServer.copy(id = savedId)
@@ -194,14 +188,14 @@ class EndToEndCacheResilienceIntegrationTest {
                     title = "Symphony No. 5",
                     artist = "Ludwig van Beethoven",
                     album = "Classical Masterpieces",
-                    artworkBytes = sampleJpeg,
+                    artworkBytes = sampleJpeg
                 )
             val mp3Bytes =
                 buildSampleId3v2Bytes(
                     title = "Allegro Molto",
                     artist = "Wolfgang Amadeus Mozart",
                     album = "Classical Masterpieces",
-                    artworkBytes = sampleJpeg,
+                    artworkBytes = sampleJpeg
                 )
 
             val directoryXml =
@@ -275,20 +269,20 @@ class EndToEndCacheResilienceIntegrationTest {
                     name = "01-Symphony.flac",
                     path = "/Music/Classics/01-Symphony.flac",
                     size = flacBytes.size.toLong(),
-                    fileType = RemoteFileType.Audio(AudioFormat.FLAC),
+                    fileType = RemoteFileType.Audio(AudioFormat.FLAC)
                 )
             val mp3File =
                 RemoteFile(
                     name = "02-Allegro.mp3",
                     path = "/Music/Classics/02-Allegro.mp3",
                     size = mp3Bytes.size.toLong(),
-                    fileType = RemoteFileType.Audio(AudioFormat.MP3),
+                    fileType = RemoteFileType.Audio(AudioFormat.MP3)
                 )
             val directory =
                 RemoteDirectory(
                     path = "/Music/Classics/",
                     name = "Classics",
-                    files = listOf(flacFile, mp3File),
+                    files = listOf(flacFile, mp3File)
                 )
 
             // Step 1: Initial resolution populates Room DB and writes thumbnails to disk
@@ -297,7 +291,7 @@ class EndToEndCacheResilienceIntegrationTest {
                     .observeDirectoryContent(
                         testServer,
                         "/Music/Classics/",
-                        forceRefresh = true,
+                        forceRefresh = true
                     ).toList()
                     .last()
             assertNotNull("Initial directory listing must succeed", initialContent.directory)
@@ -330,11 +324,11 @@ class EndToEndCacheResilienceIntegrationTest {
             assertFalse("Thumbnail 2 file must no longer exist on disk", File(initialThumb2).exists())
             assertFalse(
                 "isValidThumbnailFile must report false for purged thumbnail 1",
-                coverArtStorage.isValidThumbnailFile(initialThumb1),
+                coverArtStorage.isValidThumbnailFile(initialThumb1)
             )
             assertFalse(
                 "isValidThumbnailFile must report false for purged thumbnail 2",
-                coverArtStorage.isValidThumbnailFile(initialThumb2),
+                coverArtStorage.isValidThumbnailFile(initialThumb2)
             )
 
             // Confirm Room database still preserves the metadata entities with dead paths
@@ -353,7 +347,7 @@ class EndToEndCacheResilienceIntegrationTest {
                 Media3AudioPlayerEngine(
                     context = context,
                     mediaSourceBuilder = mediaSourceBuilder,
-                    coroutineScope = this,
+                    coroutineScope = this
                 )
             val sessionScope = TestScope(testDispatcher)
             val appSession =
@@ -363,7 +357,7 @@ class EndToEndCacheResilienceIntegrationTest {
                     trackMetadataRepository = trackMetadataRepository,
                     sessionStore = sessionStore,
                     coroutineScope = sessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
 
             mediaLibraryRepository.setLastBrowsingPath(testServer.id, "/Music/Classics/")
@@ -373,7 +367,7 @@ class EndToEndCacheResilienceIntegrationTest {
                 DirectoryBrowserViewModel(
                     serverRepository = serverRepository,
                     mediaLibraryRepository = mediaLibraryRepository,
-                    musicPlayerAppSession = appSession,
+                    musicPlayerAppSession = appSession
                 )
 
             // Collect UI state updates
@@ -456,14 +450,14 @@ class EndToEndCacheResilienceIntegrationTest {
                     title = "Acoustic Melody 1",
                     artist = "Soloist",
                     album = "Unplugged Sessions",
-                    artworkBytes = null, // No embedded artwork
+                    artworkBytes = null // No embedded artwork
                 )
             val audioBytes2 =
                 buildSampleFlacBytes(
                     title = "Acoustic Melody 2",
                     artist = "Soloist",
                     album = "Unplugged Sessions",
-                    artworkBytes = null, // No embedded artwork
+                    artworkBytes = null // No embedded artwork
                 )
 
             val folderCoverJpeg = createTestJpegBytes()
@@ -604,20 +598,20 @@ class EndToEndCacheResilienceIntegrationTest {
                     name = "01-Track.mp3",
                     path = "/Music/Acoustic/01-Track.mp3",
                     size = audioBytes1.size.toLong(),
-                    fileType = RemoteFileType.Audio(AudioFormat.MP3),
+                    fileType = RemoteFileType.Audio(AudioFormat.MP3)
                 )
             val file2 =
                 RemoteFile(
                     name = "02-Track.flac",
                     path = "/Music/Acoustic/02-Track.flac",
                     size = audioBytes2.size.toLong(),
-                    fileType = RemoteFileType.Audio(AudioFormat.FLAC),
+                    fileType = RemoteFileType.Audio(AudioFormat.FLAC)
                 )
             val directory =
                 RemoteDirectory(
                     path = "/Music/Acoustic/",
                     name = "Acoustic",
-                    files = listOf(file1, file2),
+                    files = listOf(file1, file2)
                 )
 
             // Step 1: Browse directory initially while remote cover.jpg does not exist.
@@ -627,7 +621,7 @@ class EndToEndCacheResilienceIntegrationTest {
                     .observeDirectoryContent(
                         testServer,
                         "/Music/Acoustic/",
-                        forceRefresh = true,
+                        forceRefresh = true
                     ).toList()
                     .last()
             assertNotNull("Initial directory listing must succeed", initialContent.directory)
@@ -647,7 +641,7 @@ class EndToEndCacheResilienceIntegrationTest {
                 Media3AudioPlayerEngine(
                     context = context,
                     mediaSourceBuilder = mediaSourceBuilder,
-                    coroutineScope = this,
+                    coroutineScope = this
                 )
             val sessionScope = TestScope(testDispatcher)
             val appSession =
@@ -657,7 +651,7 @@ class EndToEndCacheResilienceIntegrationTest {
                     trackMetadataRepository = trackMetadataRepository,
                     sessionStore = sessionStore,
                     coroutineScope = sessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
 
             mediaLibraryRepository.setLastBrowsingPath(testServer.id, "/Music/Acoustic/")
@@ -667,7 +661,7 @@ class EndToEndCacheResilienceIntegrationTest {
                 DirectoryBrowserViewModel(
                     serverRepository = serverRepository,
                     mediaLibraryRepository = mediaLibraryRepository,
-                    musicPlayerAppSession = appSession,
+                    musicPlayerAppSession = appSession
                 )
 
             val collectedStates = mutableListOf<com.webdav.player.ui.browser.DirectoryBrowserUiState>()
@@ -679,7 +673,7 @@ class EndToEndCacheResilienceIntegrationTest {
                     viewModel.uiState.value.currentPath != "/Music/Acoustic/" ||
                         viewModel.uiState.value.isLoading ||
                         viewModel.uiState.value.isRefreshing
-                ) &&
+                    ) &&
                 initAttempts < 100
             ) {
                 advanceTimeBy(50L)
@@ -764,7 +758,7 @@ class EndToEndCacheResilienceIntegrationTest {
                     title = "Symphony No. 5",
                     artist = "Ludwig van Beethoven",
                     album = "Classical Masterpieces",
-                    artworkBytes = sampleJpeg,
+                    artworkBytes = sampleJpeg
                 )
 
             val directoryXml =
@@ -822,7 +816,7 @@ class EndToEndCacheResilienceIntegrationTest {
                     name = "01-Symphony.flac",
                     path = "/Music/Classics/01-Symphony.flac",
                     size = flacBytes.size.toLong(),
-                    fileType = RemoteFileType.Audio(AudioFormat.FLAC),
+                    fileType = RemoteFileType.Audio(AudioFormat.FLAC)
                 )
 
             // Step 1: Initial resolution persists metadata and writes thumbnail file to disk
@@ -841,7 +835,7 @@ class EndToEndCacheResilienceIntegrationTest {
                     album = "Classical Masterpieces",
                     durationMs = 240000L,
                     format = AudioFormat.FLAC,
-                    coverThumbnailPath = initialThumbPath,
+                    coverThumbnailPath = initialThumbPath
                 )
 
             // Persist initial metadata in Room DB
@@ -855,7 +849,7 @@ class EndToEndCacheResilienceIntegrationTest {
                     queueTracks = listOf(initialTrack),
                     currentTrackIndex = 0,
                     positionMs = 35000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             sessionStore.saveSession(savedSessionData)
 
@@ -871,7 +865,7 @@ class EndToEndCacheResilienceIntegrationTest {
                 Media3AudioPlayerEngine(
                     context = context,
                     mediaSourceBuilder = mediaSourceBuilder,
-                    coroutineScope = this,
+                    coroutineScope = this
                 )
 
             val notificationProvider = WebDavNotificationProvider(context)
@@ -883,7 +877,7 @@ class EndToEndCacheResilienceIntegrationTest {
                     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                         listenerException = error
                     }
-                },
+                }
             )
 
             // Step 4: Launch MusicPlayerAppSessionImpl to trigger cold start session resumption
@@ -896,7 +890,7 @@ class EndToEndCacheResilienceIntegrationTest {
                     trackMetadataRepository = trackMetadataRepository,
                     sessionStore = sessionStore,
                     coroutineScope = sessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
 
             advanceUntilIdle()
@@ -976,7 +970,7 @@ class EndToEndCacheResilienceIntegrationTest {
                         ?.artworkUri
             assertTrue(
                 "Player media metadata must contain healed artworkData or artworkUri",
-                playerArtworkData != null || playerArtworkUri != null,
+                playerArtworkData != null || playerArtworkUri != null
             )
             if (playerArtworkData != null) {
                 assertEquals(healedFile.readBytes().size, playerArtworkData.size)
@@ -1012,7 +1006,7 @@ class EndToEndCacheResilienceIntegrationTest {
         title: String,
         artist: String,
         album: String,
-        artworkBytes: ByteArray? = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xD9.toByte()),
+        artworkBytes: ByteArray? = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xD9.toByte())
     ): ByteArray {
         val stream = ByteArrayOutputStream()
         stream.write("ID3".toByteArray(StandardCharsets.US_ASCII))
@@ -1024,7 +1018,7 @@ class EndToEndCacheResilienceIntegrationTest {
 
         fun writeFrame(
             id: String,
-            text: String,
+            text: String
         ) {
             val p = ByteArrayOutputStream()
             p.write(3) // UTF-8
@@ -1089,7 +1083,7 @@ class EndToEndCacheResilienceIntegrationTest {
         title: String,
         artist: String,
         album: String,
-        artworkBytes: ByteArray? = null,
+        artworkBytes: ByteArray? = null
     ): ByteArray {
         val stream = ByteArrayOutputStream()
         // "fLaC"
@@ -1183,7 +1177,7 @@ class EndToEndCacheResilienceIntegrationTest {
 
     private fun createRangeMockResponse(
         fullBytes: ByteArray,
-        rangeHeader: String?,
+        rangeHeader: String?
     ): MockResponse {
         if (rangeHeader == null || !rangeHeader.startsWith("bytes=")) {
             return MockResponse()

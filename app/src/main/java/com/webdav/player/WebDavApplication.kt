@@ -76,13 +76,13 @@ class WebDavApplication :
                 webDavClient = webDavClient,
                 coverArtStorage = coverArtStorage,
                 webDavServerDao = database.webDavServerDao(),
-                context = this,
+                context = this
             )
 
         val media3Engine =
             Media3AudioPlayerEngine(
                 context = this,
-                mediaSourceBuilder = WebDavMediaSourceBuilder(this, webDavClient),
+                mediaSourceBuilder = WebDavMediaSourceBuilder(this, webDavClient)
             )
         playerEngine = media3Engine
         val sessionHost = PlaybackSessionHost.getInstance(this, media3Engine)
@@ -94,7 +94,7 @@ class WebDavApplication :
             LocalStorageDirectoryResolver(
                 context = this,
                 localStorageFolderDao = database.localStorageFolderDao(),
-                coverArtStorage = coverArtStorage,
+                coverArtStorage = coverArtStorage
             )
 
         val localStorageIndexScanner =
@@ -102,14 +102,14 @@ class WebDavApplication :
                 context = this,
                 mediaTrackIndexDao = mediaTrackIndexDao,
                 checkpointDao = checkpointDao,
-                localStorageFolderDao = database.localStorageFolderDao(),
+                localStorageFolderDao = database.localStorageFolderDao()
             )
 
         val webDavSyncScanner =
             WebDavSyncScanner(
                 webDavClient = webDavClient,
                 mediaTrackIndexDao = mediaTrackIndexDao,
-                directorySyncCheckpointDao = checkpointDao,
+                directorySyncCheckpointDao = checkpointDao
             )
 
         val mediaLibraryRepository =
@@ -124,7 +124,7 @@ class WebDavApplication :
                 localStorageFolderDao = database.localStorageFolderDao(),
                 webDavSyncScanner = webDavSyncScanner,
                 localStorageIndexScanner = localStorageIndexScanner,
-                context = this,
+                context = this
             )
         this.mediaLibraryRepository = mediaLibraryRepository
 
@@ -137,21 +137,21 @@ class WebDavApplication :
                 localStorageFolderDao = database.localStorageFolderDao(),
                 context = this,
                 cascadeInvalidator = mediaLibraryRepository,
-                trackMetadataRepository = trackMetadataRepository,
+                trackMetadataRepository = trackMetadataRepository
             )
 
         storageReachabilityTracker =
             StorageReachabilityTrackerImpl(
                 webDavClient = webDavClient,
                 serverRepository = serverRepository,
-                context = this,
+                context = this
             )
 
         playlistRepository =
             PlaylistRepositoryImpl(
                 playlistDao = database.playlistDao(),
                 trackMetadataRepository = trackMetadataRepository,
-                storageReachabilityTracker = storageReachabilityTracker,
+                storageReachabilityTracker = storageReachabilityTracker
             )
 
         val networkConnectivityObserver = DefaultNetworkConnectivityObserver(this)
@@ -164,7 +164,7 @@ class WebDavApplication :
                 sessionStore = sessionStore,
                 playlistRepository = playlistRepository,
                 storageReachabilityTracker = storageReachabilityTracker,
-                networkConnectivityObserver = networkConnectivityObserver,
+                networkConnectivityObserver = networkConnectivityObserver
             )
         sessionHost.bindAppSession(musicPlayerAppSession)
     }

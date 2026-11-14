@@ -5,12 +5,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.test.core.app.ApplicationProvider
-import com.webdav.player.data.remote.ConnectionResult
-import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.data.repository.DataStorePlaybackSessionStore
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
-import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.PlaybackMode
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.RemoteDirectory
@@ -18,6 +15,8 @@ import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.player.FakeAudioPlayerEngine
 import com.webdav.player.domain.repository.ServerRepository
+import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -27,7 +26,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -43,8 +41,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.File
-import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -66,7 +62,7 @@ class ProcessRestartSimulationTest {
             pathPrefix = "/",
             username = "musicuser",
             password = "secretpassword",
-            isDefault = true,
+            isDefault = true
         )
 
     private val track1 =
@@ -79,7 +75,7 @@ class ProcessRestartSimulationTest {
             album = "Greatest Hits",
             durationMs = 120000L,
             size = 3000000L,
-            format = AudioFormat.MP3,
+            format = AudioFormat.MP3
         )
 
     private val track2 =
@@ -92,7 +88,7 @@ class ProcessRestartSimulationTest {
             album = "Greatest Hits",
             durationMs = 260000L,
             size = 18000000L,
-            format = AudioFormat.FLAC,
+            format = AudioFormat.FLAC
         )
 
     private val track3 =
@@ -105,7 +101,7 @@ class ProcessRestartSimulationTest {
             album = "Greatest Hits",
             durationMs = 150000L,
             size = 22000000L,
-            format = AudioFormat.WAV,
+            format = AudioFormat.WAV
         )
 
     @Before
@@ -118,7 +114,7 @@ class ProcessRestartSimulationTest {
         dataStore =
             PreferenceDataStoreFactory.create(
                 scope = dataStoreScope,
-                produceFile = { dataStoreFile },
+                produceFile = { dataStoreFile }
             )
         sessionStore = DataStorePlaybackSessionStore(dataStore, { dataStoreFile })
     }
@@ -145,7 +141,7 @@ class ProcessRestartSimulationTest {
                     playerEngine = engine1,
                     serverRepository = serverRepo,
                     sessionStore = sessionStore,
-                    coroutineScope = process1Scope,
+                    coroutineScope = process1Scope
                 )
 
             val rockDir =
@@ -153,11 +149,11 @@ class ProcessRestartSimulationTest {
                     path = "/Music/Rock/",
                     name = "Rock",
                     files =
-                        listOf(
-                            RemoteFile(name = "01-Intro.mp3", path = "/Music/Rock/01-Intro.mp3", size = 3000000L),
-                            RemoteFile(name = "02-Solo.flac", path = "/Music/Rock/02-Solo.flac", size = 18000000L),
-                            RemoteFile(name = "03-Outro.wav", path = "/Music/Rock/03-Outro.wav", size = 22000000L),
-                        ),
+                    listOf(
+                        RemoteFile(name = "01-Intro.mp3", path = "/Music/Rock/01-Intro.mp3", size = 3000000L),
+                        RemoteFile(name = "02-Solo.flac", path = "/Music/Rock/02-Solo.flac", size = 18000000L),
+                        RemoteFile(name = "03-Outro.wav", path = "/Music/Rock/03-Outro.wav", size = 22000000L)
+                    )
                 )
 
             // User plays track 2 (index 1) in the directory
@@ -194,7 +190,7 @@ class ProcessRestartSimulationTest {
                     playerEngine = engine2,
                     serverRepository = serverRepo,
                     sessionStore = sessionStore,
-                    coroutineScope = process2Scope,
+                    coroutineScope = process2Scope
                 )
 
             // Advance to let cold-start restoration complete
@@ -243,8 +239,8 @@ class ProcessRestartSimulationTest {
                     queueTracks = listOf(track1),
                     currentTrackIndex = 0,
                     positionMs = 15000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
-                ),
+                    playbackMode = PlaybackMode.LIST_LOOP
+                )
             )
 
             // Server is deleted while app is closed
@@ -258,7 +254,7 @@ class ProcessRestartSimulationTest {
                     playerEngine = engine,
                     serverRepository = serverRepo,
                     sessionStore = sessionStore,
-                    coroutineScope = processScope,
+                    coroutineScope = processScope
                 )
 
             advanceUntilIdle()
@@ -284,8 +280,8 @@ class ProcessRestartSimulationTest {
                     queueTracks = listOf(track1),
                     currentTrackIndex = 0,
                     positionMs = 15000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
-                ),
+                    playbackMode = PlaybackMode.LIST_LOOP
+                )
             )
 
             val processScope = kotlinx.coroutines.CoroutineScope(testDispatcher + SupervisorJob())
@@ -295,7 +291,7 @@ class ProcessRestartSimulationTest {
                     playerEngine = engine,
                     serverRepository = serverRepo,
                     sessionStore = sessionStore,
-                    coroutineScope = processScope,
+                    coroutineScope = processScope
                 )
 
             advanceUntilIdle()
@@ -332,7 +328,7 @@ class ProcessRestartSimulationTest {
                     playerEngine = engine1,
                     serverRepository = serverRepo,
                     sessionStore = sessionStore,
-                    coroutineScope = process1Scope,
+                    coroutineScope = process1Scope
                 )
 
             val rockDir =
@@ -340,11 +336,11 @@ class ProcessRestartSimulationTest {
                     path = "/Music/Rock/",
                     name = "Rock",
                     files =
-                        listOf(
-                            RemoteFile(name = "01-Intro.mp3", path = "/Music/Rock/01-Intro.mp3", size = 3000000L),
-                            RemoteFile(name = "02-Solo.flac", path = "/Music/Rock/02-Solo.flac", size = 18000000L),
-                            RemoteFile(name = "03-Outro.wav", path = "/Music/Rock/03-Outro.wav", size = 22000000L),
-                        ),
+                    listOf(
+                        RemoteFile(name = "01-Intro.mp3", path = "/Music/Rock/01-Intro.mp3", size = 3000000L),
+                        RemoteFile(name = "02-Solo.flac", path = "/Music/Rock/02-Solo.flac", size = 18000000L),
+                        RemoteFile(name = "03-Outro.wav", path = "/Music/Rock/03-Outro.wav", size = 22000000L)
+                    )
                 )
 
             // 1. User starts playing track 1 ("01-Intro.mp3", index 0)
@@ -386,7 +382,7 @@ class ProcessRestartSimulationTest {
                     playerEngine = engine2,
                     serverRepository = serverRepo,
                     sessionStore = sessionStore,
-                    coroutineScope = process2Scope,
+                    coroutineScope = process2Scope
                 )
 
             advanceUntilIdle()
@@ -414,7 +410,7 @@ class ProcessRestartSimulationTest {
                     playerEngine = engine1,
                     serverRepository = serverRepo,
                     sessionStore = sessionStore,
-                    coroutineScope = process1Scope,
+                    coroutineScope = process1Scope
                 )
 
             // Start playing Track 2
@@ -449,7 +445,7 @@ class ProcessRestartSimulationTest {
                     playerEngine = engine2,
                     serverRepository = serverRepo,
                     sessionStore = sessionStore,
-                    coroutineScope = process2Scope,
+                    coroutineScope = process2Scope
                 )
 
             advanceUntilIdle()
@@ -478,7 +474,7 @@ class ProcessRestartSimulationTest {
         }
 
     private class InMemoryServerRepository(
-        private val servers: MutableList<WebDavServer>,
+        private val servers: MutableList<WebDavServer>
     ) : ServerRepository {
         private val flow = MutableStateFlow<List<WebDavServer>>(servers.toList())
 

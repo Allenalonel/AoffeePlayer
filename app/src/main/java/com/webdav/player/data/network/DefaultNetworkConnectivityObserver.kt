@@ -7,6 +7,8 @@ import android.net.NetworkCapabilities
 import androidx.annotation.VisibleForTesting
 import com.webdav.player.domain.model.NetworkStatus
 import com.webdav.player.domain.network.NetworkConnectivityObserver
+import java.io.Closeable
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -19,14 +21,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
-import java.io.Closeable
-import java.util.concurrent.atomic.AtomicBoolean
 
 class DefaultNetworkConnectivityObserver(
     context: Context,
     private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val debounceTimeoutMs: Long = DEFAULT_DEBOUNCE_MS,
-    connectivityManager: ConnectivityManager? = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager,
+    connectivityManager: ConnectivityManager? = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
 ) : NetworkConnectivityObserver,
     Closeable {
     private val cm = connectivityManager
@@ -34,7 +34,7 @@ class DefaultNetworkConnectivityObserver(
 
     private val _rawStatus =
         MutableStateFlow(
-            mapCapabilitiesToStatus(cm?.activeNetwork?.let { cm.getNetworkCapabilities(it) }),
+            mapCapabilitiesToStatus(cm?.activeNetwork?.let { cm.getNetworkCapabilities(it) })
         )
 
     @OptIn(FlowPreview::class)
@@ -46,7 +46,7 @@ class DefaultNetworkConnectivityObserver(
                 .stateIn(
                     scope = coroutineScope,
                     started = SharingStarted.Eagerly,
-                    initialValue = _rawStatus.value,
+                    initialValue = _rawStatus.value
                 )
         } else {
             _rawStatus.asStateFlow()
@@ -61,7 +61,7 @@ class DefaultNetworkConnectivityObserver(
 
             override fun onCapabilitiesChanged(
                 network: Network,
-                networkCapabilities: NetworkCapabilities,
+                networkCapabilities: NetworkCapabilities
             ) {
                 _rawStatus.value = mapCapabilitiesToStatus(networkCapabilities)
             }
@@ -126,7 +126,7 @@ class DefaultNetworkConnectivityObserver(
                 isConnected = isConnected,
                 isWifi = isWifi,
                 isCellular = isCellular,
-                isMetered = isMetered,
+                isMetered = isMetered
             )
         }
     }

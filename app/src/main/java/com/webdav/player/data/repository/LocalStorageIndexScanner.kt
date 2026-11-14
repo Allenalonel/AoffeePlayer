@@ -14,11 +14,11 @@ import com.webdav.player.data.metadata.MediaFilenameParser
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LibrarySyncState
+import java.net.URLEncoder
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import java.net.URLEncoder
 
 /**
  * Fast indexing engine for Android Storage Access Framework (SAF) local media storage.
@@ -31,7 +31,7 @@ class LocalStorageIndexScanner(
     private val checkpointDao: DirectorySyncCheckpointDao,
     private val localStorageFolderDao: LocalStorageFolderDao? = null,
     private val contentResolver: ContentResolver = context.contentResolver,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     companion object {
         internal val PROJECTION =
@@ -40,7 +40,7 @@ class LocalStorageIndexScanner(
                 DocumentsContract.Document.COLUMN_DISPLAY_NAME,
                 DocumentsContract.Document.COLUMN_MIME_TYPE,
                 DocumentsContract.Document.COLUMN_SIZE,
-                DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+                DocumentsContract.Document.COLUMN_LAST_MODIFIED
             )
 
         internal fun isNoiseDirectory(name: String): Boolean = WebDavSyncScanner.isExcludedDirectory(name)
@@ -65,13 +65,13 @@ class LocalStorageIndexScanner(
     private data class DirectoryWorkItem(
         val docId: String,
         val path: String,
-        val lastModified: Long,
+        val lastModified: Long
     )
 
     suspend fun indexFolder(
         treeUri: Uri,
         force: Boolean = false,
-        onProgress: ((LibrarySyncState) -> Unit)? = null,
+        onProgress: ((LibrarySyncState) -> Unit)? = null
     ): Int =
         withContext(ioDispatcher) {
             val rootDocId = resolveRootDocId(treeUri)
@@ -88,8 +88,8 @@ class LocalStorageIndexScanner(
                     LibrarySyncState.Scanning(
                         progress = 0f,
                         currentPath = current.path,
-                        tracksFound = totalIndexedTracks,
-                    ),
+                        tracksFound = totalIndexedTracks
+                    )
                 )
 
                 if (!force && current.lastModified > 0L) {
@@ -138,7 +138,7 @@ class LocalStorageIndexScanner(
                                             format = audioFormat.extension.uppercase(),
                                             parentPath = current.path,
                                             parsedTitle = parsed.title,
-                                            parsedArtist = parsed.artist,
+                                            parsedArtist = parsed.artist
                                         )
                                     discoveredTracks.add(entity)
                                 }
@@ -156,8 +156,8 @@ class LocalStorageIndexScanner(
                         LibrarySyncState.Scanning(
                             progress = 0f,
                             currentPath = current.path,
-                            tracksFound = totalIndexedTracks,
-                        ),
+                            tracksFound = totalIndexedTracks
+                        )
                     )
                 }
 
@@ -169,7 +169,7 @@ class LocalStorageIndexScanner(
                     if (staleTracks.isNotEmpty()) {
                         mediaTrackIndexDao.deleteByServerAndPaths(
                             LOCAL_STORAGE_ID,
-                            staleTracks.map { it.remotePath },
+                            staleTracks.map { it.remotePath }
                         )
                     }
                 } catch (_: Exception) {
@@ -183,8 +183,8 @@ class LocalStorageIndexScanner(
                         lastModified = current.lastModified,
                         etag = null,
                         lastScannedMs = System.currentTimeMillis(),
-                        isScanned = true,
-                    ),
+                        isScanned = true
+                    )
                 )
             }
 
@@ -193,7 +193,7 @@ class LocalStorageIndexScanner(
 
     suspend fun indexAllMountedFolders(
         force: Boolean = false,
-        onProgress: ((LibrarySyncState) -> Unit)? = null,
+        onProgress: ((LibrarySyncState) -> Unit)? = null
     ): Int =
         withContext(ioDispatcher) {
             val folders = localStorageFolderDao?.getAllFoldersFlow()?.first() ?: emptyList()

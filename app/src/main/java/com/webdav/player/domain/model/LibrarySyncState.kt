@@ -9,14 +9,14 @@ sealed interface LibrarySyncState {
     data class Scanning(
         val progress: Float = 0f,
         val currentPath: String = "",
-        val tracksFound: Int = 0,
+        val tracksFound: Int = 0
     ) : LibrarySyncState
 
     data class Completed(
-        val totalTracks: Int,
+        val totalTracks: Int
     ) : LibrarySyncState
 
     data class Failed(
-        val message: String,
+        val message: String
     ) : LibrarySyncState
 }

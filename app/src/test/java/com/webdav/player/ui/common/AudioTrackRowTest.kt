@@ -9,8 +9,6 @@ import androidx.compose.ui.unit.dp
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioQualityBadge
 import com.webdav.player.domain.model.AudioQualityLevel
-import com.webdav.player.ui.common.EqualizerStateHelper
-import com.webdav.player.ui.common.EqualizerWaveState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -24,7 +22,7 @@ class AudioTrackRowTest {
         val result =
             AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = "Pink Floyd",
-                album = "The Wall",
+                album = "The Wall"
             )
         assertEquals("Pink Floyd · The Wall", result)
     }
@@ -35,7 +33,7 @@ class AudioTrackRowTest {
             AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = "Pink Floyd",
                 album = "The Dark Side of the Moon",
-                durationText = "06:22",
+                durationText = "06:22"
             )
         assertEquals("Pink Floyd · The Dark Side of the Moon · 06:22", result)
     }
@@ -45,7 +43,7 @@ class AudioTrackRowTest {
         val result =
             AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = "David Bowie",
-                album = null,
+                album = null
             )
         assertEquals("David Bowie", result)
     }
@@ -55,7 +53,7 @@ class AudioTrackRowTest {
         val result =
             AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = null,
-                album = "Greatest Hits",
+                album = "Greatest Hits"
             )
         assertEquals("Greatest Hits", result)
     }
@@ -66,7 +64,7 @@ class AudioTrackRowTest {
             AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = "Pink Floyd",
                 album = "Wish You Were Here",
-                extra = "Disc 1",
+                extra = "Disc 1"
             )
         assertEquals("Pink Floyd · Wish You Were Here · Disc 1", result)
     }
@@ -76,7 +74,7 @@ class AudioTrackRowTest {
         val result =
             AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = null,
-                album = null,
+                album = null
             )
         assertEquals("未知", result)
     }
@@ -86,7 +84,7 @@ class AudioTrackRowTest {
         val result =
             AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = "   ",
-                album = "",
+                album = ""
             )
         assertEquals("未知", result)
     }
@@ -97,7 +95,7 @@ class AudioTrackRowTest {
             AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = null,
                 album = null,
-                extra = "Bonus Track",
+                extra = "Bonus Track"
             )
         assertEquals("未知 · Bonus Track", result)
     }
@@ -108,7 +106,7 @@ class AudioTrackRowTest {
             AudioTrackRowDefaults.formatTrackSubtitle(
                 artist = null,
                 album = null,
-                durationText = "04:30",
+                durationText = "04:30"
             )
         assertEquals("未知 · 04:30", result)
     }
@@ -120,7 +118,7 @@ class AudioTrackRowTest {
                 artist = "Pink Floyd",
                 album = "The Wall",
                 durationText = "06:22",
-                extra = "CD 1",
+                extra = "CD 1"
             )
         assertEquals("Pink Floyd · The Wall · 06:22 · CD 1", result)
     }
@@ -135,12 +133,12 @@ class AudioTrackRowTest {
                 AudioTrackRowDefaults.formatTrackSubtitle(null, "Album"),
                 AudioTrackRowDefaults.formatTrackSubtitle("Artist", null),
                 AudioTrackRowDefaults.formatTrackSubtitle(null, null, durationText = "03:45"),
-                AudioTrackRowDefaults.formatTrackSubtitle(null, null, extra = "FLAC"),
+                AudioTrackRowDefaults.formatTrackSubtitle(null, null, extra = "FLAC")
             )
         variations.forEach { subtitle ->
             assertTrue(
                 "Subtitle must be non-empty ('$subtitle') to guarantee 72dp double-line height parity",
-                subtitle.isNotBlank(),
+                subtitle.isNotBlank()
             )
         }
     }
@@ -156,7 +154,7 @@ class AudioTrackRowTest {
                 secondaryContainer = Color(0xFF555555),
                 onSecondaryContainer = Color(0xFF666666),
                 surfaceVariant = Color(0xFF777777),
-                onSurfaceVariant = Color(0xFF888888),
+                onSurfaceVariant = Color(0xFF888888)
             )
 
         val losslessBadge = AudioQualityBadge("FLAC", AudioFormat.FLAC, isLossless = true, qualityLevel = AudioQualityLevel.LOSSLESS)
@@ -184,19 +182,19 @@ class AudioTrackRowTest {
     fun equalizerWaveState_mapsActiveAndPlayingStates() {
         assertEquals(
             EqualizerWaveState.IDLE,
-            EqualizerStateHelper.resolveEqualizerState(isActive = false, isPlaying = false),
+            EqualizerStateHelper.resolveEqualizerState(isActive = false, isPlaying = false)
         )
         assertEquals(
             EqualizerWaveState.IDLE,
-            EqualizerStateHelper.resolveEqualizerState(isActive = false, isPlaying = true),
+            EqualizerStateHelper.resolveEqualizerState(isActive = false, isPlaying = true)
         )
         assertEquals(
             EqualizerWaveState.PAUSED,
-            EqualizerStateHelper.resolveEqualizerState(isActive = true, isPlaying = false),
+            EqualizerStateHelper.resolveEqualizerState(isActive = true, isPlaying = false)
         )
         assertEquals(
             EqualizerWaveState.PLAYING,
-            EqualizerStateHelper.resolveEqualizerState(isActive = true, isPlaying = true),
+            EqualizerStateHelper.resolveEqualizerState(isActive = true, isPlaying = true)
         )
     }
 
@@ -219,34 +217,34 @@ class AudioTrackRowTest {
         val testScheme =
             darkColorScheme(
                 surfaceContainerHigh = Color(0xFF282828),
-                primary = Color(0xFFBB86FC),
+                primary = Color(0xFFBB86FC)
             )
 
         assertEquals(
             testScheme.surfaceContainerHigh,
-            AudioTrackRowDefaults.resolveContainerColor(isActive = true, testScheme),
+            AudioTrackRowDefaults.resolveContainerColor(isActive = true, testScheme)
         )
         assertEquals(
             Color.Transparent,
-            AudioTrackRowDefaults.resolveContainerColor(isActive = false, testScheme),
+            AudioTrackRowDefaults.resolveContainerColor(isActive = false, testScheme)
         )
 
         assertEquals(
             testScheme.primary,
-            AudioTrackRowDefaults.resolveTitleColor(isActive = true, testScheme),
+            AudioTrackRowDefaults.resolveTitleColor(isActive = true, testScheme)
         )
         assertEquals(
             Color.Unspecified,
-            AudioTrackRowDefaults.resolveTitleColor(isActive = false, testScheme),
+            AudioTrackRowDefaults.resolveTitleColor(isActive = false, testScheme)
         )
 
         assertEquals(
             FontWeight.Bold,
-            AudioTrackRowDefaults.resolveTitleFontWeight(isActive = true),
+            AudioTrackRowDefaults.resolveTitleFontWeight(isActive = true)
         )
         assertEquals(
             FontWeight.SemiBold,
-            AudioTrackRowDefaults.resolveTitleFontWeight(isActive = false),
+            AudioTrackRowDefaults.resolveTitleFontWeight(isActive = false)
         )
     }
 
@@ -289,7 +287,7 @@ class AudioTrackRowTest {
                 onClick = {},
                 leadingContent = null,
                 trailingContent = null,
-                actionsMenu = null,
+                actionsMenu = null
             )
         }
         org.junit.Assert.assertNotNull(composableInvocation)

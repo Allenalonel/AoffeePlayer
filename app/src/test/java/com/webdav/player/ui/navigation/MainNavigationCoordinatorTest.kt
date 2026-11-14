@@ -20,7 +20,7 @@ class MainNavigationCoordinatorTest {
             id = 1L,
             name = "My NAS",
             url = "http://nas.local",
-            isDefault = true,
+            isDefault = true
         )
 
     private val sampleTrack =
@@ -30,7 +30,7 @@ class MainNavigationCoordinatorTest {
             remotePath = "/track.flac",
             title = "Comfortably Numb",
             artist = "Pink Floyd",
-            format = AudioFormat.FLAC,
+            format = AudioFormat.FLAC
         )
 
     private fun sessionWithTrack(track: AudioTrack?): PlayerSessionState =
@@ -115,7 +115,7 @@ class MainNavigationCoordinatorTest {
     fun initialState_respectsExplicitMiniPlayerVisibility() {
         val visibleCoordinator =
             MainNavigationCoordinator(
-                initialIsMiniPlayerVisible = true,
+                initialIsMiniPlayerVisible = true
             )
         assertTrue(visibleCoordinator.uiState.value.isMiniPlayerVisible)
     }
@@ -202,7 +202,7 @@ class MainNavigationCoordinatorTest {
         val restoredCoordinator =
             MainNavigationCoordinator(
                 initialDestination = AppDestination.DIRECTORY_BROWSER,
-                hasExplicitInitialDestination = true,
+                hasExplicitInitialDestination = true
             )
 
         assertEquals(AppDestination.DIRECTORY_BROWSER, restoredCoordinator.uiState.value.currentDestination)
@@ -221,7 +221,7 @@ class MainNavigationCoordinatorTest {
         val restoredCoordinator =
             MainNavigationCoordinator(
                 initialDestination = AppDestination.PLAYLISTS,
-                hasExplicitInitialDestination = true,
+                hasExplicitInitialDestination = true
             )
 
         assertEquals(AppDestination.PLAYLISTS, restoredCoordinator.uiState.value.currentDestination)
@@ -237,7 +237,7 @@ class MainNavigationCoordinatorTest {
             MainNavigationCoordinator(
                 initialDestination = AppDestination.SERVER_LIST,
                 hasExplicitInitialDestination = true,
-                onDestinationChanged = { notifiedDestination = it },
+                onDestinationChanged = { notifiedDestination = it }
             )
 
         testCoordinator.onServerCardClicked(sampleServer)
@@ -376,5 +376,40 @@ class MainNavigationCoordinatorTest {
         assertEquals(AppDestination.SERVER_LIST, coordinator.uiState.value.currentDestination)
         assertEquals(AppDestination.DIRECTORY_BROWSER, coordinator.uiState.value.previousDestination)
         assertTrue(coordinator.uiState.value.isForward)
+    }
+
+    @Test
+    fun isTabInteractive_trueOnlyForCurrentDestinationWhenPlayerCollapsedAndQueueHidden() {
+        coordinator.selectDestination(AppDestination.DIRECTORY_BROWSER)
+        val state = coordinator.uiState.value
+
+        assertTrue(state.isTabInteractive(AppDestination.DIRECTORY_BROWSER, isQueueSheetVisible = false))
+        assertFalse(state.isTabInteractive(AppDestination.SERVER_LIST, isQueueSheetVisible = false))
+        assertFalse(state.isTabInteractive(AppDestination.PLAYLISTS, isQueueSheetVisible = false))
+    }
+
+    @Test
+    fun isTabInteractive_falseWhenFullPlayerIsExpanded() {
+        coordinator.onSessionStateChanged(sessionWithTrack(sampleTrack))
+        coordinator.selectDestination(AppDestination.DIRECTORY_BROWSER)
+        coordinator.expandFullPlayer()
+
+        val state = coordinator.uiState.value
+        assertTrue(state.isFullPlayerExpanded)
+        assertFalse(
+            "Current tab must NOT be interactive when Full Player is expanded",
+            state.isTabInteractive(AppDestination.DIRECTORY_BROWSER, isQueueSheetVisible = false)
+        )
+    }
+
+    @Test
+    fun isTabInteractive_falseWhenQueueSheetIsVisible() {
+        coordinator.selectDestination(AppDestination.DIRECTORY_BROWSER)
+        val state = coordinator.uiState.value
+
+        assertFalse(
+            "Current tab must NOT be interactive when Queue Sheet is visible",
+            state.isTabInteractive(AppDestination.DIRECTORY_BROWSER, isQueueSheetVisible = true)
+        )
     }
 }

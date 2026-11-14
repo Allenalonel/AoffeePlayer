@@ -23,7 +23,7 @@ interface DirectorySyncCheckpointDao {
     @Query("SELECT * FROM directory_sync_checkpoint WHERE serverId = :serverId AND path = :path LIMIT 1")
     suspend fun getCheckpoint(
         serverId: Long,
-        path: String,
+        path: String
     ): DirectorySyncCheckpointEntity?
 
     @Query("SELECT path FROM directory_sync_checkpoint WHERE serverId = :serverId AND isScanned = 0")
@@ -38,7 +38,7 @@ interface DirectorySyncCheckpointDao {
     @Query("DELETE FROM directory_sync_checkpoint WHERE serverId = :serverId AND path LIKE :prefix || '%'")
     suspend fun deleteByServerAndPathPrefix(
         serverId: Long,
-        prefix: String,
+        prefix: String
     )
 
     @Query(
@@ -47,10 +47,10 @@ interface DirectorySyncCheckpointDao {
         WHERE (:serverId IS NULL OR serverId = :serverId) 
           AND path LIKE '%' || :query || '%'
         ORDER BY path ASC
-        """,
+        """
     )
     fun searchCheckpoints(
         query: String,
-        serverId: Long? = null,
+        serverId: Long? = null
     ): Flow<List<DirectorySyncCheckpointEntity>>
 }

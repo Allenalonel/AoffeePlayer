@@ -11,7 +11,6 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.ForwardingAudioSink
@@ -21,6 +20,7 @@ import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackErrorKind
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.WebDavServer
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -34,7 +34,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.shadows.ShadowLooper
-import java.util.concurrent.CopyOnWriteArrayList
 
 @OptIn(UnstableApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -48,7 +47,7 @@ class Media3AudioPlayerEngineTest {
             name = "Local Test",
             url = "http://127.0.0.1:8080/dav",
             port = 8080,
-            pathPrefix = "/dav",
+            pathPrefix = "/dav"
         )
 
     private val track1 =
@@ -58,7 +57,7 @@ class Media3AudioPlayerEngineTest {
             remotePath = "/Music/01.mp3",
             title = "01.mp3",
             format = AudioFormat.MP3,
-            size = 1000L,
+            size = 1000L
         )
 
     private val track2 =
@@ -68,7 +67,7 @@ class Media3AudioPlayerEngineTest {
             remotePath = "/Music/02.flac",
             title = "02.flac",
             format = AudioFormat.FLAC,
-            size = 2000L,
+            size = 2000L
         )
 
     private val track3 =
@@ -78,7 +77,7 @@ class Media3AudioPlayerEngineTest {
             remotePath = "/Music/03.wav",
             title = "03.wav",
             format = AudioFormat.WAV,
-            size = 3000L,
+            size = 3000L
         )
 
     private val trackWma =
@@ -88,7 +87,7 @@ class Media3AudioPlayerEngineTest {
             remotePath = "/Music/04.wma",
             title = "04.wma",
             format = AudioFormat.WMA,
-            size = 4000L,
+            size = 4000L
         )
 
     @Before
@@ -114,7 +113,7 @@ class Media3AudioPlayerEngineTest {
         engine.loadTrack(
             server = testServer,
             track = track2,
-            startPositionMs = 0L,
+            startPositionMs = 0L
         )
 
         assertEquals(1, engine.player.mediaItemCount)
@@ -128,7 +127,7 @@ class Media3AudioPlayerEngineTest {
             customEngine.loadTrack(
                 server = testServer,
                 track = track1,
-                startPositionMs = 0L,
+                startPositionMs = 0L
             )
             assertEquals(1, customEngine.player.mediaItemCount)
             assertEquals(
@@ -136,7 +135,7 @@ class Media3AudioPlayerEngineTest {
                 customEngine.player
                     .getMediaItemAt(0)
                     .localConfiguration
-                    ?.mimeType,
+                    ?.mimeType
             )
         } finally {
             customEngine.release()
@@ -150,7 +149,7 @@ class Media3AudioPlayerEngineTest {
         try {
             customEngine.loadTrack(
                 server = testServer,
-                track = track1,
+                track = track1
             )
             assertEquals(1, customEngine.player.mediaItemCount)
 
@@ -161,7 +160,7 @@ class Media3AudioPlayerEngineTest {
                 customEngine.player
                     .getMediaItemAt(1)
                     .localConfiguration
-                    ?.mimeType,
+                    ?.mimeType
             )
         } finally {
             customEngine.release()
@@ -172,7 +171,7 @@ class Media3AudioPlayerEngineTest {
     fun loadTrack_withWmaTrack_setsWmaMimeTypeAndPrepares() {
         engine.loadTrack(
             server = testServer,
-            track = trackWma,
+            track = trackWma
         )
 
         assertEquals(1, engine.player.mediaItemCount)
@@ -184,7 +183,7 @@ class Media3AudioPlayerEngineTest {
     fun seekTo_andStop_updatesStateCorrectly() {
         engine.loadTrack(
             server = testServer,
-            track = track1,
+            track = track1
         )
 
         engine.seekTo(3000L)
@@ -212,7 +211,7 @@ class Media3AudioPlayerEngineTest {
         engine.loadTrack(
             server = testServer,
             track = track1,
-            startPositionMs = 5000L,
+            startPositionMs = 5000L
         )
 
         val originalItem = engine.player.getMediaItemAt(0)
@@ -244,17 +243,17 @@ class Media3AudioPlayerEngineTest {
         assertEquals(
             "Updated Song Title",
             engine.player.playlistMetadata.title
-                ?.toString(),
+                ?.toString()
         )
         assertEquals(
             "Updated Artist",
             engine.player.playlistMetadata.artist
-                ?.toString(),
+                ?.toString()
         )
         assertEquals(
             "Updated Album",
             engine.player.playlistMetadata.albumTitle
-                ?.toString(),
+                ?.toString()
         )
         assertEquals("Updated Song Title", observedPlaylistMeta?.title?.toString())
         assertEquals("Updated Artist", observedPlaylistMeta?.artist?.toString())
@@ -266,7 +265,7 @@ class Media3AudioPlayerEngineTest {
     fun updateTrack_withIdenticalMetadata_doesNotTriggerUnnecessaryUpdates() {
         engine.loadTrack(
             server = testServer,
-            track = track1,
+            track = track1
         )
 
         val updated = track1.copy(title = "Updated Title")
@@ -274,7 +273,7 @@ class Media3AudioPlayerEngineTest {
         assertEquals(
             "Updated Title",
             engine.player.playlistMetadata.title
-                ?.toString(),
+                ?.toString()
         )
 
         // Calling updateTrackMetadata with the exact same track should be a no-op
@@ -282,7 +281,7 @@ class Media3AudioPlayerEngineTest {
         assertEquals(
             "Updated Title",
             engine.player.playlistMetadata.title
-                ?.toString(),
+                ?.toString()
         )
     }
 
@@ -295,7 +294,7 @@ class Media3AudioPlayerEngineTest {
     fun loadTrack_tracksActiveServer() {
         engine.loadTrack(
             server = testServer,
-            track = track1,
+            track = track1
         )
         assertEquals(testServer, engine.activeServer)
     }
@@ -314,7 +313,7 @@ class Media3AudioPlayerEngineTest {
         assertNotNull(dataSource)
         assertTrue(
             "Expected DefaultDataSource when activeServer is null, but was ${dataSource::class.java.name}",
-            dataSource is DefaultDataSource,
+            dataSource is DefaultDataSource
         )
     }
 
@@ -322,13 +321,13 @@ class Media3AudioPlayerEngineTest {
     fun delegatingDataSourceFactory_whenActiveServerSet_delegatesToMediaSourceAdapter() {
         engine.loadTrack(
             server = testServer,
-            track = track1,
+            track = track1
         )
         val dataSource = engine.delegatingDataSourceFactory.createDataSource()
         assertNotNull(dataSource)
         assertTrue(
             "Expected ResilientWebDavDataSource when activeServer is set, but was ${dataSource::class.java.name}",
-            dataSource is ResilientWebDavDataSource,
+            dataSource is ResilientWebDavDataSource
         )
     }
 
@@ -336,7 +335,7 @@ class Media3AudioPlayerEngineTest {
     fun updateTrack_replacesMediaItem_andRetainsActiveServerContext() {
         engine.loadTrack(
             server = testServer,
-            track = track1,
+            track = track1
         )
         assertEquals(testServer, engine.activeServer)
 
@@ -348,7 +347,7 @@ class Media3AudioPlayerEngineTest {
         assertEquals(
             "Rebuilt Title",
             engine.player.playlistMetadata.title
-                ?.toString(),
+                ?.toString()
         )
 
         // Delegating factory provides active server's ResilientWebDavDataSource
@@ -368,7 +367,7 @@ class Media3AudioPlayerEngineTest {
         val dataSource = engine.delegatingDataSourceFactory.createDataSource()
         assertTrue(
             "Expected ResilientWebDavDataSource when activeServer is set, but was ${dataSource::class.java.name}",
-            dataSource is ResilientWebDavDataSource,
+            dataSource is ResilientWebDavDataSource
         )
     }
 
@@ -391,12 +390,12 @@ class Media3AudioPlayerEngineTest {
             StreamingLoadControlConfig(
                 backBufferDurationMs = 20_000,
                 minBufferMs = 30_000,
-                maxBufferMs = 60_000,
+                maxBufferMs = 60_000
             )
         val customEngine =
             Media3AudioPlayerEngine(
                 context = context,
-                loadControlConfig = customConfig,
+                loadControlConfig = customConfig
             )
         assertEquals(20_000, customEngine.loadControlConfig.backBufferDurationMs)
         assertEquals(30_000, customEngine.loadControlConfig.minBufferMs)
@@ -434,7 +433,7 @@ class Media3AudioPlayerEngineTest {
     fun backgroundThread_prerollAndOperations_doNotThrowWrongThreadException() {
         engine.loadTrack(
             server = testServer,
-            track = track1,
+            track = track1
         )
         org.robolectric.shadows.ShadowLooper
             .idleMainLooper()
@@ -488,7 +487,7 @@ class Media3AudioPlayerEngineTest {
         engine.loadTrack(
             server = testServer,
             track = track1,
-            startPositionMs = 3500L,
+            startPositionMs = 3500L
         )
 
         org.robolectric.shadows.ShadowLooper
@@ -498,14 +497,14 @@ class Media3AudioPlayerEngineTest {
         assertEquals(3500L, engine.currentPositionMs.value)
         assertTrue(
             engine.playbackState.value is PlaybackState.Playing ||
-                engine.playbackState.value is PlaybackState.Buffering,
+                engine.playbackState.value is PlaybackState.Buffering
         )
         assertEquals(
             "audio/mpeg",
             engine.player
                 .getMediaItemAt(0)
                 .localConfiguration
-                ?.mimeType,
+                ?.mimeType
         )
     }
 
@@ -513,7 +512,7 @@ class Media3AudioPlayerEngineTest {
     fun prerollTrack_and_clearPrerollTrack_properlyAddAndRemovePrerollSource() {
         engine.loadTrack(
             server = testServer,
-            track = track1,
+            track = track1
         )
         org.robolectric.shadows.ShadowLooper
             .idleMainLooper()
@@ -530,7 +529,7 @@ class Media3AudioPlayerEngineTest {
             engine.player
                 .getMediaItemAt(1)
                 .localConfiguration
-                ?.mimeType,
+                ?.mimeType
         )
 
         // Preroll when item count already >= 2 does not add duplicate
@@ -557,7 +556,7 @@ class Media3AudioPlayerEngineTest {
         engine.loadTrack(
             server = testServer,
             track = track1,
-            startPositionMs = 5000L,
+            startPositionMs = 5000L
         )
         org.robolectric.shadows.ShadowLooper
             .idleMainLooper()
@@ -579,24 +578,24 @@ class Media3AudioPlayerEngineTest {
         assertEquals(5000L, engine.currentPositionMs.value)
         assertTrue(
             engine.playbackState.value is PlaybackState.Playing ||
-                engine.playbackState.value is PlaybackState.Buffering,
+                engine.playbackState.value is PlaybackState.Buffering
         )
 
         // player playlistMetadata is updated
         assertEquals(
             "Enriched Stream Title",
             engine.player.playlistMetadata.title
-                ?.toString(),
+                ?.toString()
         )
         assertEquals(
             "Enriched Artist",
             engine.player.playlistMetadata.artist
-                ?.toString(),
+                ?.toString()
         )
     }
 
     private class TestControllablePlayer(
-        wrapped: Player,
+        wrapped: Player
     ) : ForwardingPlayer(wrapped) {
         var customPlaybackState: Int = Player.STATE_IDLE
         var customCurrentPosition: Long = 0L
@@ -645,7 +644,7 @@ class Media3AudioPlayerEngineTest {
         fun notifyPositionDiscontinuity(
             oldPos: Long,
             newPos: Long,
-            reason: Int = Player.DISCONTINUITY_REASON_SEEK,
+            reason: Int = Player.DISCONTINUITY_REASON_SEEK
         ) {
             customCurrentPosition = newPos
             val oldInfo = Player.PositionInfo(null, 0, null, null, 0, oldPos, oldPos, -1, -1)
@@ -657,7 +656,7 @@ class Media3AudioPlayerEngineTest {
 
         fun notifyPlayWhenReady(
             playWhenReady: Boolean,
-            reason: Int = Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST,
+            reason: Int = Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
         ) {
             customPlayWhenReady = playWhenReady
             for (listener in customListeners) {
@@ -897,7 +896,7 @@ class Media3AudioPlayerEngineTest {
                 androidx.media3.common.PlaybackException(
                     "Wrapper error",
                     java.io.IOException("Nested IO", unsupportedEx),
-                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED
                 )
 
             val errorState = testEngine.toPlaybackError(wrappedEx)
@@ -925,7 +924,7 @@ class Media3AudioPlayerEngineTest {
                 androidx.media3.common.PlaybackException(
                     "Stream failed",
                     java.io.IOException("Wrapped", cause),
-                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED
                 )
             controllablePlayer.notifyPlayerError(playbackEx)
             ShadowLooper.idleMainLooper()
@@ -941,7 +940,7 @@ class Media3AudioPlayerEngineTest {
                     null,
                     emptyMap(),
                     dataSpec,
-                    byteArrayOf(),
+                    byteArrayOf()
                 )
             assertEquals(PlaybackErrorKind.FILE_NOT_FOUND, emitAndCaptureKind(http404))
             assertEquals(PlaybackErrorKind.FILE_NOT_FOUND, emitAndCaptureKind(java.io.FileNotFoundException("missing")))
@@ -950,9 +949,9 @@ class Media3AudioPlayerEngineTest {
                 emitAndCaptureKind(
                     androidx.media3.datasource.ContentDataSource.ContentDataSourceException(
                         java.io.IOException("content missing"),
-                        androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
-                    ),
-                ),
+                        androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND
+                    )
+                )
             )
             assertEquals(PlaybackErrorKind.FILE_NOT_FOUND, emitAndCaptureKind(SecurityException("SAF revoked")))
 
@@ -963,7 +962,7 @@ class Media3AudioPlayerEngineTest {
                     null,
                     emptyMap(),
                     dataSpec,
-                    byteArrayOf(),
+                    byteArrayOf()
                 )
             val http403 =
                 androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException(
@@ -972,7 +971,7 @@ class Media3AudioPlayerEngineTest {
                     null,
                     emptyMap(),
                     dataSpec,
-                    byteArrayOf(),
+                    byteArrayOf()
                 )
             assertEquals(PlaybackErrorKind.AUTH_INVALID, emitAndCaptureKind(http401))
             assertEquals(PlaybackErrorKind.AUTH_INVALID, emitAndCaptureKind(http403))
@@ -983,7 +982,7 @@ class Media3AudioPlayerEngineTest {
 
             assertEquals(
                 PlaybackErrorKind.UNSUPPORTED_RANGE,
-                emitAndCaptureKind(UnsupportedRangeReconnectionException("HTTP 200 on Range")),
+                emitAndCaptureKind(UnsupportedRangeReconnectionException("HTTP 200 on Range"))
             )
 
             assertEquals(PlaybackErrorKind.UNKNOWN, emitAndCaptureKind(IllegalStateException("Decoder failure")))
@@ -1076,7 +1075,7 @@ class Media3AudioPlayerEngineTest {
                 Media3AudioPlayerEngine(
                     context,
                     customPlayer = controllablePlayer,
-                    customAudioSink = trackingSink,
+                    customAudioSink = trackingSink
                 )
             try {
                 controllablePlayer.customDuration = 300_000L
@@ -1120,7 +1119,7 @@ class Media3AudioPlayerEngineTest {
                     androidx.media3.common.audio.AudioProcessor.AudioFormat(
                         22050,
                         2,
-                        C.ENCODING_PCM_16BIT,
+                        C.ENCODING_PCM_16BIT
                     )
                 val outFormat = testEngine.canonicalAudioProcessor.configure(lowRateFormat)
                 assertTrue(testEngine.canonicalAudioProcessor.isActive)
@@ -1147,7 +1146,7 @@ class Media3AudioPlayerEngineTest {
             androidx.media3.common.audio.AudioProcessor.AudioFormat(
                 16000,
                 1,
-                C.ENCODING_PCM_16BIT,
+                C.ENCODING_PCM_16BIT
             )
         val monoOut = processor.configure(mono16kFormat)
         processor.flush()
@@ -1173,7 +1172,7 @@ class Media3AudioPlayerEngineTest {
             androidx.media3.common.audio.AudioProcessor.AudioFormat(
                 22050,
                 2,
-                C.ENCODING_PCM_16BIT,
+                C.ENCODING_PCM_16BIT
             )
         val stereoOut = processor.configure(stereo22kFormat)
         processor.flush()
@@ -1186,7 +1185,7 @@ class Media3AudioPlayerEngineTest {
             androidx.media3.common.audio.AudioProcessor.AudioFormat(
                 44100,
                 2,
-                C.ENCODING_PCM_16BIT,
+                C.ENCODING_PCM_16BIT
             )
         val passthroughOut = processor.configure(standard44kFormat)
         assertFalse(processor.isActive)
@@ -1252,7 +1251,7 @@ class Media3AudioPlayerEngineTest {
 
         override fun addOnRoutingChangedListener(
             listener: AudioRouting.OnRoutingChangedListener,
-            handler: Handler?,
+            handler: Handler?
         ) {
             addedListener = listener
         }
@@ -1351,7 +1350,7 @@ class Media3AudioPlayerEngineTest {
             val artUri = playlistMeta.artworkUri
             assertTrue(
                 "artworkUri must not expose private file:// scheme, was: $artUri",
-                artUri == null || artUri.scheme == "content",
+                artUri == null || artUri.scheme == "content"
             )
         } finally {
             coverFile.delete()
@@ -1359,7 +1358,7 @@ class Media3AudioPlayerEngineTest {
     }
 
     private class GateSpyPlayer(
-        wrapped: Player,
+        wrapped: Player
     ) : ForwardingPlayer(wrapped) {
         var prepareCalls = 0
         var playCalls = 0
@@ -1402,7 +1401,7 @@ class Media3AudioPlayerEngineTest {
             assertTrue(gatedEngine.playWhenReady)
             assertTrue(
                 gatedEngine.playbackState.value is PlaybackState.Playing ||
-                    gatedEngine.playbackState.value is PlaybackState.Buffering,
+                    gatedEngine.playbackState.value is PlaybackState.Buffering
             )
         } finally {
             gatedEngine.release()
@@ -1440,7 +1439,7 @@ class Media3AudioPlayerEngineTest {
             assertTrue(gatedEngine.playWhenReady)
             assertTrue(
                 gatedEngine.playbackState.value is PlaybackState.Playing ||
-                    gatedEngine.playbackState.value is PlaybackState.Buffering,
+                    gatedEngine.playbackState.value is PlaybackState.Buffering
             )
         } finally {
             gatedEngine.release()

@@ -7,12 +7,8 @@ import android.net.NetworkCapabilities
 import androidx.test.core.app.ApplicationProvider
 import com.webdav.player.domain.model.NetworkStatus
 import com.webdav.player.domain.network.FakeNetworkConnectivityObserver
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -43,7 +39,7 @@ class NetworkConnectivityObserverTest {
         isValidated: Boolean = false,
         isWifi: Boolean = false,
         isCellular: Boolean = false,
-        isNotMetered: Boolean = true,
+        isNotMetered: Boolean = true
     ): NetworkCapabilities {
         val nc = ShadowNetworkCapabilities.newInstance()
         val shadow = shadowOf(nc)
@@ -81,7 +77,7 @@ class NetworkConnectivityObserverTest {
                 hasInternet = true,
                 isValidated = true,
                 isWifi = true,
-                isNotMetered = true,
+                isNotMetered = true
             )
         val status = DefaultNetworkConnectivityObserver.mapCapabilitiesToStatus(capabilities)
         assertTrue(status.isConnected)
@@ -97,7 +93,7 @@ class NetworkConnectivityObserverTest {
                 hasInternet = true,
                 isValidated = true,
                 isCellular = true,
-                isNotMetered = false,
+                isNotMetered = false
             )
         val status = DefaultNetworkConnectivityObserver.mapCapabilitiesToStatus(capabilities)
         assertTrue(status.isConnected)
@@ -113,7 +109,7 @@ class NetworkConnectivityObserverTest {
                 hasInternet = true,
                 isValidated = false,
                 isCellular = true,
-                isNotMetered = false,
+                isNotMetered = false
             )
         val status = DefaultNetworkConnectivityObserver.mapCapabilitiesToStatus(capabilities)
         assertFalse(status.isConnected)
@@ -126,7 +122,7 @@ class NetworkConnectivityObserverTest {
             createCapabilities(
                 hasInternet = false,
                 isValidated = false,
-                isWifi = true,
+                isWifi = true
             )
         val status = DefaultNetworkConnectivityObserver.mapCapabilitiesToStatus(capabilities)
         assertFalse(status.isConnected)
@@ -141,14 +137,14 @@ class NetworkConnectivityObserverTest {
                     context = context,
                     coroutineScope = backgroundScope,
                     debounceTimeoutMs = 0L,
-                    connectivityManager = connectivityManager,
+                    connectivityManager = connectivityManager
                 )
 
             val wifiCaps = createCapabilities(hasInternet = true, isValidated = true, isWifi = true)
             observer.getNetworkCallback().onCapabilitiesChanged(
                 org.robolectric.shadow.api.Shadow
                     .newInstanceOf(Network::class.java),
-                wifiCaps,
+                wifiCaps
             )
 
             val status = observer.networkStatus.value
@@ -167,7 +163,7 @@ class NetworkConnectivityObserverTest {
                     context = context,
                     coroutineScope = backgroundScope,
                     debounceTimeoutMs = 0L,
-                    connectivityManager = connectivityManager,
+                    connectivityManager = connectivityManager
                 )
 
             val wifiCaps = createCapabilities(hasInternet = true, isValidated = true, isWifi = true)
@@ -191,7 +187,7 @@ class NetworkConnectivityObserverTest {
                     context = context,
                     coroutineScope = backgroundScope,
                     debounceTimeoutMs = 500L,
-                    connectivityManager = null,
+                    connectivityManager = null
                 )
 
             val connected = NetworkStatus(isConnected = true, isWifi = true)

@@ -41,7 +41,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.SecureFlagPolicy
 import com.webdav.player.domain.model.AudioFormat
-import com.webdav.player.domain.model.AudioQuality
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.PlaybackProgress
@@ -51,8 +50,8 @@ import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.isLocal
 import com.webdav.player.ui.theme.AppIcons
-import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 object TrackDetailBottomSheetDefaults {
@@ -60,7 +59,7 @@ object TrackDetailBottomSheetDefaults {
         ModalBottomSheetProperties(
             securePolicy = SecureFlagPolicy.Inherit,
             isFocusable = false,
-            shouldDismissOnBackPress = true,
+            shouldDismissOnBackPress = true
         )
 }
 
@@ -78,7 +77,7 @@ fun TrackDetailBottomSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     onPlay: (() -> Unit)? = null,
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 ) {
     val coroutineScope = rememberCoroutineScope()
     var isDismissing by remember { mutableStateOf(false) }
@@ -105,49 +104,49 @@ fun TrackDetailBottomSheet(
         sheetState = sheetState,
         properties = TrackDetailBottomSheetDefaults.Properties,
         dragHandle = { BottomSheetDefaults.DragHandle() },
-        modifier = modifier,
+        modifier = modifier
     ) {
         Column(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = 28.dp),
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 28.dp)
         ) {
             // Header Bar
             Row(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 4.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
                         imageVector = AppIcons.Info,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(20.dp)
                     )
                     Text(
                         text = "曲目详细信息",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 IconButton(
                     onClick = animateDismiss,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         imageVector = AppIcons.Close,
                         contentDescription = "关闭",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -155,16 +154,16 @@ fun TrackDetailBottomSheet(
             // Hero section: Cover Thumbnail + Title + Artist / Album
             Row(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    modifier = Modifier.size(64.dp),
+                    modifier = Modifier.size(64.dp)
                 ) {
                     CoverThumbnailImage(
                         thumbnailPath = track.coverThumbnailPath,
@@ -176,16 +175,16 @@ fun TrackDetailBottomSheet(
                                     imageVector = AppIcons.Audiotrack,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(30.dp),
+                                    modifier = Modifier.size(30.dp)
                                 )
                             }
-                        },
+                        }
                     )
                 }
 
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = track.title,
@@ -193,7 +192,7 @@ fun TrackDetailBottomSheet(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                     val subtitle = AudioTrackRowDefaults.formatTrackSubtitle(track.artist, track.album)
                     Text(
@@ -201,7 +200,7 @@ fun TrackDetailBottomSheet(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -214,43 +213,43 @@ fun TrackDetailBottomSheet(
 
             Surface(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
                 shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer,
+                color = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 Column(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
                         text = "音频规格参数",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.primary
                     )
 
                     // Badges row
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         AudioQualityBadgePill(badge = badge)
                         if (specs.isHiRes) {
                             Surface(
                                 shape = RoundedCornerShape(4.dp),
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.primary
                             ) {
                                 Text(
                                     text = "⚡ Hi-Res",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
                         }
@@ -262,25 +261,25 @@ fun TrackDetailBottomSheet(
                     // Key-Value Grid for Specs
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        TrackDetailItem(label = "采样率", value = specs.sampleRate ?: "44.1kHz", modifier = Modifier.weight(1f))
-                        TrackDetailItem(label = "位深", value = specs.bitDepth ?: "16-bit", modifier = Modifier.weight(1f))
+                        TrackDetailItem(label = "采样率", value = specs.sampleRate ?: "未知", modifier = Modifier.weight(1f))
+                        TrackDetailItem(label = "位深", value = specs.bitDepth ?: "未知", modifier = Modifier.weight(1f))
                     }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         TrackDetailItem(
                             label = "比特率",
                             value = specs.bitrateKbps?.let { "$it kbps" } ?: "动态码率",
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f)
                         )
                         TrackDetailItem(
                             label = "音频格式",
                             value = track.format.name,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -291,24 +290,24 @@ fun TrackDetailBottomSheet(
             // Storage and Physical Attributes Card
             Surface(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
                 shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer,
+                color = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 Column(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
                         text = "文件属性与存储",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.primary
                     )
 
                     val isLocal = track.isLocal
@@ -319,28 +318,28 @@ fun TrackDetailBottomSheet(
 
                     TrackDetailItem(
                         label = if (isLocal) "文件存储路径" else "远程文件路径",
-                        value = formattedPath,
+                        value = formattedPath
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         TrackDetailItem(
                             label = "文件大小",
                             value = formatTrackFileSize(track.size),
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f)
                         )
                         TrackDetailItem(
                             label = "曲目时长",
                             value = formatTrackDuration(track.durationMs),
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f)
                         )
                     }
 
                     TrackDetailItem(
                         label = "存储来源",
-                        value = if (isLocal) "本地设备存储 (SAF)" else "远程 WebDAV 服务器 (ID: ${track.serverId})",
+                        value = if (isLocal) "本地设备存储 (SAF)" else "远程 WebDAV 服务器 (ID: ${track.serverId})"
                     )
                 }
             }
@@ -350,14 +349,14 @@ fun TrackDetailBottomSheet(
                 Spacer(modifier = Modifier.height(20.dp))
                 Row(
                     modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedButton(
                         onClick = animateDismiss,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f)
                     ) {
                         Text("关闭")
                     }
@@ -370,12 +369,12 @@ fun TrackDetailBottomSheet(
                                 onPlay()
                             }
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f)
                     ) {
                         Icon(
                             imageVector = AppIcons.PlayArrow,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("立即播放")
@@ -396,14 +395,14 @@ fun TrackDetailBottomSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     onPlay: (() -> Unit)? = null,
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 ) {
     TrackDetailBottomSheet(
         track = track.toAudioTrack(),
         onDismiss = onDismiss,
         modifier = modifier,
         onPlay = onPlay,
-        sheetState = sheetState,
+        sheetState = sheetState
     )
 }
 
@@ -418,7 +417,7 @@ fun TrackDetailBottomSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     onPlay: (() -> Unit)? = null,
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 ) {
     val track =
         remember(file, metadata) {
@@ -447,6 +446,10 @@ fun TrackDetailBottomSheet(
                 size = file.size,
                 format = format,
                 coverThumbnailPath = metadata?.coverThumbnailPath,
+                sampleRate = metadata?.sampleRate,
+                bitDepth = metadata?.bitDepth,
+                bitrateKbps = metadata?.bitrateKbps,
+                channels = metadata?.channels
             )
         }
     TrackDetailBottomSheet(
@@ -454,7 +457,7 @@ fun TrackDetailBottomSheet(
         onDismiss = onDismiss,
         modifier = modifier,
         onPlay = onPlay,
-        sheetState = sheetState,
+        sheetState = sheetState
     )
 }
 
@@ -462,14 +465,14 @@ fun TrackDetailBottomSheet(
 internal fun TrackDetailItem(
     label: String,
     value: String,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Medium
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
@@ -477,7 +480,7 @@ internal fun TrackDetailItem(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -488,7 +491,7 @@ internal fun TrackDetailItem(
  */
 fun formatVolumePath(
     path: String,
-    isLocal: Boolean = false,
+    isLocal: Boolean = false
 ): String {
     val display =
         if (isLocal || path.startsWith("content://") || path.startsWith("file://") || path.startsWith("/local/")) {

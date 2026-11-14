@@ -5,7 +5,7 @@ enum class PlaybackErrorKind {
     AUTH_INVALID,
     SERVER_UNREACHABLE,
     UNSUPPORTED_RANGE,
-    UNKNOWN,
+    UNKNOWN
 }
 
 sealed interface PlaybackState {
@@ -22,6 +22,6 @@ sealed interface PlaybackState {
     data class Error(
         val message: String,
         val cause: Throwable? = null,
-        val kind: PlaybackErrorKind = PlaybackErrorKind.UNKNOWN,
+        val kind: PlaybackErrorKind = PlaybackErrorKind.UNKNOWN
     ) : PlaybackState
 }

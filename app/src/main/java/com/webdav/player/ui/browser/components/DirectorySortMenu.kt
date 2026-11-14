@@ -31,7 +31,7 @@ fun DirectorySortActionButton(
     sortOrder: DirectorySortOrder,
     onSortOrderChanged: (DirectorySortOrder) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
+    enabled: Boolean = true
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
 
@@ -42,22 +42,22 @@ fun DirectorySortActionButton(
             modifier = Modifier.size(38.dp),
             shape = CircleShape,
             colors =
-                IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                ),
+            IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            )
         ) {
             Icon(
                 imageVector = AppIcons.Sort,
                 contentDescription = "排序方式",
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(20.dp)
             )
         }
 
         DropdownMenu(
             expanded = isMenuExpanded,
             onDismissRequest = { isMenuExpanded = false },
-            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)
         ) {
             SortFieldMenuItem(
                 label = "名称",
@@ -66,7 +66,7 @@ fun DirectorySortActionButton(
                 onClick = {
                     onSortOrderChanged(sortOrder.copy(field = SortField.NAME))
                     isMenuExpanded = false
-                },
+                }
             )
             SortFieldMenuItem(
                 label = "修改时间",
@@ -75,7 +75,7 @@ fun DirectorySortActionButton(
                 onClick = {
                     onSortOrderChanged(sortOrder.copy(field = SortField.LAST_MODIFIED))
                     isMenuExpanded = false
-                },
+                }
             )
             SortFieldMenuItem(
                 label = "文件大小",
@@ -84,12 +84,12 @@ fun DirectorySortActionButton(
                 onClick = {
                     onSortOrderChanged(sortOrder.copy(field = SortField.SIZE))
                     isMenuExpanded = false
-                },
+                }
             )
 
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 4.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             )
 
             SortDirectionMenuItem(
@@ -99,7 +99,7 @@ fun DirectorySortActionButton(
                 onClick = {
                     onSortOrderChanged(sortOrder.copy(direction = SortDirection.ASCENDING))
                     isMenuExpanded = false
-                },
+                }
             )
             SortDirectionMenuItem(
                 label = "降序",
@@ -108,7 +108,7 @@ fun DirectorySortActionButton(
                 onClick = {
                     onSortOrderChanged(sortOrder.copy(direction = SortDirection.DESCENDING))
                     isMenuExpanded = false
-                },
+                }
             )
         }
     }
@@ -119,7 +119,7 @@ private fun SortFieldMenuItem(
     label: String,
     field: SortField,
     currentField: SortField,
-    onClick: () -> Unit,
+    onClick: () -> Unit
 ) {
     val isSelected = field == currentField
     DropdownMenuItem(
@@ -127,7 +127,7 @@ private fun SortFieldMenuItem(
             Text(
                 text = label,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
         },
         trailingIcon = {
@@ -136,11 +136,11 @@ private fun SortFieldMenuItem(
                     imageVector = AppIcons.Check,
                     contentDescription = "已选择",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(18.dp)
                 )
             }
         },
-        onClick = onClick,
+        onClick = onClick
     )
 }
 
@@ -149,7 +149,7 @@ private fun SortDirectionMenuItem(
     label: String,
     direction: SortDirection,
     currentDirection: SortDirection,
-    onClick: () -> Unit,
+    onClick: () -> Unit
 ) {
     val isSelected = direction == currentDirection
     DropdownMenuItem(
@@ -157,7 +157,7 @@ private fun SortDirectionMenuItem(
             Text(
                 text = label,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
         },
         trailingIcon = {
@@ -166,10 +166,10 @@ private fun SortDirectionMenuItem(
                     imageVector = AppIcons.Check,
                     contentDescription = "已选择",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(18.dp)
                 )
             }
         },
-        onClick = onClick,
+        onClick = onClick
     )
 }

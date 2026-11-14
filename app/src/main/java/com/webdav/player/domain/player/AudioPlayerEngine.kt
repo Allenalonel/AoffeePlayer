@@ -18,12 +18,12 @@ interface AudioPlayerEngine {
     fun loadTrack(
         server: WebDavServer,
         track: AudioTrack,
-        startPositionMs: Long = 0L,
+        startPositionMs: Long = 0L
     )
 
     fun prerollTrack(
         server: WebDavServer,
-        track: AudioTrack,
+        track: AudioTrack
     )
 
     fun clearPrerollTrack()

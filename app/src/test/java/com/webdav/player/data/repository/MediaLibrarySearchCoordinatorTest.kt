@@ -10,7 +10,6 @@ import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.local.MediaTrackIndexEntity
 import com.webdav.player.data.local.TrackMetadataDao
 import com.webdav.player.data.local.TrackMetadataEntity
-import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -47,7 +46,7 @@ class MediaLibrarySearchCoordinatorTest {
         coordinator = MediaLibrarySearchCoordinator(
             mediaTrackIndexDao = mediaTrackIndexDao,
             directorySyncCheckpointDao = checkpointDao,
-            trackMetadataDao = trackMetadataDao,
+            trackMetadataDao = trackMetadataDao
         )
     }
 
@@ -80,9 +79,9 @@ class MediaLibrarySearchCoordinatorTest {
                     format = "MP3",
                     parentPath = "/music/",
                     parsedTitle = "Song A",
-                    parsedArtist = "Artist X",
-                ),
-            ),
+                    parsedArtist = "Artist X"
+                )
+            )
         )
         checkpointDao.upsertCheckpoint(
             DirectorySyncCheckpointEntity(
@@ -90,8 +89,8 @@ class MediaLibrarySearchCoordinatorTest {
                 path = "/music/Rock/",
                 lastModified = 1000L,
                 etag = "etag1",
-                lastScannedMs = System.currentTimeMillis(),
-            ),
+                lastScannedMs = System.currentTimeMillis()
+            )
         )
         trackMetadataDao.insertOrUpdate(
             TrackMetadataEntity(
@@ -102,8 +101,8 @@ class MediaLibrarySearchCoordinatorTest {
                 album = "Album Z",
                 trackNumber = 1,
                 durationMs = 200000L,
-                coverThumbnailPath = null,
-            ),
+                coverThumbnailPath = null
+            )
         )
 
         val result = coordinator.search("Rock").first()
@@ -127,7 +126,7 @@ class MediaLibrarySearchCoordinatorTest {
                     format = "MP3",
                     parentPath = "/music/",
                     parsedTitle = "Remote Song",
-                    parsedArtist = "Queen",
+                    parsedArtist = "Queen"
                 ),
                 MediaTrackIndexEntity(
                     serverId = LOCAL_STORAGE_ID,
@@ -138,9 +137,9 @@ class MediaLibrarySearchCoordinatorTest {
                     format = "MP3",
                     parentPath = "/local/Music/",
                     parsedTitle = "Local Queen Song",
-                    parsedArtist = "Queen",
-                ),
-            ),
+                    parsedArtist = "Queen"
+                )
+            )
         )
 
         // Single remote server filter
@@ -173,9 +172,9 @@ class MediaLibrarySearchCoordinatorTest {
                     format = "MP3",
                     parentPath = "/music/",
                     parsedTitle = "Indexed Title",
-                    parsedArtist = "Indexed Artist",
-                ),
-            ),
+                    parsedArtist = "Indexed Artist"
+                )
+            )
         )
         trackMetadataDao.insertOrUpdate(
             TrackMetadataEntity(
@@ -186,13 +185,56 @@ class MediaLibrarySearchCoordinatorTest {
                 album = "Greatest Hits",
                 trackNumber = 1,
                 durationMs = 180000L,
-                coverThumbnailPath = null,
-            ),
+                coverThumbnailPath = null
+            )
         )
 
         val result = coordinator.search("Enriched").first()
         // Should only match once, enriched with metadata title
         assertEquals(1, result.matchedTracks.size)
         assertEquals("Enriched Metadata Title", result.matchedTracks[0].title)
+    }
+
+    @Test
+    fun search_propagatesAuthoritativePhysicalSpecsFromMetadataToAudioTrack() = runTest {
+        mediaTrackIndexDao.upsertTracks(
+            listOf(
+                MediaTrackIndexEntity(
+                    serverId = 1L,
+                    remotePath = "/music/hotel_california.flac",
+                    fileName = "hotel_california.flac",
+                    fileSize = 70_000_000L,
+                    lastModified = 1000L,
+                    format = "FLAC",
+                    parentPath = "/music/",
+                    parsedTitle = "Hotel California",
+                    parsedArtist = "Eagles"
+                )
+            )
+        )
+        trackMetadataDao.insertOrUpdate(
+            TrackMetadataEntity(
+                serverId = 1L,
+                remotePath = "/music/hotel_california.flac",
+                title = "Hotel California",
+                artist = "Eagles",
+                album = "Hotel California",
+                trackNumber = 1,
+                durationMs = 391000L,
+                sampleRate = 96000,
+                bitDepth = 24,
+                bitrateKbps = 2450,
+                channels = 2
+            )
+        )
+
+        val result = coordinator.search("Hotel California").first()
+        assertEquals(1, result.matchedTracks.size)
+        val track = result.matchedTracks[0]
+        assertEquals(96000, track.sampleRate)
+        assertEquals(24, track.bitDepth)
+        assertEquals(2450, track.bitrateKbps)
+        assertEquals(2, track.channels)
+        assertTrue(track.audiophileSpecsModel.isHiRes)
     }
 }

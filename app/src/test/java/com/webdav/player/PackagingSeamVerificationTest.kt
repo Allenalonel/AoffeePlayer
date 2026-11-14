@@ -2,12 +2,12 @@ package com.webdav.player
 
 import com.webdav.player.data.service.PlaybackSessionHost
 import com.webdav.player.domain.player.AudioPlayerEngine
+import java.io.File
+import java.util.zip.ZipFile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
-import java.util.zip.ZipFile
 
 /**
  * End-to-end packaging seam and binary thinning invariant test.
@@ -36,22 +36,22 @@ class PackagingSeamVerificationTest {
         val host = source("data/service/PlaybackSessionHost.kt")
         assertFalse(
             "PlaybackSessionHost must not implement AudioPlayerEngine",
-            AudioPlayerEngine::class.java.isAssignableFrom(PlaybackSessionHost::class.java),
+            AudioPlayerEngine::class.java.isAssignableFrom(PlaybackSessionHost::class.java)
         )
         assertFalse(
             "PlaybackSessionHost must not downcast to Media3AudioPlayerEngine",
-            Regex("""\bas\??\s+Media3AudioPlayerEngine\b""").containsMatchIn(host),
+            Regex("""\bas\??\s+Media3AudioPlayerEngine\b""").containsMatchIn(host)
         )
         assertFalse(
             "PlaybackSessionHost must not reach into engine audio routing internals",
-            host.contains("audioRoutingObserver") || host.contains("attachAudioRouting"),
+            host.contains("audioRoutingObserver") || host.contains("attachAudioRouting")
         )
 
         // WebDavApplication must not downcast playerEngine to PlaybackSessionHost
         val app = source("WebDavApplication.kt")
         assertFalse(
             "WebDavApplication must not downcast playerEngine to PlaybackSessionHost",
-            app.contains("as? PlaybackSessionHost") || app.contains("as PlaybackSessionHost"),
+            app.contains("as? PlaybackSessionHost") || app.contains("as PlaybackSessionHost")
         )
 
         // Streaming pipeline owns no MediaSession, hardware locks, or reverse callbacks
@@ -65,37 +65,37 @@ class PackagingSeamVerificationTest {
         val builder = source("data/player/WebDavMediaSourceBuilder.kt")
         assertFalse(
             "WebDavMediaSourceBuilder must not carry hardware lock dependencies",
-            builder.contains("hardwareLockManager") || builder.contains("StreamingHardwareLockManager"),
+            builder.contains("hardwareLockManager") || builder.contains("StreamingHardwareLockManager")
         )
         assertFalse(
             "WebDavMediaSourceAdapter file must be eliminated",
-            File(sourceRoot, "data/player/WebDavMediaSourceAdapter.kt").exists(),
+            File(sourceRoot, "data/player/WebDavMediaSourceAdapter.kt").exists()
         )
         assertFalse(
             "LyricsRepository file must be eliminated",
-            File(sourceRoot, "domain/repository/LyricsRepository.kt").exists(),
+            File(sourceRoot, "domain/repository/LyricsRepository.kt").exists()
         )
         assertFalse(
             "LyricsRepositoryImpl file must be eliminated",
-            File(sourceRoot, "data/repository/LyricsRepositoryImpl.kt").exists(),
+            File(sourceRoot, "data/repository/LyricsRepositoryImpl.kt").exists()
         )
 
         // AudioPlayerEngine interface exposes no routing or host concerns
         val engineInterface = source("domain/player/AudioPlayerEngine.kt")
         assertFalse(
             "AudioPlayerEngine must not expose audio routing hooks",
-            engineInterface.contains("onAudioRoutingChanged"),
+            engineInterface.contains("onAudioRoutingChanged")
         )
         assertFalse(
             "AudioPlayerEngine must not depend on the data layer",
-            Regex("""^import com\.webdav\.player\.data\.""", RegexOption.MULTILINE).containsMatchIn(engineInterface),
+            Regex("""^import com\.webdav\.player\.data\.""", RegexOption.MULTILINE).containsMatchIn(engineInterface)
         )
 
         // No data.player source depends back on the host, the app session, or Media3 session APIs
         val reverseImport =
             Regex(
                 """^import (com\.webdav\.player\.(data\.service|domain\.session|ui)\.|androidx\.media3\.session\.)""",
-                RegexOption.MULTILINE,
+                RegexOption.MULTILINE
             )
         val offenders =
             File(sourceRoot, "data/player")
@@ -113,7 +113,7 @@ class PackagingSeamVerificationTest {
         val uiCommonReverseImport =
             Regex(
                 """^import com\.webdav\.player\.ui\.(browser|playlist|player|server)\.""",
-                RegexOption.MULTILINE,
+                RegexOption.MULTILINE
             )
         val uiCommonOffenders =
             File(sourceRoot, "ui/common")
@@ -124,14 +124,14 @@ class PackagingSeamVerificationTest {
                 .toList()
         assertTrue(
             "ui.common must not reverse-import screen-specific packages (browser/playlist/player/server): $uiCommonOffenders",
-            uiCommonOffenders.isEmpty(),
+            uiCommonOffenders.isEmpty()
         )
 
         // 2. CUE packages are completely purged and must not be imported
         val cueLeakImport =
             Regex(
                 """^import com\.webdav\.player\.(data|domain)\.cue\b""",
-                RegexOption.MULTILINE,
+                RegexOption.MULTILINE
             )
         val cueLeakOffenders =
             sourceRoot
@@ -142,7 +142,7 @@ class PackagingSeamVerificationTest {
                 .toList()
         assertTrue(
             "CUE packages are purged; no imports allowed: $cueLeakOffenders",
-            cueLeakOffenders.isEmpty(),
+            cueLeakOffenders.isEmpty()
         )
 
         // 3. Deleted zombie forwarding shells must not reappear
@@ -165,23 +165,23 @@ class PackagingSeamVerificationTest {
                 "domain/repository/DirectoryRepository.kt",
                 "data/repository/DirectoryRepositoryImpl.kt",
                 "domain/repository/LibrarySearchRepository.kt",
-                "data/repository/LibrarySearchRepositoryImpl.kt",
+                "data/repository/LibrarySearchRepositoryImpl.kt"
             )
         val existingZombies = bannedZombiePaths.filter { File(sourceRoot, it).exists() }
         assertTrue(
             "Zombie forwarding shells and deprecated compatibility files must remain deleted: $existingZombies",
-            existingZombies.isEmpty(),
+            existingZombies.isEmpty()
         )
 
         val bannedZombieTestPaths =
             listOf(
                 "data/repository/DirectoryRepositoryTest.kt",
-                "data/repository/LibrarySearchRepositoryTest.kt",
+                "data/repository/LibrarySearchRepositoryTest.kt"
             )
         val existingZombieTests = bannedZombieTestPaths.filter { File(testRoot, it).exists() }
         assertTrue(
             "Legacy repository test suites must remain deleted: $existingZombieTests",
-            existingZombieTests.isEmpty(),
+            existingZombieTests.isEmpty()
         )
     }
 
@@ -194,65 +194,65 @@ class PackagingSeamVerificationTest {
         // Assert native JNI method bindings are preserved
         assertTrue(
             "Native method keep rule must be present",
-            content.contains("native <methods>;"),
+            content.contains("native <methods>;")
         )
         assertTrue(
             "FFmpeg decoder package keep rule must be present",
-            content.contains("-keep class androidx.media3.decoder.ffmpeg.** { *; }"),
+            content.contains("-keep class androidx.media3.decoder.ffmpeg.** { *; }")
         )
 
         // Assert Room keep rules are present
         assertTrue(
             "Room database keep rule must be present",
-            content.contains("extends androidx.room.RoomDatabase"),
+            content.contains("extends androidx.room.RoomDatabase")
         )
         assertTrue(
             "Room Entity keep rule must be present",
-            content.contains("@androidx.room.Entity class * { *; }"),
+            content.contains("@androidx.room.Entity class * { *; }")
         )
         assertTrue(
             "Room DAO keep rule must be present",
-            content.contains("@androidx.room.Dao interface * { *; }"),
+            content.contains("@androidx.room.Dao interface * { *; }")
         )
 
         // Assert Media3 session and metadata keep rules are present
         assertTrue(
             "Media3 Session callback keep rule must be present",
-            content.contains("androidx.media3.session.MediaSession\$Callback"),
+            content.contains("androidx.media3.session.MediaSession\$Callback")
         )
         assertTrue(
             "Media3 SessionService keep rule must be present",
-            content.contains("androidx.media3.session.MediaSessionService"),
+            content.contains("androidx.media3.session.MediaSessionService")
         )
         assertTrue(
             "MediaItem keep rule must be present",
-            content.contains("class androidx.media3.common.MediaItem"),
+            content.contains("class androidx.media3.common.MediaItem")
         )
         assertTrue(
             "MediaMetadata keep rule must be present",
-            content.contains("class androidx.media3.common.MediaMetadata"),
+            content.contains("class androidx.media3.common.MediaMetadata")
         )
 
         // Assert OkHttp and WebSocket keep rules are present
         assertTrue(
             "OkHttp PublicSuffixDatabase keep rule must be present",
-            content.contains("class okhttp3.internal.publicsuffix.PublicSuffixDatabase"),
+            content.contains("class okhttp3.internal.publicsuffix.PublicSuffixDatabase")
         )
         assertTrue(
             "OkHttp Interceptor keep rule must be present",
-            content.contains("interface okhttp3.Interceptor"),
+            content.contains("interface okhttp3.Interceptor")
         )
         assertTrue(
             "OkHttp Authenticator keep rule must be present",
-            content.contains("interface okhttp3.Authenticator"),
+            content.contains("interface okhttp3.Authenticator")
         )
         assertTrue(
             "WebSocket interface keep rule must be present",
-            content.contains("interface okhttp3.WebSocket"),
+            content.contains("interface okhttp3.WebSocket")
         )
         assertTrue(
             "WebSocketListener keep rule must be present",
-            content.contains("class okhttp3.WebSocketListener"),
+            content.contains("class okhttp3.WebSocketListener")
         )
 
         // Assert bloated wildcard is NOT present
@@ -263,7 +263,7 @@ class PackagingSeamVerificationTest {
                 trimmed == "-keep class androidx.media3.** { *; }" ||
                     trimmed == "-keep class androidx.media3.** {* ;}" ||
                     trimmed == "-keep class androidx.media3.**"
-            },
+            }
         )
     }
 
@@ -276,33 +276,33 @@ class PackagingSeamVerificationTest {
         // Assert 64-bit arm64-v8a only ABI filter
         assertTrue(
             "abiFilters must specify arm64-v8a",
-            content.contains("\"arm64-v8a\""),
+            content.contains("\"arm64-v8a\"")
         )
         assertFalse(
             "armeabi-v7a must be stripped from build.gradle.kts",
-            content.contains("\"armeabi-v7a\""),
+            content.contains("\"armeabi-v7a\"")
         )
 
         // Assert R8 minification and resource shrinking
         assertTrue(
             "isMinifyEnabled must be true",
-            content.contains("isMinifyEnabled = true"),
+            content.contains("isMinifyEnabled = true")
         )
         assertTrue(
             "isShrinkResources must be true",
-            content.contains("isShrinkResources = true"),
+            content.contains("isShrinkResources = true")
         )
 
         // Assert material-icons-extended is pruned
         assertFalse(
             "material-icons-extended must not be present in dependencies",
-            content.contains("material-icons-extended"),
+            content.contains("material-icons-extended")
         )
 
         // Assert dex legacy packaging is enabled for compressed DEX in standalone APK distribution
         assertTrue(
             "dex useLegacyPackaging must be true to enforce compressed DEX",
-            content.contains("dex") && content.contains("useLegacyPackaging = true"),
+            content.contains("dex") && content.contains("useLegacyPackaging = true")
         )
     }
 
@@ -320,7 +320,7 @@ class PackagingSeamVerificationTest {
         // 1. Total APK size <= 7.5 MB
         assertTrue(
             "Release APK file size (${apkFile.length()} bytes) must be <= $maxApkSizeBytes bytes (7.5 MB)",
-            apkFile.length() <= maxApkSizeBytes,
+            apkFile.length() <= maxApkSizeBytes
         )
 
         val zip = ZipFile(apkFile)
@@ -332,13 +332,13 @@ class PackagingSeamVerificationTest {
             assertEquals(
                 "Must contain exactly 1 classes.dex file",
                 1,
-                dexEntries.size,
+                dexEntries.size
             )
             val dex = dexEntries.first()
             assertEquals("DEX entry must be named classes.dex", "classes.dex", dex.name)
             assertTrue(
                 "classes.dex uncompressed size (${dex.size} bytes) must be <= $maxDexUncompressedBytes bytes (4.25 MB)",
-                dex.size <= maxDexUncompressedBytes,
+                dex.size <= maxDexUncompressedBytes
             )
 
             // 3. Native libraries contain strictly lib/arm64-v8a/
@@ -349,7 +349,7 @@ class PackagingSeamVerificationTest {
                     "lib/arm64-v8a/libavformat.so",
                     "lib/arm64-v8a/libavutil.so",
                     "lib/arm64-v8a/libffmpegJNI.so",
-                    "lib/arm64-v8a/libswresample.so",
+                    "lib/arm64-v8a/libswresample.so"
                 )
             val actualLibs = nativeLibs.map { it.name }.toSet()
             assertEquals("Native libraries must match expected arm64-v8a set", expectedLibs, actualLibs)
@@ -357,7 +357,7 @@ class PackagingSeamVerificationTest {
             val nonArm64 = nativeLibs.filter { !it.name.startsWith("lib/arm64-v8a/") }
             assertTrue(
                 "Must contain zero non-arm64 native libraries",
-                nonArm64.isEmpty(),
+                nonArm64.isEmpty()
             )
         } finally {
             zip.close()
@@ -373,7 +373,7 @@ class PackagingSeamVerificationTest {
         val whitelistedFiles =
             setOf(
                 "Color.kt",
-                "ArtworkColorExtractor.kt",
+                "ArtworkColorExtractor.kt"
             )
 
         val hexColorRegex = Regex("""\bColor\s*\(\s*0x[0-9a-fA-F]{8}\b""")
@@ -397,7 +397,7 @@ class PackagingSeamVerificationTest {
 
         assertTrue(
             "UI components must use MaterialTheme.colorScheme or theme tokens instead of hardcoded hex Color(0x...): $violations",
-            violations.isEmpty(),
+            violations.isEmpty()
         )
     }
 
@@ -427,7 +427,7 @@ class PackagingSeamVerificationTest {
 
         assertTrue(
             "Compose UI must consume StateFlow via collectAsStateWithLifecycle(); bare collectAsState() is forbidden: $violations",
-            violations.isEmpty(),
+            violations.isEmpty()
         )
     }
 
@@ -445,14 +445,14 @@ class PackagingSeamVerificationTest {
                 .toList()
         assertTrue(
             "SAF directory scanning must not import or use DocumentFile (mandatory DocumentsContract traversal): $documentFileOffenders",
-            documentFileOffenders.isEmpty(),
+            documentFileOffenders.isEmpty()
         )
 
         // 2. Forbid any .listFiles() calls in LocalStorage resolvers/scanners
         val safResolvers =
             listOf(
                 "data/repository/LocalStorageDirectoryResolver.kt",
-                "data/repository/LocalStorageIndexScanner.kt",
+                "data/repository/LocalStorageIndexScanner.kt"
             )
         val listFilesRegex = Regex("""\.listFiles\s*\(""")
         safResolvers.forEach { relPath ->
@@ -460,7 +460,7 @@ class PackagingSeamVerificationTest {
             if (file.exists()) {
                 assertFalse(
                     "$relPath must not call listFiles(); must use DocumentsContract cursor traversal",
-                    listFilesRegex.containsMatchIn(file.readText()),
+                    listFilesRegex.containsMatchIn(file.readText())
                 )
             }
         }
@@ -471,44 +471,44 @@ class PackagingSeamVerificationTest {
         // Production legacy repository interfaces and implementations must be eliminated
         assertFalse(
             "DirectoryRepository.kt must be eliminated",
-            File(sourceRoot, "domain/repository/DirectoryRepository.kt").exists(),
+            File(sourceRoot, "domain/repository/DirectoryRepository.kt").exists()
         )
         assertFalse(
             "DirectoryRepositoryImpl.kt must be eliminated",
-            File(sourceRoot, "data/repository/DirectoryRepositoryImpl.kt").exists(),
+            File(sourceRoot, "data/repository/DirectoryRepositoryImpl.kt").exists()
         )
         assertFalse(
             "LibrarySearchRepository.kt must be eliminated",
-            File(sourceRoot, "domain/repository/LibrarySearchRepository.kt").exists(),
+            File(sourceRoot, "domain/repository/LibrarySearchRepository.kt").exists()
         )
         assertFalse(
             "LibrarySearchRepositoryImpl.kt must be eliminated",
-            File(sourceRoot, "data/repository/LibrarySearchRepositoryImpl.kt").exists(),
+            File(sourceRoot, "data/repository/LibrarySearchRepositoryImpl.kt").exists()
         )
 
         // Test legacy repository test files must be eliminated
         assertFalse(
             "DirectoryRepositoryTest.kt must be eliminated",
-            File(testRoot, "data/repository/DirectoryRepositoryTest.kt").exists(),
+            File(testRoot, "data/repository/DirectoryRepositoryTest.kt").exists()
         )
         assertFalse(
             "LibrarySearchRepositoryTest.kt must be eliminated",
-            File(testRoot, "data/repository/LibrarySearchRepositoryTest.kt").exists(),
+            File(testRoot, "data/repository/LibrarySearchRepositoryTest.kt").exists()
         )
 
         // AppContainer must expose MediaLibraryRepository and zero legacy repositories
         val appContainer = source("di/AppContainer.kt")
         assertTrue(
             "AppContainer must expose mediaLibraryRepository",
-            appContainer.contains("val mediaLibraryRepository: MediaLibraryRepository"),
+            appContainer.contains("val mediaLibraryRepository: MediaLibraryRepository")
         )
         assertFalse(
             "AppContainer must not expose directoryRepository",
-            appContainer.contains("directoryRepository"),
+            appContainer.contains("directoryRepository")
         )
         assertFalse(
             "AppContainer must not expose librarySearchRepository",
-            appContainer.contains("librarySearchRepository"),
+            appContainer.contains("librarySearchRepository")
         )
 
         // WebDavApplication must not instantiate or retain legacy repositories
@@ -520,7 +520,7 @@ class PackagingSeamVerificationTest {
         val legacyRepoImport =
             Regex(
                 """^import com\.webdav\.player\.(data|domain)\.repository\.(DirectoryRepository|DirectoryRepositoryImpl|LibrarySearchRepository|LibrarySearchRepositoryImpl)\b""",
-                RegexOption.MULTILINE,
+                RegexOption.MULTILINE
             )
         val legacyRepoOffenders =
             sourceRoot
@@ -531,7 +531,7 @@ class PackagingSeamVerificationTest {
                 .toList()
         assertTrue(
             "No production source may import legacy repositories: $legacyRepoOffenders",
-            legacyRepoOffenders.isEmpty(),
+            legacyRepoOffenders.isEmpty()
         )
     }
 
@@ -542,48 +542,48 @@ class PackagingSeamVerificationTest {
         // 1. ServerRepositoryImpl must not import MediaLibraryRepository
         assertFalse(
             "ServerRepositoryImpl must not import MediaLibraryRepository",
-            serverRepoSource.contains("import com.webdav.player.domain.repository.MediaLibraryRepository"),
+            serverRepoSource.contains("import com.webdav.player.domain.repository.MediaLibraryRepository")
         )
         assertFalse(
             "ServerRepositoryImpl must not import MediaLibraryRepositoryImpl",
-            serverRepoSource.contains("MediaLibraryRepositoryImpl"),
+            serverRepoSource.contains("MediaLibraryRepositoryImpl")
         )
 
         // 2. ServerRepositoryImpl must contain zero mutable repository dependencies
         assertFalse(
             "ServerRepositoryImpl must not contain mutable var repository dependencies",
-            serverRepoSource.contains("var mediaLibraryRepository"),
+            serverRepoSource.contains("var mediaLibraryRepository")
         )
         val mutableRepoProperty = Regex("""^\s*var\s+.*(?:Repository|Invalidator)""", RegexOption.MULTILINE)
         assertFalse(
             "ServerRepositoryImpl must not contain mutable repository or invalidator fields",
-            mutableRepoProperty.containsMatchIn(serverRepoSource),
+            mutableRepoProperty.containsMatchIn(serverRepoSource)
         )
 
         // 3. WebDavApplication must contain zero downcasts or late-mutation on repository singletons
         val appSource = source("WebDavApplication.kt")
         assertFalse(
             "WebDavApplication must not contain downcast (as? ServerRepositoryImpl)",
-            appSource.contains("as? ServerRepositoryImpl"),
+            appSource.contains("as? ServerRepositoryImpl")
         )
         assertFalse(
             "WebDavApplication must not contain downcast (as ServerRepositoryImpl)",
-            appSource.contains("as ServerRepositoryImpl"),
+            appSource.contains("as ServerRepositoryImpl")
         )
         assertFalse(
             "WebDavApplication must not perform late-mutation on serverRepository",
-            appSource.contains("serverRepository.mediaLibraryRepository"),
+            appSource.contains("serverRepository.mediaLibraryRepository")
         )
 
         // 4. LocalStorageDirectoryResolver must not import or depend on ServerRepository
         val resolverSource = source("data/repository/LocalStorageDirectoryResolver.kt")
         assertFalse(
             "LocalStorageDirectoryResolver must not import ServerRepository",
-            resolverSource.contains("import com.webdav.player.domain.repository.ServerRepository"),
+            resolverSource.contains("import com.webdav.player.domain.repository.ServerRepository")
         )
         assertFalse(
             "LocalStorageDirectoryResolver must not reference ServerRepository",
-            resolverSource.contains("ServerRepository"),
+            resolverSource.contains("ServerRepository")
         )
     }
 
@@ -593,42 +593,42 @@ class PackagingSeamVerificationTest {
         val faultToleranceSource = source("domain/session/PlaybackFaultTolerance.kt")
         assertFalse(
             "PlaybackFaultTolerance must not import PlaylistRepository",
-            faultToleranceSource.contains("import com.webdav.player.domain.repository.PlaylistRepository"),
+            faultToleranceSource.contains("import com.webdav.player.domain.repository.PlaylistRepository")
         )
         assertFalse(
             "PlaybackFaultTolerance must not reference PlaylistRepository",
-            faultToleranceSource.contains("PlaylistRepository"),
+            faultToleranceSource.contains("PlaylistRepository")
         )
 
         // 2. PlaylistRepository and PlaylistRepositoryImpl must not import or reference WebDavClient
         val playlistRepoInterface = source("domain/repository/PlaylistRepository.kt")
         assertFalse(
             "PlaylistRepository interface must not reference WebDavClient",
-            playlistRepoInterface.contains("WebDavClient"),
+            playlistRepoInterface.contains("WebDavClient")
         )
         val playlistRepoImpl = source("data/repository/PlaylistRepositoryImpl.kt")
         assertFalse(
             "PlaylistRepositoryImpl must not import WebDavClient",
-            playlistRepoImpl.contains("import com.webdav.player.data.remote.WebDavClient"),
+            playlistRepoImpl.contains("import com.webdav.player.data.remote.WebDavClient")
         )
         assertFalse(
             "PlaylistRepositoryImpl must not reference WebDavClient",
-            playlistRepoImpl.contains("WebDavClient"),
+            playlistRepoImpl.contains("WebDavClient")
         )
         assertFalse(
             "PlaylistRepositoryImpl must not reference localUriReachabilityChecker",
-            playlistRepoImpl.contains("localUriReachabilityChecker"),
+            playlistRepoImpl.contains("localUriReachabilityChecker")
         )
         assertFalse(
             "PlaylistRepositoryImpl must not reference serverRepository",
-            playlistRepoImpl.contains("serverRepository"),
+            playlistRepoImpl.contains("serverRepository")
         )
 
         // 3. AppContainer must expose storageReachabilityTracker
         val appContainer = source("di/AppContainer.kt")
         assertTrue(
             "AppContainer must expose storageReachabilityTracker",
-            appContainer.contains("val storageReachabilityTracker: StorageReachabilityTracker"),
+            appContainer.contains("val storageReachabilityTracker: StorageReachabilityTracker")
         )
     }
 
@@ -638,70 +638,70 @@ class PackagingSeamVerificationTest {
         val sessionInterface = source("domain/session/MusicPlayerAppSession.kt")
         assertFalse(
             "MusicPlayerAppSession must not declare getLastDirectoryForServer",
-            sessionInterface.contains("getLastDirectoryForServer"),
+            sessionInterface.contains("getLastDirectoryForServer")
         )
         assertFalse(
             "MusicPlayerAppSession must not declare setCurrentDirectoryPath",
-            sessionInterface.contains("setCurrentDirectoryPath"),
+            sessionInterface.contains("setCurrentDirectoryPath")
         )
 
         // MusicPlayerAppSessionImpl must not contain directory browsing methods
         val sessionImpl = source("domain/session/MusicPlayerAppSessionImpl.kt")
         assertFalse(
             "MusicPlayerAppSessionImpl must not declare getLastDirectoryForServer",
-            sessionImpl.contains("getLastDirectoryForServer"),
+            sessionImpl.contains("getLastDirectoryForServer")
         )
         assertFalse(
             "MusicPlayerAppSessionImpl must not declare setCurrentDirectoryPath",
-            sessionImpl.contains("setCurrentDirectoryPath"),
+            sessionImpl.contains("setCurrentDirectoryPath")
         )
 
         // PlayerSessionState must not contain currentDirectoryPath
         val sessionState = source("domain/model/PlayerSessionState.kt")
         assertFalse(
             "PlayerSessionState must not contain currentDirectoryPath",
-            sessionState.contains("currentDirectoryPath"),
+            sessionState.contains("currentDirectoryPath")
         )
 
         // PlaybackSessionData must not contain browsing directory fields
         val sessionData = source("domain/model/PlaybackSessionData.kt")
         assertFalse(
             "PlaybackSessionData must not contain currentDirectoryPath",
-            sessionData.contains("currentDirectoryPath"),
+            sessionData.contains("currentDirectoryPath")
         )
         assertFalse(
             "PlaybackSessionData must not contain serverLastDirectories",
-            sessionData.contains("serverLastDirectories"),
+            sessionData.contains("serverLastDirectories")
         )
 
         // DataStorePlaybackSessionStore must not contain KEY_CURRENT_DIRECTORY_PATH or KEY_SERVER_LAST_DIRS_JSON
         val sessionStore = source("data/repository/DataStorePlaybackSessionStore.kt")
         assertFalse(
             "DataStorePlaybackSessionStore must not reference current_directory_path",
-            sessionStore.contains("current_directory_path"),
+            sessionStore.contains("current_directory_path")
         )
         assertFalse(
             "DataStorePlaybackSessionStore must not reference server_last_dirs_json",
-            sessionStore.contains("server_last_dirs_json"),
+            sessionStore.contains("server_last_dirs_json")
         )
         assertFalse(
             "DataStorePlaybackSessionStore must not reference KEY_CURRENT_DIRECTORY_PATH",
-            sessionStore.contains("KEY_CURRENT_DIRECTORY_PATH"),
+            sessionStore.contains("KEY_CURRENT_DIRECTORY_PATH")
         )
         assertFalse(
             "DataStorePlaybackSessionStore must not reference KEY_SERVER_LAST_DIRS_JSON",
-            sessionStore.contains("KEY_SERVER_LAST_DIRS_JSON"),
+            sessionStore.contains("KEY_SERVER_LAST_DIRS_JSON")
         )
 
         // SessionPersistenceCoordinator must not reference currentDirectoryPath or serverLastDirectories
         val persistenceCoordinator = source("domain/session/SessionPersistenceCoordinator.kt")
         assertFalse(
             "SessionPersistenceCoordinator must not reference currentDirectoryPath",
-            persistenceCoordinator.contains("currentDirectoryPath"),
+            persistenceCoordinator.contains("currentDirectoryPath")
         )
         assertFalse(
             "SessionPersistenceCoordinator must not reference serverLastDirectories",
-            persistenceCoordinator.contains("serverLastDirectories"),
+            persistenceCoordinator.contains("serverLastDirectories")
         )
     }
 
@@ -720,20 +720,20 @@ class PackagingSeamVerificationTest {
                 .toList()
         assertTrue(
             "domain.session must not import com.webdav.player.data.*: $dataImportOffenders",
-            dataImportOffenders.isEmpty(),
+            dataImportOffenders.isEmpty()
         )
 
         // 2. MusicPlayerAppSession, MusicPlayerAppSessionImpl, and PlayerSessionState must not declare browsingServer or setActiveServer
         listOf(
             "domain/session/MusicPlayerAppSession.kt",
             "domain/session/MusicPlayerAppSessionImpl.kt",
-            "domain/model/PlayerSessionState.kt",
+            "domain/model/PlayerSessionState.kt"
         ).forEach { relPath ->
             val content = source(relPath)
             assertFalse("$relPath must not declare or reference browsingServer", content.contains("browsingServer"))
             assertFalse(
                 "$relPath must not declare setActiveServer",
-                Regex("""\bfun\s+setActiveServer\b""").containsMatchIn(content),
+                Regex("""\bfun\s+setActiveServer\b""").containsMatchIn(content)
             )
         }
 
@@ -743,13 +743,13 @@ class PackagingSeamVerificationTest {
         val playDirOverloads = playDirDeclRegex.findAll(sessionInterface).toList()
         assertTrue(
             "MusicPlayerAppSession must declare explicit playDirectoryTrack",
-            playDirOverloads.isNotEmpty(),
+            playDirOverloads.isNotEmpty()
         )
         assertTrue(
             "MusicPlayerAppSession must not declare any playDirectoryTrack overload lacking server: WebDavServer",
             playDirOverloads.all { match ->
                 Regex("""\bserver\s*:\s*WebDavServer\b""").containsMatchIn(match.groupValues[1])
-            },
+            }
         )
     }
 
@@ -758,11 +758,11 @@ class PackagingSeamVerificationTest {
         val appDatabaseSource = source("data/local/AppDatabase.kt")
         assertFalse(
             "AppDatabase must not call bare fallbackToDestructiveMigration() to protect user assets",
-            Regex("""\.fallbackToDestructiveMigration\(\s*\)""").containsMatchIn(appDatabaseSource),
+            Regex("""\.fallbackToDestructiveMigration\(\s*\)""").containsMatchIn(appDatabaseSource)
         )
         assertTrue(
             "AppDatabase must specify exportSchema = true for Room schema history",
-            Regex("""\bexportSchema\s*=\s*true\b""").containsMatchIn(appDatabaseSource),
+            Regex("""\bexportSchema\s*=\s*true\b""").containsMatchIn(appDatabaseSource)
         )
     }
 
@@ -773,63 +773,63 @@ class PackagingSeamVerificationTest {
         val playlistRepoSource = source("data/repository/PlaylistRepositoryImpl.kt")
         assertFalse(
             "PlaylistRepositoryImpl must not declare or use isCoverDeadOnDisk",
-            playlistRepoSource.contains("isCoverDeadOnDisk"),
+            playlistRepoSource.contains("isCoverDeadOnDisk")
         )
         assertFalse(
             "PlaylistRepositoryImpl must not maintain inFlightCoverHealing map",
-            playlistRepoSource.contains("inFlightCoverHealing"),
+            playlistRepoSource.contains("inFlightCoverHealing")
         )
         assertFalse(
             "PlaylistRepositoryImpl must not declare triggerBackgroundCoverHealing",
-            playlistRepoSource.contains("triggerBackgroundCoverHealing"),
+            playlistRepoSource.contains("triggerBackgroundCoverHealing")
         )
         assertFalse(
             "PlaylistRepositoryImpl must not import java.io.File for disk operations",
-            playlistRepoSource.contains("import java.io.File"),
+            playlistRepoSource.contains("import java.io.File")
         )
 
         // 2. LocalStorageDirectoryResolver must be a pure directory lister without thumbnail writing or metadataMap assembly
         val localResolverSource = source("data/repository/LocalStorageDirectoryResolver.kt")
         assertFalse(
             "LocalStorageDirectoryResolver must not save thumbnails",
-            localResolverSource.contains("saveThumbnail"),
+            localResolverSource.contains("saveThumbnail")
         )
         assertFalse(
             "LocalStorageDirectoryResolver must not call getThumbnailFile",
-            localResolverSource.contains("getThumbnailFile"),
+            localResolverSource.contains("getThumbnailFile")
         )
 
         // 3. Core repositories and coordinators must not bypass TrackIdentity with raw startsWith(\"content://\")
         val metadataEntitySource = source("data/local/TrackMetadataEntity.kt")
         assertFalse(
             "TrackMetadataEntity must delegate to TrackIdentity rather than checking raw content://",
-            metadataEntitySource.contains("domain.remotePath.startsWith(\"content://\")"),
+            metadataEntitySource.contains("domain.remotePath.startsWith(\"content://\")")
         )
 
         val audioTrackSource = source("domain/model/AudioTrack.kt")
         assertFalse(
             "AudioTrack.isLocal must delegate to TrackIdentity rather than checking raw content://",
-            audioTrackSource.contains("remotePath.startsWith(\"content://\")"),
+            audioTrackSource.contains("remotePath.startsWith(\"content://\")")
         )
 
         val searchCoordinatorSource = source("data/repository/MediaLibrarySearchCoordinator.kt")
         assertFalse(
             "MediaLibrarySearchCoordinator must delegate to TrackIdentity rather than checking raw content://",
             searchCoordinatorSource.contains("itemRemotePath.startsWith(\"content://\")") ||
-                searchCoordinatorSource.contains("itemPath.startsWith(\"content://\")"),
+                searchCoordinatorSource.contains("itemPath.startsWith(\"content://\")")
         )
 
         val playbackMetadataSource = source("domain/session/PlaybackMetadataCoordinator.kt")
         assertFalse(
             "PlaybackMetadataCoordinator must delegate to TrackIdentity rather than checking raw content://",
-            playbackMetadataSource.contains("track.remotePath.startsWith(\"content://\")"),
+            playbackMetadataSource.contains("track.remotePath.startsWith(\"content://\")")
         )
 
         // 4. StorageReachabilityTracker must not declare or reference legacy TrackKey
         val trackerSource = source("domain/storage/StorageReachabilityTracker.kt")
         assertFalse(
             "StorageReachabilityTracker must physically eliminate TrackKey",
-            trackerSource.contains("TrackKey"),
+            trackerSource.contains("TrackKey")
         )
     }
 
@@ -846,7 +846,7 @@ class PackagingSeamVerificationTest {
                 val window = lines.subList(maxOf(0, i - 2), minOf(lines.size, i + 30)).joinToString("\n")
                 assertTrue(
                     "Lyrics fetch/read at line ${i + 1} must rethrow CancellationException: \n$window",
-                    window.contains("CancellationException"),
+                    window.contains("CancellationException")
                 )
             }
         }
@@ -859,7 +859,7 @@ class PackagingSeamVerificationTest {
                 val window = mediaLines.subList(maxOf(0, i - 2), minOf(mediaLines.size, i + 8)).joinToString("\n")
                 assertTrue(
                     "Directory resolution at line ${i + 1} must handle CancellationException: \n$window",
-                    window.contains("CancellationException"),
+                    window.contains("CancellationException")
                 )
             }
         }

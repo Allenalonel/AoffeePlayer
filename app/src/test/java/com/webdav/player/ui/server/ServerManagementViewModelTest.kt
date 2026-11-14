@@ -1,7 +1,6 @@
 package com.webdav.player.ui.server
 
 import com.webdav.player.data.remote.ConnectionResult
-import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LibrarySyncResult
 import com.webdav.player.domain.model.LocalStorageFolder
@@ -52,7 +51,7 @@ class ServerManagementViewModelTest {
             ServerManagementViewModel(
                 repository = fakeRepository,
                 webDavClient = fakeClient,
-                mediaLibraryRepository = fakeMediaLibraryRepository,
+                mediaLibraryRepository = fakeMediaLibraryRepository
             )
     }
 
@@ -145,7 +144,7 @@ class ServerManagementViewModelTest {
             assertEquals(
                 20L,
                 viewModel.uiState.value.activeServer
-                    ?.id,
+                    ?.id
             )
         }
 
@@ -321,7 +320,7 @@ class ServerManagementViewModelTest {
             assertNull("Server must be deleted in repository", fakeRepository.getServerById(88L))
             assertTrue(
                 "ViewModel must not directly call mediaLibraryRepository.clearStorageData",
-                fakeMediaLibraryRepository.clearedStorageServerIds.isEmpty(),
+                fakeMediaLibraryRepository.clearedStorageServerIds.isEmpty()
             )
         }
 
@@ -333,7 +332,7 @@ class ServerManagementViewModelTest {
 
             assertTrue(
                 "ViewModel must not directly call mediaLibraryRepository.clearStorageData on add",
-                fakeMediaLibraryRepository.clearedStorageServerIds.isEmpty(),
+                fakeMediaLibraryRepository.clearedStorageServerIds.isEmpty()
             )
             assertEquals(1, fakeMediaLibraryRepository.syncServerCalls.size)
             assertTrue(fakeMediaLibraryRepository.syncServerCalls.first().first.isLocal)
@@ -343,7 +342,7 @@ class ServerManagementViewModelTest {
 
             assertTrue(
                 "ViewModel must not directly call mediaLibraryRepository.clearStorageData on remove",
-                fakeMediaLibraryRepository.clearedStorageServerIds.isEmpty(),
+                fakeMediaLibraryRepository.clearedStorageServerIds.isEmpty()
             )
         }
 
@@ -355,7 +354,7 @@ class ServerManagementViewModelTest {
                 object : FakeMediaLibraryRepository() {
                     override suspend fun syncServer(
                         server: WebDavServer,
-                        force: Boolean,
+                        force: Boolean
                     ): LibrarySyncResult {
                         syncServerCalls.add(server to force)
                         return syncGate.await()
@@ -365,7 +364,7 @@ class ServerManagementViewModelTest {
                 ServerManagementViewModel(
                     repository = fakeRepository,
                     webDavClient = fakeClient,
-                    mediaLibraryRepository = slowSyncLibraryRepo,
+                    mediaLibraryRepository = slowSyncLibraryRepo
                 )
 
             slowViewModel.onAddServerClicked()
@@ -379,7 +378,7 @@ class ServerManagementViewModelTest {
             // Dialog must already be dismissed without waiting for slow syncServer network scan
             assertFalse(
                 "Dialog must close immediately after saveServer DB write without waiting for syncServer",
-                slowViewModel.uiState.value.isAddEditDialogVisible,
+                slowViewModel.uiState.value.isAddEditDialogVisible
             )
             assertFalse(slowViewModel.uiState.value.isSaving)
             assertEquals(1, fakeRepository.savedServers.size)
@@ -405,7 +404,7 @@ class ServerManagementViewModelTest {
                 ServerManagementViewModel(
                     repository = gatedRepo,
                     webDavClient = fakeClient,
-                    mediaLibraryRepository = fakeMediaLibraryRepository,
+                    mediaLibraryRepository = fakeMediaLibraryRepository
                 )
 
             gatedViewModel.onAddServerClicked()

@@ -46,16 +46,16 @@ import kotlinx.coroutines.launch
 fun Modifier.expressivePress(
     interactionSource: MutableInteractionSource? = null,
     enabled: Boolean = true,
-    scaleFactor: Float = MotionTokens.DefaultPressScale,
+    scaleFactor: Float = MotionTokens.DefaultPressScale
 ): Modifier =
     composed(
         inspectorInfo =
-            debugInspectorInfo {
-                name = "expressivePress"
-                properties["enabled"] = enabled
-                properties["scaleFactor"] = scaleFactor
-                properties["interactionSource"] = interactionSource
-            },
+        debugInspectorInfo {
+            name = "expressivePress"
+            properties["enabled"] = enabled
+            properties["scaleFactor"] = scaleFactor
+            properties["interactionSource"] = interactionSource
+        }
     ) {
         val isReduceMotion = isReduceMotionEnabled()
 
@@ -75,7 +75,7 @@ fun Modifier.expressivePress(
         val scale by animateFloatAsState(
             targetValue = targetScale,
             animationSpec = springSpec,
-            label = "expressivePressScale",
+            label = "expressivePressScale"
         )
 
         val pointerMod =
@@ -99,7 +99,7 @@ fun Modifier.expressivePress(
  */
 private fun Modifier.pointerPressTracker(
     enabled: Boolean,
-    onPressedChange: (Boolean) -> Unit,
+    onPressedChange: (Boolean) -> Unit
 ): Modifier =
     if (enabled) {
         pointerInput(Unit) {
@@ -137,17 +137,17 @@ fun Modifier.bouncyClickable(
     onLongClickLabel: String? = null,
     onLongClick: (() -> Unit)? = null,
     onDoubleClick: (() -> Unit)? = null,
-    onClick: () -> Unit = {},
+    onClick: () -> Unit = {}
 ): Modifier =
     composed(
         inspectorInfo =
-            debugInspectorInfo {
-                name = "bouncyClickable"
-                properties["enabled"] = enabled
-                properties["scaleFactor"] = scaleFactor
-                properties["onClick"] = onClick
-                properties["onLongClick"] = onLongClick
-            },
+        debugInspectorInfo {
+            name = "bouncyClickable"
+            properties["enabled"] = enabled
+            properties["scaleFactor"] = scaleFactor
+            properties["onClick"] = onClick
+            properties["onLongClick"] = onLongClick
+        }
     ) {
         val interactionSource = remember { MutableInteractionSource() }
         bouncyClickable(
@@ -160,7 +160,7 @@ fun Modifier.bouncyClickable(
             onLongClickLabel = onLongClickLabel,
             onLongClick = onLongClick,
             onDoubleClick = onDoubleClick,
-            onClick = onClick,
+            onClick = onClick
         )
     }
 
@@ -178,18 +178,18 @@ fun Modifier.bouncyClickable(
     onLongClickLabel: String? = null,
     onLongClick: (() -> Unit)? = null,
     onDoubleClick: (() -> Unit)? = null,
-    onClick: () -> Unit = {},
+    onClick: () -> Unit = {}
 ): Modifier =
     composed(
         inspectorInfo =
-            debugInspectorInfo {
-                name = "bouncyClickable"
-                properties["interactionSource"] = interactionSource
-                properties["enabled"] = enabled
-                properties["scaleFactor"] = scaleFactor
-                properties["onClick"] = onClick
-                properties["onLongClick"] = onLongClick
-            },
+        debugInspectorInfo {
+            name = "bouncyClickable"
+            properties["interactionSource"] = interactionSource
+            properties["enabled"] = enabled
+            properties["scaleFactor"] = scaleFactor
+            properties["onClick"] = onClick
+            properties["onLongClick"] = onLongClick
+        }
     ) {
         val clickModifier =
             Modifier.clickableWithSupport(
@@ -201,14 +201,14 @@ fun Modifier.bouncyClickable(
                 onLongClickLabel = onLongClickLabel,
                 onLongClick = onLongClick,
                 onDoubleClick = onDoubleClick,
-                onClick = onClick,
+                onClick = onClick
             )
 
         this
             .expressivePress(
                 interactionSource = interactionSource,
                 enabled = enabled,
-                scaleFactor = scaleFactor,
+                scaleFactor = scaleFactor
             ).then(clickModifier)
     }
 
@@ -222,7 +222,7 @@ private fun Modifier.clickableWithSupport(
     onLongClickLabel: String?,
     onLongClick: (() -> Unit)?,
     onDoubleClick: (() -> Unit)?,
-    onClick: () -> Unit,
+    onClick: () -> Unit
 ): Modifier =
     if (onLongClick != null || onDoubleClick != null) {
         combinedClickable(
@@ -234,7 +234,7 @@ private fun Modifier.clickableWithSupport(
             onLongClickLabel = onLongClickLabel,
             onLongClick = onLongClick,
             onDoubleClick = onDoubleClick,
-            onClick = onClick,
+            onClick = onClick
         )
     } else {
         clickable(
@@ -243,7 +243,7 @@ private fun Modifier.clickableWithSupport(
             enabled = enabled,
             onClickLabel = onClickLabel,
             role = role,
-            onClick = onClick,
+            onClick = onClick
         )
     }
 
@@ -260,16 +260,16 @@ private fun Modifier.clickableWithSupport(
 fun Modifier.fluidIndicator(
     isSelected: Boolean,
     initialScale: Float = 0.7f,
-    targetScale: Float = 1.0f,
+    targetScale: Float = 1.0f
 ): Modifier =
     composed(
         inspectorInfo =
-            debugInspectorInfo {
-                name = "fluidIndicator"
-                properties["isSelected"] = isSelected
-                properties["initialScale"] = initialScale
-                properties["targetScale"] = targetScale
-            },
+        debugInspectorInfo {
+            name = "fluidIndicator"
+            properties["isSelected"] = isSelected
+            properties["initialScale"] = initialScale
+            properties["targetScale"] = targetScale
+        }
     ) {
         val isReduceMotion = isReduceMotionEnabled()
         val scaleX = remember { Animatable(targetScale) }
@@ -285,10 +285,10 @@ fun Modifier.fluidIndicator(
                 scaleX.animateTo(
                     targetValue = targetScale,
                     animationSpec =
-                        spring(
-                            dampingRatio = MotionTokens.FastSpatialDampingRatio,
-                            stiffness = MotionTokens.SpatialStiffness,
-                        ),
+                    spring(
+                        dampingRatio = MotionTokens.FastSpatialDampingRatio,
+                        stiffness = MotionTokens.SpatialStiffness
+                    )
                 )
             } else {
                 scaleX.snapTo(targetScale)
@@ -307,10 +307,10 @@ fun Modifier.fluidIndicator(
 fun Modifier.expressiveDialog(reduceMotion: Boolean = false): Modifier =
     composed(
         inspectorInfo =
-            debugInspectorInfo {
-                name = "expressiveDialog"
-                properties["reduceMotion"] = reduceMotion
-            },
+        debugInspectorInfo {
+            name = "expressiveDialog"
+            properties["reduceMotion"] = reduceMotion
+        }
     ) {
         val systemReduceMotion = isReduceMotionEnabled()
         val isReduceMotion = reduceMotion || systemReduceMotion
@@ -325,13 +325,13 @@ fun Modifier.expressiveDialog(reduceMotion: Boolean = false): Modifier =
                 launch {
                     scale.animateTo(
                         targetValue = 1.0f,
-                        animationSpec = MotionTokens.spatialSpec(),
+                        animationSpec = MotionTokens.spatialSpec()
                     )
                 }
                 launch {
                     alpha.animateTo(
                         targetValue = 1.0f,
-                        animationSpec = MotionTokens.effectsSpec(),
+                        animationSpec = MotionTokens.effectsSpec()
                     )
                 }
             }

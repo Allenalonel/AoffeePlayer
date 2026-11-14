@@ -24,33 +24,33 @@ import com.webdav.player.ui.theme.AppIcons
 @Composable
 fun EmptyFolderState(
     onRefresh: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier =
-            modifier
-                .fillMaxSize()
-                .padding(32.dp),
+        modifier
+            .fillMaxSize()
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Center
     ) {
         Icon(
             imageVector = AppIcons.FolderOpen,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.outline,
+            tint = MaterialTheme.colorScheme.outline
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "当前目录为空",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "此远程目录下没有找到子目录或文件",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedButton(onClick = onRefresh) {
@@ -67,34 +67,34 @@ fun ErrorState(
     onRetry: () -> Unit,
     onGoBack: () -> Unit,
     canGoBack: Boolean,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier =
-            modifier
-                .fillMaxSize()
-                .padding(32.dp),
+        modifier
+            .fillMaxSize()
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Center
     ) {
         Icon(
             imageVector = AppIcons.ErrorOutline,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.error,
+            tint = MaterialTheme.colorScheme.error
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "无法访问该目录",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.error,
+            color = MaterialTheme.colorScheme.error
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -113,33 +113,33 @@ fun ErrorState(
 @Composable
 fun NoActiveServerState(
     onNavigateToServerManagement: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(
         modifier =
-            modifier
-                .fillMaxSize()
-                .padding(32.dp),
+        modifier
+            .fillMaxSize()
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Center
     ) {
         Icon(
             imageVector = AppIcons.Cloud,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.outline,
+            tint = MaterialTheme.colorScheme.outline
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "未选定活跃 WebDAV 服务器",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "请前往服务器管理页面选择或添加一个服务器",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onNavigateToServerManagement) {

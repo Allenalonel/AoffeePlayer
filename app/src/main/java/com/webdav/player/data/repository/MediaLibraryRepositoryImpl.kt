@@ -64,7 +64,7 @@ class MediaLibraryRepositoryImpl internal constructor(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     searchCoordinator: MediaLibrarySearchCoordinator? = null,
     searchHistoryStore: InternalSearchHistoryStore? = null,
-    browsingCursorStore: InternalBrowsingCursorStore? = null,
+    browsingCursorStore: InternalBrowsingCursorStore? = null
 ) : MediaLibraryRepository {
     companion object {
         private const val MAX_MEMORY_CACHE_SIZE = 100
@@ -93,7 +93,7 @@ class MediaLibraryRepositoryImpl internal constructor(
                 mediaTrackIndexDao,
                 directorySyncCheckpointDao,
                 localStorageFolderDao,
-                ioDispatcher = ioDispatcher,
+                ioDispatcher = ioDispatcher
             )
         } else {
             null
@@ -115,7 +115,7 @@ class MediaLibraryRepositoryImpl internal constructor(
 
     private fun updateSyncState(
         serverId: Long,
-        state: LibrarySyncState,
+        state: LibrarySyncState
     ) {
         _syncState.value = state
         _syncStatesByServer.update { it + (serverId to state) }
@@ -127,7 +127,7 @@ class MediaLibraryRepositoryImpl internal constructor(
 
     override suspend fun getCachedDirectory(
         server: WebDavServer,
-        path: String,
+        path: String
     ): RemoteDirectory? =
         withContext(ioDispatcher) {
             val normalizedPath = RemoteDirectory.normalizePath(path)
@@ -153,7 +153,7 @@ class MediaLibraryRepositoryImpl internal constructor(
     override fun observeDirectoryContent(
         server: WebDavServer,
         path: String,
-        forceRefresh: Boolean,
+        forceRefresh: Boolean
     ): Flow<DirectoryContent> =
         flow {
             val normalizedPath = RemoteDirectory.normalizePath(path)
@@ -191,7 +191,7 @@ class MediaLibraryRepositoryImpl internal constructor(
                             server = server,
                             files = remoteDir.files,
                             directoryFiles = remoteDir.files,
-                            logicalDirectoryPath = normalizedPath,
+                            logicalDirectoryPath = normalizedPath
                         ) ?: emptyMap()
 
                     if (remoteDiffersFromCache) {
@@ -201,8 +201,8 @@ class MediaLibraryRepositoryImpl internal constructor(
                             DirectoryContent(
                                 directory = remoteDir,
                                 metadataMap = if (currentMeta.isNotEmpty()) currentMeta else stage1Meta,
-                                isEnriching = true,
-                            ),
+                                isEnriching = true
+                            )
                         )
                     }
 
@@ -213,7 +213,7 @@ class MediaLibraryRepositoryImpl internal constructor(
                             directory = remoteDir,
                             forceRefresh = forceRefresh,
                             resolvedMetadataMap = stage1Meta,
-                            logicalDirectoryPath = normalizedPath,
+                            logicalDirectoryPath = normalizedPath
                         )
                     emit(enriched)
                 }
@@ -234,7 +234,7 @@ class MediaLibraryRepositoryImpl internal constructor(
         server: WebDavServer,
         normalizedPath: String,
         cachedDir: RemoteDirectory?,
-        forceRefresh: Boolean,
+        forceRefresh: Boolean
     ) {
         val resolver =
             localStorageDirectoryResolver
@@ -260,7 +260,7 @@ class MediaLibraryRepositoryImpl internal constructor(
                     server = server,
                     files = remoteDir.files,
                     directoryFiles = remoteDir.files,
-                    logicalDirectoryPath = normalizedPath,
+                    logicalDirectoryPath = normalizedPath
                 ) ?: emptyMap()
 
             if (remoteDiffersFromCache) {
@@ -269,8 +269,8 @@ class MediaLibraryRepositoryImpl internal constructor(
                     DirectoryContent(
                         directory = remoteDir,
                         metadataMap = if (currentMeta.isNotEmpty()) currentMeta else stage1Meta,
-                        isEnriching = true,
-                    ),
+                        isEnriching = true
+                    )
                 )
             }
 
@@ -280,7 +280,7 @@ class MediaLibraryRepositoryImpl internal constructor(
                     directory = remoteDir,
                     forceRefresh = forceRefresh,
                     resolvedMetadataMap = stage1Meta,
-                    logicalDirectoryPath = normalizedPath,
+                    logicalDirectoryPath = normalizedPath
                 )
             emit(enriched)
         } else {
@@ -295,7 +295,7 @@ class MediaLibraryRepositoryImpl internal constructor(
 
     private suspend fun getCachedMetadataMap(
         serverId: Long,
-        directory: RemoteDirectory,
+        directory: RemoteDirectory
     ): Map<String, TrackMetadata> {
         val audioFiles = directory.files.filter { it.isAudio }
         val repo = trackMetadataRepository ?: return emptyMap()
@@ -311,7 +311,7 @@ class MediaLibraryRepositoryImpl internal constructor(
         directory: RemoteDirectory,
         forceRefresh: Boolean,
         resolvedMetadataMap: Map<String, TrackMetadata>? = null,
-        logicalDirectoryPath: String? = null,
+        logicalDirectoryPath: String? = null
     ): DirectoryContent {
         val audioFiles = directory.files.filter { it.isAudio }
 
@@ -321,7 +321,7 @@ class MediaLibraryRepositoryImpl internal constructor(
                 files = audioFiles,
                 forceRefresh = forceRefresh,
                 directoryFiles = directory.files,
-                logicalDirectoryPath = logicalDirectoryPath,
+                logicalDirectoryPath = logicalDirectoryPath
             )
         }
 
@@ -344,7 +344,7 @@ class MediaLibraryRepositoryImpl internal constructor(
                             if (fallback != null) {
                                 cached.copy(
                                     coverThumbnailPath = cached.coverThumbnailPath ?: fallback.coverThumbnailPath,
-                                    companionLyricsPath = cached.companionLyricsPath ?: fallback.companionLyricsPath,
+                                    companionLyricsPath = cached.companionLyricsPath ?: fallback.companionLyricsPath
                                 )
                             } else {
                                 cached
@@ -364,7 +364,7 @@ class MediaLibraryRepositoryImpl internal constructor(
     private suspend fun persistCache(
         serverId: Long,
         normalizedPath: String,
-        directory: RemoteDirectory,
+        directory: RemoteDirectory
     ) = withContext(ioDispatcher) {
         val cacheKey = "$serverId:$normalizedPath"
         synchronized(cacheLock) {
@@ -376,8 +376,8 @@ class MediaLibraryRepositoryImpl internal constructor(
                 serverId = serverId,
                 path = normalizedPath,
                 dataJson = json,
-                lastUpdatedMs = System.currentTimeMillis(),
-            ),
+                lastUpdatedMs = System.currentTimeMillis()
+            )
         )
         syncDirectoryToMediaIndex(serverId, normalizedPath, directory)
         syncDirectoryToCheckpoints(serverId, normalizedPath, directory)
@@ -386,7 +386,7 @@ class MediaLibraryRepositoryImpl internal constructor(
     private suspend fun syncDirectoryToMediaIndex(
         serverId: Long,
         normalizedPath: String,
-        directory: RemoteDirectory,
+        directory: RemoteDirectory
     ) {
         val indexDao = mediaTrackIndexDao ?: return
         val isLocal = serverId == LOCAL_STORAGE_ID || normalizedPath.startsWith("/local/")
@@ -411,7 +411,7 @@ class MediaLibraryRepositoryImpl internal constructor(
                         format = format.extension.uppercase(),
                         parentPath = normalizedPath,
                         parsedTitle = parsed.title,
-                        parsedArtist = parsed.artist,
+                        parsedArtist = parsed.artist
                     )
                 } else {
                     null
@@ -437,7 +437,7 @@ class MediaLibraryRepositoryImpl internal constructor(
     private suspend fun syncDirectoryToCheckpoints(
         serverId: Long,
         normalizedPath: String,
-        directory: RemoteDirectory,
+        directory: RemoteDirectory
     ) {
         val cpDao = directorySyncCheckpointDao ?: return
         val isLocal = serverId == LOCAL_STORAGE_ID || normalizedPath.startsWith("/local/")
@@ -451,8 +451,8 @@ class MediaLibraryRepositoryImpl internal constructor(
                     lastModified = directory.lastModified,
                     etag = directory.etag,
                     lastScannedMs = now,
-                    isScanned = false,
-                ),
+                    isScanned = false
+                )
             )
             for (sub in directory.subDirectories) {
                 val subPath = RemoteDirectory.normalizePath(sub.path)
@@ -463,8 +463,8 @@ class MediaLibraryRepositoryImpl internal constructor(
                         lastModified = 0L,
                         etag = null,
                         lastScannedMs = now,
-                        isScanned = false,
-                    ),
+                        isScanned = false
+                    )
                 )
             }
         } catch (ce: CancellationException) {
@@ -480,7 +480,7 @@ class MediaLibraryRepositoryImpl internal constructor(
 
     override fun search(
         query: String,
-        serverId: Long?,
+        serverId: Long?
     ): Flow<LibrarySearchResult> = searchCoordinator.search(query, serverId)
 
     // =========================================================================
@@ -509,19 +509,19 @@ class MediaLibraryRepositoryImpl internal constructor(
 
     override suspend fun syncServer(
         server: WebDavServer,
-        force: Boolean,
+        force: Boolean
     ): LibrarySyncResult =
         withContext(ioDispatcher) {
             if (server.isLocal || server.id == LOCAL_STORAGE_ID) {
                 updateSyncState(
                     LOCAL_STORAGE_ID,
-                    LibrarySyncState.Scanning(progress = 0f, currentPath = "local", tracksFound = 0),
+                    LibrarySyncState.Scanning(progress = 0f, currentPath = "local", tracksFound = 0)
                 )
                 try {
                     val count =
                         localStorageIndexScanner?.indexAllMountedFolders(
                             force = force,
-                            onProgress = { updateSyncState(LOCAL_STORAGE_ID, it) },
+                            onProgress = { updateSyncState(LOCAL_STORAGE_ID, it) }
                         ) ?: 0
                     val total = mediaTrackIndexDao?.countByServerId(LOCAL_STORAGE_ID) ?: count
                     val state = LibrarySyncState.Completed(totalTracks = total)
@@ -538,14 +538,14 @@ class MediaLibraryRepositoryImpl internal constructor(
                 if (webDavSyncScanner != null) {
                     updateSyncState(
                         server.id,
-                        LibrarySyncState.Scanning(progress = 0f, currentPath = "/", tracksFound = 0),
+                        LibrarySyncState.Scanning(progress = 0f, currentPath = "/", tracksFound = 0)
                     )
                     try {
                         val result =
                             webDavSyncScanner.sync(
                                 server = server,
                                 force = force,
-                                onProgress = { updateSyncState(server.id, it) },
+                                onProgress = { updateSyncState(server.id, it) }
                             )
                         when (result) {
                             is LibrarySyncResult.Success -> {
@@ -607,7 +607,7 @@ class MediaLibraryRepositoryImpl internal constructor(
 
     override fun setLastBrowsingPath(
         serverId: Long,
-        path: String,
+        path: String
     ) {
         browsingCursorStore.setLastBrowsingPath(serverId, path)
     }
@@ -659,7 +659,7 @@ class MediaLibraryRepositoryImpl internal constructor(
                                 key.contains(uriString) ||
                                 key == "$LOCAL_STORAGE_ID:/" ||
                                 key == "$LOCAL_STORAGE_ID:/local/"
-                        )
+                            )
                     }
                 keysToRemove.forEach { memoryCache.remove(it) }
             }

@@ -19,7 +19,7 @@ interface TrackMetadataRepository {
      */
     fun getMetadataForPathsFlow(
         serverId: Long,
-        remotePaths: List<String>,
+        remotePaths: List<String>
     ): Flow<List<TrackMetadata>>
 
     /**
@@ -27,7 +27,7 @@ interface TrackMetadataRepository {
      */
     fun getMetadataFlow(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ): Flow<TrackMetadata?>
 
     /**
@@ -35,7 +35,7 @@ interface TrackMetadataRepository {
      */
     suspend fun getCachedMetadata(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ): TrackMetadata?
 
     /**
@@ -47,7 +47,7 @@ interface TrackMetadataRepository {
         server: WebDavServer,
         files: List<RemoteFile>,
         forceRefresh: Boolean = false,
-        directoryFiles: Collection<RemoteFile>? = null,
+        directoryFiles: Collection<RemoteFile>? = null
     ) {
         resolveMetadata(server, files, forceRefresh, directoryFiles, null)
     }
@@ -57,7 +57,7 @@ interface TrackMetadataRepository {
         files: List<RemoteFile>,
         forceRefresh: Boolean,
         directoryFiles: Collection<RemoteFile>?,
-        logicalDirectoryPath: String?,
+        logicalDirectoryPath: String?
     ) {
         resolveMetadata(server, files, forceRefresh)
     }
@@ -65,7 +65,7 @@ interface TrackMetadataRepository {
     suspend fun resolveMetadata(
         server: WebDavServer,
         files: List<RemoteFile>,
-        forceRefresh: Boolean,
+        forceRefresh: Boolean
     )
 
     /**
@@ -76,7 +76,7 @@ interface TrackMetadataRepository {
         server: WebDavServer,
         files: List<RemoteFile>,
         directoryFiles: Collection<RemoteFile>?,
-        logicalDirectoryPath: String? = null,
+        logicalDirectoryPath: String? = null
     ): Map<String, TrackMetadata> = emptyMap()
 
     /**
@@ -85,12 +85,12 @@ interface TrackMetadataRepository {
     suspend fun resolveSingleTrackMetadata(
         server: WebDavServer,
         file: RemoteFile,
-        directoryFiles: Collection<RemoteFile>? = null,
+        directoryFiles: Collection<RemoteFile>? = null
     ): TrackMetadata = resolveSingleTrackMetadata(server, file)
 
     suspend fun resolveSingleTrackMetadata(
         server: WebDavServer,
-        file: RemoteFile,
+        file: RemoteFile
     ): TrackMetadata
 
     /**
@@ -102,7 +102,7 @@ interface TrackMetadataRepository {
     suspend fun batchQueryAndHealMetadata(
         identities: List<TrackIdentity>,
         eligibleForHealing: Set<TrackIdentity>,
-        onCoverHealed: (suspend (TrackIdentity, String) -> Unit)? = null,
+        onCoverHealed: (suspend (TrackIdentity, String) -> Unit)? = null
     ): Map<TrackIdentity, TrackMetadata> = emptyMap()
 
     /**
@@ -114,7 +114,7 @@ interface TrackMetadataRepository {
      */
     suspend fun resolveLyrics(
         server: WebDavServer,
-        track: AudioTrack,
+        track: AudioTrack
     ): Lyrics = Lyrics.EMPTY
 
     /**

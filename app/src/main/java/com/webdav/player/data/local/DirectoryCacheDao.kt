@@ -11,7 +11,7 @@ interface DirectoryCacheDao {
     @Query("SELECT * FROM directory_cache WHERE serverId = :serverId AND path = :path LIMIT 1")
     suspend fun getCache(
         serverId: Long,
-        path: String,
+        path: String
     ): DirectoryCacheEntity?
 
     @Query("SELECT * FROM directory_cache")
@@ -25,11 +25,11 @@ interface DirectoryCacheDao {
               path LIKE '%' || :query || '%' 
               OR dataJson LIKE '%' || :query || '%'
           )
-        """,
+        """
     )
     fun searchDirectoryCacheFlow(
         query: String,
-        serverId: Long? = null,
+        serverId: Long? = null
     ): Flow<List<DirectoryCacheEntity>>
 
     @Query("SELECT * FROM directory_cache WHERE serverId = :serverId")
@@ -47,13 +47,13 @@ interface DirectoryCacheDao {
     @Query("DELETE FROM directory_cache WHERE serverId = :serverId AND path = :path")
     suspend fun deleteCache(
         serverId: Long,
-        path: String,
+        path: String
     )
 
     @Query("DELETE FROM directory_cache WHERE serverId = :serverId AND path LIKE :prefix || '%'")
     suspend fun deleteCacheByServerAndPathPrefix(
         serverId: Long,
-        prefix: String,
+        prefix: String
     )
 
     @Query("DELETE FROM directory_cache WHERE serverId = :serverId")

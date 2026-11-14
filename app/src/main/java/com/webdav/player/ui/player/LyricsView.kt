@@ -71,7 +71,7 @@ object LyricsViewDefaults {
 
     fun resolveMainAlpha(
         isActive: Boolean,
-        isSynchronized: Boolean,
+        isSynchronized: Boolean
     ): Float =
         when {
             isActive -> ActiveMainAlpha
@@ -81,7 +81,7 @@ object LyricsViewDefaults {
 
     fun resolveTranslationAlpha(
         isActive: Boolean,
-        isSynchronized: Boolean,
+        isSynchronized: Boolean
     ): Float =
         when {
             isActive -> ActiveTranslationAlpha
@@ -98,7 +98,7 @@ fun LyricsView(
     onSeekTo: (Long) -> Unit,
     modifier: Modifier = Modifier,
     playbackProgress: PlaybackProgress = PlaybackProgress.ZERO,
-    onToggleCover: () -> Unit = {},
+    onToggleCover: () -> Unit = {}
 ) {
     val effectivePositionMs =
         if (playbackProgress.durationMs > 0L || playbackProgress.currentPositionMs > 0L) {
@@ -109,25 +109,25 @@ fun LyricsView(
 
     BoxWithConstraints(
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         val halfViewport = ((maxHeight / 2) - 24.dp).coerceAtLeast(0.dp)
         when {
             isLoading -> {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(36.dp),
                         color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 3.dp,
+                        strokeWidth = 3.dp
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "正在加载歌词...",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -135,27 +135,27 @@ fun LyricsView(
             lyrics == null || lyrics.isEmpty -> {
                 Column(
                     modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onToggleCover,
-                            ),
+                    Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onToggleCover
+                        ),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
                         imageVector = AppIcons.Audiotrack,
                         contentDescription = null,
                         modifier = Modifier.size(56.dp),
-                        tint = MaterialTheme.colorScheme.outlineVariant,
+                        tint = MaterialTheme.colorScheme.outlineVariant
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "暂无歌词",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -169,7 +169,7 @@ fun LyricsView(
                     if (activeIndex >= 0 && lyrics.isSynchronized && !lazyListState.isScrollInProgress) {
                         lazyListState.animateScrollToItem(
                             index = activeIndex,
-                            scrollOffset = 0,
+                            scrollOffset = 0
                         )
                     }
                 }
@@ -179,11 +179,11 @@ fun LyricsView(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(top = halfViewport, bottom = halfViewport, start = 0.dp, end = 0.dp),
                     horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.spacedBy(LyricsViewDefaults.LineSpacing),
+                    verticalArrangement = Arrangement.spacedBy(LyricsViewDefaults.LineSpacing)
                 ) {
                     itemsIndexed(
                         items = lyrics.lines,
-                        key = { index, line -> "$index:${line.timestampMs}:${line.text}:${line.translation.orEmpty()}" },
+                        key = { index, line -> "$index:${line.timestampMs}:${line.text}:${line.translation.orEmpty()}" }
                     ) { index, line ->
                         val isActive = index == activeIndex && lyrics.isSynchronized
 
@@ -196,10 +196,10 @@ fun LyricsView(
                                     line = line,
                                     isSynchronized = lyrics.isSynchronized,
                                     onSeekTo = onSeekTo,
-                                    onToggleCover = onToggleCover,
+                                    onToggleCover = onToggleCover
                                 )
                             },
-                            modifier = Modifier.testTag("lyric_line_$index"),
+                            modifier = Modifier.testTag("lyric_line_$index")
                         )
                     }
                 }
@@ -214,28 +214,28 @@ internal fun LyricLineItem(
     isActive: Boolean,
     isSynchronized: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val mainTextColor by animateColorAsState(
         targetValue =
-            when {
-                isActive -> MaterialTheme.colorScheme.primary
-                isSynchronized -> MaterialTheme.colorScheme.onSurface.copy(alpha = LyricsViewDefaults.InactiveMainAlpha)
-                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = LyricsViewDefaults.UnsyncedMainAlpha)
-            },
+        when {
+            isActive -> MaterialTheme.colorScheme.primary
+            isSynchronized -> MaterialTheme.colorScheme.onSurface.copy(alpha = LyricsViewDefaults.InactiveMainAlpha)
+            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = LyricsViewDefaults.UnsyncedMainAlpha)
+        },
         animationSpec = tween(durationMillis = 250),
-        label = "LyricMainTextColor",
+        label = "LyricMainTextColor"
     )
 
     val translationTextColor by animateColorAsState(
         targetValue =
-            when {
-                isActive -> MaterialTheme.colorScheme.primary.copy(alpha = LyricsViewDefaults.ActiveTranslationAlpha)
-                isSynchronized -> MaterialTheme.colorScheme.onSurface.copy(alpha = LyricsViewDefaults.InactiveTranslationAlpha)
-                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = LyricsViewDefaults.UnsyncedTranslationAlpha)
-            },
+        when {
+            isActive -> MaterialTheme.colorScheme.primary.copy(alpha = LyricsViewDefaults.ActiveTranslationAlpha)
+            isSynchronized -> MaterialTheme.colorScheme.onSurface.copy(alpha = LyricsViewDefaults.InactiveTranslationAlpha)
+            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = LyricsViewDefaults.UnsyncedTranslationAlpha)
+        },
         animationSpec = tween(durationMillis = 250),
-        label = "LyricTranslationTextColor",
+        label = "LyricTranslationTextColor"
     )
 
     val mainFontSize = if (isActive) LyricsViewDefaults.ActiveMainFontSize else LyricsViewDefaults.InactiveMainFontSize
@@ -246,46 +246,46 @@ internal fun LyricLineItem(
 
     val activeBackgroundColor by animateColorAsState(
         targetValue =
-            if (isActive) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
-            } else {
-                Color.Transparent
-            },
+        if (isActive) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+        } else {
+            Color.Transparent
+        },
         animationSpec = tween(durationMillis = 250),
-        label = "LyricActiveBackground",
+        label = "LyricActiveBackground"
     )
 
     Row(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(activeBackgroundColor)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onClick,
-                ).padding(
-                    vertical = LyricsViewDefaults.ItemVerticalPadding,
-                    horizontal = LyricsViewDefaults.ItemHorizontalPadding,
-                ),
-        verticalAlignment = Alignment.CenterVertically,
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(activeBackgroundColor)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ).padding(
+                vertical = LyricsViewDefaults.ItemVerticalPadding,
+                horizontal = LyricsViewDefaults.ItemHorizontalPadding
+            ),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         if (isActive) {
             Box(
                 modifier =
-                    Modifier
-                        .width(3.5.dp)
-                        .height(26.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(MaterialTheme.colorScheme.primary),
+                Modifier
+                    .width(3.5.dp)
+                    .height(26.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.primary)
             )
             Spacer(modifier = Modifier.width(10.dp))
         }
 
         Column(
             modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.Start,
+            horizontalAlignment = Alignment.Start
         ) {
             Text(
                 text = line.mainText,
@@ -294,7 +294,7 @@ internal fun LyricLineItem(
                 fontWeight = mainFontWeight,
                 textAlign = TextAlign.Start,
                 lineHeight = if (isActive) 30.sp else 24.sp,
-                modifier = Modifier.fillMaxWidth().testTag("lyric_main_text"),
+                modifier = Modifier.fillMaxWidth().testTag("lyric_main_text")
             )
 
             if (line.hasTranslation && !line.translation.isNullOrBlank()) {
@@ -306,7 +306,7 @@ internal fun LyricLineItem(
                     fontWeight = translationFontWeight,
                     textAlign = TextAlign.Start,
                     lineHeight = if (isActive) 20.sp else 18.sp,
-                    modifier = Modifier.fillMaxWidth().testTag("lyric_translation_text"),
+                    modifier = Modifier.fillMaxWidth().testTag("lyric_translation_text")
                 )
             }
         }
@@ -320,7 +320,7 @@ fun handleLyricLineClick(
     line: LyricLine,
     isSynchronized: Boolean,
     onSeekTo: (Long) -> Unit,
-    onToggleCover: () -> Unit,
+    onToggleCover: () -> Unit
 ) {
     if (isSynchronized) {
         onSeekTo(line.timestampMs)

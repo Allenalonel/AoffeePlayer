@@ -1,13 +1,13 @@
 package com.webdav.player.data.service
 
 import android.content.Context
+import android.media.AudioAttributes as AndroidAudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import androidx.annotation.VisibleForTesting
 import com.webdav.player.domain.session.MusicPlayerAppSession
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
-import android.media.AudioAttributes as AndroidAudioAttributes
 
 /**
  * AudioFocusHandler:
@@ -23,11 +23,12 @@ import android.media.AudioAttributes as AndroidAudioAttributes
  */
 class AudioFocusHandler(
     private val context: Context,
-    appSession: MusicPlayerAppSession? = null,
+    appSession: MusicPlayerAppSession? = null
 ) : AudioManager.OnAudioFocusChangeListener {
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
 
     private val isDuckedRef = AtomicBoolean(false)
+
     @get:VisibleForTesting
     val isDucked: Boolean
         get() = isDuckedRef.get()

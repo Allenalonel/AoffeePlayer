@@ -13,6 +13,8 @@ import com.webdav.player.domain.model.LibrarySyncState
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.WebDavServer
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -26,8 +28,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Concurrency-limited WebDAV BFS directory synchronization scanner.
@@ -40,7 +40,7 @@ class WebDavSyncScanner(
     private val mediaTrackIndexDao: MediaTrackIndexDao,
     private val directorySyncCheckpointDao: DirectorySyncCheckpointDao,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val maxConcurrency: Int = DEFAULT_MAX_CONCURRENCY,
+    private val maxConcurrency: Int = DEFAULT_MAX_CONCURRENCY
 ) {
     companion object {
         const val DEFAULT_MAX_CONCURRENCY = 3
@@ -53,7 +53,7 @@ class WebDavSyncScanner(
                 ".thumbnails",
                 ".cache",
                 "android",
-                "__macosx",
+                "__macosx"
             )
 
         fun isExcludedDirectory(name: String): Boolean {
@@ -72,7 +72,7 @@ class WebDavSyncScanner(
     private data class DirectoryWorkItem(
         val path: String,
         val lastModified: Long = 0L,
-        val etag: String? = null,
+        val etag: String? = null
     )
 
     private val _syncState = MutableStateFlow<LibrarySyncState>(LibrarySyncState.Idle)
@@ -82,7 +82,7 @@ class WebDavSyncScanner(
         server: WebDavServer,
         force: Boolean = false,
         onProgress: ((LibrarySyncState) -> Unit)? = null,
-        rootPath: String = "/",
+        rootPath: String = "/"
     ): LibrarySyncResult =
         withContext(ioDispatcher) {
             val normalizedRoot = RemoteDirectory.normalizePath(rootPath)
@@ -101,7 +101,7 @@ class WebDavSyncScanner(
                     LibrarySyncState.Scanning(
                         progress = progress,
                         currentPath = currentPath,
-                        tracksFound = totalIndexedTracks.get(),
+                        tracksFound = totalIndexedTracks.get()
                     )
                 _syncState.value = state
                 onProgress?.invoke(state)
@@ -111,7 +111,7 @@ class WebDavSyncScanner(
                 LibrarySyncState.Scanning(
                     progress = 0f,
                     currentPath = normalizedRoot,
-                    tracksFound = 0,
+                    tracksFound = 0
                 )
             onProgress?.invoke(_syncState.value)
 
@@ -124,7 +124,7 @@ class WebDavSyncScanner(
             suspend fun enqueueDirectory(
                 path: String,
                 lastModified: Long = 0L,
-                etag: String? = null,
+                etag: String? = null
             ) {
                 val norm = RemoteDirectory.normalizePath(path)
                 if (queuedPaths.add(norm)) {
@@ -134,8 +134,8 @@ class WebDavSyncScanner(
                         DirectoryWorkItem(
                             path = norm,
                             lastModified = lastModified,
-                            etag = etag,
-                        ),
+                            etag = etag
+                        )
                     )
                 }
             }
@@ -223,7 +223,7 @@ class WebDavSyncScanner(
                                                                 enqueueDirectory(
                                                                     path = subDir.path,
                                                                     lastModified = subDir.lastModified,
-                                                                    etag = subDir.etag,
+                                                                    etag = subDir.etag
                                                                 )
                                                             }
                                                         }
@@ -258,7 +258,7 @@ class WebDavSyncScanner(
                                                             format = format.extension.uppercase(),
                                                             parentPath = item.path,
                                                             parsedTitle = parsed.title,
-                                                            parsedArtist = parsed.artist,
+                                                            parsedArtist = parsed.artist
                                                         )
                                                     discoveredTracks.add(entity)
                                                 }
@@ -278,7 +278,7 @@ class WebDavSyncScanner(
                                                 if (staleTracks.isNotEmpty()) {
                                                     mediaTrackIndexDao.deleteByServerAndPaths(
                                                         server.id,
-                                                        staleTracks.map { it.remotePath },
+                                                        staleTracks.map { it.remotePath }
                                                     )
                                                 }
                                             } catch (ce: CancellationException) {
@@ -298,8 +298,8 @@ class WebDavSyncScanner(
                                                     lastModified = effectiveLastMod,
                                                     etag = effectiveEtag,
                                                     lastScannedMs = System.currentTimeMillis(),
-                                                    isScanned = true,
-                                                ),
+                                                    isScanned = true
+                                                )
                                             )
 
                                             // 6. BFS enqueue valid subdirectories
@@ -310,7 +310,7 @@ class WebDavSyncScanner(
                                                 enqueueDirectory(
                                                     path = subDir.path,
                                                     lastModified = subDir.lastModified,
-                                                    etag = subDir.etag,
+                                                    etag = subDir.etag
                                                 )
                                             }
                                             enqueueUnscannedDescendantsIfRoot(item.path)
@@ -349,7 +349,7 @@ class WebDavSyncScanner(
                 LibrarySyncResult.Success(
                     totalTracksIndexed = totalIndexedTracks.get(),
                     directoriesScanned = directoriesScanned.get(),
-                    directoriesSkipped = directoriesSkipped.get(),
+                    directoriesSkipped = directoriesSkipped.get()
                 )
             }
         }

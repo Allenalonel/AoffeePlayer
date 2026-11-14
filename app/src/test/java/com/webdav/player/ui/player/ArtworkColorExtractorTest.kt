@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import androidx.compose.ui.graphics.Color
 import com.webdav.player.ui.theme.ExpressiveDarkColorScheme
 import com.webdav.player.ui.theme.ExpressiveLightColorScheme
+import java.io.File
+import java.io.FileOutputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -13,8 +15,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.File
-import java.io.FileOutputStream
 
 @RunWith(RobolectricTestRunner::class)
 class ArtworkColorExtractorTest {
@@ -28,7 +28,7 @@ class ArtworkColorExtractorTest {
 
     private fun contrastRatio(
         colorA: Color,
-        colorB: Color,
+        colorB: Color
     ): Double = ArtworkColorExtractor.contrastRatio(colorA, colorB)
 
     @Test
@@ -37,7 +37,7 @@ class ArtworkColorExtractorTest {
             ArtworkColorExtractor.extractArtworkColors(
                 thumbnailPath = null,
                 defaultSurfaceColor = defaultSurface,
-                defaultBackgroundColor = defaultBackground,
+                defaultBackgroundColor = defaultBackground
             )
 
         assertTrue(result.isFallback)
@@ -54,7 +54,7 @@ class ArtworkColorExtractorTest {
             ArtworkColorExtractor.extractArtworkColors(
                 thumbnailPath = "   ",
                 defaultSurfaceColor = defaultSurface,
-                defaultBackgroundColor = defaultBackground,
+                defaultBackgroundColor = defaultBackground
             )
 
         assertTrue(result.isFallback)
@@ -70,7 +70,7 @@ class ArtworkColorExtractorTest {
             ArtworkColorExtractor.extractArtworkColors(
                 thumbnailPath = nonExistentPath,
                 defaultSurfaceColor = defaultSurface,
-                defaultBackgroundColor = defaultBackground,
+                defaultBackgroundColor = defaultBackground
             )
 
         assertTrue(result.isFallback)
@@ -124,7 +124,7 @@ class ArtworkColorExtractorTest {
                 bitmap = bitmap,
                 defaultSurfaceColor = defaultSurface,
                 defaultBackgroundColor = defaultBackground,
-                isDarkTheme = true,
+                isDarkTheme = true
             )
 
         assertFalse(result.isFallback)
@@ -153,7 +153,7 @@ class ArtworkColorExtractorTest {
                 thumbnailPath = imageFile.absolutePath,
                 defaultSurfaceColor = defaultSurface,
                 defaultBackgroundColor = defaultBackground,
-                isDarkTheme = true,
+                isDarkTheme = true
             )
 
         assertFalse(result.isFallback)
@@ -171,7 +171,7 @@ class ArtworkColorExtractorTest {
             ArtworkColorExtractor.extractArtworkColors(
                 thumbnailPath = emptyFile.absolutePath,
                 defaultSurfaceColor = defaultSurface,
-                defaultBackgroundColor = defaultBackground,
+                defaultBackgroundColor = defaultBackground
             )
 
         assertTrue(result.isFallback)
@@ -185,7 +185,7 @@ class ArtworkColorExtractorTest {
             ArtworkColorExtractor.extractArtworkColors(
                 thumbnailPath = null,
                 defaultSurfaceColor = defaultSurface,
-                defaultBackgroundColor = defaultBackground,
+                defaultBackgroundColor = defaultBackground
             )
 
         assertTrue(result.isFallback)
@@ -213,7 +213,7 @@ class ArtworkColorExtractorTest {
             ArtworkColorExtractor.extractArtworkColors(
                 bitmap = cyanBlueBitmap,
                 defaultSurfaceColor = defaultSurface,
-                defaultBackgroundColor = defaultBackground,
+                defaultBackgroundColor = defaultBackground
             )
 
         assertFalse(result.isFallback)
@@ -225,15 +225,15 @@ class ArtworkColorExtractorTest {
 
         assertTrue(
             "Extracted accent hue must be in cyan/blue range (180..260), got $extractedAccentHue",
-            extractedAccentHue in 180f..260f,
+            extractedAccentHue in 180f..260f
         )
         assertTrue(
             "Derived dark colorScheme.primary hue must be in cyan/blue range (180..260), got $darkPrimaryHue",
-            darkPrimaryHue in 180f..260f,
+            darkPrimaryHue in 180f..260f
         )
         assertTrue(
             "Derived light colorScheme.primary hue must be in cyan/blue range (180..260), got $lightPrimaryHue",
-            lightPrimaryHue in 180f..260f,
+            lightPrimaryHue in 180f..260f
         )
     }
 
@@ -244,7 +244,7 @@ class ArtworkColorExtractorTest {
                 android.graphics.Color.RED to "Red",
                 android.graphics.Color.BLUE to "Blue",
                 android.graphics.Color.GREEN to "Green",
-                android.graphics.Color.MAGENTA to "Magenta",
+                android.graphics.Color.MAGENTA to "Magenta"
             )
 
         for ((androidColor, name) in colors) {
@@ -255,7 +255,7 @@ class ArtworkColorExtractorTest {
                 ArtworkColorExtractor.extractArtworkColors(
                     bitmap = bitmap,
                     defaultSurfaceColor = defaultSurface,
-                    defaultBackgroundColor = defaultBackground,
+                    defaultBackgroundColor = defaultBackground
                 )
 
             assertFalse("$name: isFallback should be false", result.isFallback)
@@ -269,19 +269,19 @@ class ArtworkColorExtractorTest {
 
             assertTrue(
                 "$name: dark onPrimary vs primary >= 4.5",
-                contrastRatio(darkScheme.onPrimary, darkScheme.primary) >= 4.5,
+                contrastRatio(darkScheme.onPrimary, darkScheme.primary) >= 4.5
             )
             assertTrue(
                 "$name: light onPrimary vs primary >= 4.5",
-                contrastRatio(lightScheme.onPrimary, lightScheme.primary) >= 4.5,
+                contrastRatio(lightScheme.onPrimary, lightScheme.primary) >= 4.5
             )
             assertTrue(
                 "$name: light onSurfaceVariant vs background >= 8.5",
-                contrastRatio(lightScheme.onSurfaceVariant, lightScheme.background) >= 8.5,
+                contrastRatio(lightScheme.onSurfaceVariant, lightScheme.background) >= 8.5
             )
             assertTrue(
                 "$name: light onPrimaryContainer vs primaryContainer >= 8.5",
-                contrastRatio(lightScheme.onPrimaryContainer, lightScheme.primaryContainer) >= 8.5,
+                contrastRatio(lightScheme.onPrimaryContainer, lightScheme.primaryContainer) >= 8.5
             )
         }
     }
@@ -301,7 +301,7 @@ class ArtworkColorExtractorTest {
             ArtworkColorExtractor.extractArtworkColors(
                 bitmap = bitmap,
                 defaultSurfaceColor = defaultSurface,
-                defaultBackgroundColor = defaultBackground,
+                defaultBackgroundColor = defaultBackground
             )
 
         assertFalse("isFallback must be false for valid grayscale image", result.isFallback)
@@ -328,11 +328,11 @@ class ArtworkColorExtractorTest {
         assertTrue("Light onPrimary vs primary >= 4.5", contrastRatio(lightScheme.onPrimary, lightScheme.primary) >= 4.5)
         assertTrue(
             "Light onSurfaceVariant vs background >= 8.5",
-            contrastRatio(lightScheme.onSurfaceVariant, lightScheme.background) >= 8.5,
+            contrastRatio(lightScheme.onSurfaceVariant, lightScheme.background) >= 8.5
         )
         assertTrue(
             "Light onPrimaryContainer vs primaryContainer >= 8.5",
-            contrastRatio(lightScheme.onPrimaryContainer, lightScheme.primaryContainer) >= 8.5,
+            contrastRatio(lightScheme.onPrimaryContainer, lightScheme.primaryContainer) >= 8.5
         )
     }
 
@@ -344,7 +344,7 @@ class ArtworkColorExtractorTest {
                 Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.BLUE) },
                 Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888).apply {
                     eraseColor(android.graphics.Color.rgb(100, 100, 100))
-                },
+                }
             )
 
         for (bitmap in testBitmaps) {
@@ -352,7 +352,7 @@ class ArtworkColorExtractorTest {
                 ArtworkColorExtractor.extractArtworkColors(
                     bitmap = bitmap,
                     defaultSurfaceColor = defaultSurface,
-                    defaultBackgroundColor = defaultBackground,
+                    defaultBackgroundColor = defaultBackground
                 )
 
             for (scheme in listOf(result.darkColorScheme, result.lightColorScheme)) {
@@ -362,7 +362,7 @@ class ArtworkColorExtractorTest {
                 assertTrue("onPrimary vs primary >= 4.5:1, got $onPrimaryContrast", onPrimaryContrast >= 4.5)
                 assertTrue(
                     "onPrimaryContainer vs primaryContainer >= 4.5:1, got $onPrimaryContainerContrast",
-                    onPrimaryContainerContrast >= 4.5,
+                    onPrimaryContainerContrast >= 4.5
                 )
             }
 
@@ -372,11 +372,11 @@ class ArtworkColorExtractorTest {
             val onSurfaceVariantContainerContrast = contrastRatio(lightScheme.onSurfaceVariant, lightScheme.surfaceContainer)
             assertTrue(
                 "onSurfaceVariant vs background >= 8.5:1 (WCAG AAA), got $onSurfaceVariantBgContrast",
-                onSurfaceVariantBgContrast >= 8.5,
+                onSurfaceVariantBgContrast >= 8.5
             )
             assertTrue(
                 "onSurfaceVariant vs surfaceContainer >= 8.5:1 (WCAG AAA), got $onSurfaceVariantContainerContrast",
-                onSurfaceVariantContainerContrast >= 8.5,
+                onSurfaceVariantContainerContrast >= 8.5
             )
         }
     }
@@ -388,7 +388,7 @@ class ArtworkColorExtractorTest {
                 Color(0xFF8A2BE2), // Violet
                 Color(0xFF1E90FF), // Dodger Blue
                 Color(0xFF2E8B57), // Sea Green
-                Color(0xFFDC143C), // Crimson
+                Color(0xFFDC143C) // Crimson
             )
 
         for (seed in testSeeds) {
@@ -430,7 +430,7 @@ class ArtworkColorExtractorTest {
                 Color(0xFF8A2BE2), // Violet -> pastel #F7F3FB
                 Color(0xFFFF8C00), // Orange -> sunset peach #FFF5F0
                 Color(0xFF00BFFF), // Blue -> ice sea morning blue #F0F6FA
-                Color(0xFF228B22), // Green -> pastoral grass green #F0F8F2
+                Color(0xFF228B22) // Green -> pastoral grass green #F0F8F2
             )
 
         for (seed in testSeeds) {
@@ -463,18 +463,18 @@ class ArtworkColorExtractorTest {
             val secTextContainerContrast = contrastRatio(scheme.onSurfaceVariant, scheme.surfaceContainer)
             assertTrue(
                 "Secondary text vs background contrast must reach WCAG AAA (>= 8.5:1), got $secTextBgContrast",
-                secTextBgContrast >= 8.5,
+                secTextBgContrast >= 8.5
             )
             assertTrue(
                 "Secondary text vs surfaceContainer contrast must reach WCAG AAA (>= 8.5:1), got $secTextContainerContrast",
-                secTextContainerContrast >= 8.5,
+                secTextContainerContrast >= 8.5
             )
 
             // Pills: onPrimaryContainer vs primaryContainer must exceed 8.5:1 (WCAG AAA)
             val pillContrast = contrastRatio(scheme.onPrimaryContainer, scheme.primaryContainer)
             assertTrue(
                 "Pill contrast (onPrimaryContainer vs primaryContainer) must reach WCAG AAA (>= 8.5:1), got $pillContrast",
-                pillContrast >= 8.5,
+                pillContrast >= 8.5
             )
 
             // Primary text contrast
@@ -497,7 +497,7 @@ class ArtworkColorExtractorTest {
             ArtworkColorExtractor.extractArtworkColors(
                 bitmap = bitmap,
                 defaultSurfaceColor = defaultSurface,
-                defaultBackgroundColor = defaultBackground,
+                defaultBackgroundColor = defaultBackground
             )
 
         assertFalse(result.isFallback)
@@ -528,7 +528,7 @@ class ArtworkColorExtractorTest {
             ArtworkColorExtractor.extractArtworkColors(
                 bitmap = bitmap,
                 defaultSurfaceColor = defaultSurface,
-                defaultBackgroundColor = defaultBackground,
+                defaultBackgroundColor = defaultBackground
             )
 
         assertFalse(artworkColors.isMonochrome)
@@ -575,7 +575,7 @@ class ArtworkColorExtractorTest {
             ArtworkColorExtractor.extractArtworkColors(
                 bitmap = bitmap,
                 defaultSurfaceColor = defaultSurface,
-                defaultBackgroundColor = defaultBackground,
+                defaultBackgroundColor = defaultBackground
             )
 
         assertTrue(artworkColors.isMonochrome)
@@ -631,7 +631,7 @@ class ArtworkColorExtractorTest {
                 thumbnailPath = imageFile.absolutePath,
                 defaultSurfaceColor = defaultSurface,
                 defaultBackgroundColor = defaultBackground,
-                isDarkTheme = true,
+                isDarkTheme = true
             )
         assertFalse(first.isFallback)
 
@@ -640,7 +640,7 @@ class ArtworkColorExtractorTest {
                 thumbnailPath = imageFile.absolutePath,
                 defaultSurfaceColor = defaultSurface,
                 defaultBackgroundColor = defaultBackground,
-                isDarkTheme = true,
+                isDarkTheme = true
             )
         assertNotNull("Extracted artwork colors must be stored in memory cache", cached)
         assertEquals(first, cached)
@@ -652,7 +652,7 @@ class ArtworkColorExtractorTest {
                 thumbnailPath = imageFile.absolutePath,
                 defaultSurfaceColor = defaultSurface,
                 defaultBackgroundColor = defaultBackground,
-                isDarkTheme = true,
+                isDarkTheme = true
             )
         assertTrue(afterDelete.isFallback)
     }

@@ -22,12 +22,11 @@ import com.webdav.player.MainActivity
 import com.webdav.player.data.player.DefaultStreamingHardwareLockManager
 import com.webdav.player.data.player.Media3AudioPlayerEngine
 import com.webdav.player.data.player.StreamingHardwareLockManager
-import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackState
-import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.player.AudioPlayerEngine
 import com.webdav.player.domain.session.MusicPlayerAppSession
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -35,7 +34,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import java.util.concurrent.CopyOnWriteArrayList
 
 @OptIn(UnstableApi::class)
 class PlaybackSessionHost(
@@ -46,7 +44,7 @@ class PlaybackSessionHost(
     val notificationProvider: WebDavNotificationProvider = WebDavNotificationProvider(context),
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Main),
     val demotionTimeoutMs: Long = DEFAULT_DEMOTION_TIMEOUT_MS,
-    val hardwareLockManager: StreamingHardwareLockManager = DefaultStreamingHardwareLockManager(context),
+    val hardwareLockManager: StreamingHardwareLockManager = DefaultStreamingHardwareLockManager(context)
 ) {
     private val basePlayer: Player = sessionPlayer
     private val sessionListeners = CopyOnWriteArrayList<Player.Listener>()
@@ -126,7 +124,7 @@ class PlaybackSessionHost(
             override fun onMediaButtonEvent(
                 session: MediaSession,
                 controllerInfo: MediaSession.ControllerInfo,
-                intent: Intent,
+                intent: Intent
             ): Boolean =
                 this@PlaybackSessionHost.mediaSessionCallback?.onMediaButtonEvent(session, controllerInfo, intent)
                     ?: super.onMediaButtonEvent(session, controllerInfo, intent)
@@ -136,7 +134,7 @@ class PlaybackSessionHost(
             override fun onPlayerCommandRequest(
                 session: MediaSession,
                 controller: MediaSession.ControllerInfo,
-                playerCommand: Int,
+                playerCommand: Int
             ): Int =
                 this@PlaybackSessionHost.mediaSessionCallback?.onPlayerCommandRequest(session, controller, playerCommand)
                     ?: super.onPlayerCommandRequest(session, controller, playerCommand)
@@ -151,7 +149,7 @@ class PlaybackSessionHost(
                     Intent(context, MainActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
                     },
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                 )
 
             MediaSession
@@ -169,17 +167,17 @@ class PlaybackSessionHost(
         context: Context,
         coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Main),
         demotionTimeoutMs: Long = DEFAULT_DEMOTION_TIMEOUT_MS,
-        hardwareLockManager: StreamingHardwareLockManager = DefaultStreamingHardwareLockManager(context),
+        hardwareLockManager: StreamingHardwareLockManager = DefaultStreamingHardwareLockManager(context)
     ) : this(
         context = context,
         engine =
-            Media3AudioPlayerEngine(
-                context = context,
-                coroutineScope = coroutineScope,
-            ),
+        Media3AudioPlayerEngine(
+            context = context,
+            coroutineScope = coroutineScope
+        ),
         coroutineScope = coroutineScope,
         demotionTimeoutMs = demotionTimeoutMs,
-        hardwareLockManager = hardwareLockManager,
+        hardwareLockManager = hardwareLockManager
     )
 
     constructor(
@@ -189,7 +187,7 @@ class PlaybackSessionHost(
         notificationProvider: WebDavNotificationProvider = WebDavNotificationProvider(context),
         coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Main),
         demotionTimeoutMs: Long = DEFAULT_DEMOTION_TIMEOUT_MS,
-        hardwareLockManager: StreamingHardwareLockManager = DefaultStreamingHardwareLockManager(context),
+        hardwareLockManager: StreamingHardwareLockManager = DefaultStreamingHardwareLockManager(context)
     ) : this(
         context = context,
         playerEngine = engine,
@@ -198,7 +196,7 @@ class PlaybackSessionHost(
         notificationProvider = notificationProvider,
         coroutineScope = coroutineScope,
         demotionTimeoutMs = demotionTimeoutMs,
-        hardwareLockManager = hardwareLockManager,
+        hardwareLockManager = hardwareLockManager
     )
 
     fun bindAppSession(session: MusicPlayerAppSession) {
@@ -223,7 +221,7 @@ class PlaybackSessionHost(
                                 (
                                     playerEngine.playWhenReady &&
                                         (engineState is PlaybackState.Playing || engineState is PlaybackState.Buffering)
-                                )
+                                    )
                         if (isActivelyPlaying && currentTrack != null) {
                             acquireLocksForTrack(currentTrack.isLocal)
                         }
@@ -272,7 +270,7 @@ class PlaybackSessionHost(
         object : BroadcastReceiver() {
             override fun onReceive(
                 context: Context?,
-                intent: Intent?,
+                intent: Intent?
             ) {
                 if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
                     appSession?.pause()
@@ -431,7 +429,7 @@ class PlaybackSessionHost(
 
     fun buildCurrentNotification(
         playbackState: PlaybackState? = null,
-        isWeakNetwork: Boolean = false,
+        isWeakNetwork: Boolean = false
     ): Notification {
         val targetState = playbackState ?: playerEngine.playbackState.value
         return notificationProvider.buildNotification(mediaSession, targetState, isWeakNetwork)
@@ -467,7 +465,7 @@ class PlaybackSessionHost(
 
     fun demoteForeground(
         removeNotification: Boolean,
-        playbackState: PlaybackState? = null,
+        playbackState: PlaybackState? = null
     ) {
         isElevationPendingRef.set(false)
         if (removeNotification) {
@@ -575,7 +573,7 @@ class PlaybackSessionHost(
                 Player.COMMAND_SEEK_TO_NEXT,
                 Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
                 Player.COMMAND_SEEK_TO_PREVIOUS,
-                Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+                Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM
             )
 
         @Volatile
@@ -583,7 +581,7 @@ class PlaybackSessionHost(
 
         fun getInstance(
             context: Context,
-            engine: Media3AudioPlayerEngine? = null,
+            engine: Media3AudioPlayerEngine? = null
         ): PlaybackSessionHost {
             val targetContext = context.applicationContext ?: context
             return instance?.takeIf { it.context === targetContext } ?: synchronized(this) {

@@ -26,7 +26,7 @@ class AppIconsTest {
                 AppIcons.PlayArrow,
                 AppIcons.Refresh,
                 AppIcons.Search,
-                AppIcons.Warning,
+                AppIcons.Warning
             )
 
         for (icon in standardIcons) {
@@ -70,7 +70,7 @@ class AppIconsTest {
                 AppIcons.PlaylistAdd,
                 AppIcons.DragHandle,
                 AppIcons.Sort,
-                AppIcons.History,
+                AppIcons.History
             )
 
         for (icon in extendedIcons) {

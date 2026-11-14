@@ -16,7 +16,7 @@ class EqualizerStateHelperTest {
             EqualizerStateHelper.resolveEqualizerState(
                 trackPath = "/Music/song.flac",
                 activeTrackPath = "/Music/song.flac",
-                isPlaying = true,
+                isPlaying = true
             )
         assertEquals(EqualizerWaveState.PLAYING, state)
     }
@@ -27,7 +27,7 @@ class EqualizerStateHelperTest {
             EqualizerStateHelper.resolveEqualizerState(
                 trackPath = "/Music/song.flac",
                 activeTrackPath = "/Music/song.flac",
-                isPlaying = false,
+                isPlaying = false
             )
         assertEquals(EqualizerWaveState.PAUSED, state)
     }
@@ -38,7 +38,7 @@ class EqualizerStateHelperTest {
             EqualizerStateHelper.resolveEqualizerState(
                 trackPath = "/Music/other.flac",
                 activeTrackPath = "/Music/song.flac",
-                isPlaying = true,
+                isPlaying = true
             )
         assertEquals(EqualizerWaveState.IDLE, statePlaying)
 
@@ -46,7 +46,7 @@ class EqualizerStateHelperTest {
             EqualizerStateHelper.resolveEqualizerState(
                 trackPath = "/Music/other.flac",
                 activeTrackPath = "/Music/song.flac",
-                isPlaying = false,
+                isPlaying = false
             )
         assertEquals(EqualizerWaveState.IDLE, statePaused)
     }
@@ -57,7 +57,7 @@ class EqualizerStateHelperTest {
             EqualizerStateHelper.resolveEqualizerState(
                 trackPath = "/Music/song.flac",
                 activeTrackPath = null,
-                isPlaying = true,
+                isPlaying = true
             )
         assertEquals(EqualizerWaveState.IDLE, state)
     }
@@ -108,11 +108,11 @@ class EqualizerStateHelperTest {
         var isPlaying = false
         assertEquals(
             EqualizerWaveState.IDLE,
-            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying)
         )
         assertEquals(
             EqualizerWaveState.IDLE,
-            EqualizerStateHelper.resolveEqualizerState(trackB, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackB, currentActiveTrack, isPlaying)
         )
 
         // Phase 2: User taps Track A to play -> Active & Playing
@@ -120,29 +120,29 @@ class EqualizerStateHelperTest {
         isPlaying = true
         assertEquals(
             EqualizerWaveState.PLAYING,
-            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying)
         )
         assertEquals(
             EqualizerWaveState.IDLE,
-            EqualizerStateHelper.resolveEqualizerState(trackB, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackB, currentActiveTrack, isPlaying)
         )
 
         // Phase 3: User pauses playback -> Track A becomes Paused
         isPlaying = false
         assertEquals(
             EqualizerWaveState.PAUSED,
-            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying)
         )
         assertEquals(
             EqualizerWaveState.IDLE,
-            EqualizerStateHelper.resolveEqualizerState(trackB, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackB, currentActiveTrack, isPlaying)
         )
 
         // Phase 4: User resumes playback -> Track A resumes Playing
         isPlaying = true
         assertEquals(
             EqualizerWaveState.PLAYING,
-            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying)
         )
 
         // Phase 5: Skip to Next -> Track B becomes Active & Playing; Track A returns to IDLE
@@ -150,22 +150,22 @@ class EqualizerStateHelperTest {
         isPlaying = true
         assertEquals(
             EqualizerWaveState.IDLE,
-            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying)
         )
         assertEquals(
             EqualizerWaveState.PLAYING,
-            EqualizerStateHelper.resolveEqualizerState(trackB, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackB, currentActiveTrack, isPlaying)
         )
 
         // Phase 6: Track B paused -> Track B becomes Paused
         isPlaying = false
         assertEquals(
             EqualizerWaveState.IDLE,
-            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying)
         )
         assertEquals(
             EqualizerWaveState.PAUSED,
-            EqualizerStateHelper.resolveEqualizerState(trackB, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackB, currentActiveTrack, isPlaying)
         )
 
         // Phase 7: Playback cleared/stopped -> Track B becomes IDLE
@@ -173,11 +173,11 @@ class EqualizerStateHelperTest {
         isPlaying = false
         assertEquals(
             EqualizerWaveState.IDLE,
-            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackA, currentActiveTrack, isPlaying)
         )
         assertEquals(
             EqualizerWaveState.IDLE,
-            EqualizerStateHelper.resolveEqualizerState(trackB, currentActiveTrack, isPlaying),
+            EqualizerStateHelper.resolveEqualizerState(trackB, currentActiveTrack, isPlaying)
         )
     }
 }

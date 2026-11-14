@@ -3,7 +3,6 @@ package com.webdav.player.data.player
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.os.PowerManager
-import androidx.annotation.VisibleForTesting
 
 interface StreamingHardwareLockManager {
     val isWakeLockHeld: Boolean
@@ -23,7 +22,7 @@ interface StreamingHardwareLockManager {
 class DefaultStreamingHardwareLockManager(
     private val context: Context,
     private val powerManager: PowerManager? = context.applicationContext.getSystemService(Context.POWER_SERVICE) as? PowerManager,
-    private val wifiManager: WifiManager? = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager,
+    private val wifiManager: WifiManager? = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
 ) : StreamingHardwareLockManager {
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
@@ -63,7 +62,7 @@ class DefaultStreamingHardwareLockManager(
                     powerManager
                         ?.newWakeLock(
                             PowerManager.PARTIAL_WAKE_LOCK,
-                            WAKE_LOCK_TAG,
+                            WAKE_LOCK_TAG
                         )?.apply {
                             setReferenceCounted(false)
                         }
@@ -84,7 +83,7 @@ class DefaultStreamingHardwareLockManager(
                     wifiManager
                         ?.createWifiLock(
                             WifiManager.WIFI_MODE_FULL_HIGH_PERF,
-                            WIFI_LOCK_TAG,
+                            WIFI_LOCK_TAG
                         )?.apply {
                             setReferenceCounted(false)
                         }

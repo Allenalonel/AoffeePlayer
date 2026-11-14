@@ -20,11 +20,11 @@ data class PlaylistListUiState(
     val showCreateDialog: Boolean = false,
     val playlistToRename: Playlist? = null,
     val playlistToDelete: Playlist? = null,
-    val errorMessage: String? = null,
+    val errorMessage: String? = null
 )
 
 class PlaylistListViewModel(
-    private val playlistRepository: PlaylistRepository,
+    private val playlistRepository: PlaylistRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PlaylistListUiState(isLoading = true))
     val uiState: StateFlow<PlaylistListUiState> = _uiState.asStateFlow()
@@ -53,7 +53,7 @@ class PlaylistListViewModel(
 
     fun createPlaylist(
         name: String,
-        onSuccess: ((Long) -> Unit)? = null,
+        onSuccess: ((Long) -> Unit)? = null
     ) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) {
@@ -79,7 +79,7 @@ class PlaylistListViewModel(
     fun createPlaylistAndAddTrack(
         name: String,
         track: AudioTrack,
-        onSuccess: (() -> Unit)? = null,
+        onSuccess: (() -> Unit)? = null
     ) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) {
@@ -106,7 +106,7 @@ class PlaylistListViewModel(
     fun addTrackToPlaylist(
         playlistId: Long,
         track: AudioTrack,
-        onResult: ((Boolean) -> Unit)? = null,
+        onResult: ((Boolean) -> Unit)? = null
     ) {
         viewModelScope.launch {
             try {
@@ -121,7 +121,7 @@ class PlaylistListViewModel(
     fun addTracksToPlaylist(
         playlistId: Long,
         tracks: List<AudioTrack>,
-        onResult: ((addedCount: Int, skippedCount: Int) -> Unit)? = null,
+        onResult: ((addedCount: Int, skippedCount: Int) -> Unit)? = null
     ) {
         if (tracks.isEmpty()) {
             onResult?.invoke(0, 0)
@@ -142,7 +142,7 @@ class PlaylistListViewModel(
     fun createPlaylistAndAddTracks(
         name: String,
         tracks: List<AudioTrack>,
-        onSuccess: ((addedCount: Int) -> Unit)? = null,
+        onSuccess: ((addedCount: Int) -> Unit)? = null
     ) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) {
@@ -176,7 +176,7 @@ class PlaylistListViewModel(
 
     fun renamePlaylist(
         playlistId: Long,
-        newName: String,
+        newName: String
     ) {
         val trimmed = newName.trim()
         if (trimmed.isEmpty()) {

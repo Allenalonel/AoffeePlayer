@@ -2,7 +2,7 @@ package com.webdav.player.data.metadata
 
 data class ParsedMediaFilename(
     val title: String,
-    val artist: String?,
+    val artist: String?
 )
 
 object MediaFilenameParser {

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
@@ -28,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -54,7 +52,7 @@ import com.webdav.player.ui.theme.AppIcons
 @Composable
 internal fun AudiophileSpecsBadge(
     specs: AudiophileSpecs?,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     if (specs == null || specs.formatted.isBlank()) return
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -62,21 +60,21 @@ internal fun AudiophileSpecsBadge(
         shape = RoundedCornerShape(12.dp),
         color = primaryColor.copy(alpha = 0.18f),
         border =
-            BorderStroke(
-                width = 1.dp,
-                color = primaryColor.copy(alpha = 0.45f),
-            ),
-        modifier = modifier,
+        BorderStroke(
+            width = 1.dp,
+            color = primaryColor.copy(alpha = 0.45f)
+        ),
+        modifier = modifier
     ) {
         Text(
             text = specs.formatted,
             style =
-                MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp,
-                ),
+            MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            ),
             color = primaryColor,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
         )
     }
 }
@@ -88,7 +86,7 @@ internal fun AudiophileSpecsBadge(
 internal fun PlaybackModeButton(
     mode: PlaybackMode,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val icon =
         when (mode) {
@@ -99,17 +97,17 @@ internal fun PlaybackModeButton(
 
     IconButton(
         onClick = onClick,
-        modifier = modifier.size(48.dp),
+        modifier = modifier.size(48.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = mode.label,
             modifier = Modifier.size(26.dp),
             tint =
-                when (mode) {
-                    PlaybackMode.LIST_LOOP -> MaterialTheme.colorScheme.onSurfaceVariant
-                    PlaybackMode.SINGLE_LOOP, PlaybackMode.SHUFFLE -> MaterialTheme.colorScheme.primary
-                },
+            when (mode) {
+                PlaybackMode.LIST_LOOP -> MaterialTheme.colorScheme.onSurfaceVariant
+                PlaybackMode.SINGLE_LOOP, PlaybackMode.SHUFFLE -> MaterialTheme.colorScheme.primary
+            }
         )
     }
 }
@@ -130,20 +128,20 @@ internal fun PlayerPlaybackControls(
     isPlayButtonVisible: Boolean = true,
     onPlayButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
     isQueueButtonVisible: Boolean = true,
-    onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null
 ) {
     Row(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(bottom = 28.dp),
+        modifier
+            .fillMaxWidth()
+            .padding(bottom = 28.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceEvenly,
+        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         // Playback Mode Button
         PlaybackModeButton(
             mode = sessionState.playbackMode,
-            onClick = onCyclePlaybackMode,
+            onClick = onCyclePlaybackMode
         )
 
         // Previous Track Button: FilledTonal Pill Button
@@ -153,17 +151,17 @@ internal fun PlayerPlaybackControls(
             modifier = Modifier.size(FullPlayerDefaults.SkipButtonSize),
             shape = FullPlayerDefaults.SkipButtonShape,
             colors =
-                IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.38f),
-                    disabledContentColor = MaterialTheme.colorScheme.outlineVariant,
-                ),
+            IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.38f),
+                disabledContentColor = MaterialTheme.colorScheme.outlineVariant
+            )
         ) {
             Icon(
                 imageVector = AppIcons.SkipPrevious,
                 contentDescription = "上一首",
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(24.dp)
             )
         }
 
@@ -176,14 +174,14 @@ internal fun PlayerPlaybackControls(
                         Modifier.onGloballyPositioned(onPlayButtonPositioned)
                     } else {
                         Modifier
-                    },
+                    }
                 ).graphicsLayer {
                     alpha = if (isPlayButtonVisible) 1f else 0f
                 }.shadow(
                     elevation = if (isPlayButtonVisible) 8.dp else 0.dp,
                     shape = FullPlayerDefaults.PlayButtonSquircleShape,
                     spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                 )
 
         FilledIconButton(
@@ -193,15 +191,15 @@ internal fun PlayerPlaybackControls(
             modifier = playModifier,
             shape = FullPlayerDefaults.PlayButtonSquircleShape,
             colors =
-                IconButtonDefaults.filledIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+            IconButtonDefaults.filledIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         ) {
             AnimatedContent(
                 targetState = sessionState.playbackState,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "FullPlayerPlayPause",
+                label = "FullPlayerPlayPause"
             ) { state ->
                 when (state) {
                     is PlaybackState.Buffering -> {
@@ -209,13 +207,13 @@ internal fun PlayerPlaybackControls(
                             Icon(
                                 imageVector = AppIcons.Refresh,
                                 contentDescription = "重试",
-                                modifier = Modifier.size(32.dp),
+                                modifier = Modifier.size(32.dp)
                             )
                         } else {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(32.dp),
                                 strokeWidth = 3.dp,
-                                color = MaterialTheme.colorScheme.onPrimary,
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
@@ -224,7 +222,7 @@ internal fun PlayerPlaybackControls(
                         Icon(
                             imageVector = AppIcons.Pause,
                             contentDescription = "暂停",
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(32.dp)
                         )
                     }
 
@@ -232,7 +230,7 @@ internal fun PlayerPlaybackControls(
                         Icon(
                             imageVector = AppIcons.PlayArrow,
                             contentDescription = "播放",
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                 }
@@ -246,17 +244,17 @@ internal fun PlayerPlaybackControls(
             modifier = Modifier.size(FullPlayerDefaults.SkipButtonSize),
             shape = FullPlayerDefaults.SkipButtonShape,
             colors =
-                IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.38f),
-                    disabledContentColor = MaterialTheme.colorScheme.outlineVariant,
-                ),
+            IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.38f),
+                disabledContentColor = MaterialTheme.colorScheme.outlineVariant
+            )
         ) {
             Icon(
                 imageVector = AppIcons.SkipNext,
                 contentDescription = "下一首",
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(24.dp)
             )
         }
 
@@ -269,20 +267,20 @@ internal fun PlayerPlaybackControls(
                         Modifier.onGloballyPositioned(onQueueButtonPositioned)
                     } else {
                         Modifier
-                    },
+                    }
                 ).graphicsLayer {
                     alpha = if (isQueueButtonVisible) 1f else 0f
                 }
 
         IconButton(
             onClick = onOpenQueue,
-            modifier = queueModifier,
+            modifier = queueModifier
         ) {
             Icon(
                 imageVector = AppIcons.QueueMusic,
                 contentDescription = "播放队列",
                 modifier = Modifier.size(28.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -309,7 +307,7 @@ internal fun PlayerTransportControls(
     isPlayButtonVisible: Boolean = true,
     onPlayButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
     isQueueButtonVisible: Boolean = true,
-    onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null,
+    onQueueButtonPositioned: ((LayoutCoordinates) -> Unit)? = null
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         PlayerProgressSlider(
@@ -318,7 +316,7 @@ internal fun PlayerTransportControls(
             displayPositionMs = displayPositionMs,
             isScrubbing = isScrubbing,
             onScrubbingChange = onScrubbingChange,
-            onSeek = onSeek,
+            onSeek = onSeek
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -334,7 +332,7 @@ internal fun PlayerTransportControls(
             isPlayButtonVisible = isPlayButtonVisible,
             onPlayButtonPositioned = onPlayButtonPositioned,
             isQueueButtonVisible = isQueueButtonVisible,
-            onQueueButtonPositioned = onQueueButtonPositioned,
+            onQueueButtonPositioned = onQueueButtonPositioned
         )
     }
 }
@@ -350,17 +348,17 @@ private fun PlayerTransportControlsPreview() {
             title = "Preview Song",
             artist = "Preview Artist",
             durationMs = 180000L,
-            format = AudioFormat.FLAC,
+            format = AudioFormat.FLAC
         )
     MaterialTheme {
         PlayerTransportControls(
             sessionState =
-                PlayerSessionState(
-                    queue = PlaybackQueue(tracks = listOf(sampleTrack), currentIndex = 0),
-                    playbackState = PlaybackState.Playing,
-                    playbackMode = PlaybackMode.LIST_LOOP,
-                    durationMs = 180000L,
-                ),
+            PlayerSessionState(
+                queue = PlaybackQueue(tracks = listOf(sampleTrack), currentIndex = 0),
+                playbackState = PlaybackState.Playing,
+                playbackMode = PlaybackMode.LIST_LOOP,
+                durationMs = 180000L
+            ),
             playbackProgress = PlaybackProgress(currentPositionMs = 60000L, durationMs = 180000L),
             isScrubbing = false,
             displayPositionMs = 60000L,
@@ -371,7 +369,7 @@ private fun PlayerTransportControlsPreview() {
             onSkipToNext = {},
             onSkipToPrevious = {},
             onCyclePlaybackMode = {},
-            onOpenQueue = {},
+            onOpenQueue = {}
         )
     }
 }

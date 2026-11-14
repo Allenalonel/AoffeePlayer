@@ -20,7 +20,7 @@ class PlaybackQueueBottomSheetTest {
     private fun createTrack(
         id: String = "track_1",
         title: String = "Time",
-        artist: String? = "Pink Floyd",
+        artist: String? = "Pink Floyd"
     ): AudioTrack =
         AudioTrack(
             id = id,
@@ -28,7 +28,7 @@ class PlaybackQueueBottomSheetTest {
             remotePath = "/Music/Time.flac",
             title = title,
             artist = artist,
-            format = AudioFormat.FLAC,
+            format = AudioFormat.FLAC
         )
 
     @Test
@@ -38,7 +38,7 @@ class PlaybackQueueBottomSheetTest {
             resolveQueueTrackSubtitle(
                 track = track,
                 isActive = false,
-                playbackProgress = PlaybackProgress.ZERO,
+                playbackProgress = PlaybackProgress.ZERO
             )
         assertEquals("Pink Floyd", result)
     }
@@ -50,7 +50,7 @@ class PlaybackQueueBottomSheetTest {
             resolveQueueTrackSubtitle(
                 track = track,
                 isActive = false,
-                playbackProgress = PlaybackProgress.ZERO,
+                playbackProgress = PlaybackProgress.ZERO
             )
         assertEquals("未知", result)
     }
@@ -62,13 +62,13 @@ class PlaybackQueueBottomSheetTest {
             PlaybackProgress(
                 currentPositionMs = 65_000L,
                 durationMs = 180_000L,
-                bufferedPositionMs = 100_000L,
+                bufferedPositionMs = 100_000L
             )
         val result =
             resolveQueueTrackSubtitle(
                 track = track,
                 isActive = true,
-                playbackProgress = progress,
+                playbackProgress = progress
             )
         assertEquals("未知 · 01:05 / 03:00", result)
     }
@@ -80,13 +80,13 @@ class PlaybackQueueBottomSheetTest {
             PlaybackProgress(
                 currentPositionMs = 65_000L,
                 durationMs = 180_000L,
-                bufferedPositionMs = 100_000L,
+                bufferedPositionMs = 100_000L
             )
         val result =
             resolveQueueTrackSubtitle(
                 track = track,
                 isActive = true,
-                playbackProgress = progress,
+                playbackProgress = progress
             )
         assertEquals("Pink Floyd · 01:05 / 03:00", result)
     }
@@ -98,13 +98,13 @@ class PlaybackQueueBottomSheetTest {
             PlaybackProgress(
                 currentPositionMs = 0L,
                 durationMs = 0L,
-                bufferedPositionMs = 0L,
+                bufferedPositionMs = 0L
             )
         val result =
             resolveQueueTrackSubtitle(
                 track = track,
                 isActive = true,
-                playbackProgress = progress,
+                playbackProgress = progress
             )
         assertEquals("Pink Floyd", result)
     }
@@ -115,7 +115,7 @@ class PlaybackQueueBottomSheetTest {
         val startToEndResult =
             handleQueueDismiss(
                 value = SwipeToDismissBoxValue.StartToEnd,
-                onRemove = { removed = true },
+                onRemove = { removed = true }
             )
         assertTrue("StartToEnd must confirm dismiss", startToEndResult)
         assertTrue("StartToEnd must call onRemove", removed)
@@ -124,7 +124,7 @@ class PlaybackQueueBottomSheetTest {
         val endToStartResult =
             handleQueueDismiss(
                 value = SwipeToDismissBoxValue.EndToStart,
-                onRemove = { removed = true },
+                onRemove = { removed = true }
             )
         assertTrue("EndToStart must confirm dismiss", endToStartResult)
         assertTrue("EndToStart must call onRemove", removed)
@@ -133,7 +133,7 @@ class PlaybackQueueBottomSheetTest {
         val settledResult =
             handleQueueDismiss(
                 value = SwipeToDismissBoxValue.Settled,
-                onRemove = { removed = true },
+                onRemove = { removed = true }
             )
         assertFalse("Settled must not confirm dismiss", settledResult)
         assertFalse("Settled must not call onRemove", removed)

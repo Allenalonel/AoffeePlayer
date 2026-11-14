@@ -32,7 +32,7 @@ class PlaybackProgressTest {
             PlaybackProgress(
                 currentPositionMs = 83_000L,
                 durationMs = 245_000L,
-                bufferedPositionMs = 120_000L,
+                bufferedPositionMs = 120_000L
             )
         assertEquals("01:23", progress.formattedCurrentPosition)
         assertEquals("04:05", progress.formattedDuration)
@@ -40,7 +40,7 @@ class PlaybackProgressTest {
         val longProgress =
             PlaybackProgress(
                 currentPositionMs = 3_600_000L,
-                durationMs = 3_920_000L,
+                durationMs = 3_920_000L
             )
         assertEquals("1:00:00", longProgress.formattedCurrentPosition)
         assertEquals("1:05:20", longProgress.formattedDuration)
@@ -52,7 +52,7 @@ class PlaybackProgressTest {
             PlaybackProgress(
                 currentPositionMs = 50_000L,
                 durationMs = 100_000L,
-                bufferedPositionMs = 75_000L,
+                bufferedPositionMs = 75_000L
             )
         assertEquals(0.5f, progress.progressFraction, 0.001f)
         assertEquals(0.75f, progress.bufferedFraction, 0.001f)

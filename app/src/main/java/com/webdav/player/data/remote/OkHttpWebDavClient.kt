@@ -2,17 +2,9 @@ package com.webdav.player.data.remote
 
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.WebDavServer
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import okhttp3.ConnectionPool
-import okhttp3.Credentials
-import okhttp3.Dns
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.IOException
 import java.net.Inet4Address
 import java.net.InetAddress
-import java.net.URLEncoder
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.util.concurrent.ConcurrentHashMap
@@ -20,13 +12,20 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.ConnectionPool
+import okhttp3.Credentials
+import okhttp3.Dns
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 class OkHttpWebDavClient(
     val streamingConnectionPool: ConnectionPool =
         ConnectionPool(
             DEFAULT_STREAMING_MAX_IDLE_CONNECTIONS,
             DEFAULT_STREAMING_KEEP_ALIVE_MINUTES,
-            TimeUnit.MINUTES,
+            TimeUnit.MINUTES
         ),
     private val baseOkHttpClient: OkHttpClient =
         OkHttpClient
@@ -46,15 +45,15 @@ class OkHttpWebDavClient(
             .readTimeout(60, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
-            .build(),
+            .build()
 ) : WebDavClient {
     constructor(
         baseOkHttpClient: OkHttpClient,
-        streamingBaseOkHttpClient: OkHttpClient,
+        streamingBaseOkHttpClient: OkHttpClient
     ) : this(
         streamingConnectionPool = streamingBaseOkHttpClient.connectionPool,
         baseOkHttpClient = baseOkHttpClient,
-        streamingBaseOkHttpClient = streamingBaseOkHttpClient,
+        streamingBaseOkHttpClient = streamingBaseOkHttpClient
     )
 
     companion object {
@@ -95,7 +94,7 @@ class OkHttpWebDavClient(
                         else -> {
                             ConnectionResult.Failure(
                                 message = "Server returned HTTP ${response.code}: ${response.message.ifBlank { "Error" }}",
-                                statusCode = response.code,
+                                statusCode = response.code
                             )
                         }
                     }
@@ -103,19 +102,19 @@ class OkHttpWebDavClient(
             } catch (e: IOException) {
                 ConnectionResult.Failure(
                     message = e.localizedMessage ?: "Network connection error",
-                    cause = e,
+                    cause = e
                 )
             } catch (e: Exception) {
                 ConnectionResult.Failure(
                     message = e.localizedMessage ?: "Unexpected error",
-                    cause = e,
+                    cause = e
                 )
             }
         }
 
     override suspend fun listDirectory(
         server: WebDavServer,
-        path: String,
+        path: String
     ): ListDirectoryResult =
         withContext(Dispatchers.IO) {
             val client = buildClientForServer(server)
@@ -139,14 +138,14 @@ class OkHttpWebDavClient(
                                     WebDavXmlParser.parseMultistatus(
                                         xml = body,
                                         serverPathPrefix = server.pathPrefix,
-                                        requestedPath = path,
+                                        requestedPath = path
                                     )
                                 ListDirectoryResult.Success(directory)
                             } catch (e: Exception) {
                                 ListDirectoryResult.Failure(
                                     message = "Failed to parse WebDAV XML: ${e.localizedMessage}",
                                     statusCode = 207,
-                                    cause = e,
+                                    cause = e
                                 )
                             }
                         }
@@ -166,7 +165,7 @@ class OkHttpWebDavClient(
                         else -> {
                             ListDirectoryResult.Failure(
                                 message = "Server returned HTTP ${response.code}: ${response.message.ifBlank { "Error" }}",
-                                statusCode = response.code,
+                                statusCode = response.code
                             )
                         }
                     }
@@ -174,12 +173,12 @@ class OkHttpWebDavClient(
             } catch (e: IOException) {
                 ListDirectoryResult.Failure(
                     message = e.localizedMessage ?: "Network connection error",
-                    cause = e,
+                    cause = e
                 )
             } catch (e: Exception) {
                 ListDirectoryResult.Failure(
                     message = e.localizedMessage ?: "Unexpected error",
-                    cause = e,
+                    cause = e
                 )
             }
         }
@@ -188,7 +187,7 @@ class OkHttpWebDavClient(
         server: WebDavServer,
         remotePath: String,
         startByte: Long,
-        endByte: Long,
+        endByte: Long
     ): ByteArray? =
         withContext(Dispatchers.IO) {
             val client = buildClientForServer(server)
@@ -221,7 +220,7 @@ class OkHttpWebDavClient(
 
     override suspend fun fetchText(
         server: WebDavServer,
-        remotePath: String,
+        remotePath: String
     ): String? =
         withContext(Dispatchers.IO) {
             val client = buildClientForServer(server)
@@ -268,7 +267,7 @@ class OkHttpWebDavClient(
                 String(
                     bytes,
                     java.nio.charset.Charset
-                        .forName("GBK"),
+                        .forName("GBK")
                 )
             } catch (e2: Exception) {
                 String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
@@ -278,7 +277,7 @@ class OkHttpWebDavClient(
 
     private fun buildDirectoryUrl(
         server: WebDavServer,
-        path: String,
+        path: String
     ): String {
         return server.resolveFileUrl(if (path.endsWith("/")) path else "$path/")
     }
@@ -334,7 +333,7 @@ class OkHttpWebDavClient(
 
     private fun createClient(
         server: WebDavServer,
-        isStreaming: Boolean = false,
+        isStreaming: Boolean = false
     ): OkHttpClient {
         val base = if (isStreaming) streamingBaseOkHttpClient else baseOkHttpClient
         val builder = base.newBuilder()
@@ -349,7 +348,7 @@ class OkHttpWebDavClient(
                 WebDavDigestAuthenticator(
                     username = server.username,
                     password = server.password,
-                    onDigestAuthenticated = { digestServerHosts.add(server.hostSummary) },
+                    onDigestAuthenticated = { digestServerHosts.add(server.hostSummary) }
                 )
 
             builder.addInterceptor { chain ->
@@ -384,16 +383,16 @@ class OkHttpWebDavClient(
                     object : X509TrustManager {
                         override fun checkClientTrusted(
                             chain: Array<out X509Certificate>?,
-                            authType: String?,
+                            authType: String?
                         ) {}
 
                         override fun checkServerTrusted(
                             chain: Array<out X509Certificate>?,
-                            authType: String?,
+                            authType: String?
                         ) {}
 
                         override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-                    },
+                    }
                 )
 
             val sslContext = SSLContext.getInstance("TLS")
@@ -421,7 +420,7 @@ internal object FastFallbackDns : Dns {
         val addresses = Dns.SYSTEM.lookup(hostname)
         if (addresses.size <= 1) return addresses
         return addresses.sortedWith(
-            compareBy { if (it is Inet4Address) 0 else 1 },
+            compareBy { if (it is Inet4Address) 0 else 1 }
         )
     }
 }

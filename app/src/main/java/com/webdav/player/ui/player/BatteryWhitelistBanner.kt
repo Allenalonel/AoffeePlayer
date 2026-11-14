@@ -1,6 +1,5 @@
 package com.webdav.player.ui.player
 
-import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -50,7 +49,7 @@ fun BatteryWhitelistBanner(
     wasKilledBySystem: Boolean,
     modifier: Modifier = Modifier,
     whitelistManager: BatteryWhitelistManager = remember { DefaultBatteryWhitelistManager() },
-    onDismiss: () -> Unit = {},
+    onDismiss: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -88,30 +87,30 @@ fun BatteryWhitelistBanner(
         visible = isVisible,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
-        modifier = modifier.testTag("BatteryWhitelistBanner"),
+        modifier = modifier.testTag("BatteryWhitelistBanner")
     ) {
         Card(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 6.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 6.dp),
             shape = RoundedCornerShape(12.dp),
             colors =
-                CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         ) {
             Column(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top,
+                    verticalAlignment = Alignment.Top
                 ) {
                     val icon =
                         when {
@@ -131,9 +130,9 @@ fun BatteryWhitelistBanner(
                         contentDescription = "电池优化提示",
                         tint = iconTint,
                         modifier =
-                            Modifier
-                                .size(24.dp)
-                                .padding(top = 2.dp),
+                        Modifier
+                            .size(24.dp)
+                            .padding(top = 2.dp)
                     )
 
                     Spacer(modifier = Modifier.width(10.dp))
@@ -156,7 +155,7 @@ fun BatteryWhitelistBanner(
                             text = titleText,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = titleColor,
+                            color = titleColor
                         )
 
                         Spacer(modifier = Modifier.height(2.dp))
@@ -184,7 +183,7 @@ fun BatteryWhitelistBanner(
                             text = description,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 16.sp,
+                            lineHeight = 16.sp
                         )
                     }
 
@@ -193,13 +192,13 @@ fun BatteryWhitelistBanner(
                             isDismissedState.value = true
                             onDismiss()
                         },
-                        modifier = Modifier.size(24.dp).testTag("BatteryWhitelistBannerDismissButton"),
+                        modifier = Modifier.size(24.dp).testTag("BatteryWhitelistBannerDismissButton")
                     ) {
                         Icon(
                             imageVector = AppIcons.Close,
                             contentDescription = "关闭提示",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
@@ -209,7 +208,7 @@ fun BatteryWhitelistBanner(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (isStageTwo) {
                         FilledTonalButton(
@@ -234,7 +233,7 @@ fun BatteryWhitelistBanner(
                             },
                             modifier = Modifier.padding(end = 8.dp).testTag("BatteryWhitelistBannerOemButton"),
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = ButtonDefaults.TextButtonContentPadding,
+                            contentPadding = ButtonDefaults.TextButtonContentPadding
                         ) {
                             Text(text = "电池设置", style = MaterialTheme.typography.labelMedium)
                         }
@@ -246,7 +245,7 @@ fun BatteryWhitelistBanner(
                             },
                             modifier = Modifier.testTag("BatteryWhitelistBannerActionButton"),
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = ButtonDefaults.TextButtonContentPadding,
+                            contentPadding = ButtonDefaults.TextButtonContentPadding
                         ) {
                             Text(text = "我知道了", style = MaterialTheme.typography.labelMedium)
                         }
@@ -264,7 +263,7 @@ fun BatteryWhitelistBanner(
                             },
                             modifier = Modifier.padding(end = 8.dp).testTag("BatteryWhitelistBannerActionButton"),
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = ButtonDefaults.TextButtonContentPadding,
+                            contentPadding = ButtonDefaults.TextButtonContentPadding
                         ) {
                             Text(text = "快速授权", style = MaterialTheme.typography.labelMedium)
                         }
@@ -291,7 +290,7 @@ fun BatteryWhitelistBanner(
                             },
                             modifier = Modifier.testTag("BatteryWhitelistBannerOemButton"),
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = ButtonDefaults.TextButtonContentPadding,
+                            contentPadding = ButtonDefaults.TextButtonContentPadding
                         ) {
                             Text(text = "电池设置", style = MaterialTheme.typography.labelMedium)
                         }

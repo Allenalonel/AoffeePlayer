@@ -1,11 +1,12 @@
 package com.webdav.player.data.metadata
 
 import com.webdav.player.data.local.CoverArtStorage
-import com.webdav.player.data.remote.ConnectionResult
-import com.webdav.player.data.remote.WebDavClient
-import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.test.SharedFakeWebDavClient
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -16,12 +17,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.io.ByteArrayOutputStream
-import com.webdav.player.test.SharedFakeWebDavClient
-import java.io.File
-import java.io.IOException
-import java.nio.charset.StandardCharsets
-import java.util.concurrent.atomic.AtomicInteger
 
 class TrackMetadataResolverTest {
     private lateinit var fakeClient: SharedFakeWebDavClient
@@ -32,7 +27,7 @@ class TrackMetadataResolverTest {
         WebDavServer(
             id = 1L,
             name = "Test Server",
-            url = "http://example.com",
+            url = "http://example.com"
         )
 
     @Before
@@ -43,7 +38,7 @@ class TrackMetadataResolverTest {
             DefaultTrackMetadataResolver(
                 webDavClient = fakeClient,
                 coverArtStorage = fakeStorage,
-                ioDispatcher = Dispatchers.Unconfined,
+                ioDispatcher = Dispatchers.Unconfined
             )
     }
 
@@ -81,6 +76,73 @@ class TrackMetadataResolverTest {
         }
 
     @Test
+    fun resolve_flacWithStreamInfo_capturesPhysicalSpecsIntoTrackMetadata() =
+        runTest {
+            val stream = ByteArrayOutputStream()
+            stream.write("fLaC".toByteArray(StandardCharsets.US_ASCII))
+
+            // STREAMINFO block: isLast = false, length = 34
+            stream.write(0x00)
+            stream.write(0x00)
+            stream.write(0x00)
+            stream.write(34)
+
+            val streamInfo = ByteArray(34)
+            // 96000 Hz (0x17700), 2 channels, 24 bits
+            streamInfo[10] = 0x17.toByte()
+            streamInfo[11] = 0x70.toByte()
+            streamInfo[12] = 0x03.toByte()
+            streamInfo[13] = 0x70.toByte()
+            // 960,000 samples (10s) = 0x0EA600
+            streamInfo[14] = 0x00.toByte()
+            streamInfo[15] = 0x0E.toByte()
+            streamInfo[16] = 0xA6.toByte()
+            streamInfo[17] = 0x00.toByte()
+            stream.write(streamInfo)
+
+            fun writeLe(out: ByteArrayOutputStream, v: Int) {
+                out.write(v and 0xFF)
+                out.write((v shr 8) and 0xFF)
+                out.write((v shr 16) and 0xFF)
+                out.write((v shr 24) and 0xFF)
+            }
+
+            // VORBIS_COMMENT block: isLast = true
+            val vcStream = ByteArrayOutputStream()
+            val vendor = "reference libFLAC".toByteArray(StandardCharsets.UTF_8)
+            writeLe(vcStream, vendor.size)
+            vcStream.write(vendor)
+            val comments = listOf("TITLE=Hotel California", "ARTIST=Eagles")
+            writeLe(vcStream, comments.size)
+            for (c in comments) {
+                val b = c.toByteArray(StandardCharsets.UTF_8)
+                writeLe(vcStream, b.size)
+                vcStream.write(b)
+            }
+            val vcBytes = vcStream.toByteArray()
+            stream.write(0x84) // isLast = 1, type = 4
+            stream.write((vcBytes.size shr 16) and 0xFF)
+            stream.write((vcBytes.size shr 8) and 0xFF)
+            stream.write(vcBytes.size and 0xFF)
+            stream.write(vcBytes)
+
+            val flacBytes = stream.toByteArray()
+            fakeClient.stubFileBytes("/music/hotel.flac", flacBytes)
+
+            val file = RemoteFile(name = "hotel.flac", path = "/music/hotel.flac", size = 3_000_000L)
+            val metadata = resolver.resolve(testServer, file)
+
+            assertNotNull(metadata)
+            assertEquals("Hotel California", metadata?.title)
+            assertEquals("Eagles", metadata?.artist)
+            assertEquals(96000, metadata?.sampleRate)
+            assertEquals(24, metadata?.bitDepth)
+            assertEquals(2, metadata?.channels)
+            assertEquals(10000L, metadata?.durationMs)
+            assertEquals(2400, metadata?.bitrateKbps)
+        }
+
+    @Test
     fun resolve_twoStageStitch_fetchesSecondaryChunkWhenTagSizeExceedsInitialChunk() =
         runTest {
             // Build an ID3 tag larger than 512KB (e.g. 700KB with large embedded art)
@@ -97,7 +159,7 @@ class TrackMetadataResolverTest {
                     artist = "Artist",
                     album = "Album",
                     artworkBytes = largeArtwork,
-                    forceValidJpeg = false,
+                    forceValidJpeg = false
                 )
             fakeClient.stubFileBytes("/music/highres.mp3", largeMp3)
 
@@ -369,7 +431,7 @@ class TrackMetadataResolverTest {
             val dirFiles =
                 listOf(
                     RemoteFile(name = "dualsong.mp3", path = trackPath, size = 5000L),
-                    RemoteFile(name = "dualsong.lrc", path = "/music/dualsong.lrc", size = 100L),
+                    RemoteFile(name = "dualsong.lrc", path = "/music/dualsong.lrc", size = 100L)
                 )
 
             val file = dirFiles[0]
@@ -407,7 +469,7 @@ class TrackMetadataResolverTest {
             org.junit.Assert.assertNotEquals(
                 "Albums in different logical paths must not collide in folder artwork",
                 metaA?.coverThumbnailPath,
-                metaB?.coverThumbnailPath,
+                metaB?.coverThumbnailPath
             )
         }
 
@@ -424,7 +486,7 @@ class TrackMetadataResolverTest {
                     track1,
                     track2,
                     RemoteFile(name = "01.lrc", path = "/music/album/01.lrc", size = 50L),
-                    RemoteFile(name = "cover.jpg", path = "/music/album/cover.jpg", size = 20L),
+                    RemoteFile(name = "cover.jpg", path = "/music/album/cover.jpg", size = 20L)
                 )
 
             val initialMap = resolver.matchCompanionManifest(testServer, listOf(track1, track2), dirFiles, "/music/album/")
@@ -463,7 +525,7 @@ class TrackMetadataResolverTest {
         artist: String,
         album: String,
         artworkBytes: ByteArray? = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xD9.toByte()),
-        forceValidJpeg: Boolean = true,
+        forceValidJpeg: Boolean = true
     ): ByteArray {
         val stream = ByteArrayOutputStream()
         stream.write("ID3".toByteArray(StandardCharsets.US_ASCII))
@@ -475,7 +537,7 @@ class TrackMetadataResolverTest {
 
         fun writeFrame(
             id: String,
-            text: String,
+            text: String
         ) {
             val p = ByteArrayOutputStream()
             p.write(3) // UTF-8
@@ -539,7 +601,7 @@ class TrackMetadataResolverTest {
         title: String,
         artist: String,
         album: String,
-        artworkBytes: ByteArray? = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xD9.toByte()),
+        artworkBytes: ByteArray? = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xD9.toByte())
     ): ByteArray {
         val stream = ByteArrayOutputStream()
         stream.write("fLaC".toByteArray(StandardCharsets.US_ASCII))
@@ -627,7 +689,7 @@ class TrackMetadataResolverTest {
         override suspend fun saveThumbnail(
             serverId: Long,
             remotePath: String,
-            artworkBytes: ByteArray,
+            artworkBytes: ByteArray
         ): String? {
             val path = customThumbnailNamer?.invoke(serverId, remotePath) ?: "/fake/covers/cover_$serverId.jpg"
             savedThumbnails["$serverId:$remotePath"] = artworkBytes
@@ -642,7 +704,7 @@ class TrackMetadataResolverTest {
 
         override fun getThumbnailFile(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): File? {
             val path = customThumbnailNamer?.invoke(serverId, remotePath) ?: "/fake/covers/cover_$serverId.jpg"
             return if (savedThumbnails.containsKey("$serverId:$remotePath") && diskFiles.contains(path)) {
@@ -654,7 +716,7 @@ class TrackMetadataResolverTest {
 
         override fun deleteThumbnail(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ) {
             savedThumbnails.remove("$serverId:$remotePath")
             if (savedThumbnails.none { it.key.startsWith("$serverId:") }) {

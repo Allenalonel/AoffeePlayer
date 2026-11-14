@@ -55,7 +55,7 @@ class FakeAudioPlayerEngine : AudioPlayerEngine {
     override fun loadTrack(
         server: WebDavServer,
         track: AudioTrack,
-        startPositionMs: Long,
+        startPositionMs: Long
     ) {
         loadTrackCount++
         lastServer = server
@@ -74,7 +74,7 @@ class FakeAudioPlayerEngine : AudioPlayerEngine {
 
     override fun prerollTrack(
         server: WebDavServer,
-        track: AudioTrack,
+        track: AudioTrack
     ) {
         isPrerollActive = true
         prerolledTrack = track

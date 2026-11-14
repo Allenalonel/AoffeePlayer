@@ -3,13 +3,13 @@ package com.webdav.player.domain.session
 import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.player.AudioPlayerEngine
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Internal collaborator strictly focused on observing [AudioPlayerEngine] streams
@@ -23,7 +23,7 @@ internal class PlaybackTimelineCoordinator(
     private val onPlaybackStateChanged: (PlaybackState) -> Unit = {},
     private val onTrackTransition: suspend () -> Unit = {},
     private val onProgressUpdated: (PlaybackProgress) -> Unit = {},
-    private val onDurationChanged: (Long) -> Unit = {},
+    private val onDurationChanged: (Long) -> Unit = {}
 ) {
     private val observationJobs = CopyOnWriteArrayList<Job>()
 
@@ -41,7 +41,7 @@ internal class PlaybackTimelineCoordinator(
                 combine(
                     playerEngine.currentPositionMs,
                     playerEngine.durationMs,
-                    playerEngine.bufferedPositionMs,
+                    playerEngine.bufferedPositionMs
                 ) { pos, dur, buf ->
                     mapEngineProgress(pos, dur, buf, fallbackTrackDurationMs())
                 }.distinctUntilChanged().collect { progress ->
@@ -69,6 +69,6 @@ internal class PlaybackTimelineCoordinator(
         pos: Long,
         dur: Long,
         buf: Long,
-        fallbackDurationMs: Long = 0L,
+        fallbackDurationMs: Long = 0L
     ): PlaybackProgress = PlaybackProgress(pos, if (dur > 0L) dur else fallbackDurationMs, buf)
 }

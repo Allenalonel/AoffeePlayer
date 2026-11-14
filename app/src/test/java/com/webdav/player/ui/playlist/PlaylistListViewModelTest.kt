@@ -20,7 +20,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -53,7 +52,7 @@ class FakePlaylistRepository : PlaylistRepository {
 
     override suspend fun renamePlaylist(
         playlistId: Long,
-        newName: String,
+        newName: String
     ) {
         val trimmed = newName.trim()
         playlistsFlow.update { list ->
@@ -70,7 +69,7 @@ class FakePlaylistRepository : PlaylistRepository {
 
     override suspend fun isPlaylistNameExists(
         name: String,
-        excludePlaylistId: Long?,
+        excludePlaylistId: Long?
     ): Boolean {
         val trimmed = name.trim()
         return playlistsFlow.value.any { it.name.equals(trimmed, ignoreCase = true) && it.id != excludePlaylistId }
@@ -83,7 +82,7 @@ class FakePlaylistRepository : PlaylistRepository {
 
     override suspend fun addTrackToPlaylist(
         playlistId: Long,
-        track: AudioTrack,
+        track: AudioTrack
     ): Long {
         val list = tracksMap.getOrPut(playlistId) { mutableListOf() }
         if (list.any { it.serverId == track.serverId && it.remotePath == track.remotePath }) {
@@ -100,7 +99,7 @@ class FakePlaylistRepository : PlaylistRepository {
 
     override suspend fun addTracksToPlaylist(
         playlistId: Long,
-        tracks: List<AudioTrack>,
+        tracks: List<AudioTrack>
     ): List<Long> =
         tracks
             .map {
@@ -109,7 +108,7 @@ class FakePlaylistRepository : PlaylistRepository {
 
     override suspend fun removeTracksFromPlaylist(
         playlistId: Long,
-        trackEntryIds: List<Long>,
+        trackEntryIds: List<Long>
     ) {
         val list = tracksMap[playlistId] ?: return
         list.removeAll { it.id in trackEntryIds }
@@ -132,7 +131,7 @@ class FakePlaylistRepository : PlaylistRepository {
 
     override suspend fun updateTrackOrders(
         playlistId: Long,
-        orderedTrackIds: List<Long>,
+        orderedTrackIds: List<Long>
     ) {
         val list = tracksMap[playlistId] ?: return
         val map = list.associateBy { it.id }
@@ -276,7 +275,7 @@ class PlaylistListViewModelTest {
                     serverId = 1L,
                     remotePath = "/song.flac",
                     title = "Song",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
 
             var successCalled = false
@@ -307,7 +306,7 @@ class PlaylistListViewModelTest {
                     serverId = 1L,
                     remotePath = "/song.flac",
                     title = "Song",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
 
             var successCalled = false
@@ -335,7 +334,7 @@ class PlaylistListViewModelTest {
                     serverId = 1L,
                     remotePath = "/song.flac",
                     title = "Song",
-                    format = AudioFormat.FLAC,
+                    format = AudioFormat.FLAC
                 )
 
             var firstAdded: Boolean? = null
@@ -345,7 +344,7 @@ class PlaylistListViewModelTest {
             assertEquals(
                 1,
                 viewModel.uiState.value.playlists[0]
-                    .trackCount,
+                    .trackCount
             )
 
             var secondAdded: Boolean? = null
@@ -355,7 +354,7 @@ class PlaylistListViewModelTest {
             assertEquals(
                 1,
                 viewModel.uiState.value.playlists[0]
-                    .trackCount,
+                    .trackCount
             )
         }
 
@@ -390,7 +389,7 @@ class PlaylistListViewModelTest {
             assertEquals(
                 3,
                 viewModel.uiState.value.playlists[0]
-                    .trackCount,
+                    .trackCount
             )
         }
 

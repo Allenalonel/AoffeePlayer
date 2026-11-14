@@ -16,6 +16,9 @@ import androidx.test.core.app.ApplicationProvider
 import com.google.common.collect.ImmutableList
 import com.webdav.player.R
 import com.webdav.player.domain.model.PlaybackState
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -25,9 +28,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileOutputStream
 
 @OptIn(UnstableApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -190,60 +190,60 @@ class WebDavNotificationProviderTest {
                 mediaSession = session,
                 customLayout = ImmutableList.of(),
                 actionFactory =
-                    object : androidx.media3.session.MediaNotification.ActionFactory {
-                        override fun createMediaAction(
-                            session: MediaSession,
-                            customAction: androidx.core.graphics.drawable.IconCompat,
-                            actionLabel: CharSequence,
-                            actionCode: Int,
-                        ): androidx.core.app.NotificationCompat.Action =
-                            androidx.core.app.NotificationCompat.Action
-                                .Builder(
-                                    android.R.drawable.ic_media_play,
-                                    actionLabel,
-                                    null,
-                                ).build()
+                object : androidx.media3.session.MediaNotification.ActionFactory {
+                    override fun createMediaAction(
+                        session: MediaSession,
+                        customAction: androidx.core.graphics.drawable.IconCompat,
+                        actionLabel: CharSequence,
+                        actionCode: Int
+                    ): androidx.core.app.NotificationCompat.Action =
+                        androidx.core.app.NotificationCompat.Action
+                            .Builder(
+                                android.R.drawable.ic_media_play,
+                                actionLabel,
+                                null
+                            ).build()
 
-                        override fun createCustomAction(
-                            session: MediaSession,
-                            customAction: androidx.core.graphics.drawable.IconCompat,
-                            actionLabel: CharSequence,
-                            customActionKey: String,
-                            customExtras: android.os.Bundle,
-                        ): androidx.core.app.NotificationCompat.Action =
-                            androidx.core.app.NotificationCompat.Action
-                                .Builder(
-                                    android.R.drawable.ic_media_play,
-                                    actionLabel,
-                                    null,
-                                ).build()
+                    override fun createCustomAction(
+                        session: MediaSession,
+                        customAction: androidx.core.graphics.drawable.IconCompat,
+                        actionLabel: CharSequence,
+                        customActionKey: String,
+                        customExtras: android.os.Bundle
+                    ): androidx.core.app.NotificationCompat.Action =
+                        androidx.core.app.NotificationCompat.Action
+                            .Builder(
+                                android.R.drawable.ic_media_play,
+                                actionLabel,
+                                null
+                            ).build()
 
-                        override fun createCustomActionFromCustomCommandButton(
-                            session: MediaSession,
-                            customCommandButton: androidx.media3.session.CommandButton,
-                        ): androidx.core.app.NotificationCompat.Action =
-                            androidx.core.app.NotificationCompat.Action
-                                .Builder(
-                                    android.R.drawable.ic_media_play,
-                                    customCommandButton.displayName,
-                                    null,
-                                ).build()
+                    override fun createCustomActionFromCustomCommandButton(
+                        session: MediaSession,
+                        customCommandButton: androidx.media3.session.CommandButton
+                    ): androidx.core.app.NotificationCompat.Action =
+                        androidx.core.app.NotificationCompat.Action
+                            .Builder(
+                                android.R.drawable.ic_media_play,
+                                customCommandButton.displayName,
+                                null
+                            ).build()
 
-                        override fun createMediaActionPendingIntent(
-                            session: MediaSession,
-                            actionToken: Long,
-                        ): android.app.PendingIntent =
-                            android.app.PendingIntent.getActivity(
-                                context,
-                                0,
-                                android.content.Intent(),
-                                android.app.PendingIntent.FLAG_IMMUTABLE,
-                            )
-                    },
+                    override fun createMediaActionPendingIntent(
+                        session: MediaSession,
+                        actionToken: Long
+                    ): android.app.PendingIntent =
+                        android.app.PendingIntent.getActivity(
+                            context,
+                            0,
+                            android.content.Intent(),
+                            android.app.PendingIntent.FLAG_IMMUTABLE
+                        )
+                },
                 onNotificationChangedListener =
-                    object : androidx.media3.session.MediaNotification.Provider.Callback {
-                        override fun onNotificationChanged(notification: androidx.media3.session.MediaNotification) {}
-                    },
+                object : androidx.media3.session.MediaNotification.Provider.Callback {
+                    override fun onNotificationChanged(notification: androidx.media3.session.MediaNotification) {}
+                }
             )
 
         assertEquals(WebDavNotificationProvider.NOTIFICATION_ID, mediaNotification.notificationId)
@@ -252,7 +252,7 @@ class WebDavNotificationProviderTest {
             "Provider Test",
             mediaNotification.notification.extras
                 .getCharSequence(Notification.EXTRA_TITLE)
-                ?.toString(),
+                ?.toString()
         )
     }
 

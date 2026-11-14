@@ -27,7 +27,7 @@ import java.io.File
 class WebDavNotificationProvider(
     private val context: Context,
     val channelId: String = CHANNEL_ID,
-    val notificationId: Int = NOTIFICATION_ID,
+    val notificationId: Int = NOTIFICATION_ID
 ) : MediaNotification.Provider {
     companion object {
         const val CHANNEL_ID = "webdav_playback_channel"
@@ -59,7 +59,7 @@ class WebDavNotificationProvider(
                     NotificationChannel(
                         channelId,
                         CHANNEL_NAME,
-                        NotificationManager.IMPORTANCE_LOW,
+                        NotificationManager.IMPORTANCE_LOW
                     ).apply {
                         description = "Aoffee Player playback controls"
                         setShowBadge(false)
@@ -73,7 +73,7 @@ class WebDavNotificationProvider(
         mediaSession: MediaSession,
         customLayout: ImmutableList<CommandButton>,
         actionFactory: MediaNotification.ActionFactory,
-        onNotificationChangedListener: MediaNotification.Provider.Callback,
+        onNotificationChangedListener: MediaNotification.Provider.Callback
     ): MediaNotification {
         val notification = buildNotification(mediaSession)
         return MediaNotification(notificationId, notification)
@@ -82,13 +82,13 @@ class WebDavNotificationProvider(
     override fun handleCustomCommand(
         session: MediaSession,
         action: String,
-        extras: Bundle,
+        extras: Bundle
     ): Boolean = false
 
     fun buildNotification(
         mediaSession: MediaSession,
         playbackState: PlaybackState? = null,
-        isWeakNetwork: Boolean = false,
+        isWeakNetwork: Boolean = false
     ): Notification {
         val player = mediaSession.player
         val metadata = player.mediaMetadata
@@ -101,7 +101,7 @@ class WebDavNotificationProvider(
                         ?.mediaMetadata
                         ?.title
                         ?.toString()
-                )
+                    )
                 ?: if (isError) "Playback Error" else context.getString(R.string.app_name)
         val artist =
             if (playbackState is PlaybackState.Error) {
@@ -113,7 +113,7 @@ class WebDavNotificationProvider(
                             ?.mediaMetadata
                             ?.artist
                             ?.toString()
-                    )
+                        )
             }
         val subText =
             if (isWeakNetwork) {
@@ -125,7 +125,7 @@ class WebDavNotificationProvider(
                             ?.mediaMetadata
                             ?.albumTitle
                             ?.toString()
-                    )
+                        )
             }
 
         val contentIntent =
@@ -135,7 +135,7 @@ class WebDavNotificationProvider(
                 Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
                 },
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
 
         val isPlaying =
@@ -150,7 +150,7 @@ class WebDavNotificationProvider(
                 context,
                 1,
                 Intent(context, WebDavMediaService::class.java).apply { action = ACTION_PREVIOUS },
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
 
         val playPauseIntent =
@@ -160,7 +160,7 @@ class WebDavNotificationProvider(
                 Intent(context, WebDavMediaService::class.java).apply {
                     action = if (isPlaying) ACTION_PAUSE else ACTION_PLAY
                 },
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
 
         val nextIntent =
@@ -168,7 +168,7 @@ class WebDavNotificationProvider(
                 context,
                 3,
                 Intent(context, WebDavMediaService::class.java).apply { action = ACTION_NEXT },
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
 
         val builder =
@@ -185,12 +185,12 @@ class WebDavNotificationProvider(
                 .addAction(
                     if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
                     if (isPlaying) "Pause" else "Play",
-                    playPauseIntent,
+                    playPauseIntent
                 ).addAction(android.R.drawable.ic_media_next, "Next", nextIntent)
                 .setStyle(
                     MediaStyleNotificationHelper
                         .MediaStyle(mediaSession)
-                        .setShowActionsInCompactView(0, 1, 2),
+                        .setShowActionsInCompactView(0, 1, 2)
                 )
 
         // Load artwork if available
@@ -204,7 +204,7 @@ class WebDavNotificationProvider(
 
     private fun loadArtwork(
         metadata: androidx.media3.common.MediaMetadata,
-        player: androidx.media3.common.Player,
+        player: androidx.media3.common.Player
     ): Bitmap? {
         val currentItemMeta = player.currentMediaItem?.mediaMetadata
         val playlistMeta = player.playlistMetadata

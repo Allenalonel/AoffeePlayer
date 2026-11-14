@@ -20,7 +20,6 @@ import com.webdav.player.data.service.WebDavNotificationProvider
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackMode
-import com.webdav.player.domain.model.PlaybackQueue
 import com.webdav.player.domain.model.PlaybackSessionData
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.RemoteDirectory
@@ -31,6 +30,8 @@ import com.webdav.player.domain.player.FakeAudioPlayerEngine
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.session.FakePlaybackSessionStore
 import com.webdav.player.domain.session.MusicPlayerAppSessionImpl
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,8 +59,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.android.controller.ServiceController
 import org.robolectric.shadows.ShadowLooper
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 @OptIn(UnstableApi::class)
 @kotlin.OptIn(ExperimentalCoroutinesApi::class)
@@ -92,7 +91,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
             url = "http://192.168.1.100:8080/music",
             port = 8080,
             pathPrefix = "/music",
-            isDefault = true,
+            isDefault = true
         )
 
     private val sampleAudioFile =
@@ -100,18 +99,18 @@ class EndToEndSystemFocusAndRouteRegressionTest {
             name = "Track01.flac",
             path = "/music/Track01.flac",
             size = 45_000_000L,
-            fileType = RemoteFileType.Audio(AudioFormat.FLAC),
+            fileType = RemoteFileType.Audio(AudioFormat.FLAC)
         )
 
     private val sampleDirectory =
         RemoteDirectory(
             path = "/music/",
             name = "music",
-            files = listOf(sampleAudioFile),
+            files = listOf(sampleAudioFile)
         )
 
     private class TestServerRepository(
-        initialServers: List<WebDavServer> = emptyList(),
+        initialServers: List<WebDavServer> = emptyList()
     ) : ServerRepository {
         private val serversFlow = MutableStateFlow(initialServers)
         private val activeServerFlow =
@@ -156,7 +155,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                 audioFocusHandler = audioFocusHandler,
                 notificationProvider = WebDavNotificationProvider(context),
                 coroutineScope = hostScope,
-                sessionPlayer = exoPlayer,
+                sessionPlayer = exoPlayer
             )
         PlaybackSessionHost.setInstanceForTesting(host)
 
@@ -169,7 +168,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                 serverRepository = serverRepository,
                 sessionStore = sessionStore,
                 coroutineScope = sessionScope,
-                progressDispatcher = testDispatcher,
+                progressDispatcher = testDispatcher
             )
 
         host.bindAppSession(appSession)
@@ -223,7 +222,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
             // Verify: Becoming-noisy receiver is actively registered and locks held during buffering
             assertTrue(
                 "BecomingNoisy receiver must be registered during buffering with playWhenReady=true",
-                host.isBecomingNoisyRegistered,
+                host.isBecomingNoisyRegistered
             )
             assertTrue("WakeLock must be held during buffering", host.hardwareLockManager.isWakeLockHeld)
             assertTrue("WifiLock must be held during buffering", host.hardwareLockManager.isWifiLockHeld)
@@ -236,14 +235,14 @@ class EndToEndSystemFocusAndRouteRegressionTest {
             assertEquals(
                 "Session state must degrade to Paused",
                 PlaybackState.Paused,
-                appSession.sessionState.value.playbackState,
+                appSession.sessionState.value.playbackState
             )
             // Underlying engine has playWhenReady set to false
             assertFalse("Engine playWhenReady must be false after safe pause", fakeEngine.playWhenReady)
             // Receiver is unregistered to avoid duplicate firings
             assertFalse(
                 "BecomingNoisy receiver must be unregistered after degradation",
-                host.isBecomingNoisyRegistered,
+                host.isBecomingNoisyRegistered
             )
             // Hardware locks are immediately released to prevent battery drain
             assertFalse("WakeLock must be released", host.hardwareLockManager.isWakeLockHeld)
@@ -262,12 +261,12 @@ class EndToEndSystemFocusAndRouteRegressionTest {
             assertEquals(
                 "Playback state must remain Paused after buffer completes",
                 PlaybackState.Paused,
-                appSession.sessionState.value.playbackState,
+                appSession.sessionState.value.playbackState
             )
             assertEquals(
                 "Engine play() must NOT be invoked upon buffer readiness",
                 playCountAfterPause,
-                fakeEngine.playCount,
+                fakeEngine.playCount
             )
         }
 
@@ -295,7 +294,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
             // Verify: user intervention atomically resets the transient resume flag
             assertFalse(
                 "Explicit pause must clear resumeOnFocusGain to guard against ghost resumption",
-                host.audioFocusHandler.resumeOnFocusGain,
+                host.audioFocusHandler.resumeOnFocusGain
             )
 
             // 4. Phone call ends -> system issues AUDIOFOCUS_GAIN
@@ -307,12 +306,12 @@ class EndToEndSystemFocusAndRouteRegressionTest {
             assertEquals(
                 "Playback must strictly remain Paused, blocking ghost resumption",
                 PlaybackState.Paused,
-                appSession.sessionState.value.playbackState,
+                appSession.sessionState.value.playbackState
             )
             assertEquals(
                 "Engine playCount must not increase on focus gain when user explicitly paused",
                 playCountInitial,
-                fakeEngine.playCount,
+                fakeEngine.playCount
             )
             assertFalse(host.audioFocusHandler.resumeOnFocusGain)
         }
@@ -341,12 +340,12 @@ class EndToEndSystemFocusAndRouteRegressionTest {
             assertEquals(
                 "Playback should automatically resume when no user intervention occurred",
                 PlaybackState.Playing,
-                appSession.sessionState.value.playbackState,
+                appSession.sessionState.value.playbackState
             )
             assertEquals(
                 "Engine play() must be invoked to resume playback",
                 playCountBefore + 1,
-                fakeEngine.playCount,
+                fakeEngine.playCount
             )
         }
 
@@ -372,11 +371,11 @@ class EndToEndSystemFocusAndRouteRegressionTest {
             assertEquals(
                 "Session state must become Paused on permanent focus loss",
                 PlaybackState.Paused,
-                appSession.sessionState.value.playbackState,
+                appSession.sessionState.value.playbackState
             )
             assertFalse(
                 "resumeOnFocusGain must be false on permanent loss",
-                host.audioFocusHandler.resumeOnFocusGain,
+                host.audioFocusHandler.resumeOnFocusGain
             )
             assertFalse("WakeLock must be released", host.hardwareLockManager.isWakeLockHeld)
             assertFalse("WifiLock must be released", host.hardwareLockManager.isWifiLockHeld)
@@ -389,12 +388,12 @@ class EndToEndSystemFocusAndRouteRegressionTest {
             assertEquals(
                 "Playback must remain Paused after permanent focus loss even if gain is received",
                 PlaybackState.Paused,
-                appSession.sessionState.value.playbackState,
+                appSession.sessionState.value.playbackState
             )
             assertEquals(
                 "Engine playCount must not increase after permanent loss",
                 playCountBefore,
-                fakeEngine.playCount,
+                fakeEngine.playCount
             )
         }
 
@@ -409,7 +408,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                     remotePath = "/music/Track01.flac",
                     title = "Track01.flac",
                     format = AudioFormat.FLAC,
-                    size = 45_000_000L,
+                    size = 45_000_000L
                 )
 
             val savedSessionData =
@@ -419,7 +418,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                     currentTrackIndex = 0,
                     positionMs = 15_000L,
                     cleanExit = false,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             sessionStore.saveSession(savedSessionData)
 
@@ -432,7 +431,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                     serverRepository = serverRepository,
                     sessionStore = sessionStore,
                     coroutineScope = coldSessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
 
             val focusHandler = AudioFocusHandler(context, appSession = coldAppSession)
@@ -456,7 +455,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                 ShadowLooper.idleMainLooper()
                 assertTrue(
                     "Cold recovery session interrupted by call must remember transient focus loss",
-                    coldAppSession.pausedByTransientAudioFocus,
+                    coldAppSession.pausedByTransientAudioFocus
                 )
 
                 // Call ends -> system grants AUDIOFOCUS_GAIN
@@ -468,7 +467,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                 assertEquals(
                     "Cold start recovery must seamlessly reload empty physical stream and resume playback",
                     PlaybackState.Playing,
-                    coldAppSession.sessionState.value.playbackState,
+                    coldAppSession.sessionState.value.playbackState
                 )
                 assertEquals(1, fakeEngine.loadTrackCount)
                 assertEquals(15_000L, fakeEngine.lastStartPositionMs)
@@ -488,7 +487,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                     remotePath = "/music/Track01.flac",
                     title = "Track01.flac",
                     format = AudioFormat.FLAC,
-                    size = 45_000_000L,
+                    size = 45_000_000L
                 )
 
             val savedSessionData =
@@ -498,7 +497,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                     currentTrackIndex = 0,
                     positionMs = 15_000L,
                     cleanExit = false,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             sessionStore.saveSession(savedSessionData)
 
@@ -510,7 +509,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                     serverRepository = serverRepository,
                     sessionStore = sessionStore,
                     coroutineScope = coldSessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
 
             val focusHandler = AudioFocusHandler(context, appSession = coldAppSession)
@@ -531,7 +530,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                 // Must NOT mark as paused by transient focus loss because session was idle/paused
                 assertFalse(
                     "Idle restored session must not record transient focus loss without active playback",
-                    coldAppSession.pausedByTransientAudioFocus,
+                    coldAppSession.pausedByTransientAudioFocus
                 )
 
                 // Call ends -> AUDIOFOCUS_GAIN
@@ -543,7 +542,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                 assertEquals(
                     "Session must strictly remain Paused after call ends without spontaneous playback",
                     PlaybackState.Paused,
-                    coldAppSession.sessionState.value.playbackState,
+                    coldAppSession.sessionState.value.playbackState
                 )
                 assertEquals(0, fakeEngine.loadTrackCount)
                 assertEquals(0, fakeEngine.playCount)
@@ -593,7 +592,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                 // channelCount =
                 2,
                 // encoding =
-                C.ENCODING_PCM_16BIT,
+                C.ENCODING_PCM_16BIT
             )
 
         val outputFormat = processor.configure(nonStandardInput)
@@ -730,7 +729,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                     context = context,
                     engine = media3Engine,
                     audioFocusHandler = AudioFocusHandler(context),
-                    coroutineScope = hostScope,
+                    coroutineScope = hostScope
                 )
             val mediaSession =
                 MusicPlayerAppSessionImpl(
@@ -738,7 +737,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                     serverRepository = serverRepository,
                     sessionStore = sessionStore,
                     coroutineScope = sessionScope,
-                    progressDispatcher = testDispatcher,
+                    progressDispatcher = testDispatcher
                 )
             mediaHost.bindAppSession(mediaSession)
             try {
@@ -749,7 +748,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                         remotePath = "/music/Track01.flac",
                         title = "Track01.flac",
                         format = AudioFormat.FLAC,
-                        size = 45_000_000L,
+                        size = 45_000_000L
                     )
 
                 shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
@@ -773,7 +772,7 @@ class EndToEndSystemFocusAndRouteRegressionTest {
                 assertTrue("Media3 playWhenReady must become true once focus granted", media3Engine.playWhenReady)
                 assertTrue(
                     media3Engine.playbackState.value is PlaybackState.Playing ||
-                        media3Engine.playbackState.value is PlaybackState.Buffering,
+                        media3Engine.playbackState.value is PlaybackState.Buffering
                 )
                 assertTrue(mediaHost.hardwareLockManager.isWakeLockHeld)
                 assertTrue(mediaHost.hardwareLockManager.isWifiLockHeld)

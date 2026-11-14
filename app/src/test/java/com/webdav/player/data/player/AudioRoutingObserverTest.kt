@@ -34,7 +34,7 @@ class AudioRoutingObserverTest {
 
     private fun createDeviceInfo(
         type: Int,
-        isSink: Boolean,
+        isSink: Boolean
     ): AudioDeviceInfo {
         val device = AudioDeviceInfoBuilder.newBuilder().setType(type).build()
         val port =
@@ -103,7 +103,7 @@ class AudioRoutingObserverTest {
 
         override fun addOnRoutingChangedListener(
             listener: AudioRouting.OnRoutingChangedListener,
-            handler: Handler?,
+            handler: Handler?
         ) {
             addedListener = listener
         }
@@ -193,7 +193,7 @@ class AudioRoutingObserverTest {
                 try {
                     org.robolectric.util.ReflectionHelpers.callConstructor(
                         MediaRouter2.RoutingController::class.java,
-                        org.robolectric.util.ReflectionHelpers.ClassParameter.from(MediaRouter2::class.java, null),
+                        org.robolectric.util.ReflectionHelpers.ClassParameter.from(MediaRouter2::class.java, null)
                     )
                 } catch (_: Throwable) {
                     null

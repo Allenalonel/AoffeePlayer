@@ -7,7 +7,7 @@ data class PlaylistWithTrackCount(
     val name: String,
     val createdAtMs: Long,
     val updatedAtMs: Long,
-    val trackCount: Int,
+    val trackCount: Int
 ) {
     fun toDomain(): Playlist =
         Playlist(
@@ -15,6 +15,6 @@ data class PlaylistWithTrackCount(
             name = name,
             createdAtMs = createdAtMs,
             updatedAtMs = updatedAtMs,
-            trackCount = trackCount,
+            trackCount = trackCount
         )
 }

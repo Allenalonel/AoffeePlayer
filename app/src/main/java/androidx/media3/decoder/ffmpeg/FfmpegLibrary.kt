@@ -52,15 +52,27 @@ object FfmpegLibrary {
     @JvmStatic
     fun getVersion(): String? {
         return if (isNativeLoaded) {
-            try { ffmpegGetVersion() } catch (e: UnsatisfiedLinkError) { "6.0" }
-        } else "6.0"
+            try {
+                ffmpegGetVersion()
+            } catch (e: UnsatisfiedLinkError) {
+                "6.0"
+            }
+        } else {
+            "6.0"
+        }
     }
 
     @JvmStatic
     fun getInputBufferPaddingSize(): Int {
         return if (isNativeLoaded) {
-            try { ffmpegGetInputBufferPaddingSize() } catch (e: UnsatisfiedLinkError) { 64 }
-        } else 64
+            try {
+                ffmpegGetInputBufferPaddingSize()
+            } catch (e: UnsatisfiedLinkError) {
+                64
+            }
+        } else {
+            64
+        }
     }
 
     @JvmStatic
@@ -68,7 +80,11 @@ object FfmpegLibrary {
         if (!isAvailable()) return false
         val codecName = getCodecName(mimeType) ?: return false
         return if (isNativeLoaded) {
-            try { ffmpegHasDecoder(codecName) } catch (e: UnsatisfiedLinkError) { true }
+            try {
+                ffmpegHasDecoder(codecName)
+            } catch (e: UnsatisfiedLinkError) {
+                true
+            }
         } else {
             true
         }

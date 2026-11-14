@@ -14,19 +14,19 @@ import java.util.Locale
 object RemoteDirectorySorter {
     fun sort(
         directory: RemoteDirectory,
-        sortOrder: DirectorySortOrder,
+        sortOrder: DirectorySortOrder
     ): RemoteDirectory {
         val sortedSubDirs = sortSubDirectories(directory.subDirectories, sortOrder)
         val sortedFiles = sortFiles(directory.files, sortOrder)
         return directory.copy(
             subDirectories = sortedSubDirs,
-            files = sortedFiles,
+            files = sortedFiles
         )
     }
 
     fun sortSubDirectories(
         subDirectories: List<RemoteDirectory>,
-        sortOrder: DirectorySortOrder,
+        sortOrder: DirectorySortOrder
     ): List<RemoteDirectory> {
         if (subDirectories.size <= 1) return subDirectories
 
@@ -55,7 +55,7 @@ object RemoteDirectorySorter {
 
     fun sortFiles(
         files: List<RemoteFile>,
-        sortOrder: DirectorySortOrder,
+        sortOrder: DirectorySortOrder
     ): List<RemoteFile> {
         if (files.size <= 1) return files
 

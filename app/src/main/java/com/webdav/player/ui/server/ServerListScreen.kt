@@ -26,7 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,7 +53,7 @@ fun ServerListScreen(
         viewModel.onSelectActiveServer(server.id)
         onNavigateToBrowser()
     },
-    fabBottomPadding: Dp = 80.dp,
+    fabBottomPadding: Dp = 80.dp
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -65,12 +64,12 @@ fun ServerListScreen(
             FluidTopAppBar(
                 title = "存储",
                 subtitle =
-                    if (uiState.activeServer != null) {
-                        "活跃节点: ${uiState.activeServer?.name}"
-                    } else {
-                        "未选定活跃节点"
-                    },
-                scrollBehavior = scrollBehavior,
+                if (uiState.activeServer != null) {
+                    "活跃节点: ${uiState.activeServer?.name}"
+                } else {
+                    "未选定活跃节点"
+                },
+                scrollBehavior = scrollBehavior
             )
         },
         floatingActionButton = {
@@ -78,28 +77,28 @@ fun ServerListScreen(
                 onClick = { viewModel.onAddServerClicked() },
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.padding(bottom = fabBottomPadding),
+                modifier = Modifier.padding(bottom = fabBottomPadding)
             ) {
                 Icon(imageVector = AppIcons.Add, contentDescription = "添加服务器")
             }
-        },
+        }
     ) { innerPadding ->
         Box(
             modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
+            Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding =
-                    PaddingValues(
-                        top = 16.dp,
-                        start = 16.dp,
-                        end = 16.dp,
-                        bottom = MiniPlayerDefaults.PenetrativeContentBottomPadding,
-                    ),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                PaddingValues(
+                    top = 16.dp,
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = MiniPlayerDefaults.PenetrativeContentBottomPadding
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // 1. Pinned Local Storage Card
                 item(key = "local_storage_card") {
@@ -111,7 +110,7 @@ fun ServerListScreen(
                         },
                         onManageFoldersClick = {
                             viewModel.onOpenManageFolders()
-                        },
+                        }
                     )
                 }
 
@@ -119,22 +118,22 @@ fun ServerListScreen(
                 item(key = "remote_servers_header") {
                     Row(
                         modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp, bottom = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "WebDAV 服务器",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         HorizontalDivider(
                             modifier = Modifier.weight(1f),
                             thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant,
+                            color = MaterialTheme.colorScheme.outlineVariant
                         )
                     }
                 }
@@ -146,37 +145,37 @@ fun ServerListScreen(
                         ElevatedCard(
                             modifier = Modifier.fillMaxWidth(),
                             colors =
-                                CardDefaults.elevatedCardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                ),
-                            shape = MaterialTheme.shapes.medium,
+                            CardDefaults.elevatedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                            ),
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Column(
                                 modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(24.dp),
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
+                                verticalArrangement = Arrangement.Center
                             ) {
                                 Icon(
                                     imageVector = AppIcons.Cloud,
                                     contentDescription = null,
                                     modifier = Modifier.size(40.dp),
-                                    tint = MaterialTheme.colorScheme.outline,
+                                    tint = MaterialTheme.colorScheme.outline
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text(
                                     text = "暂无配置的 WebDAV 服务器",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = "点击右下角 \"+\" 按钮添加您的私人 NAS 或云端存储",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -203,7 +202,7 @@ fun ServerListScreen(
                             },
                             onDelete = {
                                 viewModel.onRequestDeleteServer(server)
-                            },
+                            }
                         )
                     }
                 }
@@ -221,7 +220,7 @@ fun ServerListScreen(
                     },
                     onDismiss = {
                         viewModel.onDismissManageFolders()
-                    },
+                    }
                 )
             }
 
@@ -234,7 +233,7 @@ fun ServerListScreen(
                     onTestConnection = { viewModel.onTestConnection(it) },
                     onSave = { viewModel.onSaveServer(it) },
                     onDismiss = { viewModel.onDismissAddEditDialog() },
-                    isSaving = uiState.isSaving,
+                    isSaving = uiState.isSaving
                 )
             }
 
@@ -243,7 +242,7 @@ fun ServerListScreen(
                 DeleteConfirmationDialog(
                     server = server,
                     onConfirm = { viewModel.onConfirmDeleteServer() },
-                    onDismiss = { viewModel.onDismissDeleteDialog() },
+                    onDismiss = { viewModel.onDismissDeleteDialog() }
                 )
             }
         }
@@ -254,7 +253,7 @@ fun ServerListScreen(
 private fun DeleteConfirmationDialog(
     server: WebDavServer,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -268,9 +267,9 @@ private fun DeleteConfirmationDialog(
             TextButton(
                 onClick = onConfirm,
                 colors =
-                    ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
+                ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
             ) {
                 Text("删除")
             }
@@ -279,6 +278,6 @@ private fun DeleteConfirmationDialog(
             TextButton(onClick = onDismiss) {
                 Text("取消")
             }
-        },
+        }
     )
 }

@@ -30,9 +30,9 @@ class WmaAudioDecoderBridge(
     val samplesPerFrame: Int = extraData?.let {
         if (it.size >= 4) {
             val s = (it[0].toInt() and 0xFF) or
-                    ((it[1].toInt() and 0xFF) shl 8) or
-                    ((it[2].toInt() and 0xFF) shl 16) or
-                    ((it[3].toInt() and 0xFF) shl 24)
+                ((it[1].toInt() and 0xFF) shl 8) or
+                ((it[2].toInt() and 0xFF) shl 16) or
+                ((it[3].toInt() and 0xFF) shl 24)
             if (s in 256..8192) s else SAMPLES_PER_FRAME_DEFAULT
         } else {
             SAMPLES_PER_FRAME_DEFAULT

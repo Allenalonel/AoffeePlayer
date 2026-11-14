@@ -2,7 +2,6 @@ package com.webdav.player.data.service
 
 import android.app.Service
 import android.content.Intent
-import android.os.Build
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.test.core.app.ApplicationProvider
@@ -38,13 +37,13 @@ class WebDavMediaServiceTest {
             name = "Test",
             url = "http://localhost:8080/dav",
             port = 8080,
-            pathPrefix = "/dav",
+            pathPrefix = "/dav"
         )
 
     private val testTracks =
         listOf(
             AudioTrack("1", 1L, "/1.mp3", "Song 1", format = AudioFormat.MP3, size = 100L),
-            AudioTrack("2", 1L, "/2.mp3", "Song 2", format = AudioFormat.MP3, size = 200L),
+            AudioTrack("2", 1L, "/2.mp3", "Song 2", format = AudioFormat.MP3, size = 200L)
         )
 
     @Before

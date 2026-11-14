@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import androidx.test.core.app.ApplicationProvider
 import com.webdav.player.R
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -11,7 +12,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 class AdaptiveLauncherIconTest {
@@ -27,7 +27,7 @@ class AdaptiveLauncherIconTest {
         val appInfo =
             context.packageManager.getApplicationInfo(
                 context.packageName,
-                PackageManager.GET_META_DATA,
+                PackageManager.GET_META_DATA
             )
 
         assertNotEquals("App icon must not be 0", 0, appInfo.icon)
@@ -110,7 +110,7 @@ class AdaptiveLauncherIconTest {
         val appInfo =
             context.packageManager.getApplicationInfo(
                 context.packageName,
-                PackageManager.GET_META_DATA,
+                PackageManager.GET_META_DATA
             )
         val appLabel = context.packageManager.getApplicationLabel(appInfo).toString()
         assertEquals("Aoffee Player", appLabel)

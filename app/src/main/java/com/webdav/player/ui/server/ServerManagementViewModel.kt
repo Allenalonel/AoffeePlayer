@@ -33,7 +33,7 @@ data class ServerManagementUiState(
     val connectionTestResult: ConnectionResult? = null,
     val testingServerId: Long? = null,
     val serverConnectionResults: Map<Long, ConnectionResult> = emptyMap(),
-    val userMessage: String? = null,
+    val userMessage: String? = null
 ) {
     val remoteServers: List<WebDavServer>
         get() = servers.filter { !it.isLocal }
@@ -48,7 +48,7 @@ class ServerManagementViewModel(
     private val repository: ServerRepository,
     private val webDavClient: WebDavClient,
     private val storageReachabilityTracker: StorageReachabilityTracker? = null,
-    private val mediaLibraryRepository: MediaLibraryRepository? = null,
+    private val mediaLibraryRepository: MediaLibraryRepository? = null
 ) : ViewModel() {
     private val _dialogAndActionState = MutableStateFlow(DialogAndActionState())
 
@@ -62,7 +62,7 @@ class ServerManagementViewModel(
         val testingServerId: Long? = null,
         val serverConnectionResults: Map<Long, ConnectionResult> = emptyMap(),
         val userMessage: String? = null,
-        val isManageFoldersSheetVisible: Boolean = false,
+        val isManageFoldersSheetVisible: Boolean = false
     )
 
     val uiState: StateFlow<ServerManagementUiState> =
@@ -70,7 +70,7 @@ class ServerManagementViewModel(
             repository.getAllServers(),
             repository.getActiveServer(),
             repository.getMountedLocalFolders(),
-            _dialogAndActionState,
+            _dialogAndActionState
         ) { servers, activeServer, mountedFolders, dialogState ->
             ServerManagementUiState(
                 servers = servers,
@@ -86,12 +86,12 @@ class ServerManagementViewModel(
                 connectionTestResult = dialogState.connectionTestResult,
                 testingServerId = dialogState.testingServerId,
                 serverConnectionResults = dialogState.serverConnectionResults,
-                userMessage = dialogState.userMessage,
+                userMessage = dialogState.userMessage
             )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
-            initialValue = ServerManagementUiState(isLoading = true),
+            initialValue = ServerManagementUiState(isLoading = true)
         )
 
     fun onAddServerClicked() {
@@ -99,7 +99,7 @@ class ServerManagementViewModel(
             it.copy(
                 isAddEditDialogVisible = true,
                 serverToEdit = null,
-                connectionTestResult = null,
+                connectionTestResult = null
             )
         }
     }
@@ -109,7 +109,7 @@ class ServerManagementViewModel(
             it.copy(
                 isAddEditDialogVisible = true,
                 serverToEdit = server,
-                connectionTestResult = null,
+                connectionTestResult = null
             )
         }
     }
@@ -119,7 +119,7 @@ class ServerManagementViewModel(
             it.copy(
                 isAddEditDialogVisible = false,
                 serverToEdit = null,
-                connectionTestResult = null,
+                connectionTestResult = null
             )
         }
     }
@@ -143,7 +143,7 @@ class ServerManagementViewModel(
             _dialogAndActionState.update {
                 it.copy(
                     serverToDelete = null,
-                    serverConnectionResults = it.serverConnectionResults - server.id,
+                    serverConnectionResults = it.serverConnectionResults - server.id
                 )
             }
         }
@@ -162,7 +162,7 @@ class ServerManagementViewModel(
                 it.copy(
                     testingConnection = true,
                     connectionTestResult = null,
-                    testingServerId = serverId,
+                    testingServerId = serverId
                 )
             }
             val result = webDavClient.testConnection(server)
@@ -180,7 +180,7 @@ class ServerManagementViewModel(
                     testingConnection = false,
                     connectionTestResult = result,
                     testingServerId = null,
-                    serverConnectionResults = updatedResults,
+                    serverConnectionResults = updatedResults
                 )
             }
         }
@@ -201,7 +201,7 @@ class ServerManagementViewModel(
                     _dialogAndActionState.update {
                         it.copy(
                             isSaving = false,
-                            userMessage = e.message ?: "保存服务器失败",
+                            userMessage = e.message ?: "保存服务器失败"
                         )
                     }
                     return@launch
@@ -212,7 +212,7 @@ class ServerManagementViewModel(
                     isSaving = false,
                     isAddEditDialogVisible = false,
                     serverToEdit = null,
-                    connectionTestResult = null,
+                    connectionTestResult = null
                 )
             }
 
@@ -238,7 +238,7 @@ class ServerManagementViewModel(
 
     fun onAddMountedFolder(
         uriString: String,
-        displayName: String,
+        displayName: String
     ) {
         viewModelScope.launch {
             repository.addMountedLocalFolder(uriString, displayName)

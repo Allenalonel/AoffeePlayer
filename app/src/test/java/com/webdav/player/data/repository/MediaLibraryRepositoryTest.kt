@@ -15,8 +15,6 @@ import com.webdav.player.data.local.MediaTrackIndexEntity
 import com.webdav.player.data.local.RemoteDirectoryJsonSerializer
 import com.webdav.player.data.local.TrackMetadataDao
 import com.webdav.player.data.local.TrackMetadataEntity
-import com.webdav.player.data.remote.ConnectionResult
-import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.DirectorySortOrder
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
@@ -74,14 +72,14 @@ class MediaLibraryRepositoryTest {
             name = "Test WebDAV Server",
             url = "http://localhost",
             port = 8080,
-            pathPrefix = "/music",
+            pathPrefix = "/music"
         )
     private val secondServer =
         WebDavServer(
             id = 2L,
             name = "Second Server",
             url = "http://remotehost",
-            port = 8080,
+            port = 8080
         )
     private val localServer = WebDavServer.createLocalStorage()
 
@@ -107,14 +105,14 @@ class MediaLibraryRepositoryTest {
                 LocalStorageFolderEntity(
                     uriString = "content://test.storage/tree/Music",
                     displayName = "MusicFolder",
-                    dateAdded = 1000L,
-                ),
+                    dateAdded = 1000L
+                )
             )
         }
         localResolver =
             LocalStorageDirectoryResolver(
                 context = context,
-                localStorageFolderDao = localStorageFolderDao,
+                localStorageFolderDao = localStorageFolderDao
             )
 
         repository =
@@ -127,7 +125,7 @@ class MediaLibraryRepositoryTest {
                 trackMetadataRepository = fakeTrackMetadataRepository,
                 localStorageDirectoryResolver = localResolver,
                 localStorageFolderDao = localStorageFolderDao,
-                context = context,
+                context = context
             )
         repository.clearSearchHistory()
     }
@@ -155,13 +153,13 @@ class MediaLibraryRepositoryTest {
                     name = "song.mp3",
                     path = "/music/song.mp3",
                     size = 1024L,
-                    fileType = RemoteFileType.Audio(AudioFormat.MP3),
+                    fileType = RemoteFileType.Audio(AudioFormat.MP3)
                 )
             val dir =
                 RemoteDirectory(
                     path = "/music/",
                     name = "music",
-                    files = listOf(audioFile),
+                    files = listOf(audioFile)
                 )
             fakeWebDavClient.results["/music/"] = ListDirectoryResult.Success(dir)
 
@@ -328,27 +326,27 @@ class MediaLibraryRepositoryTest {
                     path = "/music/Artist - Track1.flac",
                     size = 15000000L,
                     lastModified = "1672531200000",
-                    fileType = RemoteFileType.Audio(AudioFormat.FLAC),
+                    fileType = RemoteFileType.Audio(AudioFormat.FLAC)
                 )
             val audio2 =
                 RemoteFile(
                     name = "Track2.mp3",
                     path = "/music/Track2.mp3",
                     size = 5000000L,
-                    fileType = RemoteFileType.Audio(AudioFormat.MP3),
+                    fileType = RemoteFileType.Audio(AudioFormat.MP3)
                 )
             val textFile =
                 RemoteFile(
                     name = "notes.txt",
                     path = "/music/notes.txt",
                     size = 100L,
-                    fileType = RemoteFileType.Other,
+                    fileType = RemoteFileType.Other
                 )
             val dir =
                 RemoteDirectory(
                     path = "/music/",
                     name = "music",
-                    files = listOf(audio1, audio2, textFile),
+                    files = listOf(audio1, audio2, textFile)
                 )
             fakeWebDavClient.results["/music/"] = ListDirectoryResult.Success(dir)
 
@@ -403,7 +401,7 @@ class MediaLibraryRepositoryTest {
                     name = "music",
                     subDirectories = listOf(sub1, sub2),
                     lastModified = 12345L,
-                    etag = "etag-root",
+                    etag = "etag-root"
                 )
             fakeWebDavClient.results["/music/"] = ListDirectoryResult.Success(dir)
 
@@ -439,14 +437,14 @@ class MediaLibraryRepositoryTest {
                     lastModified = 1794304800000L,
                     etag = "etag-jay",
                     files =
-                        listOf(
-                            RemoteFile(
-                                name = "周杰伦 - 晴天.flac",
-                                path = "/百度/周杰伦/周杰伦 - 晴天.flac",
-                                size = 30_000_000L,
-                                fileType = RemoteFileType.Audio(AudioFormat.FLAC),
-                            ),
-                        ),
+                    listOf(
+                        RemoteFile(
+                            name = "周杰伦 - 晴天.flac",
+                            path = "/百度/周杰伦/周杰伦 - 晴天.flac",
+                            size = 30_000_000L,
+                            fileType = RemoteFileType.Audio(AudioFormat.FLAC)
+                        )
+                    )
                 )
             val baiduDir =
                 RemoteDirectory(
@@ -454,7 +452,7 @@ class MediaLibraryRepositoryTest {
                     name = "百度",
                     lastModified = 1794304800000L,
                     etag = "etag-baidu",
-                    subDirectories = listOf(jayDir),
+                    subDirectories = listOf(jayDir)
                 )
             val rootDir =
                 RemoteDirectory(
@@ -463,14 +461,14 @@ class MediaLibraryRepositoryTest {
                     lastModified = 1794304800000L,
                     etag = "etag-root",
                     subDirectories =
-                        listOf(
-                            RemoteDirectory(
-                                path = "/百度/",
-                                name = "百度",
-                                lastModified = 1794304800000L,
-                                etag = "etag-baidu",
-                            ),
-                        ),
+                    listOf(
+                        RemoteDirectory(
+                            path = "/百度/",
+                            name = "百度",
+                            lastModified = 1794304800000L,
+                            etag = "etag-baidu"
+                        )
+                    )
                 )
 
             fakeWebDavClient.results["/"] = ListDirectoryResult.Success(rootDir)
@@ -487,11 +485,11 @@ class MediaLibraryRepositoryTest {
             val searchResult = repository.search("周杰伦", testServer.id).first()
             assertTrue(
                 "Uncached directory 周杰伦 must be searchable after sync, got=${searchResult.matchedDirectories}",
-                searchResult.matchedDirectories.any { it.name == "周杰伦" && it.path == "/百度/周杰伦/" },
+                searchResult.matchedDirectories.any { it.name == "周杰伦" && it.path == "/百度/周杰伦/" }
             )
             assertTrue(
                 "Uncached track 晴天 must be searchable after sync, got=${searchResult.matchedTracks}",
-                searchResult.matchedTracks.any { it.remotePath == "/百度/周杰伦/周杰伦 - 晴天.flac" },
+                searchResult.matchedTracks.any { it.remotePath == "/百度/周杰伦/周杰伦 - 晴天.flac" }
             )
         }
 
@@ -503,7 +501,7 @@ class MediaLibraryRepositoryTest {
                     path = "/music/Rock/",
                     name = "Rock",
                     lastModified = 2000L,
-                    etag = "etag-rock",
+                    etag = "etag-rock"
                 )
             val rootDir =
                 RemoteDirectory(
@@ -511,7 +509,7 @@ class MediaLibraryRepositoryTest {
                     name = "/",
                     lastModified = 1000L,
                     etag = "etag-root",
-                    subDirectories = listOf(subDir),
+                    subDirectories = listOf(subDir)
                 )
             fakeWebDavClient.results["/"] = ListDirectoryResult.Success(rootDir)
             fakeWebDavClient.results["/music/Rock/"] = ListDirectoryResult.Success(subDir)
@@ -524,8 +522,8 @@ class MediaLibraryRepositoryTest {
                     lastModified = 2000L,
                     etag = "etag-rock",
                     lastScannedMs = 5000L,
-                    isScanned = true,
-                ),
+                    isScanned = true
+                )
             )
 
             // Browsing parent directory must not downgrade or clobber existing scanned checkpoint
@@ -536,8 +534,8 @@ class MediaLibraryRepositoryTest {
                         name = "music",
                         subDirectories = listOf(subDir),
                         lastModified = 1000L,
-                        etag = "etag-music",
-                    ),
+                        etag = "etag-music"
+                    )
                 )
             repository.observeDirectoryContent(testServer, "/music/", forceRefresh = true).toList()
 
@@ -593,7 +591,7 @@ class MediaLibraryRepositoryTest {
                         format = "FLAC",
                         parentPath = "/music/",
                         parsedTitle = "Bohemian Rhapsody",
-                        parsedArtist = "Queen",
+                        parsedArtist = "Queen"
                     ),
                     MediaTrackIndexEntity(
                         serverId = 1L,
@@ -604,9 +602,9 @@ class MediaLibraryRepositoryTest {
                         format = "MP3",
                         parentPath = "/music/",
                         parsedTitle = "Stairway to Heaven",
-                        parsedArtist = "Led Zeppelin",
-                    ),
-                ),
+                        parsedArtist = "Led Zeppelin"
+                    )
+                )
             )
 
             val result = repository.search("Bohemian").first()
@@ -627,8 +625,8 @@ class MediaLibraryRepositoryTest {
                     path = "/music/Rock Classics/",
                     lastModified = 2000L,
                     etag = "etag-123",
-                    lastScannedMs = System.currentTimeMillis(),
-                ),
+                    lastScannedMs = System.currentTimeMillis()
+                )
             )
 
             val result = repository.search("Rock").first()
@@ -653,9 +651,9 @@ class MediaLibraryRepositoryTest {
                         format = "MP3",
                         parentPath = "/genres/Jazz/",
                         parsedTitle = "So What",
-                        parsedArtist = "Miles Davis",
-                    ),
-                ),
+                        parsedArtist = "Miles Davis"
+                    )
+                )
             )
 
             val result = repository.search("Jazz").first()
@@ -680,9 +678,9 @@ class MediaLibraryRepositoryTest {
                         format = "FLAC",
                         parentPath = "/music/",
                         parsedTitle = "Thriller",
-                        parsedArtist = "Michael Jackson",
-                    ),
-                ),
+                        parsedArtist = "Michael Jackson"
+                    )
+                )
             )
             trackMetadataDao.insertOrUpdate(
                 TrackMetadataEntity(
@@ -693,8 +691,8 @@ class MediaLibraryRepositoryTest {
                     album = "Thriller 40th",
                     trackNumber = 4,
                     durationMs = 357000L,
-                    coverThumbnailPath = "/thumbnails/thriller.jpg",
-                ),
+                    coverThumbnailPath = "/thumbnails/thriller.jpg"
+                )
             )
 
             val result = repository.search("Thriller").first()
@@ -721,7 +719,7 @@ class MediaLibraryRepositoryTest {
                         format = "MP3",
                         parentPath = "/music/",
                         parsedTitle = "WebDavSong",
-                        parsedArtist = null,
+                        parsedArtist = null
                     ),
                     MediaTrackIndexEntity(
                         serverId = LOCAL_STORAGE_ID,
@@ -732,9 +730,9 @@ class MediaLibraryRepositoryTest {
                         format = "MP3",
                         parentPath = "/local/",
                         parsedTitle = "LocalSong",
-                        parsedArtist = null,
-                    ),
-                ),
+                        parsedArtist = null
+                    )
+                )
             )
 
             // Search restricted to WebDavServer 1L
@@ -759,7 +757,7 @@ class MediaLibraryRepositoryTest {
                         format = "MP3",
                         parentPath = "/music/",
                         parsedTitle = "WebDavSong",
-                        parsedArtist = null,
+                        parsedArtist = null
                     ),
                     MediaTrackIndexEntity(
                         serverId = LOCAL_STORAGE_ID,
@@ -770,9 +768,9 @@ class MediaLibraryRepositoryTest {
                         format = "MP3",
                         parentPath = "/local/",
                         parsedTitle = "LocalSong",
-                        parsedArtist = null,
-                    ),
-                ),
+                        parsedArtist = null
+                    )
+                )
             )
 
             // Search restricted to LOCAL_STORAGE_ID
@@ -797,9 +795,9 @@ class MediaLibraryRepositoryTest {
                         format = "MP3",
                         parentPath = "/music/",
                         parsedTitle = "SharedTrack",
-                        parsedArtist = null,
-                    ),
-                ),
+                        parsedArtist = null
+                    )
+                )
             )
             // Same track also present in track_metadata table
             trackMetadataDao.insertOrUpdate(
@@ -811,8 +809,8 @@ class MediaLibraryRepositoryTest {
                     album = "Album",
                     trackNumber = null,
                     durationMs = 200000L,
-                    coverThumbnailPath = null,
-                ),
+                    coverThumbnailPath = null
+                )
             )
 
             // Global search (serverId = null)
@@ -832,7 +830,7 @@ class MediaLibraryRepositoryTest {
             val audio = RemoteFile(name = "Song.mp3", path = "/music/Song.mp3")
             fakeWebDavClient.results["/music/"] =
                 ListDirectoryResult.Success(
-                    RemoteDirectory(path = "/music/", name = "music", files = listOf(audio)),
+                    RemoteDirectory(path = "/music/", name = "music", files = listOf(audio))
                 )
 
             val syncResult = repository.syncServer(testServer)
@@ -867,8 +865,8 @@ class MediaLibraryRepositoryTest {
                     path = "/music/old/",
                     lastModified = 100L,
                     etag = "old",
-                    lastScannedMs = 100L,
-                ),
+                    lastScannedMs = 100L
+                )
             )
             mediaTrackIndexDao.upsertTracks(
                 listOf(
@@ -881,16 +879,16 @@ class MediaLibraryRepositoryTest {
                         format = "MP3",
                         parentPath = "/music/old/",
                         parsedTitle = "deleted",
-                        parsedArtist = null,
-                    ),
-                ),
+                        parsedArtist = null
+                    )
+                )
             )
 
             // Setup fresh scan directory
             val freshAudio = RemoteFile(name = "fresh.mp3", path = "/music/fresh.mp3")
             fakeWebDavClient.results["/music/"] =
                 ListDirectoryResult.Success(
-                    RemoteDirectory(path = "/music/", name = "music", files = listOf(freshAudio)),
+                    RemoteDirectory(path = "/music/", name = "music", files = listOf(freshAudio))
                 )
 
             val rebuildResult = repository.rebuildIndex(testServer)
@@ -984,10 +982,10 @@ class MediaLibraryRepositoryTest {
             repository.observeDirectoryContent(secondServer, "/remote/").toList()
 
             checkpointDao.upsertCheckpoint(
-                DirectorySyncCheckpointEntity(serverId = 1L, path = "/music/", lastModified = 1L, etag = "e1", lastScannedMs = 1L),
+                DirectorySyncCheckpointEntity(serverId = 1L, path = "/music/", lastModified = 1L, etag = "e1", lastScannedMs = 1L)
             )
             checkpointDao.upsertCheckpoint(
-                DirectorySyncCheckpointEntity(serverId = 2L, path = "/remote/", lastModified = 2L, etag = "e2", lastScannedMs = 2L),
+                DirectorySyncCheckpointEntity(serverId = 2L, path = "/remote/", lastModified = 2L, etag = "e2", lastScannedMs = 2L)
             )
 
             // Wipe Server 1
@@ -1022,9 +1020,9 @@ class MediaLibraryRepositoryTest {
                         format = "MP3",
                         parentPath = localPrefix,
                         parsedTitle = "song",
-                        parsedArtist = null,
-                    ),
-                ),
+                        parsedArtist = null
+                    )
+                )
             )
             checkpointDao.upsertCheckpoint(
                 DirectorySyncCheckpointEntity(
@@ -1032,23 +1030,23 @@ class MediaLibraryRepositoryTest {
                     path = localPrefix,
                     lastModified = 1000L,
                     etag = null,
-                    lastScannedMs = 1000L,
-                ),
+                    lastScannedMs = 1000L
+                )
             )
             directoryCacheDao.insertOrUpdate(
                 DirectoryCacheEntity(
                     serverId = LOCAL_STORAGE_ID,
                     path = localPrefix,
                     dataJson = RemoteDirectoryJsonSerializer.serialize(RemoteDirectory(path = localPrefix, name = "Music")),
-                    lastUpdatedMs = 1000L,
-                ),
+                    lastUpdatedMs = 1000L
+                )
             )
 
             repository.clearLocalFolderData(uriString)
 
             assertTrue(
                 "Local track index for folder must be deleted",
-                mediaTrackIndexDao.getTracksByParentPath(LOCAL_STORAGE_ID, localPrefix).isEmpty(),
+                mediaTrackIndexDao.getTracksByParentPath(LOCAL_STORAGE_ID, localPrefix).isEmpty()
             )
             assertNull("Local checkpoint for folder must be deleted", checkpointDao.getCheckpoint(LOCAL_STORAGE_ID, localPrefix))
             assertNull("Local directory cache must be cleared", directoryCacheDao.getCache(LOCAL_STORAGE_ID, localPrefix))
@@ -1115,7 +1113,7 @@ class MediaLibraryRepositoryTest {
                 trackMetadataRepository = fakeTrackMetadataRepository,
                 localStorageDirectoryResolver = localResolver,
                 localStorageFolderDao = localStorageFolderDao,
-                context = context,
+                context = context
             )
         assertEquals(path, secondRepo.getLastBrowsingPath(testServer.id))
     }
@@ -1189,7 +1187,7 @@ class MediaLibraryRepositoryTest {
                 trackMetadataRepository = fakeTrackMetadataRepository,
                 localStorageDirectoryResolver = localResolver,
                 localStorageFolderDao = localStorageFolderDao,
-                context = context,
+                context = context
             )
         assertEquals(newOrder, secondRepo.getDirectorySortOrder())
     }
@@ -1205,7 +1203,7 @@ class MediaLibraryRepositoryTest {
         override suspend fun resolveMetadata(
             server: WebDavServer,
             files: List<RemoteFile>,
-            forceRefresh: Boolean,
+            forceRefresh: Boolean
         ) {
             resolveCount++
             for (file in files) {
@@ -1217,7 +1215,7 @@ class MediaLibraryRepositoryTest {
                             title = file.name.substringBeforeLast('.'),
                             artist = "Test Artist",
                             album = "Test Album",
-                            durationMs = 180000L,
+                            durationMs = 180000L
                         )
                 cachedMetadata["${server.id}:${file.path}"] = meta
             }
@@ -1225,7 +1223,7 @@ class MediaLibraryRepositoryTest {
 
         override suspend fun resolveSingleTrackMetadata(
             server: WebDavServer,
-            file: RemoteFile,
+            file: RemoteFile
         ): TrackMetadata =
             cachedMetadata["${server.id}:${file.path}"]
                 ?: TrackMetadata(
@@ -1234,24 +1232,24 @@ class MediaLibraryRepositoryTest {
                     title = file.name.substringBeforeLast('.'),
                     artist = "Test Artist",
                     album = "Test Album",
-                    durationMs = 180000L,
+                    durationMs = 180000L
                 )
 
         override suspend fun getCachedMetadata(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): TrackMetadata? = cachedMetadata["$serverId:$remotePath"]
 
         override fun getAllMetadataFlow(serverId: Long): Flow<List<TrackMetadata>> = flowOf(emptyList())
 
         override fun getMetadataForPathsFlow(
             serverId: Long,
-            remotePaths: List<String>,
+            remotePaths: List<String>
         ): Flow<List<TrackMetadata>> = flowOf(emptyList())
 
         override fun getMetadataFlow(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): Flow<TrackMetadata?> = flowOf(cachedMetadata["$serverId:$remotePath"])
     }
 }

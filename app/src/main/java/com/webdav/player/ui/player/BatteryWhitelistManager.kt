@@ -24,7 +24,7 @@ class DefaultBatteryWhitelistManager(
         context.getSystemService(Context.POWER_SERVICE) as? PowerManager
     },
     private val manufacturerProvider: () -> String = { Build.MANUFACTURER.orEmpty() },
-    private val brandProvider: () -> String = { Build.BRAND.orEmpty() },
+    private val brandProvider: () -> String = { Build.BRAND.orEmpty() }
 ) : BatteryWhitelistManager {
     override fun isIgnoringBatteryOptimizations(context: Context): Boolean =
         try {

@@ -13,7 +13,7 @@ import com.webdav.player.ui.server.ServerManagementViewModel
  */
 class AppViewModelFactory(
     private val container: AppContainer,
-    private val playlistId: Long? = null,
+    private val playlistId: Long? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -22,7 +22,7 @@ class AppViewModelFactory(
                 DirectoryBrowserViewModel(
                     serverRepository = container.serverRepository,
                     mediaLibraryRepository = container.mediaLibraryRepository,
-                    musicPlayerAppSession = container.musicPlayerAppSession,
+                    musicPlayerAppSession = container.musicPlayerAppSession
                 ) as T
             }
 
@@ -31,13 +31,13 @@ class AppViewModelFactory(
                     repository = container.serverRepository,
                     webDavClient = container.webDavClient,
                     storageReachabilityTracker = container.storageReachabilityTracker,
-                    mediaLibraryRepository = container.mediaLibraryRepository,
+                    mediaLibraryRepository = container.mediaLibraryRepository
                 ) as T
             }
 
             modelClass.isAssignableFrom(PlaylistListViewModel::class.java) -> {
                 PlaylistListViewModel(
-                    playlistRepository = container.playlistRepository,
+                    playlistRepository = container.playlistRepository
                 ) as T
             }
 
@@ -47,7 +47,7 @@ class AppViewModelFactory(
                     playlistId = id,
                     playlistRepository = container.playlistRepository,
                     musicPlayerAppSession = container.musicPlayerAppSession,
-                    storageReachabilityTracker = container.storageReachabilityTracker,
+                    storageReachabilityTracker = container.storageReachabilityTracker
                 ) as T
             }
 

@@ -23,18 +23,18 @@ class TrackIdentityTest {
     fun safContentUri_isClampedToLocalStorageId() {
         val identity = TrackIdentity(
             serverId = 42L,
-            remotePath = "content://com.android.externalstorage.documents/tree/primary%3AMusic/document/123",
+            remotePath = "content://com.android.externalstorage.documents/tree/primary%3AMusic/document/123"
         )
 
         assertEquals(LOCAL_STORAGE_ID, identity.serverId)
         assertTrue(identity.isLocal)
         assertEquals(
             "local:content://com.android.externalstorage.documents/tree/primary%3AMusic/document/123",
-            identity.compositeKey,
+            identity.compositeKey
         )
         assertEquals(
             "0:content://com.android.externalstorage.documents/tree/primary%3AMusic/document/123",
-            identity.trackId,
+            identity.trackId
         )
     }
 
@@ -42,7 +42,7 @@ class TrackIdentityTest {
     fun fileUri_isClampedToLocalStorageId() {
         val identity = TrackIdentity(
             serverId = 7L,
-            remotePath = "file:///storage/emulated/0/Music/track.flac",
+            remotePath = "file:///storage/emulated/0/Music/track.flac"
         )
 
         assertEquals(LOCAL_STORAGE_ID, identity.serverId)
@@ -55,7 +55,7 @@ class TrackIdentityTest {
     fun localNormalizedPath_isClampedToLocalStorageId() {
         val identity = TrackIdentity(
             serverId = 99L,
-            remotePath = "/local/tree%3AMusic/Album/01.wav",
+            remotePath = "/local/tree%3AMusic/Album/01.wav"
         )
 
         assertEquals(LOCAL_STORAGE_ID, identity.serverId)
@@ -68,7 +68,7 @@ class TrackIdentityTest {
     fun localStorageIdWithStandardPath_isMarkedLocal() {
         val identity = TrackIdentity(
             serverId = LOCAL_STORAGE_ID,
-            remotePath = "/Music/cached_song.mp3",
+            remotePath = "/Music/cached_song.mp3"
         )
 
         assertEquals(LOCAL_STORAGE_ID, identity.serverId)
@@ -118,5 +118,61 @@ class TrackIdentityTest {
         assertEquals(id1, id2)
         assertEquals(id1.hashCode(), id2.hashCode())
         assertNotEquals(id1, id3)
+    }
+
+    @Test
+    fun extractFileName_safContentUriWithNestedTree_extractsDecodedFileName() {
+        val safPath =
+            "content://com.android.externalstorage.documents/tree/primary%3AMusic/document/primary%3AMusic%2F%E6%88%91%E7%9A%84%E6%9C%80%E7%88%B1%2Fundressed-sombr.flac"
+        assertEquals("undressed-sombr.flac", TrackIdentity.extractFileName(safPath))
+
+        val identity = TrackIdentity(LOCAL_STORAGE_ID, safPath)
+        assertEquals("undressed-sombr.flac", identity.fileName)
+    }
+
+    @Test
+    fun extractFileName_safContentUriRootFile_extractsDecodedFileName() {
+        val safPath =
+            "content://com.android.externalstorage.documents/tree/primary%3AMusic/document/primary%3Aroot_song.mp3"
+        assertEquals("root_song.mp3", TrackIdentity.extractFileName(safPath))
+    }
+
+    @Test
+    fun extractFileName_standardWebDavPath_extractsFileName() {
+        assertEquals("song.flac", TrackIdentity.extractFileName("/Music/Rock/song.flac"))
+    }
+
+    @Test
+    fun extractFileName_fileUri_extractsFileName() {
+        assertEquals("track.wav", TrackIdentity.extractFileName("file:///storage/emulated/0/Music/track.wav"))
+    }
+
+    @Test
+    fun extractFileName_blankOrEdgeCase_returnsSafeString() {
+        assertEquals("", TrackIdentity.extractFileName(""))
+        assertEquals("track", TrackIdentity.extractFileName("track"))
+    }
+
+    @Test
+    fun cleanTitle_removesFileExtensionAndSafEncoding() {
+        assertEquals("undressed-sombr", TrackIdentity.cleanTitle("content://tree/primary%3AMusic%2Fundressed-sombr.flac"))
+        assertEquals("song", TrackIdentity.cleanTitle("/Music/Rock/song.flac"))
+        assertEquals("Hotel California", TrackIdentity.cleanTitle("Hotel California.flac"))
+        assertEquals("track", TrackIdentity.cleanTitle("track"))
+        org.junit.Assert.assertNull(TrackIdentity.cleanTitle(null))
+        org.junit.Assert.assertNull(TrackIdentity.cleanTitle(""))
+    }
+
+    @Test
+    fun sanitizePersistedTitle_preservesNormalTitles_andCleansSafTokens() {
+        // Normal song titles with dots or spaces remain intact
+        assertEquals("Hotel California", TrackIdentity.sanitizePersistedTitle("Hotel California"))
+        assertEquals("Mr. Brightside", TrackIdentity.sanitizePersistedTitle("Mr. Brightside"))
+
+        // SAF encoded tokens get cleaned
+        val safToken = "primary%3AMusic%2FSong.flac"
+        assertEquals("Song", TrackIdentity.sanitizePersistedTitle(safToken))
+
+        org.junit.Assert.assertNull(TrackIdentity.sanitizePersistedTitle(null))
     }
 }

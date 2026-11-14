@@ -20,4 +20,5 @@ app/build
 .pi-lens.json
 app/.pi-lens.json
 .worktrees/
+.mcp.json
 

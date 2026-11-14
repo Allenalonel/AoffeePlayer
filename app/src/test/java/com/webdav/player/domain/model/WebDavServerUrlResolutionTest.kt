@@ -155,4 +155,3 @@ class WebDavServerUrlResolutionTest {
         assertEquals("http://nas.local/dav/Pop%2BRock/", dirUrl)
     }
 }
-

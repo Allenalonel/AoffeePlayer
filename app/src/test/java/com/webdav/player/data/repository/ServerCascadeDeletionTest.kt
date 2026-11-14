@@ -12,13 +12,13 @@ import com.webdav.player.data.local.MediaTrackIndexDao
 import com.webdav.player.data.local.MediaTrackIndexEntity
 import com.webdav.player.data.local.TrackMetadataEntity
 import com.webdav.player.data.remote.OkHttpWebDavClient
-import com.webdav.player.data.repository.MediaLibraryRepositoryImpl
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
+import java.net.URLEncoder
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -29,7 +29,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.net.URLEncoder
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -60,7 +59,7 @@ class ServerCascadeDeletionTest {
                 mediaTrackIndexDao = mediaTrackIndexDao,
                 directorySyncCheckpointDao = checkpointDao,
                 localStorageFolderDao = database.localStorageFolderDao(),
-                context = context,
+                context = context
             )
 
         trackMetadataRepo = TestTrackMetadataRepo()
@@ -72,7 +71,7 @@ class ServerCascadeDeletionTest {
                 localStorageFolderDao = database.localStorageFolderDao(),
                 context = context,
                 cascadeInvalidator = mediaLibraryRepository,
-                trackMetadataRepository = trackMetadataRepo,
+                trackMetadataRepository = trackMetadataRepo
             )
     }
 
@@ -90,8 +89,8 @@ class ServerCascadeDeletionTest {
                         id = 0L,
                         name = "Test Server",
                         url = "http://192.168.1.100:5005",
-                        port = 5005,
-                    ),
+                        port = 5005
+                    )
                 )
             val otherServerId =
                 repository.saveServer(
@@ -99,8 +98,8 @@ class ServerCascadeDeletionTest {
                         id = 0L,
                         name = "Other Server",
                         url = "http://192.168.1.200:5005",
-                        port = 5005,
-                    ),
+                        port = 5005
+                    )
                 )
 
             // Seed index and checkpoints for target server
@@ -114,7 +113,7 @@ class ServerCascadeDeletionTest {
                     format = "FLAC",
                     parentPath = "/Music/",
                     parsedTitle = "Song 1",
-                    parsedArtist = "Artist 1",
+                    parsedArtist = "Artist 1"
                 )
             val otherTrack =
                 MediaTrackIndexEntity(
@@ -126,7 +125,7 @@ class ServerCascadeDeletionTest {
                     format = "FLAC",
                     parentPath = "/Audio/",
                     parsedTitle = "Song 2",
-                    parsedArtist = "Artist 2",
+                    parsedArtist = "Artist 2"
                 )
             mediaTrackIndexDao.insertAll(listOf(targetTrack, otherTrack))
 
@@ -136,7 +135,7 @@ class ServerCascadeDeletionTest {
                     path = "/Music/",
                     lastModified = 1000L,
                     etag = "etag-1",
-                    lastScannedMs = 1000L,
+                    lastScannedMs = 1000L
                 )
             val otherCheckpoint =
                 DirectorySyncCheckpointEntity(
@@ -144,7 +143,7 @@ class ServerCascadeDeletionTest {
                     path = "/Audio/",
                     lastModified = 2000L,
                     etag = "etag-2",
-                    lastScannedMs = 2000L,
+                    lastScannedMs = 2000L
                 )
             checkpointDao.insertAll(listOf(targetCheckpoint, otherCheckpoint))
 
@@ -184,7 +183,7 @@ class ServerCascadeDeletionTest {
                     format = "MP3",
                     parentPath = root1,
                     parsedTitle = "Track 1",
-                    parsedArtist = "Local Artist",
+                    parsedArtist = "Local Artist"
                 )
             val localTrack2 =
                 MediaTrackIndexEntity(
@@ -196,7 +195,7 @@ class ServerCascadeDeletionTest {
                     format = "MP3",
                     parentPath = root2,
                     parsedTitle = "Track 2",
-                    parsedArtist = "Local Artist",
+                    parsedArtist = "Local Artist"
                 )
             mediaTrackIndexDao.insertAll(listOf(localTrack1, localTrack2))
 
@@ -206,7 +205,7 @@ class ServerCascadeDeletionTest {
                     path = root1,
                     lastModified = 1000L,
                     etag = null,
-                    lastScannedMs = 1000L,
+                    lastScannedMs = 1000L
                 )
             val checkpoint2 =
                 DirectorySyncCheckpointEntity(
@@ -214,7 +213,7 @@ class ServerCascadeDeletionTest {
                     path = root2,
                     lastModified = 2000L,
                     etag = null,
-                    lastScannedMs = 2000L,
+                    lastScannedMs = 2000L
                 )
             checkpointDao.insertAll(listOf(checkpoint1, checkpoint2))
 
@@ -241,15 +240,15 @@ class ServerCascadeDeletionTest {
                     serverId = LOCAL_STORAGE_ID,
                     path = "/",
                     dataJson = "{}",
-                    lastUpdatedMs = 1000L,
-                ),
+                    lastUpdatedMs = 1000L
+                )
             )
             assertNotNull(directoryCacheDao.getCache(LOCAL_STORAGE_ID, "/"))
 
             repository.removeMountedLocalFolder("content://com.android.externalstorage.documents/tree/primary%3AMusic")
             assertNull(
                 "Local directory cache must be invalidated when folder is unmounted",
-                directoryCacheDao.getCache(LOCAL_STORAGE_ID, "/"),
+                directoryCacheDao.getCache(LOCAL_STORAGE_ID, "/")
             )
 
             val s1Id = repository.saveServer(WebDavServer(name = "Primary NAS", url = "http://nas1.local", isDefault = true))
@@ -296,8 +295,8 @@ class ServerCascadeDeletionTest {
                     album = "Rock Album",
                     trackNumber = 1,
                     durationMs = 180000L,
-                    coverThumbnailPath = "/covers/rock.jpg",
-                ),
+                    coverThumbnailPath = "/covers/rock.jpg"
+                )
             )
 
             // Unmount folder 1
@@ -340,28 +339,28 @@ class ServerCascadeDeletionTest {
 
         override fun getMetadataForPathsFlow(
             serverId: Long,
-            remotePaths: List<String>,
+            remotePaths: List<String>
         ) = kotlinx.coroutines.flow.emptyFlow<List<TrackMetadata>>()
 
         override fun getMetadataFlow(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ) = kotlinx.coroutines.flow.emptyFlow<TrackMetadata?>()
 
         override suspend fun getCachedMetadata(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): TrackMetadata? = null
 
         override suspend fun resolveMetadata(
             server: WebDavServer,
             files: List<RemoteFile>,
-            forceRefresh: Boolean,
+            forceRefresh: Boolean
         ) {}
 
         override suspend fun resolveSingleTrackMetadata(
             server: WebDavServer,
-            file: RemoteFile,
+            file: RemoteFile
         ) = TrackMetadata(server.id, file.path)
     }
 }

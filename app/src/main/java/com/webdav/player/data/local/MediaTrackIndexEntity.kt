@@ -13,8 +13,8 @@ import com.webdav.player.domain.model.AudioTrack
         Index(value = ["fileName"]),
         Index(value = ["serverId", "remotePath"]),
         Index(value = ["parsedTitle"]),
-        Index(value = ["parsedArtist"]),
-    ],
+        Index(value = ["parsedArtist"])
+    ]
 )
 data class MediaTrackIndexEntity(
     val serverId: Long,
@@ -25,11 +25,11 @@ data class MediaTrackIndexEntity(
     val format: String,
     val parentPath: String,
     val parsedTitle: String,
-    val parsedArtist: String?,
+    val parsedArtist: String?
 ) {
     fun toAudioTrack(
         metadata: TrackMetadataEntity? = null,
-        albumFallback: String? = null,
+        albumFallback: String? = null
     ): AudioTrack {
         val audioFormat =
             AudioFormat.fromExtension(format)
@@ -46,6 +46,10 @@ data class MediaTrackIndexEntity(
             size = fileSize,
             format = audioFormat,
             coverThumbnailPath = metadata?.coverThumbnailPath,
+            sampleRate = metadata?.sampleRate,
+            bitDepth = metadata?.bitDepth,
+            bitrateKbps = metadata?.bitrateKbps,
+            channels = metadata?.channels
         )
     }
 }

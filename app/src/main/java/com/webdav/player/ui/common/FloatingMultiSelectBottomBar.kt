@@ -34,13 +34,13 @@ fun FloatingMultiSelectBottomBar(
     selectedCount: Int,
     onPlayNext: () -> Unit,
     onAddToPlaylist: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     AnimatedVisibility(
         visible = selectedCount > 0,
         enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-        modifier = modifier,
+        modifier = modifier
     ) {
         Surface(
             shape = RoundedCornerShape(28.dp),
@@ -48,17 +48,17 @@ fun FloatingMultiSelectBottomBar(
             tonalElevation = 6.dp,
             shadowElevation = 8.dp,
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             Row(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // Play Next Action
                 FilledTonalButton(
@@ -67,21 +67,21 @@ fun FloatingMultiSelectBottomBar(
                     shape = RoundedCornerShape(22.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp),
                     colors =
-                        ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
+                    ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 ) {
                     Icon(
                         imageVector = AppIcons.SkipNext,
                         contentDescription = "下一首播放",
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "下一首播放",
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
@@ -92,21 +92,21 @@ fun FloatingMultiSelectBottomBar(
                     shape = RoundedCornerShape(22.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp),
                     colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Icon(
                         imageVector = AppIcons.PlaylistAdd,
                         contentDescription = "添加到歌单",
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "添加到歌单 ($selectedCount)",
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

@@ -23,7 +23,7 @@ class PlayerSheetExpansionTest {
             title = "Shine On You Crazy Diamond",
             artist = "Pink Floyd",
             album = "Wish You Were Here",
-            format = AudioFormat.FLAC,
+            format = AudioFormat.FLAC
         )
 
     private fun sessionWithTrack(track: AudioTrack?): PlayerSessionState =

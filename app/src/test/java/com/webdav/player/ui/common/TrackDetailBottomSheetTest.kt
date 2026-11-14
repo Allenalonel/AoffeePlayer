@@ -28,11 +28,11 @@ class TrackDetailBottomSheetTest {
         val properties = TrackDetailBottomSheetDefaults.Properties
         assertFalse(
             "TrackDetailBottomSheet must configure isFocusable = false to eliminate IME ghosting and focus race",
-            properties.isFocusable,
+            properties.isFocusable
         )
         assertTrue(
             "TrackDetailBottomSheet must configure shouldDismissOnBackPress = true for predictive back dismiss",
-            properties.shouldDismissOnBackPress,
+            properties.shouldDismissOnBackPress
         )
     }
 
@@ -90,13 +90,15 @@ class TrackDetailBottomSheetTest {
             AudioTrack(
                 id = "track_1",
                 serverId = LOCAL_STORAGE_ID,
-                remotePath = "/local/Music/Hotel California [96k] [24bit].flac",
+                remotePath = "/local/Music/Hotel California.flac",
                 title = "Hotel California",
                 artist = "Eagles",
                 album = "Hotel California",
                 durationMs = 391_000L,
                 size = 90_000_000L,
                 format = AudioFormat.FLAC,
+                sampleRate = 96000,
+                bitDepth = 24
             )
 
         val badge = track.qualityBadge
@@ -123,7 +125,7 @@ class TrackDetailBottomSheetTest {
                 album = "The Dark Side of the Moon",
                 durationMs = 360_000L,
                 size = 14_400_000L, // 320 kbps
-                format = AudioFormat.MP3,
+                format = AudioFormat.MP3
             )
 
         val badge = track.qualityBadge

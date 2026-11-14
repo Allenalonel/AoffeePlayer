@@ -31,7 +31,7 @@ data class DirectoryBrowserUiState(
     val isSearching: Boolean = false,
     val isGlobalSearch: Boolean = false,
     val syncState: LibrarySyncState = LibrarySyncState.Idle,
-    val sortOrder: DirectorySortOrder = DirectorySortOrder(),
+    val sortOrder: DirectorySortOrder = DirectorySortOrder()
 ) {
     val isEmpty: Boolean
         get() = currentDirectory?.isEmpty == true

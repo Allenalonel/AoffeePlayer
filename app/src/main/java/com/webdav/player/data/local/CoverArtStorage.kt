@@ -4,27 +4,27 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.webdav.player.data.metadata.ImageHeaderValidator
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 interface CoverArtStorage {
     suspend fun saveThumbnail(
         serverId: Long,
         remotePath: String,
-        artworkBytes: ByteArray,
+        artworkBytes: ByteArray
     ): String?
 
     fun getThumbnailFile(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ): File?
 
     fun deleteThumbnail(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     )
 
     suspend fun deleteServerCovers(serverId: Long)
@@ -48,7 +48,7 @@ class CoverArtStorageImpl(
     private val context: Context,
     private val maxDimension: Int = DEFAULT_MAX_DIMENSION,
     private val maxCacheSizeBytes: Long = DEFAULT_MAX_CACHE_SIZE_BYTES,
-    private val customDir: File? = null,
+    private val customDir: File? = null
 ) : CoverArtStorage {
     companion object {
         const val DEFAULT_MAX_DIMENSION = 512
@@ -94,7 +94,7 @@ class CoverArtStorageImpl(
 
     private fun migrateLegacyCoversDir(
         targetDir: File,
-        legacyDir: File,
+        legacyDir: File
     ) {
         try {
             val files = legacyDir.listFiles() ?: return
@@ -120,7 +120,7 @@ class CoverArtStorageImpl(
     override suspend fun saveThumbnail(
         serverId: Long,
         remotePath: String,
-        artworkBytes: ByteArray,
+        artworkBytes: ByteArray
     ): String? =
         withContext(Dispatchers.IO) {
             if (artworkBytes.isEmpty()) return@withContext null
@@ -217,7 +217,7 @@ class CoverArtStorageImpl(
     private fun calculateInSampleSize(
         rawWidth: Int,
         rawHeight: Int,
-        maxDimension: Int,
+        maxDimension: Int
     ): Int {
         val halfWidth = rawWidth / 2
         val halfHeight = rawHeight / 2
@@ -227,7 +227,7 @@ class CoverArtStorageImpl(
 
     override fun getThumbnailFile(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ): File? {
         return try {
             val dir = getCoversDir(createIfMissing = false)
@@ -251,7 +251,7 @@ class CoverArtStorageImpl(
 
     override fun deleteThumbnail(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ) {
         try {
             val dir = getCoversDir(createIfMissing = false)
@@ -292,7 +292,7 @@ class CoverArtStorageImpl(
 
     fun pruneDiskQuota(
         quotaBytes: Long = maxCacheSizeBytes,
-        justSavedFile: File? = null,
+        justSavedFile: File? = null
     ) {
         try {
             val dir = getCoversDir(createIfMissing = false)
@@ -306,7 +306,7 @@ class CoverArtStorageImpl(
                 files.sortedWith(
                     compareBy<File> { if (justSavedFile != null && it.absolutePath == justSavedFile.absolutePath) 1 else 0 }
                         .thenBy { it.lastModified() }
-                        .thenBy { it.name },
+                        .thenBy { it.name }
                 )
 
             for (file in sortedFiles) {
@@ -344,7 +344,7 @@ class CoverArtStorageImpl(
 
     private fun buildFileName(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ): String {
         val key = "$serverId:$remotePath"
         val md = MessageDigest.getInstance("MD5")

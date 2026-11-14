@@ -9,7 +9,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 class PlaylistTrackRowTest {
@@ -53,7 +52,7 @@ class PlaylistTrackRowTest {
                 value = SwipeToDismissBoxValue.StartToEnd,
                 isPastThreshold = true,
                 onRemove = { removeCalled = true },
-                onPlayNext = { playNextCalled = true },
+                onPlayNext = { playNextCalled = true }
             )
 
         assertTrue("Should return true to confirm dismiss for deletion", dismissed)
@@ -71,7 +70,7 @@ class PlaylistTrackRowTest {
                 value = SwipeToDismissBoxValue.EndToStart,
                 isPastThreshold = true,
                 onRemove = { removeCalled = true },
-                onPlayNext = { playNextCalled = true },
+                onPlayNext = { playNextCalled = true }
             )
 
         assertFalse("Should return false so left-swipe elastically bounces back", dismissed)
@@ -89,7 +88,7 @@ class PlaylistTrackRowTest {
                 value = SwipeToDismissBoxValue.StartToEnd,
                 isPastThreshold = false,
                 onRemove = { removeCalled = true },
-                onPlayNext = { playNextCalled = true },
+                onPlayNext = { playNextCalled = true }
             )
         assertFalse(startToEndResult)
         assertFalse(removeCalled)
@@ -100,7 +99,7 @@ class PlaylistTrackRowTest {
                 value = SwipeToDismissBoxValue.EndToStart,
                 isPastThreshold = false,
                 onRemove = { removeCalled = true },
-                onPlayNext = { playNextCalled = true },
+                onPlayNext = { playNextCalled = true }
             )
         assertFalse(endToStartResult)
         assertFalse(removeCalled)
@@ -117,7 +116,7 @@ class PlaylistTrackRowTest {
                 value = SwipeToDismissBoxValue.Settled,
                 isPastThreshold = true,
                 onRemove = { removeCalled = true },
-                onPlayNext = { playNextCalled = true },
+                onPlayNext = { playNextCalled = true }
             )
         assertFalse(result)
         assertFalse(removeCalled)

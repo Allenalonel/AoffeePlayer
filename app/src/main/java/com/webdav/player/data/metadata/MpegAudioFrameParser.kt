@@ -1,5 +1,12 @@
 package com.webdav.player.data.metadata
 
+internal data class MpegFrameInfo(
+    val durationMs: Long = 0L,
+    val sampleRate: Int? = null,
+    val bitrateKbps: Int? = null,
+    val channels: Int? = null
+)
+
 internal object MpegAudioFrameParser {
     private val MPEG1_L3_BITRATES = intArrayOf(0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320)
     private val MPEG2_L3_BITRATES = intArrayOf(0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160)
@@ -11,9 +18,15 @@ internal object MpegAudioFrameParser {
     fun parseDuration(
         bytes: ByteArray,
         offset: Int = 0,
-        fileSize: Long = 0L,
-    ): Long {
-        if (bytes.size - offset < 4) return 0L
+        fileSize: Long = 0L
+    ): Long = parseFrameInfo(bytes, offset, fileSize)?.durationMs ?: 0L
+
+    fun parseFrameInfo(
+        bytes: ByteArray,
+        offset: Int = 0,
+        fileSize: Long = 0L
+    ): MpegFrameInfo? {
+        if (bytes.size - offset < 4) return null
 
         val scanLimit = (bytes.size - 4).coerceAtMost(offset + 32768)
         var i = offset
@@ -48,6 +61,7 @@ internal object MpegAudioFrameParser {
                                 MPEG2_L3_BITRATES[bitrateIdx]
                             }
 
+                        val channels = if (channelMode == 3) 1 else 2
                         val samplesPerFrame = if (versionBits == 3) 1152L else 576L
 
                         // 1. Check for Xing / Info header
@@ -76,7 +90,13 @@ internal object MpegAudioFrameParser {
                                 if ((flags and 0x01L) != 0L && xingPos + 12 <= bytes.size) {
                                     val frameCount = readInt32Be(bytes, xingPos + 8)
                                     if (frameCount > 0L && sampleRate > 0) {
-                                        return (frameCount * samplesPerFrame * 1000L) / sampleRate
+                                        val durationMs = (frameCount * samplesPerFrame * 1000L) / sampleRate
+                                        return MpegFrameInfo(
+                                            durationMs = durationMs,
+                                            sampleRate = sampleRate,
+                                            bitrateKbps = bitrateKbps,
+                                            channels = channels
+                                        )
                                     }
                                 }
                             }
@@ -93,31 +113,44 @@ internal object MpegAudioFrameParser {
                             if (isVbri) {
                                 val frameCount = readInt32Be(bytes, vbriPos + 14)
                                 if (frameCount > 0L && sampleRate > 0) {
-                                    return (frameCount * 1152L * 1000L) / sampleRate
+                                    val durationMs = (frameCount * 1152L * 1000L) / sampleRate
+                                    return MpegFrameInfo(
+                                        durationMs = durationMs,
+                                        sampleRate = sampleRate,
+                                        bitrateKbps = bitrateKbps,
+                                        channels = channels
+                                    )
                                 }
                             }
                         }
 
                         // 3. Fallback to CBR bitrate estimation using total fileSize
-                        if (fileSize > 0L && bitrateKbps > 0) {
-                            val audioSize = (fileSize - i).coerceAtLeast(0L)
-                            val durationMs = (audioSize * 8L * 1000L) / (bitrateKbps * 1000L)
-                            if (durationMs > 0L) {
-                                return durationMs
+                        val cbrDuration =
+                            if (fileSize > 0L && bitrateKbps > 0) {
+                                val audioSize = (fileSize - i).coerceAtLeast(0L)
+                                (audioSize * 8L * 1000L) / (bitrateKbps * 1000L)
+                            } else {
+                                0L
                             }
-                        }
+
+                        return MpegFrameInfo(
+                            durationMs = cbrDuration,
+                            sampleRate = sampleRate,
+                            bitrateKbps = bitrateKbps,
+                            channels = channels
+                        )
                     }
                 }
             }
             i++
         }
 
-        return 0L
+        return null
     }
 
     private fun readInt32Be(
         bytes: ByteArray,
-        offset: Int,
+        offset: Int
     ): Long {
         val b0 = bytes[offset].toLong() and 0xFF
         val b1 = bytes[offset + 1].toLong() and 0xFF

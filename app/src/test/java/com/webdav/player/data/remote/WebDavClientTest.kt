@@ -4,6 +4,7 @@ import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.WebDavServer
+import java.net.InetAddress
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
@@ -15,12 +16,10 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNotSame
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.net.InetAddress
 
 class WebDavClientTest {
     private lateinit var server: MockWebServer
@@ -43,7 +42,7 @@ class WebDavClientTest {
             server.enqueue(
                 MockResponse()
                     .setResponseCode(207)
-                    .setBody("""<?xml version="1.0" encoding="utf-8"?><multistatus xmlns="DAV:"></multistatus>"""),
+                    .setBody("""<?xml version="1.0" encoding="utf-8"?><multistatus xmlns="DAV:"></multistatus>""")
             )
             server.start()
 
@@ -52,7 +51,7 @@ class WebDavClientTest {
                     name = "Test Server",
                     url = "http://${server.hostName}",
                     port = server.port,
-                    pathPrefix = "/dav",
+                    pathPrefix = "/dav"
                 )
 
             val result = client.testConnection(webDavServer)
@@ -76,7 +75,7 @@ class WebDavClientTest {
                     url = "http://${server.hostName}",
                     port = server.port,
                     username = "alice",
-                    password = "secretpassword",
+                    password = "secretpassword"
                 )
 
             val result = client.testConnection(webDavServer)
@@ -99,7 +98,7 @@ class WebDavClientTest {
                     url = "http://${server.hostName}",
                     port = server.port,
                     username = "wrong",
-                    password = "bad",
+                    password = "bad"
                 )
 
             val result = client.testConnection(webDavServer)
@@ -134,7 +133,7 @@ class WebDavClientTest {
                     name = "Self Signed Server",
                     url = "https://localhost",
                     port = server.port,
-                    allowSelfSigned = true,
+                    allowSelfSigned = true
                 )
 
             val result = client.testConnection(webDavServer)
@@ -166,7 +165,7 @@ class WebDavClientTest {
                     name = "Strict SSL Server",
                     url = "https://localhost",
                     port = server.port,
-                    allowSelfSigned = false,
+                    allowSelfSigned = false
                 )
 
             val result = client.testConnection(webDavServer)
@@ -283,7 +282,7 @@ class WebDavClientTest {
                     name = "Music Server",
                     url = "http://${server.hostName}",
                     port = server.port,
-                    pathPrefix = "/dav",
+                    pathPrefix = "/dav"
                 )
 
             val result = client.listDirectory(webDavServer, "/Music/")
@@ -379,7 +378,7 @@ class WebDavClientTest {
                     name = "Music Server",
                     url = "http://${server.hostName}",
                     port = server.port,
-                    pathPrefix = "/dav",
+                    pathPrefix = "/dav"
                 )
 
             val result = client.listDirectory(webDavServer, "/My Music/")
@@ -405,7 +404,7 @@ class WebDavClientTest {
                 WebDavServer(
                     name = "Test",
                     url = "http://${server.hostName}",
-                    port = server.port,
+                    port = server.port
                 )
 
             val result = client.listDirectory(webDavServer, "/nonexistent/")
@@ -440,7 +439,7 @@ class WebDavClientTest {
                     name = "Test",
                     url = "http://${server.hostName}",
                     port = server.port,
-                    pathPrefix = "/dav",
+                    pathPrefix = "/dav"
                 )
 
             val result = client.listDirectory(webDavServer, "/EmptyFolder/")
@@ -461,7 +460,7 @@ class WebDavClientTest {
                 WebDavServer(
                     name = "Test",
                     url = "http://${server.hostName}",
-                    port = server.port,
+                    port = server.port
                 )
 
             val result = client.listDirectory(webDavServer, "/")
@@ -480,7 +479,7 @@ class WebDavClientTest {
                 pathPrefix = "/dav",
                 username = "alice",
                 password = "secretpassword",
-                allowSelfSigned = true,
+                allowSelfSigned = true
             )
 
         val client1 = okHttpClient.buildClientForServer(webDavServer)
@@ -489,7 +488,7 @@ class WebDavClientTest {
         assertSame(
             "Expected OkHttpClient instances to be identical across calls with identical configuration",
             client1,
-            client2,
+            client2
         )
     }
 
@@ -505,7 +504,7 @@ class WebDavClientTest {
                 pathPrefix = "/dav",
                 username = "alice",
                 password = "secretpassword",
-                allowSelfSigned = false,
+                allowSelfSigned = false
             )
 
         val initialClient = okHttpClient.buildClientForServer(baseServer)
@@ -539,14 +538,14 @@ class WebDavClientTest {
                 id = 1L,
                 name = "Server 1",
                 url = "https://server1.com",
-                port = 443,
+                port = 443
             )
         val server2 =
             WebDavServer(
                 id = 2L,
                 name = "Server 2",
                 url = "https://server2.com",
-                port = 443,
+                port = 443
             )
 
         val client1A = okHttpClient.buildClientForServer(server1)
@@ -577,14 +576,14 @@ class WebDavClientTest {
             server.enqueue(
                 MockResponse()
                     .setResponseCode(
-                        207,
-                    ).setBody("""<?xml version="1.0" encoding="utf-8"?><multistatus xmlns="DAV:"></multistatus>"""),
+                        207
+                    ).setBody("""<?xml version="1.0" encoding="utf-8"?><multistatus xmlns="DAV:"></multistatus>""")
             )
             server.enqueue(
                 MockResponse()
                     .setResponseCode(
-                        207,
-                    ).setBody("""<?xml version="1.0" encoding="utf-8"?><D:multistatus xmlns:D="DAV:"></D:multistatus>"""),
+                        207
+                    ).setBody("""<?xml version="1.0" encoding="utf-8"?><D:multistatus xmlns:D="DAV:"></D:multistatus>""")
             )
             server.enqueue(MockResponse().setResponseCode(206).setBody("audio-chunk"))
             server.enqueue(MockResponse().setResponseCode(200).setBody("test-lyrics"))
@@ -596,7 +595,7 @@ class WebDavClientTest {
                     name = "Reuse Server",
                     url = "http://${server.hostName}",
                     port = server.port,
-                    pathPrefix = "/dav",
+                    pathPrefix = "/dav"
                 )
 
             assertEquals(0, okHttpClient.cachedClientCount)
@@ -636,7 +635,7 @@ class WebDavClientTest {
                     name = "Concurrent Server",
                     url = "https://concurrent.example.com",
                     port = 443,
-                    allowSelfSigned = true,
+                    allowSelfSigned = true
                 )
 
             val dispatcher = kotlinx.coroutines.Dispatchers.Default
@@ -655,7 +654,7 @@ class WebDavClientTest {
                 assertSame(
                     "All concurrent callers must receive the exact same OkHttpClient instance",
                     firstClient,
-                    client,
+                    client
                 )
             }
         }
@@ -676,12 +675,12 @@ class WebDavClientTest {
         assertSame(
             "All streaming clients must reuse the dedicated streaming connection pool",
             client.streamingConnectionPool,
-            streamClient1.connectionPool,
+            streamClient1.connectionPool
         )
         assertSame(
             "Streaming clients for different servers must share the same connection pool",
             streamClient1.connectionPool,
-            streamClient2.connectionPool,
+            streamClient2.connectionPool
         )
     }
 
@@ -694,22 +693,22 @@ class WebDavClientTest {
         assertEquals(
             "Streaming client must strictly use HTTP/1.1 protocol",
             listOf(okhttp3.Protocol.HTTP_1_1),
-            streamClient.protocols,
+            streamClient.protocols
         )
         assertEquals(
             "Streaming client connect timeout must be 30 seconds",
             30_000,
-            streamClient.connectTimeoutMillis,
+            streamClient.connectTimeoutMillis
         )
         assertEquals(
             "Streaming client read timeout must be 60 seconds",
             60_000,
-            streamClient.readTimeoutMillis,
+            streamClient.readTimeoutMillis
         )
         assertEquals(
             "Streaming client write timeout must be 60 seconds",
             60_000,
-            streamClient.writeTimeoutMillis,
+            streamClient.writeTimeoutMillis
         )
     }
 
@@ -722,17 +721,17 @@ class WebDavClientTest {
         assertTrue(
             "Standard client must support HTTP/2 and HTTP/1.1",
             standardClient.protocols.contains(okhttp3.Protocol.HTTP_2) &&
-                standardClient.protocols.contains(okhttp3.Protocol.HTTP_1_1),
+                standardClient.protocols.contains(okhttp3.Protocol.HTTP_1_1)
         )
         assertEquals(
             "Standard client connect timeout must be 10 seconds",
             10_000,
-            standardClient.connectTimeoutMillis,
+            standardClient.connectTimeoutMillis
         )
         assertEquals(
             "Standard client read timeout must be 10 seconds",
             10_000,
-            standardClient.readTimeoutMillis,
+            standardClient.readTimeoutMillis
         )
     }
 
@@ -763,12 +762,12 @@ class WebDavClientTest {
             server.enqueue(
                 MockResponse()
                     .setResponseCode(401)
-                    .setHeader("WWW-Authenticate", """Digest realm="SynologyNAS", nonce="nonce123456", qop="auth""""),
+                    .setHeader("WWW-Authenticate", """Digest realm="SynologyNAS", nonce="nonce123456", qop="auth"""")
             )
             server.enqueue(
                 MockResponse()
                     .setResponseCode(207)
-                    .setBody("""<?xml version="1.0" encoding="utf-8"?><multistatus xmlns="DAV:"></multistatus>"""),
+                    .setBody("""<?xml version="1.0" encoding="utf-8"?><multistatus xmlns="DAV:"></multistatus>""")
             )
             server.start()
 
@@ -780,7 +779,7 @@ class WebDavClientTest {
                     port = server.port,
                     pathPrefix = "/dav",
                     username = "admin",
-                    password = "secretpassword",
+                    password = "secretpassword"
                 )
 
             val result = client.testConnection(webDavServer)
@@ -808,7 +807,7 @@ class WebDavClientTest {
             server.enqueue(
                 MockResponse()
                     .setResponseCode(401)
-                    .setHeader("WWW-Authenticate", """Digest realm="SynologyNAS", nonce="nonce789", qop="auth""""),
+                    .setHeader("WWW-Authenticate", """Digest realm="SynologyNAS", nonce="nonce789", qop="auth"""")
             )
             server.enqueue(
                 MockResponse()
@@ -826,8 +825,8 @@ class WebDavClientTest {
                             <propstat><prop><getcontentlength>1024</getcontentlength></prop><status>HTTP/1.1 200 OK</status></propstat>
                           </response>
                         </multistatus>
-                        """.trimIndent(),
-                    ),
+                        """.trimIndent()
+                    )
             )
             server.start()
 
@@ -839,7 +838,7 @@ class WebDavClientTest {
                     port = server.port,
                     pathPrefix = "/dav",
                     username = "user",
-                    password = "password123",
+                    password = "password123"
                 )
 
             val result = client.listDirectory(webDavServer, "/music/")
@@ -857,13 +856,13 @@ class WebDavClientTest {
             server.enqueue(
                 MockResponse()
                     .setResponseCode(401)
-                    .setHeader("WWW-Authenticate", """Digest realm="SynologyNAS", nonce="nonceBad", qop="auth""""),
+                    .setHeader("WWW-Authenticate", """Digest realm="SynologyNAS", nonce="nonceBad", qop="auth"""")
             )
             // Second 401 indicates invalid credentials for the replayed request
             server.enqueue(
                 MockResponse()
                     .setResponseCode(401)
-                    .setHeader("WWW-Authenticate", """Digest realm="SynologyNAS", nonce="nonceBad", qop="auth""""),
+                    .setHeader("WWW-Authenticate", """Digest realm="SynologyNAS", nonce="nonceBad", qop="auth"""")
             )
             server.start()
 
@@ -875,7 +874,7 @@ class WebDavClientTest {
                     port = server.port,
                     pathPrefix = "/dav",
                     username = "admin",
-                    password = "wrongpassword",
+                    password = "wrongpassword"
                 )
 
             val result = client.testConnection(webDavServer)
@@ -891,12 +890,12 @@ class WebDavClientTest {
             server.enqueue(
                 MockResponse()
                     .setResponseCode(401)
-                    .setHeader("WWW-Authenticate", """Digest realm="StreamRealm", nonce="streamNonce", qop="auth""""),
+                    .setHeader("WWW-Authenticate", """Digest realm="StreamRealm", nonce="streamNonce", qop="auth"""")
             )
             server.enqueue(
                 MockResponse()
                     .setResponseCode(200)
-                    .setBody("audio stream payload bytes"),
+                    .setBody("audio stream payload bytes")
             )
             server.start()
 
@@ -908,7 +907,7 @@ class WebDavClientTest {
                     port = server.port,
                     pathPrefix = "/dav",
                     username = "streamUser",
-                    password = "streamPassword",
+                    password = "streamPassword"
                 )
 
             val streamClient = client.getStreamingClientForServer(webDavServer)

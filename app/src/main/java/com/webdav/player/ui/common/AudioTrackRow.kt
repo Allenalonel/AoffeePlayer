@@ -3,8 +3,6 @@ package com.webdav.player.ui.common
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,12 +66,12 @@ fun AudioTrackRow(
     trailingContent: (@Composable () -> Unit)? = null,
     actionsMenu: (@Composable (dismiss: () -> Unit) -> Unit)? = null,
     tagContent: (@Composable () -> Unit)? = null,
-    containerColor: Color? = null,
+    containerColor: Color? = null
 ) {
     val clickModifier =
         Modifier.bouncyClickable(
             onLongClick = onLongClick,
-            onClick = onClick,
+            onClick = onClick
         )
 
     val resolvedContainerColor =
@@ -92,7 +90,7 @@ fun AudioTrackRow(
                         Checkbox(
                             checked = isSelected,
                             onCheckedChange = null,
-                            modifier = Modifier.padding(end = 8.dp),
+                            modifier = Modifier.padding(end = 8.dp)
                         )
                     }
                     if (leadingContent != null) {
@@ -101,7 +99,7 @@ fun AudioTrackRow(
                         TrackThumbnailLeading(
                             coverThumbnailPath = coverThumbnailPath,
                             isActive = isActive,
-                            isPlaying = isPlaying,
+                            isPlaying = isPlaying
                         )
                     }
                 }
@@ -119,7 +117,7 @@ fun AudioTrackRow(
                         color = titleColor,
                         fontWeight = titleWeight,
                         maxLines = 1,
-                        overflow = overflow,
+                        overflow = overflow
                     )
                 }
                 if (tagContent != null) {
@@ -140,21 +138,21 @@ fun AudioTrackRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             },
             trailingContent =
-                trailingContent ?: {
-                    AudioTrackTrailing(
-                        durationText = durationText,
-                        audioQualityBadge = audioQualityBadge,
-                        actionsMenu = if (isSelectionMode) null else actionsMenu,
-                    )
-                },
+            trailingContent ?: {
+                AudioTrackTrailing(
+                    durationText = durationText,
+                    audioQualityBadge = audioQualityBadge,
+                    actionsMenu = if (isSelectionMode) null else actionsMenu
+                )
+            },
             colors =
-                ListItemDefaults.colors(
-                    containerColor = resolvedContainerColor,
-                ),
+            ListItemDefaults.colors(
+                containerColor = resolvedContainerColor
+            )
         )
     }
 }
@@ -167,28 +165,28 @@ fun TrackThumbnailLeading(
     modifier: Modifier = Modifier,
     size: Dp = AudioTrackRowDefaults.ThumbnailSize,
     fallbackIcon: ImageVector = AppIcons.Audiotrack,
-    contentDescription: String? = "封面",
+    contentDescription: String? = "封面"
 ) {
     Box(
         modifier = modifier.size(size).clip(MaterialTheme.shapes.small),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         CoverThumbnailImage(
             thumbnailPath = coverThumbnailPath,
             contentDescription = contentDescription,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize()
         ) {
             Surface(
                 shape = MaterialTheme.shapes.small,
                 color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = fallbackIcon,
                         contentDescription = contentDescription,
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(AudioTrackRowDefaults.LeadingIconSize),
+                        modifier = Modifier.size(AudioTrackRowDefaults.LeadingIconSize)
                     )
                 }
             }
@@ -198,10 +196,10 @@ fun TrackThumbnailLeading(
         if (waveState != EqualizerWaveState.IDLE) {
             Box(
                 modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = AudioTrackRowDefaults.OverlayAlpha)),
-                contentAlignment = Alignment.Center,
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = AudioTrackRowDefaults.OverlayAlpha)),
+                contentAlignment = Alignment.Center
             ) {
                 EqualizerTrackIndicator(waveState = waveState)
             }
@@ -212,7 +210,7 @@ fun TrackThumbnailLeading(
 @Composable
 fun AudioQualityBadgePill(
     badge: AudioQualityBadge,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val (containerColor, contentColor) =
         AudioTrackRowDefaults.badgeColors(badge.qualityLevel, MaterialTheme.colorScheme)
@@ -220,14 +218,14 @@ fun AudioQualityBadgePill(
     Surface(
         modifier = modifier,
         color = containerColor,
-        shape = MaterialTheme.shapes.extraSmall,
+        shape = MaterialTheme.shapes.extraSmall
     ) {
         Text(
             text = badge.label,
             color = contentColor,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp),
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
         )
     }
 }
@@ -235,19 +233,19 @@ fun AudioQualityBadgePill(
 @Composable
 fun TrackTagPill(
     text: String,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(4.dp),
-        color = MaterialTheme.colorScheme.tertiaryContainer,
+        color = MaterialTheme.colorScheme.tertiaryContainer
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onTertiaryContainer,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
         )
     }
 }
@@ -268,7 +266,7 @@ object AudioTrackRowDefaults {
         artist: String?,
         album: String? = null,
         durationText: String? = null,
-        extra: String? = null,
+        extra: String? = null
     ): String {
         val cleanArtist = artist?.trim()?.takeIf { it.isNotEmpty() }
         val cleanAlbum = album?.trim()?.takeIf { it.isNotEmpty() }
@@ -299,7 +297,7 @@ object AudioTrackRowDefaults {
 
     fun badgeColors(
         qualityLevel: AudioQualityLevel,
-        colorScheme: ColorScheme,
+        colorScheme: ColorScheme
     ): Pair<Color, Color> =
         when (qualityLevel) {
             AudioQualityLevel.LOSSLESS -> colorScheme.tertiaryContainer to colorScheme.onTertiaryContainer
@@ -310,12 +308,12 @@ object AudioTrackRowDefaults {
 
     fun resolveContainerColor(
         isActive: Boolean,
-        colorScheme: ColorScheme,
+        colorScheme: ColorScheme
     ): Color = if (isActive) colorScheme.surfaceContainerHigh else Color.Transparent
 
     fun resolveTitleColor(
         isActive: Boolean,
-        colorScheme: ColorScheme,
+        colorScheme: ColorScheme
     ): Color = if (isActive) colorScheme.primary else Color.Unspecified
 
     fun resolveTitleFontWeight(isActive: Boolean): FontWeight = if (isActive) FontWeight.Bold else FontWeight.SemiBold
@@ -326,13 +324,13 @@ fun AudioTrackTrailing(
     durationText: String?,
     audioQualityBadge: AudioQualityBadge?,
     actionsMenu: (@Composable (dismiss: () -> Unit) -> Unit)?,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     if (audioQualityBadge == null && durationText.isNullOrBlank() && actionsMenu == null) return
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(AudioTrackRowDefaults.TrailingSpacing),
+        horizontalArrangement = Arrangement.spacedBy(AudioTrackRowDefaults.TrailingSpacing)
     ) {
         if (audioQualityBadge != null) AudioQualityBadgePill(badge = audioQualityBadge)
         if (!durationText.isNullOrBlank()) {
@@ -340,7 +338,7 @@ fun AudioTrackTrailing(
                 text = durationText,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier.padding(end = 2.dp),
+                modifier = Modifier.padding(end = 2.dp)
             )
         }
         if (actionsMenu != null) {
@@ -349,15 +347,15 @@ fun AudioTrackTrailing(
                 IconButton(
                     onClick = { showMenu = true },
                     modifier =
-                        Modifier
-                            .size(AudioTrackRowDefaults.OverflowButtonSize)
-                            .expressivePress(),
+                    Modifier
+                        .size(AudioTrackRowDefaults.OverflowButtonSize)
+                        .expressivePress()
                 ) {
                     Icon(
                         imageVector = AppIcons.MoreVert,
                         contentDescription = "更多操作",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(AudioTrackRowDefaults.OverflowIconSize),
+                        modifier = Modifier.size(AudioTrackRowDefaults.OverflowIconSize)
                     )
                 }
                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
@@ -381,7 +379,7 @@ fun AudioTrackRowIdlePreview() =
             title = "Comfortably Numb",
             subtitle = "Pink Floyd · The Wall",
             durationText = "06:22",
-            audioQualityBadge = PreviewFlacBadge,
+            audioQualityBadge = PreviewFlacBadge
         )
     }
 
@@ -395,7 +393,7 @@ fun AudioTrackRowActivePlayingPreview() =
             durationText = "07:05",
             audioQualityBadge = PreviewHiResBadge,
             isActive = true,
-            isPlaying = true,
+            isPlaying = true
         )
     }
 
@@ -409,7 +407,7 @@ fun AudioTrackRowActivePausedPreview() =
             durationText = "06:22",
             audioQualityBadge = PreviewFlacBadge,
             isActive = true,
-            isPlaying = false,
+            isPlaying = false
         )
     }
 
@@ -421,6 +419,6 @@ fun AudioTrackRowWithoutCoverPreview() =
             title = "Acoustic Session",
             subtitle = "Unknown Artist",
             durationText = "03:45",
-            coverThumbnailPath = null,
+            coverThumbnailPath = null
         )
     }

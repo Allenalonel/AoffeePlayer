@@ -21,6 +21,8 @@ import com.webdav.player.domain.repository.PlaylistRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.repository.TrackMetadataRepository
 import com.webdav.player.domain.storage.StorageReachabilityTracker
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -40,8 +42,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Domain playback session orchestrator and single authoritative commit spine for
@@ -60,7 +60,7 @@ class MusicPlayerAppSessionImpl(
             it !is kotlinx.coroutines.MainCoroutineDispatcher
         } ?: Dispatchers.Default,
     periodicDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    private val networkConnectivityObserver: NetworkConnectivityObserver? = null,
+    private val networkConnectivityObserver: NetworkConnectivityObserver? = null
 ) : MusicPlayerAppSession {
     private val _sessionState = MutableStateFlow(PlayerSessionState())
     override val sessionState: StateFlow<PlayerSessionState> = _sessionState.asStateFlow()
@@ -77,7 +77,7 @@ class MusicPlayerAppSessionImpl(
             _sessionState,
             _playbackProgress,
             coroutineScope,
-            periodicDispatcher,
+            periodicDispatcher
         )
     override val isRestored: StateFlow<Boolean> = persistenceCoordinator.isRestored
     private val queueManager = PlaybackQueueManager()
@@ -94,7 +94,7 @@ class MusicPlayerAppSessionImpl(
             ::handlePlaybackStateChanged,
             ::handleTrackTransition,
             ::handleProgressUpdated,
-            ::handleDurationChanged,
+            ::handleDurationChanged
         )
     private val _pausedByTransientAudioFocus = AtomicBoolean(false)
     override val pausedByTransientAudioFocus: Boolean get() = _pausedByTransientAudioFocus.get()
@@ -117,7 +117,7 @@ class MusicPlayerAppSessionImpl(
     private suspend fun resolveServerForTrack(
         track: AudioTrack,
         preferred: WebDavServer? = null,
-        fallback: WebDavServer? = _sessionState.value.activeServer,
+        fallback: WebDavServer? = _sessionState.value.activeServer
     ): WebDavServer? {
         if (track.isLocal || track.serverId == LOCAL_STORAGE_ID) return WebDavServer.createLocalStorage()
         if (preferred?.id == track.serverId) return preferred
@@ -134,7 +134,7 @@ class MusicPlayerAppSessionImpl(
 
     private fun awaitRestoredAndRun(
         requireTrack: Boolean = true,
-        action: () -> Unit,
+        action: () -> Unit
     ) {
         if (isRestored.value || _sessionState.value.queue.isNotEmpty) return action()
         coroutineScope.launch {
@@ -158,7 +158,7 @@ class MusicPlayerAppSessionImpl(
     private fun loadTrackIntoEngine(
         server: WebDavServer?,
         track: AudioTrack,
-        startPositionMs: Long = 0L,
+        startPositionMs: Long = 0L
     ) {
         clearKilledBySystemFlag()
         _pausedByTransientAudioFocus.set(false)
@@ -192,7 +192,7 @@ class MusicPlayerAppSessionImpl(
 
     private fun dispatchQueueLoad(
         server: WebDavServer?,
-        request: QueueLoadRequest,
+        request: QueueLoadRequest
     ) {
         faultTolerance.cancelWatchdog()
         persistenceCoordinator.markRestored()
@@ -205,7 +205,7 @@ class MusicPlayerAppSessionImpl(
 
     private fun transitionToQueueIndex(
         server: WebDavServer?,
-        targetIndex: Int,
+        targetIndex: Int
     ) {
         faultTolerance.cancelWatchdog()
         val queue = _sessionState.value.queue
@@ -217,8 +217,10 @@ class MusicPlayerAppSessionImpl(
                 .copy(queue = queue.copy(currentIndex = targetIndex), durationMs = targetTrack.durationMs)
         }
         coroutineScope.launch {
-            loadTrackIntoEngine(resolveServerForTrack(targetTrack, server), targetTrack, 0L)
+            val resolvedServer = resolveServerForTrack(targetTrack, server)
+            loadTrackIntoEngine(resolvedServer, targetTrack, 0L)
             flushSession()
+            metadataCoordinator.enrichSingleTrackMetadata(resolvedServer, targetTrack)
         }
     }
 
@@ -293,6 +295,9 @@ class MusicPlayerAppSessionImpl(
         _playbackProgress.value = PlaybackProgress(0L, track.durationMs, 0L)
         _sessionState.update { it.copy(queue = next.queue, durationMs = track.durationMs, activeServer = resolved ?: it.activeServer) }
         persistenceCoordinator.flushSession()
+        coroutineScope.launch {
+            metadataCoordinator.enrichSingleTrackMetadata(resolved ?: cur, track)
+        }
     }
 
     private fun handleProgressUpdated(progress: PlaybackProgress) {
@@ -369,12 +374,15 @@ class MusicPlayerAppSessionImpl(
         server: WebDavServer,
         directory: RemoteDirectory,
         selectedFile: RemoteFile,
-        initialMetadata: Map<String, TrackMetadata>,
+        initialMetadata: Map<String, TrackMetadata>
     ) {
         val req =
             queueManager.buildDirectoryQueue(directory, selectedFile, initialMetadata, server, _sessionState.value.playbackMode) ?: return
         dispatchQueueLoad(server, req)
         metadataCoordinator.enrichQueueTracksFromCache(server, req.queue)
+        coroutineScope.launch {
+            metadataCoordinator.enrichSingleTrackMetadata(server, req.targetTrack)
+        }
     }
 
     override fun playTrack(track: AudioTrack) {
@@ -467,7 +475,7 @@ class MusicPlayerAppSessionImpl(
 
     override fun playPlaylist(
         playlist: Playlist,
-        startIndex: Int,
+        startIndex: Int
     ) {
         coroutineScope.launch {
             val entries = playlistRepository?.getTracksForPlaylist(playlist.id) ?: emptyList()
@@ -493,7 +501,7 @@ class MusicPlayerAppSessionImpl(
             if (playerEngine.currentPositionMs.value > 3000L) return@awaitRestoredAndRun seekTo(0L)
             transitionToQueueIndex(
                 _sessionState.value.activeServer,
-                queueManager.calculatePreviousQueueIndex(queue, _sessionState.value.playbackMode),
+                queueManager.calculatePreviousQueueIndex(queue, _sessionState.value.playbackMode)
             )
         }
     }
@@ -544,7 +552,7 @@ class MusicPlayerAppSessionImpl(
     @VisibleForTesting
     fun setWeakNetworkState(
         isWeakNetwork: Boolean,
-        canManualRetry: Boolean,
+        canManualRetry: Boolean
     ) = _sessionState.update { it.withWeakNetwork(isWeakNetwork, canManualRetry) }
 
     override fun stop() {

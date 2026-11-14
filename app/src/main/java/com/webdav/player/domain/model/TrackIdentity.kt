@@ -1,8 +1,10 @@
 package com.webdav.player.domain.model
 
+import java.net.URLDecoder
+
 class TrackIdentity(
     serverId: Long,
-    val remotePath: String,
+    val remotePath: String
 ) {
     val serverId: Long = if (
         remotePath.startsWith("content://") ||
@@ -24,6 +26,9 @@ class TrackIdentity(
     val trackId: String
         get() = "$serverId:$remotePath"
 
+    val fileName: String
+        get() = extractFileName(remotePath)
+
     fun matchesScope(scopeServerId: Long?): Boolean = when {
         scopeServerId == null -> true
         scopeServerId == LOCAL_STORAGE_ID -> isLocal
@@ -35,7 +40,7 @@ class TrackIdentity(
 
     fun copy(
         serverId: Long = this.serverId,
-        remotePath: String = this.remotePath,
+        remotePath: String = this.remotePath
     ): TrackIdentity = TrackIdentity(serverId = serverId, remotePath = remotePath)
 
     override fun equals(other: Any?): Boolean {
@@ -51,4 +56,32 @@ class TrackIdentity(
     }
 
     override fun toString(): String = "TrackIdentity(serverId=$serverId, remotePath=$remotePath)"
+
+    companion object {
+        fun extractFileName(remotePath: String): String {
+            if (remotePath.isBlank()) return ""
+            val lastSegment = remotePath.substringAfterLast('/')
+            val decoded =
+                try {
+                    URLDecoder.decode(lastSegment, "UTF-8")
+                } catch (_: Exception) {
+                    lastSegment
+                }
+            val nameAfterSlash = decoded.substringAfterLast('/')
+            val nameAfterColon = nameAfterSlash.substringAfterLast(':')
+            return nameAfterColon.ifBlank { lastSegment }
+        }
+
+        fun cleanTitle(raw: String?): String? {
+            if (raw.isNullOrBlank()) return null
+            val cleanName = extractFileName(raw).ifBlank { raw }
+            return cleanName.substringBeforeLast('.').ifBlank { cleanName }
+        }
+
+        fun sanitizePersistedTitle(title: String?): String? {
+            if (title == null) return null
+            val isSafToken = title.startsWith("primary%") || title.startsWith("primary:") || title.contains("%2F")
+            return if (isSafToken) cleanTitle(title) ?: title else title
+        }
+    }
 }

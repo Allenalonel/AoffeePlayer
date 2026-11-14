@@ -8,11 +8,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 enum class AppDestination(
-    val label: String,
+    val label: String
 ) {
     PLAYLISTS("歌单"),
     DIRECTORY_BROWSER("媒体库"),
-    SERVER_LIST("存储"),
+    SERVER_LIST("存储")
 }
 
 data class MainNavigationUiState(
@@ -20,24 +20,37 @@ data class MainNavigationUiState(
     val previousDestination: AppDestination? = null,
     val isFullPlayerExpanded: Boolean = false,
     val isMiniPlayerVisible: Boolean = false,
-    val selectedPlaylistId: Long? = null,
+    val selectedPlaylistId: Long? = null
 ) {
     val isForward: Boolean
         get() = previousDestination == null || currentDestination.ordinal > previousDestination.ordinal
+
+    /**
+     * Determines whether child tabs (such as DirectoryBrowser and PlaylistDetail)
+     * should actively handle back events and interactions.
+     * When the full player is expanded or an overlay sheet is active, child tabs must
+     * relinquish back priority to prevent background navigation and stuck overlays.
+     */
+    fun isTabInteractive(
+        destination: AppDestination,
+        isQueueSheetVisible: Boolean = false
+    ): Boolean {
+        return currentDestination == destination && !isFullPlayerExpanded && !isQueueSheetVisible
+    }
 }
 
 class MainNavigationCoordinator(
     initialDestination: AppDestination = AppDestination.SERVER_LIST,
     private val hasExplicitInitialDestination: Boolean = false,
     initialIsMiniPlayerVisible: Boolean = false,
-    private val onDestinationChanged: ((AppDestination) -> Unit)? = null,
+    private val onDestinationChanged: ((AppDestination) -> Unit)? = null
 ) {
     private val _uiState =
         MutableStateFlow(
             MainNavigationUiState(
                 currentDestination = initialDestination,
-                isMiniPlayerVisible = initialIsMiniPlayerVisible,
-            ),
+                isMiniPlayerVisible = initialIsMiniPlayerVisible
+            )
         )
     val uiState: StateFlow<MainNavigationUiState> = _uiState.asStateFlow()
 
@@ -53,7 +66,7 @@ class MainNavigationCoordinator(
                     } else {
                         current.copy(
                             previousDestination = current.currentDestination,
-                            currentDestination = AppDestination.DIRECTORY_BROWSER,
+                            currentDestination = AppDestination.DIRECTORY_BROWSER
                         )
                     }
                 }
@@ -66,7 +79,7 @@ class MainNavigationCoordinator(
             _uiState.update { current ->
                 current.copy(
                     previousDestination = current.currentDestination,
-                    currentDestination = AppDestination.SERVER_LIST,
+                    currentDestination = AppDestination.SERVER_LIST
                 )
             }
             onDestinationChanged?.invoke(AppDestination.SERVER_LIST)
@@ -85,7 +98,7 @@ class MainNavigationCoordinator(
                 current.copy(
                     previousDestination = current.currentDestination,
                     currentDestination = destination,
-                    selectedPlaylistId = if (destination != AppDestination.PLAYLISTS) null else current.selectedPlaylistId,
+                    selectedPlaylistId = if (destination != AppDestination.PLAYLISTS) null else current.selectedPlaylistId
                 )
             }
         }
@@ -102,7 +115,7 @@ class MainNavigationCoordinator(
 
     fun onServerCardClicked(
         @Suppress("UNUSED_PARAMETER") server: WebDavServer,
-        onResetToRoot: (() -> Unit)? = null,
+        onResetToRoot: (() -> Unit)? = null
     ) {
         onResetToRoot?.invoke()
         selectDestination(AppDestination.DIRECTORY_BROWSER)
@@ -112,7 +125,7 @@ class MainNavigationCoordinator(
         _uiState.update {
             it.copy(
                 isMiniPlayerVisible = sessionState.hasTrack,
-                isFullPlayerExpanded = if (!sessionState.hasTrack) false else it.isFullPlayerExpanded,
+                isFullPlayerExpanded = if (!sessionState.hasTrack) false else it.isFullPlayerExpanded
             )
         }
     }

@@ -12,12 +12,12 @@ interface StorageReachabilityTracker {
     fun reportTrackUnavailable(
         serverId: Long,
         remotePath: String,
-        reason: InactiveReason,
+        reason: InactiveReason
     )
 
     fun reportServerUnavailable(
         serverId: Long,
-        reason: InactiveReason,
+        reason: InactiveReason
     )
 
     fun reportServerReachable(serverId: Long)

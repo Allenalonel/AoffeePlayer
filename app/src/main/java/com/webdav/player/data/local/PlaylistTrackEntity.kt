@@ -15,13 +15,13 @@ import com.webdav.player.domain.model.PlaylistTrackEntry
             entity = PlaylistEntity::class,
             parentColumns = ["id"],
             childColumns = ["playlistId"],
-            onDelete = ForeignKey.CASCADE,
-        ),
+            onDelete = ForeignKey.CASCADE
+        )
     ],
     indices = [
         Index(value = ["playlistId"]),
-        Index(value = ["playlistId", "sortOrder"]),
-    ],
+        Index(value = ["playlistId", "sortOrder"])
+    ]
 )
 data class PlaylistTrackEntity(
     @PrimaryKey(autoGenerate = true)
@@ -38,7 +38,7 @@ data class PlaylistTrackEntity(
     val format: String = "MP3",
     val coverThumbnailPath: String? = null,
     val isInactive: Boolean = false,
-    val inactiveReason: String? = null,
+    val inactiveReason: String? = null
 ) {
 
     fun toDomain(): PlaylistTrackEntry =
@@ -54,15 +54,15 @@ data class PlaylistTrackEntity(
             durationMs = durationMs,
             size = size,
             format =
-                AudioFormat.entries.firstOrNull { it.name.equals(format, ignoreCase = true) }
-                    ?: AudioFormat.fromExtension(format)
-                    ?: AudioFormat.MP3,
+            AudioFormat.entries.firstOrNull { it.name.equals(format, ignoreCase = true) }
+                ?: AudioFormat.fromExtension(format)
+                ?: AudioFormat.MP3,
             coverThumbnailPath = coverThumbnailPath,
             isInactive = isInactive,
             inactiveReason =
-                inactiveReason?.let { reasonStr ->
-                    InactiveReason.entries.firstOrNull { it.name.equals(reasonStr, ignoreCase = true) }
-                },
+            inactiveReason?.let { reasonStr ->
+                InactiveReason.entries.firstOrNull { it.name.equals(reasonStr, ignoreCase = true) }
+            }
         )
 
     companion object {
@@ -81,7 +81,7 @@ data class PlaylistTrackEntity(
                 format = domain.format.name,
                 coverThumbnailPath = domain.coverThumbnailPath,
                 isInactive = domain.isInactive,
-                inactiveReason = domain.inactiveReason?.name,
+                inactiveReason = domain.inactiveReason?.name
             )
     }
 }

@@ -24,23 +24,23 @@ class MotionTokensTest {
             "SpatialSpring stiffness must be StiffnessMediumLow (400f)",
             Spring.StiffnessMediumLow,
             MotionTokens.SpatialSpring.stiffness,
-            0.001f,
+            0.001f
         )
         assertEquals(
             "SpatialSpring damping ratio must be DampingRatioLowBouncy (0.75f)",
             Spring.DampingRatioLowBouncy,
             MotionTokens.SpatialSpring.dampingRatio,
-            0.001f,
+            0.001f
         )
         assertEquals(
             MotionTokens.SpatialStiffness,
             MotionTokens.SpatialSpring.stiffness,
-            0.001f,
+            0.001f
         )
         assertEquals(
             MotionTokens.SpatialDampingRatio,
             MotionTokens.SpatialSpring.dampingRatio,
-            0.001f,
+            0.001f
         )
     }
 
@@ -50,23 +50,23 @@ class MotionTokensTest {
             "EffectsSpring stiffness must be StiffnessMedium (1500f)",
             Spring.StiffnessMedium,
             MotionTokens.EffectsSpring.stiffness,
-            0.001f,
+            0.001f
         )
         assertEquals(
             "EffectsSpring damping ratio must be DampingRatioNoBouncy (1.0f)",
             Spring.DampingRatioNoBouncy,
             MotionTokens.EffectsSpring.dampingRatio,
-            0.001f,
+            0.001f
         )
         assertEquals(
             MotionTokens.EffectsStiffness,
             MotionTokens.EffectsSpring.stiffness,
-            0.001f,
+            0.001f
         )
         assertEquals(
             MotionTokens.EffectsDampingRatio,
             MotionTokens.EffectsSpring.dampingRatio,
-            0.001f,
+            0.001f
         )
     }
 
@@ -76,23 +76,23 @@ class MotionTokensTest {
             "FastSpatialSpring stiffness must be StiffnessMedium (1500f)",
             Spring.StiffnessMedium,
             MotionTokens.FastSpatialSpring.stiffness,
-            0.001f,
+            0.001f
         )
         assertEquals(
             "FastSpatialSpring damping ratio must be DampingRatioMediumBouncy (0.5f)",
             Spring.DampingRatioMediumBouncy,
             MotionTokens.FastSpatialSpring.dampingRatio,
-            0.001f,
+            0.001f
         )
         assertEquals(
             MotionTokens.FastSpatialStiffness,
             MotionTokens.FastSpatialSpring.stiffness,
-            0.001f,
+            0.001f
         )
         assertEquals(
             MotionTokens.FastSpatialDampingRatio,
             MotionTokens.FastSpatialSpring.dampingRatio,
-            0.001f,
+            0.001f
         )
     }
 
@@ -102,7 +102,7 @@ class MotionTokensTest {
             "Default tactile press scale must be 0.965f",
             0.965f,
             MotionTokens.DefaultPressScale,
-            0.0001f,
+            0.0001f
         )
     }
 
@@ -170,7 +170,7 @@ class MotionTokensTest {
         Settings.Global.putFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 0.0f)
         assertTrue(
             "When ANIMATOR_DURATION_SCALE is 0.0, reduce-motion must be active",
-            MotionTokens.isReduceMotionEnabled(context),
+            MotionTokens.isReduceMotionEnabled(context)
         )
 
         val resolved = MotionTokens.resolveSpec(MotionTokens.SpatialSpring, context)
@@ -186,7 +186,7 @@ class MotionTokensTest {
         Settings.Global.putFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1.0f)
         assertFalse(
             "When ANIMATOR_DURATION_SCALE is 1.0, reduce-motion must not be active",
-            MotionTokens.isReduceMotionEnabled(context),
+            MotionTokens.isReduceMotionEnabled(context)
         )
 
         val resolved = MotionTokens.resolveSpec(MotionTokens.SpatialSpring, context)
@@ -204,7 +204,7 @@ class MotionTokensTest {
         val modifierWithBoth =
             Modifier.expressivePress().bouncyClickable(
                 onLongClick = { /* long click */ },
-                onClick = { /* click */ },
+                onClick = { /* click */ }
             )
         assertNotNull(modifierWithBoth)
 
@@ -213,7 +213,7 @@ class MotionTokensTest {
             Modifier.bouncyClickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = { /* click */ },
+                onClick = { /* click */ }
             )
         assertNotNull(modifierWithExplicitSource)
     }

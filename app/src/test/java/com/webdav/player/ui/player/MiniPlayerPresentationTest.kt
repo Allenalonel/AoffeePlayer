@@ -1,8 +1,6 @@
 package com.webdav.player.ui.player
 
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
@@ -17,7 +15,7 @@ class MiniPlayerPresentationTest {
     private fun createTrack(
         title: String = "Song A",
         artist: String? = "Artist A",
-        format: AudioFormat = AudioFormat.FLAC,
+        format: AudioFormat = AudioFormat.FLAC
     ) = AudioTrack(
         id = "1:/song.flac",
         serverId = 1L,
@@ -25,7 +23,7 @@ class MiniPlayerPresentationTest {
         title = title,
         artist = artist,
         album = "Album A",
-        format = format,
+        format = format
     )
 
     private fun sessionWithTrack(track: AudioTrack?): PlayerSessionState =
@@ -51,7 +49,7 @@ class MiniPlayerPresentationTest {
                 remotePath = "/song.mp3",
                 title = "Acoustic",
                 artist = "Eric Clapton",
-                format = AudioFormat.MP3,
+                format = AudioFormat.MP3
             )
         val session = sessionWithTrack(track)
         val subtitle = formatMiniPlayerSubtitle(session)
@@ -67,7 +65,7 @@ class MiniPlayerPresentationTest {
                 remotePath = "/track01.wav",
                 title = "Track 01",
                 artist = null,
-                format = AudioFormat.WAV,
+                format = AudioFormat.WAV
             )
         val session = sessionWithTrack(track)
         val subtitle = formatMiniPlayerSubtitle(session)
@@ -90,7 +88,7 @@ class MiniPlayerPresentationTest {
                 remotePath = "/track04.wma",
                 title = "Track 04",
                 artist = "   ",
-                format = AudioFormat.WMA,
+                format = AudioFormat.WMA
             )
         val session = sessionWithTrack(track)
         val subtitle = formatMiniPlayerSubtitle(session)
@@ -106,7 +104,7 @@ class MiniPlayerPresentationTest {
         assertEquals(40.dp, MiniPlayerDefaults.PlayPauseButtonSize)
         assertTrue(
             "Capsule corner radius must be 30.dp for fluid pill geometry",
-            MiniPlayerDefaults.CapsuleCornerRadius >= 26.dp,
+            MiniPlayerDefaults.CapsuleCornerRadius >= 26.dp
         )
         assertEquals(2.dp, MiniPlayerDefaults.MicroBarHeight)
         assertEquals(16.dp, MiniPlayerDefaults.MicroBarHorizontalPadding)
@@ -147,7 +145,7 @@ class MiniPlayerPresentationTest {
 
         assertTrue(
             "Queue Music center-to-center distance ($centerDistanceQueue) must be at least $md3MinimumInteractiveSize to avoid touch overlap",
-            centerDistanceQueue >= md3MinimumInteractiveSize,
+            centerDistanceQueue >= md3MinimumInteractiveSize
         )
         assertEquals(47.dp, centerDistanceQueue)
     }
@@ -234,7 +232,7 @@ class MiniPlayerPresentationTest {
         val composableInvocation: @androidx.compose.runtime.Composable () -> Unit = {
             MiniPlayer(
                 sessionState = session,
-                playbackActions = PlaybackActions.EMPTY,
+                playbackActions = PlaybackActions.EMPTY
             )
         }
         org.junit.Assert.assertNotNull(composableInvocation)
@@ -258,8 +256,8 @@ class MiniPlayerPresentationTest {
                 dragX = -90f,
                 dragY = 0f,
                 swipeThresholdPx = swipeThreshold,
-                verticalDragThresholdPx = verticalThreshold,
-            ),
+                verticalDragThresholdPx = verticalThreshold
+            )
         )
 
         // Right swipe beyond threshold -> previous track
@@ -269,8 +267,8 @@ class MiniPlayerPresentationTest {
                 dragX = 90f,
                 dragY = 0f,
                 swipeThresholdPx = swipeThreshold,
-                verticalDragThresholdPx = verticalThreshold,
-            ),
+                verticalDragThresholdPx = verticalThreshold
+            )
         )
 
         // Upward drag beyond vertical threshold -> expand full player
@@ -280,8 +278,8 @@ class MiniPlayerPresentationTest {
                 dragX = 0f,
                 dragY = -35f,
                 swipeThresholdPx = swipeThreshold,
-                verticalDragThresholdPx = verticalThreshold,
-            ),
+                verticalDragThresholdPx = verticalThreshold
+            )
         )
 
         // Subtle drags below thresholds -> NONE
@@ -291,8 +289,8 @@ class MiniPlayerPresentationTest {
                 dragX = 15f,
                 dragY = -10f,
                 swipeThresholdPx = swipeThreshold,
-                verticalDragThresholdPx = verticalThreshold,
-            ),
+                verticalDragThresholdPx = verticalThreshold
+            )
         )
 
         // Downward drag -> NONE
@@ -302,8 +300,8 @@ class MiniPlayerPresentationTest {
                 dragX = 0f,
                 dragY = 50f,
                 swipeThresholdPx = swipeThreshold,
-                verticalDragThresholdPx = verticalThreshold,
-            ),
+                verticalDragThresholdPx = verticalThreshold
+            )
         )
     }
 
@@ -315,7 +313,7 @@ class MiniPlayerPresentationTest {
             MiniPlayer(
                 sessionState = session,
                 playbackActions = PlaybackActions.EMPTY,
-                onOpenQueue = { queueClicked = true },
+                onOpenQueue = { queueClicked = true }
             )
         }
         org.junit.Assert.assertNotNull(composableInvocation)

@@ -37,81 +37,81 @@ fun LocalStorageCardItem(
     mountedFolderCount: Int,
     onCardClick: () -> Unit,
     onManageFoldersClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     ElevatedCard(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .border(
-                    width = if (isActive) 1.5.dp else 1.dp,
-                    color =
-                        if (isActive) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        },
-                    shape = MaterialTheme.shapes.medium,
-                ).bouncyClickable(onClick = onCardClick),
+        modifier
+            .fillMaxWidth()
+            .border(
+                width = if (isActive) 1.5.dp else 1.dp,
+                color =
+                if (isActive) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                },
+                shape = MaterialTheme.shapes.medium
+            ).bouncyClickable(onClick = onCardClick),
         shape = MaterialTheme.shapes.medium,
         colors =
-            CardDefaults.elevatedCardColors(
-                containerColor =
-                    if (isActive) {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainer
-                    },
-            ),
+        CardDefaults.elevatedCardColors(
+            containerColor =
+            if (isActive) {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            } else {
+                MaterialTheme.colorScheme.surfaceContainer
+            }
+        ),
         elevation =
-            CardDefaults.elevatedCardElevation(
-                defaultElevation = if (isActive) 3.dp else 1.dp,
-            ),
+        CardDefaults.elevatedCardElevation(
+            defaultElevation = if (isActive) 3.dp else 1.dp
+        )
     ) {
         Box(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (isActive) {
-                            Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
-                        } else {
-                            Modifier
-                        },
-                    ),
+            Modifier
+                .fillMaxWidth()
+                .then(
+                    if (isActive) {
+                        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
             Row(
                 modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 // Storage Icon Avatar
                 Surface(
                     shape = CircleShape,
                     color =
-                        if (isActive) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainerHighest
-                        },
-                    modifier = Modifier.size(44.dp),
+                    if (isActive) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHighest
+                    },
+                    modifier = Modifier.size(44.dp)
                 ) {
                     Box(
                         modifier = Modifier.size(44.dp),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = AppIcons.Storage,
                             contentDescription = "本地存储",
                             tint =
-                                if (isActive) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                            modifier = Modifier.size(24.dp),
+                            if (isActive) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
@@ -121,10 +121,10 @@ fun LocalStorageCardItem(
                 // Title, Active Badge, and Folder Count Subtitle
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Center,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "本地存储",
@@ -132,31 +132,31 @@ fun LocalStorageCardItem(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            overflow = TextOverflow.Ellipsis
                         )
 
                         if (isActive) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Box(
                                         modifier =
-                                            Modifier
-                                                .size(6.dp)
-                                                .background(MaterialTheme.colorScheme.primary, CircleShape),
+                                        Modifier
+                                            .size(6.dp)
+                                            .background(MaterialTheme.colorScheme.primary, CircleShape)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "活跃",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
@@ -177,7 +177,7 @@ fun LocalStorageCardItem(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -187,17 +187,17 @@ fun LocalStorageCardItem(
                 FilledTonalButton(
                     onClick = onManageFoldersClick,
                     shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Icon(
                         imageVector = AppIcons.Folder,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "管理目录",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
             }

@@ -19,6 +19,10 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.test.core.app.ApplicationProvider
 import com.webdav.player.domain.model.AudioFormat
+import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.ArrayList
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -26,10 +30,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.util.ArrayList
 
 @OptIn(UnstableApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -90,7 +90,8 @@ class FfmpegDecoderTest {
             context,
             DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON,
             MediaCodecSelector.DEFAULT,
-            /* enableDecoderFallback = */ false,
+            /* enableDecoderFallback = */
+            false,
             audioSink,
             handler,
             listener,
@@ -190,8 +191,8 @@ class FfmpegDecoderTest {
         // sampleRate=11025Hz, channels=2, extraDataSize=10, packetSize=3200
         val extraData = byteArrayOf(
             0x00, 0x04, 0x00, 0x00, // nSamplesPerBlock: 1024
-            0x00, 0x00,             // encodeOptions
-            0x1F, 0x00, 0x00, 0x00  // superframe / channel mask
+            0x00, 0x00, // encodeOptions
+            0x1F, 0x00, 0x00, 0x00 // superframe / channel mask
         )
 
         val format = Format.Builder()

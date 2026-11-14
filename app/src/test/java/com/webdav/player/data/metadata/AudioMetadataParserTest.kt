@@ -1,5 +1,8 @@
 package com.webdav.player.data.metadata
 
+import com.webdav.player.domain.model.AudioFormat
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -7,8 +10,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.ByteArrayOutputStream
-import java.nio.charset.StandardCharsets
 
 class AudioMetadataParserTest {
     @Test
@@ -106,7 +107,7 @@ class AudioMetadataParserTest {
                 "TITLE=Stairway to Heaven",
                 "ARTIST=Led Zeppelin",
                 "ALBUM=Led Zeppelin IV",
-                "TRACKNUMBER=4",
+                "TRACKNUMBER=4"
             )
         writeIntLe(vorbisStream, comments.size)
         for (c in comments) {
@@ -194,6 +195,93 @@ class AudioMetadataParserTest {
         assertEquals("Hotel California Album", metadata.album)
         assertEquals(1, metadata.trackNumber)
         assertEquals(30000L, metadata.durationMs)
+        assertEquals(44100, metadata.sampleRate)
+        assertEquals(16, metadata.bitDepth)
+        assertEquals(2, metadata.channels)
+        assertEquals(1411, metadata.bitrateKbps) // 176400 * 8 / 1000 = 1411
+    }
+
+    @Test
+    fun testParseFlacHeader_extractsPhysicalStreamInfo_sampleRateBitDepthChannels() {
+        val stream = ByteArrayOutputStream()
+        stream.write("fLaC".toByteArray(StandardCharsets.US_ASCII))
+
+        // Block 0: STREAMINFO (isLast = true, type = 0, length = 34)
+        stream.write(0x80) // isLast = 1, type = 0
+        stream.write(0x00)
+        stream.write(0x00)
+        stream.write(34) // 34 bytes
+
+        val streamInfo = ByteArray(34)
+        // Sample rate = 96000 (0x17700):
+        // b10 = 0x17, b11 = 0x70, b12 top 4 bits = 0x0
+        streamInfo[10] = 0x17.toByte()
+        streamInfo[11] = 0x70.toByte()
+        // Channels: 2 channels -> code 1 (3 bits: 001) -> bits 3..1 of b12: (1 shl 1) = 0x02
+        // Bits per sample: 24 bits -> code 23 = 10111b (5 bits)
+        // bit 0 of b12 = 1 -> 0x01
+        // b12 = 0x00 (top nibble) | 0x02 | 0x01 = 0x03
+        streamInfo[12] = 0x03.toByte()
+        // b13 top 4 bits = 0111b = 0x70
+        // total samples (36 bits): 960,000 samples (10 sec at 96kHz) = 0x0EA600
+        // b13 lower 4 bits = 0x0
+        streamInfo[13] = 0x70.toByte()
+        streamInfo[14] = 0x00.toByte()
+        streamInfo[15] = 0x0E.toByte()
+        streamInfo[16] = 0xA6.toByte()
+        streamInfo[17] = 0x00.toByte()
+        stream.write(streamInfo)
+
+        val metadata = AudioMetadataParser.parse(stream.toByteArray())
+
+        assertEquals(96000, metadata.sampleRate)
+        assertEquals(24, metadata.bitDepth)
+        assertEquals(2, metadata.channels)
+        assertEquals(10000L, metadata.durationMs)
+
+        // Directly test FlacParser with totalBytes supplied:
+        // duration = 10,000ms = 10s. totalBytes = 3,000,000 bytes.
+        // bitrate = (3,000,000 * 8) / 10,000 = 2400 kbps
+        val directFlacMeta = FlacParser.parse(stream.toByteArray(), totalBytes = 3_000_000L)
+        assertNotNull(directFlacMeta)
+        assertEquals(96000, directFlacMeta!!.sampleRate)
+        assertEquals(24, directFlacMeta.bitDepth)
+        assertEquals(2, directFlacMeta.channels)
+        assertEquals(2400, directFlacMeta.bitrateKbps)
+    }
+
+    @Test
+    fun testParseMpegFrame_extractsSampleRateBitrateChannels() {
+        val stream = ByteArrayOutputStream()
+        // MPEG-1 Layer III frame header:
+        // b0 = 0xFF
+        // b1: 111 (sync) + 11 (MPEG-1) + 01 (Layer III) + 1 (no CRC) = 0xFB
+        // b2: 1110 (320 kbps) + 00 (44100 Hz) + 0 (no padding) + 0 (private) = 0xE0
+        // b3: 01 (Joint Stereo -> 2 channels) + 00 (mode ext) + 0 + 1 + 00 = 0x42
+        stream.write(0xFF)
+        stream.write(0xFB)
+        stream.write(0xE0)
+        stream.write(0x42)
+        stream.write(ByteArray(100))
+
+        val metadata = AudioMetadataParser.parse(stream.toByteArray(), formatHint = AudioFormat.MP3)
+
+        assertEquals(44100, metadata.sampleRate)
+        assertEquals(320, metadata.bitrateKbps)
+        assertEquals(2, metadata.channels)
+    }
+
+    @Test
+    fun testParseTruncatedHeaders_returnsGracefullyWithoutCrashing() {
+        val truncatedFlac = byteArrayOf(0x66, 0x4C, 0x61, 0x43, 0x00, 0x00, 0x00, 0x22)
+        val flacMeta = AudioMetadataParser.parse(truncatedFlac, formatHint = AudioFormat.FLAC)
+        assertNull(flacMeta.sampleRate)
+        assertNull(flacMeta.bitDepth)
+
+        val truncatedWav = byteArrayOf('R'.code.toByte(), 'I'.code.toByte(), 'F'.code.toByte(), 'F'.code.toByte(), 0x10, 0x00, 0x00, 0x00)
+        val wavMeta = AudioMetadataParser.parse(truncatedWav, formatHint = AudioFormat.WAV)
+        assertNull(wavMeta.sampleRate)
+        assertNull(wavMeta.bitDepth)
     }
 
     @Test
@@ -218,7 +306,7 @@ class AudioMetadataParserTest {
                 0x00.toByte(),
                 0x62.toByte(),
                 0xCE.toByte(),
-                0x6C.toByte(),
+                0x6C.toByte()
             )
         stream.write(asfHeaderGuid)
         val headerBodyStream = ByteArrayOutputStream()
@@ -241,7 +329,7 @@ class AudioMetadataParserTest {
                 0x0C.toByte(),
                 0x20.toByte(),
                 0x53.toByte(),
-                0x65.toByte(),
+                0x65.toByte()
             )
         headerBodyStream.write(filePropsGuid)
         val filePropsBody = ByteArrayOutputStream()
@@ -279,7 +367,7 @@ class AudioMetadataParserTest {
                 0x00.toByte(),
                 0x62.toByte(),
                 0xCE.toByte(),
-                0x6C.toByte(),
+                0x6C.toByte()
             )
         headerBodyStream.write(contentDescGuid)
         val titleBytes = "Yesterday".toByteArray(StandardCharsets.UTF_16LE)
@@ -389,7 +477,7 @@ class AudioMetadataParserTest {
         val comments =
             listOf(
                 "TITLE=Flac Song",
-                "LYRICS=[00:10.00]Flac lyric line",
+                "LYRICS=[00:10.00]Flac lyric line"
             )
         writeIntLe(vorbisStream, comments.size)
         for (c in comments) {
@@ -428,7 +516,7 @@ class AudioMetadataParserTest {
                 0x00.toByte(),
                 0x62.toByte(),
                 0xCE.toByte(),
-                0x6C.toByte(),
+                0x6C.toByte()
             )
         stream.write(asfHeaderGuid)
         val headerBodyStream = ByteArrayOutputStream()
@@ -451,7 +539,7 @@ class AudioMetadataParserTest {
                 0xC9.toByte(),
                 0x5E.toByte(),
                 0xA8.toByte(),
-                0x50.toByte(),
+                0x50.toByte()
             )
         headerBodyStream.write(extDescGuid)
 
@@ -513,7 +601,7 @@ class AudioMetadataParserTest {
         assertNotNull("Tag size for FLAC with large PICTURE block must be detected", detected)
         assertTrue(
             "Detected size ($detected) must be large enough to hold the 800,000-byte PICTURE block (expected >= 800042)",
-            detected!! >= 800042L,
+            detected!! >= 800042L
         )
     }
 
@@ -560,7 +648,7 @@ class AudioMetadataParserTest {
         val bytes = stream.toByteArray()
         assertTrue(
             "hasRecognizedAudioHeader must return true for ID3 header located at non-zero offset within scan limit",
-            AudioMetadataParser.hasRecognizedAudioHeader(bytes),
+            AudioMetadataParser.hasRecognizedAudioHeader(bytes)
         )
     }
 
@@ -679,7 +767,7 @@ class AudioMetadataParserTest {
         assertNotNull("Tag size for WAV with embedded ID3 must be detected", detected)
         assertTrue(
             "Detected size ($detected) must cover the embedded ID3 chunk (expected >= 750010)",
-            detected!! >= 750010L,
+            detected!! >= 750010L
         )
     }
 
@@ -687,7 +775,7 @@ class AudioMetadataParserTest {
     private fun writeId3Frame(
         stream: ByteArrayOutputStream,
         frameId: String,
-        text: String,
+        text: String
     ) {
         val payload = ByteArrayOutputStream()
         payload.write(3) // UTF-8 encoding
@@ -698,7 +786,7 @@ class AudioMetadataParserTest {
     private fun writeRawId3Frame(
         stream: ByteArrayOutputStream,
         frameId: String,
-        payload: ByteArray,
+        payload: ByteArray
     ) {
         stream.write(frameId.toByteArray(StandardCharsets.US_ASCII))
         writeIntBe(stream, payload.size)
@@ -710,7 +798,7 @@ class AudioMetadataParserTest {
     private fun writeWavInfoSubchunk(
         stream: ByteArrayOutputStream,
         subId: String,
-        text: String,
+        text: String
     ) {
         stream.write(subId.toByteArray(StandardCharsets.US_ASCII))
         val textBytes = (text + "\u0000").toByteArray(StandardCharsets.UTF_8)
@@ -724,7 +812,7 @@ class AudioMetadataParserTest {
 
     private fun write24BitBe(
         stream: ByteArrayOutputStream,
-        value: Int,
+        value: Int
     ) {
         stream.write((value shr 16) and 0xFF)
         stream.write((value shr 8) and 0xFF)
@@ -733,7 +821,7 @@ class AudioMetadataParserTest {
 
     private fun writeIntBe(
         stream: ByteArrayOutputStream,
-        value: Int,
+        value: Int
     ) {
         stream.write((value shr 24) and 0xFF)
         stream.write((value shr 16) and 0xFF)
@@ -743,7 +831,7 @@ class AudioMetadataParserTest {
 
     private fun writeIntLe(
         stream: ByteArrayOutputStream,
-        value: Int,
+        value: Int
     ) {
         stream.write(value and 0xFF)
         stream.write((value shr 8) and 0xFF)
@@ -753,7 +841,7 @@ class AudioMetadataParserTest {
 
     private fun writeShortLe(
         stream: ByteArrayOutputStream,
-        value: Int,
+        value: Int
     ) {
         stream.write(value and 0xFF)
         stream.write((value shr 8) and 0xFF)

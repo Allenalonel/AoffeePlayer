@@ -36,7 +36,9 @@ data class WebDavServer(
             val hostAndMaybePort = if (slashIndex != -1) rawUrl.substring(0, slashIndex) else rawUrl
             val host = if (hostAndMaybePort.contains(":")) hostAndMaybePort.substringBefore(":") else hostAndMaybePort
 
-            val cleanPrefix = if (pathPrefix.isBlank()) "/" else {
+            val cleanPrefix = if (pathPrefix.isBlank()) {
+                "/"
+            } else {
                 var p = pathPrefix.trim()
                 if (!p.startsWith("/")) p = "/$p"
                 p
@@ -97,7 +99,7 @@ data class WebDavServer(
                 id = LOCAL_STORAGE_ID,
                 name = "本地存储",
                 url = "content://local",
-                isDefault = isDefault,
+                isDefault = isDefault
             )
     }
 }

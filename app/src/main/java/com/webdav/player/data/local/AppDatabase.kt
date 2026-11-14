@@ -18,7 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MediaTrackIndexEntity::class,
         DirectorySyncCheckpointEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -288,6 +288,24 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        val MIGRATION_10_11 =
+            object : Migration(10, 11) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "ALTER TABLE `track_metadata` ADD COLUMN `sampleRate` INTEGER DEFAULT NULL"
+                    )
+                    db.execSQL(
+                        "ALTER TABLE `track_metadata` ADD COLUMN `bitDepth` INTEGER DEFAULT NULL"
+                    )
+                    db.execSQL(
+                        "ALTER TABLE `track_metadata` ADD COLUMN `bitrateKbps` INTEGER DEFAULT NULL"
+                    )
+                    db.execSQL(
+                        "ALTER TABLE `track_metadata` ADD COLUMN `channels` INTEGER DEFAULT NULL"
+                    )
+                }
+            }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance =
@@ -304,6 +322,7 @@ abstract class AppDatabase : RoomDatabase() {
                             MIGRATION_7_8,
                             MIGRATION_8_9,
                             MIGRATION_9_10,
+                            MIGRATION_10_11
                         ).fallbackToDestructiveMigrationFrom(1, 2)
                         .build()
                 INSTANCE = instance

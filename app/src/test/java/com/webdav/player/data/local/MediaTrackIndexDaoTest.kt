@@ -8,8 +8,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -51,7 +49,7 @@ class MediaTrackIndexDaoTest {
                     format = "FLAC",
                     parentPath = "/local/primary%3AMusic/Rock/",
                     parsedTitle = "Bohemian Rhapsody",
-                    parsedArtist = "Queen",
+                    parsedArtist = "Queen"
                 )
 
             dao.insertOrUpdate(track)
@@ -80,7 +78,7 @@ class MediaTrackIndexDaoTest {
                         format = "FLAC",
                         parentPath = "/local/Music/Eagles/",
                         parsedTitle = "Hotel California",
-                        parsedArtist = "Eagles",
+                        parsedArtist = "Eagles"
                     ),
                     MediaTrackIndexEntity(
                         serverId = 1L,
@@ -91,8 +89,8 @@ class MediaTrackIndexDaoTest {
                         format = "MP3",
                         parentPath = "/WebDAV/Pop/",
                         parsedTitle = "Billie Jean",
-                        parsedArtist = "Michael Jackson",
-                    ),
+                        parsedArtist = "Michael Jackson"
+                    )
                 )
             dao.insertAll(tracks)
 
@@ -129,7 +127,7 @@ class MediaTrackIndexDaoTest {
                     format = "MP3",
                     parentPath = "/local/music/",
                     parsedTitle = "Common Song",
-                    parsedArtist = "Common Artist",
+                    parsedArtist = "Common Artist"
                 )
             val t2 =
                 MediaTrackIndexEntity(
@@ -141,7 +139,7 @@ class MediaTrackIndexDaoTest {
                     format = "MP3",
                     parentPath = "/nas/",
                     parsedTitle = "Common Song",
-                    parsedArtist = "Common Artist",
+                    parsedArtist = "Common Artist"
                 )
             dao.insertAll(listOf(t1, t2))
 
@@ -174,7 +172,7 @@ class MediaTrackIndexDaoTest {
                         format = "MP3",
                         parentPath = "/local/tree1/Album1/",
                         parsedTitle = "Song 1",
-                        parsedArtist = null,
+                        parsedArtist = null
                     ),
                     MediaTrackIndexEntity(
                         serverId = 0L,
@@ -185,7 +183,7 @@ class MediaTrackIndexDaoTest {
                         format = "MP3",
                         parentPath = "/local/tree1/Album2/",
                         parsedTitle = "Song 2",
-                        parsedArtist = null,
+                        parsedArtist = null
                     ),
                     MediaTrackIndexEntity(
                         serverId = 0L,
@@ -196,8 +194,8 @@ class MediaTrackIndexDaoTest {
                         format = "MP3",
                         parentPath = "/local/tree2/",
                         parsedTitle = "Song 3",
-                        parsedArtist = null,
-                    ),
+                        parsedArtist = null
+                    )
                 )
             dao.insertAll(tracks)
             assertEquals(3, dao.countByServerId(0L))
@@ -222,8 +220,8 @@ class MediaTrackIndexDaoTest {
                     format = "FLAC",
                     parentPath = "/",
                     parsedTitle = "Title",
-                    parsedArtist = null,
-                ),
+                    parsedArtist = null
+                )
             )
             assertEquals(1, dao.countByServerId(1L))
 

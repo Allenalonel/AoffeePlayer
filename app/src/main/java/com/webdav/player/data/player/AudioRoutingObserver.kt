@@ -28,11 +28,11 @@ import java.util.concurrent.atomic.AtomicReference
 class AudioRoutingObserver(
     private val context: Context,
     audioRouting: AudioRouting? = null,
-    private val onRoutingChanged: () -> Unit,
+    private val onRoutingChanged: () -> Unit
 ) {
     constructor(
         context: Context,
-        onRoutingChanged: () -> Unit,
+        onRoutingChanged: () -> Unit
     ) : this(context, null, onRoutingChanged)
 
     private val isStarted = AtomicBoolean(false)
@@ -67,7 +67,7 @@ class AudioRoutingObserver(
             object : MediaRouter2.TransferCallback() {
                 override fun onTransfer(
                     oldController: MediaRouter2.RoutingController,
-                    newController: MediaRouter2.RoutingController,
+                    newController: MediaRouter2.RoutingController
                 ) {
                     dispatchRoutingChanged()
                 }
@@ -150,7 +150,7 @@ class AudioRoutingObserver(
                     val mediaRouter2 = MediaRouter2.getInstance(context)
                     mediaRouter2.registerTransferCallback(
                         ContextCompat.getMainExecutor(context),
-                        transferCallback,
+                        transferCallback
                     )
                 } catch (_: Throwable) {
                 }

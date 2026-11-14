@@ -24,12 +24,12 @@ import com.webdav.player.ui.theme.ExpressiveDarkColorScheme
 import com.webdav.player.ui.theme.ExpressiveLightColorScheme
 import com.webdav.player.ui.theme.SurfaceContainerDark
 import com.webdav.player.ui.theme.SurfaceContainerLight
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Multi-stop ambient glow colors blending vibrant, dominant, and muted tones into background.
@@ -37,7 +37,7 @@ import kotlin.math.sqrt
 data class AmbientGlowStops(
     val topColor: Color,
     val midColor: Color,
-    val bottomColor: Color,
+    val bottomColor: Color
 )
 
 /**
@@ -53,21 +53,21 @@ data class ArtworkColors(
     val vibrantColor: Color = dominantColor,
     val mutedColor: Color = dominantColor,
     val darkColorScheme: ColorScheme = ArtworkColorExtractor.createDarkColorScheme(dominantColor, isFallback, isMonochrome),
-    val lightColorScheme: ColorScheme = ArtworkColorExtractor.createLightColorScheme(dominantColor, isFallback, isMonochrome),
+    val lightColorScheme: ColorScheme = ArtworkColorExtractor.createLightColorScheme(dominantColor, isFallback, isMonochrome)
 ) {
     fun colorScheme(isDark: Boolean): ColorScheme = if (isDark) darkColorScheme else lightColorScheme
 
     fun ambientGlowBrush(
         isDarkTheme: Boolean = true,
         surfaceColor: Color = if (isDarkTheme) backgroundTopColor else Color(0xFFE2E2E9),
-        backgroundColor: Color = backgroundBottomColor,
+        backgroundColor: Color = backgroundBottomColor
     ): Brush {
         val stops =
             ArtworkColorExtractor.computeAmbientGlowStops(
                 artworkColors = this,
                 isDarkTheme = isDarkTheme,
                 surfaceColor = surfaceColor,
-                backgroundColor = backgroundColor,
+                backgroundColor = backgroundColor
             )
         return object : ShaderBrush() {
             override fun createShader(size: Size): Shader {
@@ -78,7 +78,7 @@ data class ArtworkColors(
                     colorStops = listOf(0.0f, 0.48f, 1.0f),
                     center = center,
                     radius = radius.coerceAtLeast(1f),
-                    tileMode = TileMode.Clamp,
+                    tileMode = TileMode.Clamp
                 )
             }
         }
@@ -97,14 +97,14 @@ object ArtworkColorExtractor {
         thumbnailPath: String,
         defaultSurfaceColor: Color,
         defaultBackgroundColor: Color,
-        isDarkTheme: Boolean,
+        isDarkTheme: Boolean
     ): String = "$thumbnailPath:${defaultSurfaceColor.value}:${defaultBackgroundColor.value}:$isDarkTheme"
 
     fun getCachedArtworkColors(
         thumbnailPath: String?,
         defaultSurfaceColor: Color = SurfaceContainerDark,
         defaultBackgroundColor: Color = BackgroundDark,
-        isDarkTheme: Boolean = true,
+        isDarkTheme: Boolean = true
     ): ArtworkColors? {
         if (thumbnailPath.isNullOrBlank()) return null
         val key = buildCacheKey(thumbnailPath, defaultSurfaceColor, defaultBackgroundColor, isDarkTheme)
@@ -159,7 +159,7 @@ object ArtworkColorExtractor {
         h: Float,
         s: Float,
         l: Float,
-        alpha: Float = 1f,
+        alpha: Float = 1f
     ): Color {
         val normalizedH = (h % 360f + 360f) % 360f
         val clampedS = s.coerceIn(0f, 1f)
@@ -183,7 +183,7 @@ object ArtworkColorExtractor {
             red = (rPrime + m).coerceIn(0f, 1f),
             green = (gPrime + m).coerceIn(0f, 1f),
             blue = (bPrime + m).coerceIn(0f, 1f),
-            alpha = alpha,
+            alpha = alpha
         )
     }
 
@@ -240,7 +240,7 @@ object ArtworkColorExtractor {
      */
     internal fun deriveDarkColorScheme(
         seedColor: Color,
-        dominantColor: Color = seedColor,
+        dominantColor: Color = seedColor
     ): ColorScheme {
         val seedHsl = colorToHsl(seedColor)
         val seedH = seedHsl[0]
@@ -313,7 +313,7 @@ object ArtworkColorExtractor {
             surfaceContainerHighest = surfaceContainerHighest,
             inverseSurface = inverseSurface,
             inverseOnSurface = inverseOnSurface,
-            surfaceTint = primary,
+            surfaceTint = primary
         )
     }
 
@@ -325,7 +325,7 @@ object ArtworkColorExtractor {
      */
     internal fun deriveLightColorScheme(
         seedColor: Color,
-        dominantColor: Color = seedColor,
+        dominantColor: Color = seedColor
     ): ColorScheme {
         val seedHsl = colorToHsl(seedColor)
         val seedH = seedHsl[0]
@@ -388,7 +388,7 @@ object ArtworkColorExtractor {
             surfaceContainerHighest = surfaceContainerHighest,
             inverseSurface = inverseSurface,
             inverseOnSurface = inverseOnSurface,
-            surfaceTint = primary,
+            surfaceTint = primary
         )
     }
 
@@ -408,7 +408,7 @@ object ArtworkColorExtractor {
 
     fun contrastRatio(
         colorA: Color,
-        colorB: Color,
+        colorB: Color
     ): Double {
         val l1 = relativeLuminance(colorA)
         val l2 = relativeLuminance(colorB)
@@ -423,7 +423,7 @@ object ArtworkColorExtractor {
     fun createDarkColorScheme(
         dominantColor: Color,
         isFallback: Boolean = false,
-        isMonochrome: Boolean = false,
+        isMonochrome: Boolean = false
     ): ColorScheme =
         when {
             isFallback || isMonochrome -> MonochromeDarkColorScheme
@@ -436,7 +436,7 @@ object ArtworkColorExtractor {
     fun createLightColorScheme(
         dominantColor: Color,
         isFallback: Boolean = false,
-        isMonochrome: Boolean = false,
+        isMonochrome: Boolean = false
     ): ColorScheme =
         when {
             isFallback || isMonochrome -> MonochromeLightColorScheme
@@ -455,7 +455,7 @@ object ArtworkColorExtractor {
         artworkColors: ArtworkColors,
         isDarkTheme: Boolean = true,
         surfaceColor: Color = if (isDarkTheme) artworkColors.backgroundTopColor else Color(0xFFE2E2E9),
-        backgroundColor: Color = artworkColors.backgroundBottomColor,
+        backgroundColor: Color = artworkColors.backgroundBottomColor
     ): AmbientGlowStops {
         val topAlpha = if (isDarkTheme) 0.62f else 0.28f
         val midAlpha = if (isDarkTheme) 0.36f else 0.12f
@@ -468,7 +468,7 @@ object ArtworkColorExtractor {
             return AmbientGlowStops(
                 topColor = topStop,
                 midColor = midStop,
-                bottomColor = bottomStop,
+                bottomColor = bottomStop
             )
         }
 
@@ -507,7 +507,7 @@ object ArtworkColorExtractor {
         return AmbientGlowStops(
             topColor = topStop,
             midColor = midStop,
-            bottomColor = bottomStop,
+            bottomColor = bottomStop
         )
     }
 
@@ -520,7 +520,7 @@ object ArtworkColorExtractor {
         defaultSurfaceColor: Color = SurfaceContainerDark,
         defaultBackgroundColor: Color = BackgroundDark,
         isDarkTheme: Boolean = true,
-        context: Context? = null,
+        context: Context? = null
     ): ArtworkColors {
         if (thumbnailPath.isNullOrBlank()) {
             return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
@@ -610,7 +610,7 @@ object ArtworkColorExtractor {
         bitmap: Bitmap?,
         defaultSurfaceColor: Color = SurfaceContainerDark,
         defaultBackgroundColor: Color = BackgroundDark,
-        isDarkTheme: Boolean = true,
+        isDarkTheme: Boolean = true
     ): ArtworkColors {
         if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0 || !hasNonTransparentPixels(bitmap)) {
             return createFallbackColors(defaultSurfaceColor, defaultBackgroundColor)
@@ -694,7 +694,7 @@ object ArtworkColorExtractor {
                 vibrantColor = if (isDarkTheme) Color(0xFFE2E2E9) else Color(0xFF1E293B),
                 mutedColor = if (isDarkTheme) Color(0xFF8E9099) else Color(0xFF74777F),
                 darkColorScheme = MonochromeDarkColorScheme,
-                lightColorScheme = MonochromeLightColorScheme,
+                lightColorScheme = MonochromeLightColorScheme
             )
         }
 
@@ -713,7 +713,7 @@ object ArtworkColorExtractor {
             vibrantColor = vibrant,
             mutedColor = muted,
             darkColorScheme = deriveDarkColorScheme(seedColor = vibrant, dominantColor = dominant),
-            lightColorScheme = deriveLightColorScheme(seedColor = vibrant, dominantColor = dominant),
+            lightColorScheme = deriveLightColorScheme(seedColor = vibrant, dominantColor = dominant)
         )
     }
 
@@ -749,7 +749,7 @@ object ArtworkColorExtractor {
      */
     fun createFallbackColors(
         defaultSurfaceColor: Color = SurfaceContainerDark,
-        defaultBackgroundColor: Color = BackgroundDark,
+        defaultBackgroundColor: Color = BackgroundDark
     ): ArtworkColors =
         ArtworkColors(
             dominantColor = defaultSurfaceColor,
@@ -761,7 +761,7 @@ object ArtworkColorExtractor {
             vibrantColor = Color(0xFFE2E2E9),
             mutedColor = Color(0xFF8E9099),
             darkColorScheme = MonochromeDarkColorScheme,
-            lightColorScheme = MonochromeLightColorScheme,
+            lightColorScheme = MonochromeLightColorScheme
         )
 }
 
@@ -774,7 +774,7 @@ fun rememberArtworkColors(
     thumbnailPath: String?,
     defaultSurfaceColor: Color = Color.Unspecified,
     defaultBackgroundColor: Color = Color.Unspecified,
-    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    isDarkTheme: Boolean = isSystemInDarkTheme()
 ): State<ArtworkColors> {
     val resolvedSurface =
         if (defaultSurfaceColor != Color.Unspecified) {
@@ -799,14 +799,14 @@ fun rememberArtworkColors(
     val initialFallback =
         ArtworkColorExtractor.createFallbackColors(
             resolvedSurface,
-            resolvedBackground,
+            resolvedBackground
         )
     val initialCached =
         ArtworkColorExtractor.getCachedArtworkColors(
             thumbnailPath = thumbnailPath,
             defaultSurfaceColor = resolvedSurface,
             defaultBackgroundColor = resolvedBackground,
-            isDarkTheme = isDarkTheme,
+            isDarkTheme = isDarkTheme
         )
 
     return produceState(
@@ -814,7 +814,7 @@ fun rememberArtworkColors(
         thumbnailPath,
         resolvedSurface,
         resolvedBackground,
-        isDarkTheme,
+        isDarkTheme
     ) {
         if (thumbnailPath.isNullOrBlank()) {
             value = initialFallback
@@ -826,7 +826,7 @@ fun rememberArtworkColors(
                 thumbnailPath = thumbnailPath,
                 defaultSurfaceColor = resolvedSurface,
                 defaultBackgroundColor = resolvedBackground,
-                isDarkTheme = isDarkTheme,
+                isDarkTheme = isDarkTheme
             )
         if (cached != null) {
             value = cached
@@ -840,7 +840,7 @@ fun rememberArtworkColors(
                     defaultSurfaceColor = resolvedSurface,
                     defaultBackgroundColor = resolvedBackground,
                     isDarkTheme = isDarkTheme,
-                    context = context,
+                    context = context
                 )
             }
         value = extracted

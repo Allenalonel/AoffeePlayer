@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -52,12 +51,11 @@ import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.PlaylistTrackEntry
 import com.webdav.player.ui.common.AudioTrackRow
 import com.webdav.player.ui.common.AudioTrackRowDefaults
-import com.webdav.player.ui.common.TrackTagPill
 import com.webdav.player.ui.common.TrackThumbnailLeading
 import com.webdav.player.ui.playlist.DragDropState
 import com.webdav.player.ui.theme.AppIcons
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.abs
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,13 +70,13 @@ internal fun PlaylistTrackRow(
     onRemove: () -> Unit,
     onPlayNext: () -> Unit,
     onShowDetails: (PlaylistTrackEntry) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
     val isDragging = dragDropState.draggedIndex == index
     val elevation by animateDpAsState(
         targetValue = if (isDragging) PlaylistTrackRowDefaults.DragElevation else PlaylistTrackRowDefaults.IdleElevation,
-        label = "drag_elevation",
+        label = "drag_elevation"
     )
 
     val subtitle =
@@ -98,12 +96,12 @@ internal fun PlaylistTrackRow(
                         value = value,
                         isPastThreshold = isPastThreshold.value,
                         onRemove = onRemove,
-                        onPlayNext = onPlayNext,
+                        onPlayNext = onPlayNext
                     )
                 },
                 positionalThreshold = { totalDistance ->
                     PlaylistTrackSwipeHelper.positionalThreshold(totalDistance)
-                },
+                }
             )
         }
 
@@ -122,21 +120,21 @@ internal fun PlaylistTrackRow(
         enableDismissFromStartToEnd = !showDragHandle,
         enableDismissFromEndToStart = !showDragHandle,
         modifier =
-            modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .onSizeChanged { itemWidthPx.floatValue = it.width.toFloat() }
-                .zIndex(if (isDragging) 2f else 1f)
-                .graphicsLayer {
-                    translationY = if (isDragging) dragDropState.dragOffset else 0f
-                    shadowElevation = elevation.toPx()
-                },
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .onSizeChanged { itemWidthPx.floatValue = it.width.toFloat() }
+            .zIndex(if (isDragging) 2f else 1f)
+            .graphicsLayer {
+                translationY = if (isDragging) dragDropState.dragOffset else 0f
+                shadowElevation = elevation.toPx()
+            },
         backgroundContent = {
             PlaylistSwipeBackground(
                 dismissDirection = dismissState.dismissDirection,
-                isPastThreshold = isPastThreshold.value,
+                isPastThreshold = isPastThreshold.value
             )
-        },
+        }
     ) {
         val surfaceColor =
             when {
@@ -147,7 +145,7 @@ internal fun PlaylistTrackRow(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            color = surfaceColor,
+            color = surfaceColor
         ) {
             AudioTrackRow(
                 title = track.title,
@@ -159,7 +157,11 @@ internal fun PlaylistTrackRow(
                 isPlaying = isPlaying,
                 containerColor = Color.Transparent,
                 onClick = onClick,
-                onLongClick = if (showDragHandle) null else { { onShowDetails(track) } },
+                onLongClick = if (showDragHandle) {
+                    null
+                } else {
+                    { onShowDetails(track) }
+                },
                 leadingContent = {
                     PlaylistTrackLeadingContent(
                         index = index,
@@ -168,7 +170,7 @@ internal fun PlaylistTrackRow(
                         dragDropState = dragDropState,
                         isActive = isActive,
                         isPlaying = isPlaying,
-                        onDragStart = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
+                        onDragStart = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
                     )
                 },
                 tagContent = null,
@@ -178,9 +180,9 @@ internal fun PlaylistTrackRow(
                         onPlayNext = onPlayNext,
                         onRemove = onRemove,
                         onShowDetails = onShowDetails,
-                        dismiss = dismiss,
+                        dismiss = dismiss
                     )
-                },
+                }
             )
         }
     }
@@ -205,7 +207,7 @@ internal object PlaylistTrackSwipeHelper {
 
     fun isPastThreshold(
         offset: Float,
-        width: Float,
+        width: Float
     ): Boolean = width > 0f && abs(offset) >= (width * 0.5f)
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -213,7 +215,7 @@ internal object PlaylistTrackSwipeHelper {
         value: SwipeToDismissBoxValue,
         isPastThreshold: Boolean,
         onRemove: () -> Unit,
-        onPlayNext: () -> Unit,
+        onPlayNext: () -> Unit
     ): Boolean {
         if (!isPastThreshold) return false
         return when (value) {
@@ -239,7 +241,7 @@ internal object PlaylistTrackSwipeHelper {
 internal fun PlaylistSwipeBackground(
     dismissDirection: SwipeToDismissBoxValue?,
     isPastThreshold: Boolean,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val isDelete = dismissDirection == SwipeToDismissBoxValue.StartToEnd
     val isPlayNext = dismissDirection == SwipeToDismissBoxValue.EndToStart
@@ -254,46 +256,46 @@ internal fun PlaylistSwipeBackground(
 
     Box(
         modifier =
-            modifier
-                .fillMaxSize()
-                .background(bgColor)
-                .padding(horizontal = 20.dp),
-        contentAlignment = if (isDelete) Alignment.CenterStart else Alignment.CenterEnd,
+        modifier
+            .fillMaxSize()
+            .background(bgColor)
+            .padding(horizontal = 20.dp),
+        contentAlignment = if (isDelete) Alignment.CenterStart else Alignment.CenterEnd
     ) {
         if (isDelete) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
                     imageVector = AppIcons.DeleteOutline,
                     contentDescription = "从歌单删除",
                     tint = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(22.dp)
                 )
                 Text(
                     text = "从歌单中删除",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    color = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
         } else if (isPlayNext) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
                     text = "下一首播放",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Icon(
                     imageVector = AppIcons.QueueMusic,
                     contentDescription = "下一首播放",
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
@@ -309,40 +311,40 @@ internal fun PlaylistTrackLeadingContent(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     onDragStart: () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val currentIdx by rememberUpdatedState(index)
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (showDragHandle) {
             Box(
                 modifier =
-                    Modifier
-                        .size(PlaylistTrackRowDefaults.DragHandleBoxSize)
-                        .pointerInput(dragDropState) {
-                            detectVerticalDragGestures(
-                                onDragStart = {
-                                    onDragStart()
-                                    dragDropState.onDragStart(currentIdx)
-                                },
-                                onVerticalDrag = { change, dragAmount ->
-                                    change.consume()
-                                    dragDropState.onDrag(dragAmount)
-                                },
-                                onDragEnd = { dragDropState.onDragStopped() },
-                                onDragCancel = { dragDropState.onDragStopped() },
-                            )
-                        },
-                contentAlignment = Alignment.Center,
+                Modifier
+                    .size(PlaylistTrackRowDefaults.DragHandleBoxSize)
+                    .pointerInput(dragDropState) {
+                        detectVerticalDragGestures(
+                            onDragStart = {
+                                onDragStart()
+                                dragDropState.onDragStart(currentIdx)
+                            },
+                            onVerticalDrag = { change, dragAmount ->
+                                change.consume()
+                                dragDropState.onDrag(dragAmount)
+                            },
+                            onDragEnd = { dragDropState.onDragStopped() },
+                            onDragCancel = { dragDropState.onDragStopped() }
+                        )
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = AppIcons.DragHandle,
                     contentDescription = "拖拽排序",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(PlaylistTrackRowDefaults.DragHandleIconSize),
+                    modifier = Modifier.size(PlaylistTrackRowDefaults.DragHandleIconSize)
                 )
             }
         }
@@ -353,7 +355,7 @@ internal fun PlaylistTrackLeadingContent(
             color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
             modifier = Modifier.width(20.dp),
-            textAlign = TextAlign.Center,
+            textAlign = TextAlign.Center
         )
 
         TrackThumbnailLeading(
@@ -361,7 +363,7 @@ internal fun PlaylistTrackLeadingContent(
             size = PlaylistTrackRowDefaults.ThumbnailSize,
             fallbackIcon = AppIcons.Audiotrack,
             isActive = isActive,
-            isPlaying = isPlaying,
+            isPlaying = isPlaying
         )
     }
 }
@@ -372,7 +374,7 @@ internal fun PlaylistTrackActionsMenu(
     onPlayNext: () -> Unit,
     onRemove: () -> Unit,
     onShowDetails: (PlaylistTrackEntry) -> Unit,
-    dismiss: () -> Unit,
+    dismiss: () -> Unit
 ) {
     DropdownMenuItem(
         text = { Text("下一首播放") },
@@ -382,7 +384,7 @@ internal fun PlaylistTrackActionsMenu(
         onClick = {
             dismiss()
             onPlayNext()
-        },
+        }
     )
     DropdownMenuItem(
         text = { Text("从歌单删除") },
@@ -392,7 +394,7 @@ internal fun PlaylistTrackActionsMenu(
         onClick = {
             dismiss()
             onRemove()
-        },
+        }
     )
     DropdownMenuItem(
         text = { Text("详细信息") },
@@ -402,7 +404,7 @@ internal fun PlaylistTrackActionsMenu(
         onClick = {
             dismiss()
             onShowDetails(track)
-        },
+        }
     )
 }
 
@@ -414,25 +416,25 @@ internal fun PlaylistTrackRowPreview() {
         val dragDropState = remember(listState) { DragDropState(listState, { _, _ -> }, {}) }
         PlaylistTrackRow(
             track =
-                PlaylistTrackEntry(
-                    id = 1L,
-                    playlistId = 1L,
-                    serverId = 1L,
-                    remotePath = "/Music/Artist/Track 01.flac",
-                    sortOrder = 0,
-                    title = "Sample Track",
-                    artist = "Sample Artist",
-                    album = "Sample Album",
-                    durationMs = 215000L,
-                    size = 14200000L,
-                    format = AudioFormat.FLAC,
-                ),
+            PlaylistTrackEntry(
+                id = 1L,
+                playlistId = 1L,
+                serverId = 1L,
+                remotePath = "/Music/Artist/Track 01.flac",
+                sortOrder = 0,
+                title = "Sample Track",
+                artist = "Sample Artist",
+                album = "Sample Album",
+                durationMs = 215000L,
+                size = 14200000L,
+                format = AudioFormat.FLAC
+            ),
             index = 0,
             dragDropState = dragDropState,
             onClick = {},
             onRemove = {},
             onPlayNext = {},
-            onShowDetails = {},
+            onShowDetails = {}
         )
     }
 }

@@ -45,7 +45,7 @@ fun DirectoryBreadcrumbStrip(
     breadcrumbs: List<Breadcrumb>,
     currentPath: String,
     onBreadcrumbClicked: (Breadcrumb) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
     val isReduceMotion = isReduceMotionEnabled()
@@ -56,13 +56,13 @@ fun DirectoryBreadcrumbStrip(
 
     Row(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .horizontalScroll(scrollState)
-                .padding(horizontal = 12.dp),
+        modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .horizontalScroll(scrollState)
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         breadcrumbs.forEachIndexed { index, breadcrumb ->
             val isTail =
@@ -80,25 +80,25 @@ fun DirectoryBreadcrumbStrip(
             AnimatedVisibility(
                 visibleState = transitionState,
                 enter =
-                    expandHorizontally(
-                        animationSpec = MotionTokens.spatialSpec(isReduceMotion),
-                        expandFrom = Alignment.Start,
-                    ) +
-                        fadeIn(
-                            animationSpec = MotionTokens.effectsSpec(isReduceMotion),
-                        ),
+                expandHorizontally(
+                    animationSpec = MotionTokens.spatialSpec(isReduceMotion),
+                    expandFrom = Alignment.Start
+                ) +
+                    fadeIn(
+                        animationSpec = MotionTokens.effectsSpec(isReduceMotion)
+                    ),
                 exit =
-                    shrinkHorizontally(
-                        animationSpec = MotionTokens.spatialSpec(isReduceMotion),
-                        shrinkTowards = Alignment.Start,
-                    ) +
-                        fadeOut(
-                            animationSpec = MotionTokens.effectsSpec(isReduceMotion),
-                        ),
+                shrinkHorizontally(
+                    animationSpec = MotionTokens.spatialSpec(isReduceMotion),
+                    shrinkTowards = Alignment.Start
+                ) +
+                    fadeOut(
+                        animationSpec = MotionTokens.effectsSpec(isReduceMotion)
+                    )
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     AssistChip(
                         onClick = { onBreadcrumbClicked(breadcrumb) },
@@ -109,7 +109,7 @@ fun DirectoryBreadcrumbStrip(
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = if (isTail) FontWeight.Bold else FontWeight.Medium,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                overflow = TextOverflow.Ellipsis
                             )
                         },
                         leadingIcon = {
@@ -118,43 +118,43 @@ fun DirectoryBreadcrumbStrip(
                                 Icon(
                                     imageVector = if (isLocalRoot) AppIcons.Storage else AppIcons.Home,
                                     contentDescription = if (isLocalRoot) "本地存储" else "根目录",
-                                    modifier = Modifier.size(AssistChipDefaults.IconSize),
+                                    modifier = Modifier.size(AssistChipDefaults.IconSize)
                                 )
                             } else {
                                 Icon(
                                     imageVector = AppIcons.Folder,
                                     contentDescription = "目录",
-                                    modifier = Modifier.size(AssistChipDefaults.IconSize),
+                                    modifier = Modifier.size(AssistChipDefaults.IconSize)
                                 )
                             }
                         },
                         colors =
-                            if (isTail) {
-                                AssistChipDefaults.assistChipColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            } else {
-                                AssistChipDefaults.assistChipColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    leadingIconContentColor = MaterialTheme.colorScheme.outline,
-                                )
-                            },
+                        if (isTail) {
+                            AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                leadingIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        } else {
+                            AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                leadingIconContentColor = MaterialTheme.colorScheme.outline
+                            )
+                        },
                         border =
-                            if (isTail) {
-                                AssistChipDefaults.assistChipBorder(
-                                    enabled = true,
-                                    borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                )
-                            } else {
-                                AssistChipDefaults.assistChipBorder(
-                                    enabled = true,
-                                    borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                                )
-                            },
-                        shape = MaterialTheme.shapes.small,
+                        if (isTail) {
+                            AssistChipDefaults.assistChipBorder(
+                                enabled = true,
+                                borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            )
+                        } else {
+                            AssistChipDefaults.assistChipBorder(
+                                enabled = true,
+                                borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                            )
+                        },
+                        shape = MaterialTheme.shapes.small
                     )
 
                     if (index < breadcrumbs.lastIndex) {
@@ -162,7 +162,7 @@ fun DirectoryBreadcrumbStrip(
                             imageVector = AppIcons.ChevronRight,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.outlineVariant,
+                            tint = MaterialTheme.colorScheme.outlineVariant
                         )
                     }
                 }

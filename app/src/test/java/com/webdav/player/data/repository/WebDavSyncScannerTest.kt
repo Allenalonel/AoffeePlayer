@@ -6,19 +6,14 @@ import androidx.test.core.app.ApplicationProvider
 import com.webdav.player.data.local.AppDatabase
 import com.webdav.player.data.local.DirectorySyncCheckpointDao
 import com.webdav.player.data.local.MediaTrackIndexDao
-import com.webdav.player.data.local.MediaTrackIndexEntity
-import com.webdav.player.data.remote.ConnectionResult
-import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.LibrarySyncResult
 import com.webdav.player.domain.model.LibrarySyncState
-import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.test.SharedFakeWebDavClient
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -31,8 +26,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.util.Collections
-import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -49,7 +42,7 @@ class WebDavSyncScannerTest {
             name = "Test NAS",
             url = "http://192.168.1.100:5005",
             port = 5005,
-            pathPrefix = "/",
+            pathPrefix = "/"
         )
 
     @Before
@@ -69,7 +62,7 @@ class WebDavSyncScannerTest {
             WebDavSyncScanner(
                 webDavClient = fakeClient,
                 mediaTrackIndexDao = mediaTrackIndexDao,
-                directorySyncCheckpointDao = checkpointDao,
+                directorySyncCheckpointDao = checkpointDao
             )
     }
 
@@ -87,17 +80,17 @@ class WebDavSyncScannerTest {
                     path = "/",
                     name = "/",
                     subDirectories =
-                        listOf(
-                            RemoteDirectory(path = "/Music/", name = "Music"),
-                            RemoteDirectory(path = "/.git/", name = ".git"),
-                            RemoteDirectory(path = "/#recycle/", name = "#recycle"),
-                            RemoteDirectory(path = "/.@eaDir/", name = ".@eaDir"),
-                            RemoteDirectory(path = "/LOST.DIR/", name = "LOST.DIR"),
-                            RemoteDirectory(path = "/.thumbnails/", name = ".thumbnails"),
-                            RemoteDirectory(path = "/.cache/", name = ".cache"),
-                            RemoteDirectory(path = "/Android/", name = "Android"),
-                        ),
-                    files = listOf(RemoteFile(name = "readme.txt", path = "/readme.txt", size = 100L)),
+                    listOf(
+                        RemoteDirectory(path = "/Music/", name = "Music"),
+                        RemoteDirectory(path = "/.git/", name = ".git"),
+                        RemoteDirectory(path = "/#recycle/", name = "#recycle"),
+                        RemoteDirectory(path = "/.@eaDir/", name = ".@eaDir"),
+                        RemoteDirectory(path = "/LOST.DIR/", name = "LOST.DIR"),
+                        RemoteDirectory(path = "/.thumbnails/", name = ".thumbnails"),
+                        RemoteDirectory(path = "/.cache/", name = ".cache"),
+                        RemoteDirectory(path = "/Android/", name = "Android")
+                    ),
+                    files = listOf(RemoteFile(name = "readme.txt", path = "/readme.txt", size = 100L))
                 )
 
             // /Music/ contains /Music/Rock/ and a nested noise directory .Trash-1000
@@ -106,20 +99,20 @@ class WebDavSyncScannerTest {
                     path = "/Music/",
                     name = "Music",
                     subDirectories =
-                        listOf(
-                            RemoteDirectory(path = "/Music/Rock/", name = "Rock"),
-                            RemoteDirectory(path = "/Music/.Trash-1000/", name = ".Trash-1000"),
-                        ),
+                    listOf(
+                        RemoteDirectory(path = "/Music/Rock/", name = "Rock"),
+                        RemoteDirectory(path = "/Music/.Trash-1000/", name = ".Trash-1000")
+                    ),
                     files =
-                        listOf(
-                            RemoteFile(
-                                name = "01 - Queen - Bohemian Rhapsody.flac",
-                                path = "/Music/01 - Queen - Bohemian Rhapsody.flac",
-                                size = 45000000L,
-                                lastModified = "Wed, 14 Jan 2026 08:30:00 GMT",
-                                fileType = RemoteFileType.Audio(AudioFormat.FLAC),
-                            ),
-                        ),
+                    listOf(
+                        RemoteFile(
+                            name = "01 - Queen - Bohemian Rhapsody.flac",
+                            path = "/Music/01 - Queen - Bohemian Rhapsody.flac",
+                            size = 45000000L,
+                            lastModified = "Wed, 14 Jan 2026 08:30:00 GMT",
+                            fileType = RemoteFileType.Audio(AudioFormat.FLAC)
+                        )
+                    )
                 )
 
             // /Music/Rock/ contains Stairway to Heaven
@@ -129,15 +122,15 @@ class WebDavSyncScannerTest {
                     name = "Rock",
                     subDirectories = emptyList(),
                     files =
-                        listOf(
-                            RemoteFile(
-                                name = "Led Zeppelin - Stairway to Heaven.mp3",
-                                path = "/Music/Rock/Led Zeppelin - Stairway to Heaven.mp3",
-                                size = 12000000L,
-                                lastModified = "Wed, 14 Jan 2026 09:00:00 GMT",
-                                fileType = RemoteFileType.Audio(AudioFormat.MP3),
-                            ),
-                        ),
+                    listOf(
+                        RemoteFile(
+                            name = "Led Zeppelin - Stairway to Heaven.mp3",
+                            path = "/Music/Rock/Led Zeppelin - Stairway to Heaven.mp3",
+                            size = 12000000L,
+                            lastModified = "Wed, 14 Jan 2026 09:00:00 GMT",
+                            fileType = RemoteFileType.Audio(AudioFormat.MP3)
+                        )
+                    )
                 )
 
             fakeClient.directoryTree["/"] = rootDir
@@ -198,7 +191,7 @@ class WebDavSyncScannerTest {
                     webDavClient = fakeClient,
                     mediaTrackIndexDao = mediaTrackIndexDao,
                     directorySyncCheckpointDao = checkpointDao,
-                    maxConcurrency = maxConcurrency,
+                    maxConcurrency = maxConcurrency
                 )
 
             fakeClient.delayMs = 30L
@@ -216,14 +209,14 @@ class WebDavSyncScannerTest {
                         path = "/Dir$i/",
                         name = "Dir$i",
                         files =
-                            listOf(
-                                RemoteFile(
-                                    name = "Track$i.mp3",
-                                    path = "/Dir$i/Track$i.mp3",
-                                    size = 1000L,
-                                    fileType = RemoteFileType.Audio(AudioFormat.MP3),
-                                ),
-                            ),
+                        listOf(
+                            RemoteFile(
+                                name = "Track$i.mp3",
+                                path = "/Dir$i/Track$i.mp3",
+                                size = 1000L,
+                                fileType = RemoteFileType.Audio(AudioFormat.MP3)
+                            )
+                        )
                     )
             }
 
@@ -233,11 +226,11 @@ class WebDavSyncScannerTest {
             val maxObserved = fakeClient.maxConcurrentCalls.get()
             assertTrue(
                 "Observed concurrency ($maxObserved) must not exceed ceiling ($maxConcurrency)",
-                maxObserved <= maxConcurrency,
+                maxObserved <= maxConcurrency
             )
             assertTrue(
                 "Observed concurrency ($maxObserved) should achieve parallel overlap (>= 2)",
-                maxObserved >= 2,
+                maxObserved >= 2
             )
 
             val tracks = mediaTrackIndexDao.getTracksByServerId(testServer.id)
@@ -255,14 +248,14 @@ class WebDavSyncScannerTest {
                     lastModified = 1000L,
                     etag = "tag1",
                     files =
-                        listOf(
-                            RemoteFile(
-                                name = "Song1.flac",
-                                path = "/Album1/Song1.flac",
-                                size = 1000L,
-                                fileType = RemoteFileType.Audio(AudioFormat.FLAC),
-                            ),
-                        ),
+                    listOf(
+                        RemoteFile(
+                            name = "Song1.flac",
+                            path = "/Album1/Song1.flac",
+                            size = 1000L,
+                            fileType = RemoteFileType.Audio(AudioFormat.FLAC)
+                        )
+                    )
                 )
             val album2 =
                 RemoteDirectory(
@@ -271,14 +264,14 @@ class WebDavSyncScannerTest {
                     lastModified = 2000L,
                     etag = "tag2",
                     files =
-                        listOf(
-                            RemoteFile(
-                                name = "Song2.mp3",
-                                path = "/Album2/Song2.mp3",
-                                size = 2000L,
-                                fileType = RemoteFileType.Audio(AudioFormat.MP3),
-                            ),
-                        ),
+                    listOf(
+                        RemoteFile(
+                            name = "Song2.mp3",
+                            path = "/Album2/Song2.mp3",
+                            size = 2000L,
+                            fileType = RemoteFileType.Audio(AudioFormat.MP3)
+                        )
+                    )
                 )
             val rootDir =
                 RemoteDirectory(
@@ -286,7 +279,7 @@ class WebDavSyncScannerTest {
                     name = "/",
                     lastModified = 500L,
                     etag = "rootTag",
-                    subDirectories = listOf(album1, album2),
+                    subDirectories = listOf(album1, album2)
                 )
 
             fakeClient.directoryTree["/"] = rootDir
@@ -309,20 +302,20 @@ class WebDavSyncScannerTest {
                     lastModified = 3000L,
                     etag = "tag2_mod",
                     files =
-                        listOf(
-                            RemoteFile(
-                                name = "Song2.mp3",
-                                path = "/Album2/Song2.mp3",
-                                size = 2000L,
-                                fileType = RemoteFileType.Audio(AudioFormat.MP3),
-                            ),
-                            RemoteFile(
-                                name = "Song3.mp3",
-                                path = "/Album2/Song3.mp3",
-                                size = 3000L,
-                                fileType = RemoteFileType.Audio(AudioFormat.MP3),
-                            ),
+                    listOf(
+                        RemoteFile(
+                            name = "Song2.mp3",
+                            path = "/Album2/Song2.mp3",
+                            size = 2000L,
+                            fileType = RemoteFileType.Audio(AudioFormat.MP3)
                         ),
+                        RemoteFile(
+                            name = "Song3.mp3",
+                            path = "/Album2/Song3.mp3",
+                            size = 3000L,
+                            fileType = RemoteFileType.Audio(AudioFormat.MP3)
+                        )
+                    )
                 )
             // Root updated with Album2's new metadata, Album1 still has tag1 & 1000L
             val rootDirUpdated =
@@ -331,7 +324,7 @@ class WebDavSyncScannerTest {
                     name = "/",
                     lastModified = 600L,
                     etag = "rootTag2",
-                    subDirectories = listOf(album1, album2Modified),
+                    subDirectories = listOf(album1, album2Modified)
                 )
 
             fakeClient.directoryTree["/"] = rootDirUpdated
@@ -371,24 +364,24 @@ class WebDavSyncScannerTest {
                     path = "/Good/",
                     name = "Good",
                     files =
-                        listOf(
-                            RemoteFile(
-                                name = "GoodSong.mp3",
-                                path = "/Good/GoodSong.mp3",
-                                size = 1000L,
-                                fileType = RemoteFileType.Audio(AudioFormat.MP3),
-                            ),
-                        ),
+                    listOf(
+                        RemoteFile(
+                            name = "GoodSong.mp3",
+                            path = "/Good/GoodSong.mp3",
+                            size = 1000L,
+                            fileType = RemoteFileType.Audio(AudioFormat.MP3)
+                        )
+                    )
                 )
             val rootDir =
                 RemoteDirectory(
                     path = "/",
                     name = "/",
                     subDirectories =
-                        listOf(
-                            goodDir,
-                            RemoteDirectory(path = "/Flaky/", name = "Flaky"),
-                        ),
+                    listOf(
+                        goodDir,
+                        RemoteDirectory(path = "/Flaky/", name = "Flaky")
+                    )
                 )
 
             fakeClient.directoryTree["/"] = rootDir
@@ -422,20 +415,20 @@ class WebDavSyncScannerTest {
                     path = "/Album/",
                     name = "Album",
                     files =
-                        listOf(
-                            RemoteFile(
-                                name = "TrackA.mp3",
-                                path = "/Album/TrackA.mp3",
-                                size = 1000L,
-                                fileType = RemoteFileType.Audio(AudioFormat.MP3),
-                            ),
-                            RemoteFile(
-                                name = "TrackB.mp3",
-                                path = "/Album/TrackB.mp3",
-                                size = 2000L,
-                                fileType = RemoteFileType.Audio(AudioFormat.MP3),
-                            ),
+                    listOf(
+                        RemoteFile(
+                            name = "TrackA.mp3",
+                            path = "/Album/TrackA.mp3",
+                            size = 1000L,
+                            fileType = RemoteFileType.Audio(AudioFormat.MP3)
                         ),
+                        RemoteFile(
+                            name = "TrackB.mp3",
+                            path = "/Album/TrackB.mp3",
+                            size = 2000L,
+                            fileType = RemoteFileType.Audio(AudioFormat.MP3)
+                        )
+                    )
                 )
             val rootDir = RemoteDirectory(path = "/", name = "/", subDirectories = listOf(dirWithTwoTracks))
             fakeClient.directoryTree["/"] = rootDir
@@ -450,14 +443,14 @@ class WebDavSyncScannerTest {
                     path = "/Album/",
                     name = "Album",
                     files =
-                        listOf(
-                            RemoteFile(
-                                name = "TrackA.mp3",
-                                path = "/Album/TrackA.mp3",
-                                size = 1000L,
-                                fileType = RemoteFileType.Audio(AudioFormat.MP3),
-                            ),
-                        ),
+                    listOf(
+                        RemoteFile(
+                            name = "TrackA.mp3",
+                            path = "/Album/TrackA.mp3",
+                            size = 1000L,
+                            fileType = RemoteFileType.Audio(AudioFormat.MP3)
+                        )
+                    )
                 )
             fakeClient.directoryTree["/Album/"] = dirWithOneTrack
 
@@ -475,21 +468,21 @@ class WebDavSyncScannerTest {
                 RemoteDirectory(
                     path = "/",
                     name = "/",
-                    subDirectories = listOf(RemoteDirectory(path = "/Pop/", name = "Pop")),
+                    subDirectories = listOf(RemoteDirectory(path = "/Pop/", name = "Pop"))
                 )
             val popDir =
                 RemoteDirectory(
                     path = "/Pop/",
                     name = "Pop",
                     files =
-                        listOf(
-                            RemoteFile(
-                                name = "Song.mp3",
-                                path = "/Pop/Song.mp3",
-                                size = 1000L,
-                                fileType = RemoteFileType.Audio(AudioFormat.MP3),
-                            ),
-                        ),
+                    listOf(
+                        RemoteFile(
+                            name = "Song.mp3",
+                            path = "/Pop/Song.mp3",
+                            size = 1000L,
+                            fileType = RemoteFileType.Audio(AudioFormat.MP3)
+                        )
+                    )
                 )
             fakeClient.directoryTree["/"] = rootDir
             fakeClient.directoryTree["/Pop/"] = popDir
@@ -511,19 +504,19 @@ class WebDavSyncScannerTest {
                     path = "/Album/",
                     name = "Album",
                     files =
-                        listOf(
-                            RemoteFile(
-                                name = "album.cue",
-                                path = "/Album/album.cue",
-                                size = 500L,
-                            ),
-                            RemoteFile(
-                                name = "album.flac",
-                                path = "/Album/album.flac",
-                                size = 50000000L,
-                                fileType = RemoteFileType.Audio(AudioFormat.FLAC),
-                            ),
+                    listOf(
+                        RemoteFile(
+                            name = "album.cue",
+                            path = "/Album/album.cue",
+                            size = 500L
                         ),
+                        RemoteFile(
+                            name = "album.flac",
+                            path = "/Album/album.flac",
+                            size = 50000000L,
+                            fileType = RemoteFileType.Audio(AudioFormat.FLAC)
+                        )
+                    )
                 )
             fakeClient.directoryTree["/"] = RemoteDirectory(path = "/", name = "/", subDirectories = listOf(dirWithCue))
             fakeClient.directoryTree["/Album/"] = dirWithCue
@@ -545,13 +538,13 @@ class WebDavSyncScannerTest {
                 RemoteDirectory(
                     path = "/",
                     name = "/",
-                    subDirectories = listOf(RemoteDirectory(path = "/Pop/", name = "Pop")),
+                    subDirectories = listOf(RemoteDirectory(path = "/Pop/", name = "Pop"))
                 )
             val popDir =
                 RemoteDirectory(
                     path = "/Pop/",
                     name = "Pop",
-                    files = listOf(RemoteFile(name = "Song.mp3", path = "/Pop/Song.mp3", size = 1000L)),
+                    files = listOf(RemoteFile(name = "Song.mp3", path = "/Pop/Song.mp3", size = 1000L))
                 )
             fakeClient.directoryTree["/"] = rootDir
             fakeClient.directoryTree["/Pop/"] = popDir
@@ -573,14 +566,14 @@ class WebDavSyncScannerTest {
                     lastModified = 2000L,
                     etag = "etag-jay",
                     files =
-                        listOf(
-                            RemoteFile(
-                                name = "SunnyDay.flac",
-                                path = "/Baidu/Jay/SunnyDay.flac",
-                                size = 30_000_000L,
-                                fileType = RemoteFileType.Audio(AudioFormat.FLAC),
-                            ),
-                        ),
+                    listOf(
+                        RemoteFile(
+                            name = "SunnyDay.flac",
+                            path = "/Baidu/Jay/SunnyDay.flac",
+                            size = 30_000_000L,
+                            fileType = RemoteFileType.Audio(AudioFormat.FLAC)
+                        )
+                    )
                 )
             val baiduDir =
                 RemoteDirectory(
@@ -588,7 +581,7 @@ class WebDavSyncScannerTest {
                     name = "Baidu",
                     lastModified = 1000L,
                     etag = "etag-baidu",
-                    subDirectories = listOf(jayDir),
+                    subDirectories = listOf(jayDir)
                 )
             val rootDir =
                 RemoteDirectory(
@@ -596,7 +589,7 @@ class WebDavSyncScannerTest {
                     name = "/",
                     lastModified = 500L,
                     etag = "etag-root",
-                    subDirectories = listOf(baiduDir),
+                    subDirectories = listOf(baiduDir)
                 )
             fakeClient.directoryTree["/"] = rootDir
             fakeClient.directoryTree["/Baidu/"] = baiduDir
@@ -611,7 +604,7 @@ class WebDavSyncScannerTest {
                         lastModified = 500L,
                         etag = "etag-root",
                         lastScannedMs = 100L,
-                        isScanned = false,
+                        isScanned = false
                     ),
                     com.webdav.player.data.local.DirectorySyncCheckpointEntity(
                         serverId = testServer.id,
@@ -619,9 +612,9 @@ class WebDavSyncScannerTest {
                         lastModified = 1000L,
                         etag = "etag-baidu",
                         lastScannedMs = 100L,
-                        isScanned = false,
-                    ),
-                ),
+                        isScanned = false
+                    )
+                )
             )
 
             val result = scanner.sync(testServer, force = false) as LibrarySyncResult.Success

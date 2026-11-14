@@ -126,8 +126,8 @@ class ByteSliceReader(
 
     fun readNullTerminatedString(charset: Charset = StandardCharsets.ISO_8859_1): String {
         val isUtf16 = charset == StandardCharsets.UTF_16 ||
-                charset == StandardCharsets.UTF_16LE ||
-                charset == StandardCharsets.UTF_16BE
+            charset == StandardCharsets.UTF_16LE ||
+            charset == StandardCharsets.UTF_16BE
 
         val startPos = pos
         if (isUtf16) {

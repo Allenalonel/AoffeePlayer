@@ -15,6 +15,10 @@ import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.WebDavServer
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.Dispatcher
@@ -32,10 +36,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.shadows.ShadowLooper
-import java.io.IOException
-import java.net.SocketTimeoutException
-import java.util.concurrent.ExecutionException
-import java.util.concurrent.TimeUnit
 
 @OptIn(UnstableApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -50,7 +50,7 @@ class WebDavStreamingPlaybackTest {
             port = 8080,
             pathPrefix = "/dav",
             username = "user1",
-            password = "pwd",
+            password = "pwd"
         )
 
     @Before
@@ -70,7 +70,7 @@ class WebDavStreamingPlaybackTest {
 
         assertTrue(
             "Stream read timeout must be >= 30,000ms to avoid playback stall, but was ${streamingClient.readTimeoutMillis}ms",
-            streamingClient.readTimeoutMillis >= 30_000,
+            streamingClient.readTimeoutMillis >= 30_000
         )
     }
 
@@ -96,7 +96,7 @@ class WebDavStreamingPlaybackTest {
                 "timeout",
                 IOException(ExecutionException(SocketTimeoutException("timeout"))),
                 testDataSpec,
-                HttpDataSource.HttpDataSourceException.TYPE_OPEN,
+                HttpDataSource.HttpDataSourceException.TYPE_OPEN
             )
 
         val loadErrorInfo =
@@ -105,7 +105,7 @@ class WebDavStreamingPlaybackTest {
                 MediaLoadData(C.DATA_TYPE_MEDIA),
                 timeoutException,
                 // errorCount =
-                1,
+                1
             )
 
         val retryDelayMs = policy.getRetryDelayMsFor(loadErrorInfo)
@@ -127,7 +127,7 @@ class WebDavStreamingPlaybackTest {
                 null,
                 emptyMap(),
                 testDataSpec,
-                byteArrayOf(),
+                byteArrayOf()
             )
 
         val authException =
@@ -137,7 +137,7 @@ class WebDavStreamingPlaybackTest {
                 null,
                 emptyMap(),
                 testDataSpec,
-                byteArrayOf(),
+                byteArrayOf()
             )
 
         val notFoundInfo =
@@ -146,7 +146,7 @@ class WebDavStreamingPlaybackTest {
                 MediaLoadData(C.DATA_TYPE_MEDIA),
                 notFoundException,
                 // errorCount =
-                1,
+                1
             )
 
         val authInfo =
@@ -155,7 +155,7 @@ class WebDavStreamingPlaybackTest {
                 MediaLoadData(C.DATA_TYPE_MEDIA),
                 authException,
                 // errorCount =
-                1,
+                1
             )
 
         assertEquals(C.TIME_UNSET, policy.getRetryDelayMsFor(notFoundInfo))
@@ -261,7 +261,7 @@ class WebDavStreamingPlaybackTest {
             val authServer =
                 testServer.copy(
                     url = server.url("/dav").toString(),
-                    port = server.port,
+                    port = server.port
                 )
             val track =
                 AudioTrack(
@@ -270,7 +270,7 @@ class WebDavStreamingPlaybackTest {
                     remotePath = "/dav/track.mp3",
                     title = "track.mp3",
                     format = AudioFormat.MP3,
-                    size = 1024L,
+                    size = 1024L
                 )
             engine.loadTrack(authServer, track)
             assertEquals(authServer, engine.activeServer)
@@ -280,7 +280,7 @@ class WebDavStreamingPlaybackTest {
             val bytesOpened = authenticatedDataSource.open(dataSpec)
             assertTrue(
                 "Data source opened successfully against authenticated endpoint",
-                bytesOpened > 0 || bytesOpened == C.LENGTH_UNSET.toLong(),
+                bytesOpened > 0 || bytesOpened == C.LENGTH_UNSET.toLong()
             )
 
             val buffer = ByteArray(256)
@@ -298,7 +298,7 @@ class WebDavStreamingPlaybackTest {
             val rebuiltBytesOpened = rebuiltDataSource.open(dataSpec)
             assertTrue(
                 "Rebuilt data source retains credentials and does not fail with 401",
-                rebuiltBytesOpened > 0 || rebuiltBytesOpened == C.LENGTH_UNSET.toLong(),
+                rebuiltBytesOpened > 0 || rebuiltBytesOpened == C.LENGTH_UNSET.toLong()
             )
             rebuiltDataSource.close()
         } finally {
@@ -336,7 +336,7 @@ class WebDavStreamingPlaybackTest {
             val authServer =
                 testServer.copy(
                     url = server.url("/dav").toString(),
-                    port = server.port,
+                    port = server.port
                 )
             val track1 =
                 AudioTrack(
@@ -345,7 +345,7 @@ class WebDavStreamingPlaybackTest {
                     remotePath = "/dav/test1.mp3",
                     title = "test1.mp3",
                     format = AudioFormat.MP3,
-                    size = 1024L,
+                    size = 1024L
                 )
             val track2 =
                 AudioTrack(
@@ -354,7 +354,7 @@ class WebDavStreamingPlaybackTest {
                     remotePath = "/dav/test2.mp3",
                     title = "test2.mp3",
                     format = AudioFormat.MP3,
-                    size = 1024L,
+                    size = 1024L
                 )
 
             // Play track1 on engine
@@ -386,7 +386,7 @@ class WebDavStreamingPlaybackTest {
             // Verify player has not encountered an authentication error (HTTP 401)
             assertTrue(
                 "Player should not encounter an error, but was: ${engine.playbackState.value}",
-                engine.playbackState.value !is PlaybackState.Error,
+                engine.playbackState.value !is PlaybackState.Error
             )
             assertEquals(authServer, engine.activeServer)
         } finally {

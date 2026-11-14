@@ -9,8 +9,8 @@ import androidx.room.Index
     primaryKeys = ["serverId", "path"],
     indices = [
         Index(value = ["serverId"]),
-        Index(value = ["serverId", "path"]),
-    ],
+        Index(value = ["serverId", "path"])
+    ]
 )
 data class DirectorySyncCheckpointEntity(
     val serverId: Long,
@@ -19,5 +19,5 @@ data class DirectorySyncCheckpointEntity(
     val etag: String?,
     val lastScannedMs: Long,
     @ColumnInfo(defaultValue = "1")
-    val isScanned: Boolean = true,
+    val isScanned: Boolean = true
 )

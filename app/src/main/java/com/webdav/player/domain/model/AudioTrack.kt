@@ -11,12 +11,24 @@ data class AudioTrack(
     val size: Long = 0L,
     val format: AudioFormat,
     val coverThumbnailPath: String? = null,
+    val sampleRate: Int? = null,
+    val bitDepth: Int? = null,
+    val bitrateKbps: Int? = null,
+    val channels: Int? = null
 ) {
     val identity: TrackIdentity
         get() = TrackIdentity(serverId, remotePath)
 
+    val physicalSpecs: AudioPhysicalSpecs
+        get() = AudioPhysicalSpecs(
+            sampleRate = sampleRate,
+            bitDepth = bitDepth,
+            bitrateKbps = bitrateKbps,
+            channels = channels
+        )
+
     val fileName: String
-        get() = remotePath.substringAfterLast('/').ifEmpty { title }
+        get() = TrackIdentity.extractFileName(remotePath).ifEmpty { title }
 
     val qualityBadge: AudioQualityBadge
         get() = AudioQuality.resolveBadge(format, fileName, size, durationMs)
@@ -40,7 +52,7 @@ data class AudioTrack(
         get() = audiophileSpecsModel.formatted
 
     val audiophileSpecsModel: AudiophileSpecs
-        get() = AudioQuality.resolveAudiophileSpecs(format, fileName, size, durationMs)
+        get() = AudioQuality.resolveAudiophileSpecs(this)!!
 
     fun resolveBadge(): AudioQualityBadge = qualityBadge
 
@@ -55,13 +67,17 @@ data class AudioTrack(
             album = metadata.album?.takeIf { it.isNotBlank() } ?: this.album,
             durationMs = if (metadata.durationMs > 0L) metadata.durationMs else this.durationMs,
             coverThumbnailPath = metadata.coverThumbnailPath,
+            sampleRate = metadata.sampleRate ?: this.sampleRate,
+            bitDepth = metadata.bitDepth ?: this.bitDepth,
+            bitrateKbps = metadata.bitrateKbps ?: this.bitrateKbps,
+            channels = metadata.channels ?: this.channels
         )
 
     companion object {
         fun fromRemoteFile(
             server: WebDavServer,
             file: RemoteFile,
-            metadata: TrackMetadata? = null,
+            metadata: TrackMetadata? = null
         ): AudioTrack? {
             val format = (file.fileType as? RemoteFileType.Audio)?.format ?: return null
             val identity = TrackIdentity(if (server.isLocal) LOCAL_STORAGE_ID else server.id, file.path)
@@ -77,6 +93,10 @@ data class AudioTrack(
                     size = file.size,
                     format = format,
                     coverThumbnailPath = metadata?.coverThumbnailPath,
+                    sampleRate = metadata?.sampleRate,
+                    bitDepth = metadata?.bitDepth,
+                    bitrateKbps = metadata?.bitrateKbps,
+                    channels = metadata?.channels
                 )
             return baseTrack
         }

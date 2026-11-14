@@ -42,7 +42,7 @@ class DatabaseMigrationTest {
                                         `isDefault` INTEGER NOT NULL,
                                         `allowSelfSigned` INTEGER NOT NULL DEFAULT 0
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                                 db.execSQL(
                                     """
@@ -58,7 +58,7 @@ class DatabaseMigrationTest {
                                         `lyrics` TEXT,
                                         PRIMARY KEY(`serverId`, `remotePath`)
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                                 db.execSQL(
                                     """
@@ -69,24 +69,24 @@ class DatabaseMigrationTest {
                                         `lastUpdatedMs` INTEGER NOT NULL,
                                         PRIMARY KEY(`serverId`, `path`)
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                             }
 
                             override fun onUpgrade(
                                 db: SupportSQLiteDatabase,
                                 oldVersion: Int,
-                                newVersion: Int,
+                                newVersion: Int
                             ) {}
-                        },
-                    ).build(),
+                        }
+                    ).build()
             )
 
         val db = openHelper.writableDatabase
 
         // Insert test data into v4 tables
         db.execSQL(
-            "INSERT INTO servers (id, name, url, username, password, isDefault, allowSelfSigned) VALUES (1, 'NAS', 'http://nas', 'u', 'p', 1, 0)",
+            "INSERT INTO servers (id, name, url, username, password, isDefault, allowSelfSigned) VALUES (1, 'NAS', 'http://nas', 'u', 'p', 1, 0)"
         )
         db.execSQL("INSERT INTO directory_cache (serverId, path, dataJson, lastUpdatedMs) VALUES (1, '/music', '{\"files\":[]}', 123456)")
 
@@ -116,7 +116,7 @@ class DatabaseMigrationTest {
             """
             INSERT INTO playlist_tracks (id, playlistId, serverId, remotePath, sortOrder, title, artist, album, durationMs, size, format, coverThumbnailPath, cuePath, virtualTrackId)
             VALUES (100, 10, 1, '/music/song.flac', 0, 'Song 1', 'Artist', 'Album', 200000, 15000000, 'FLAC', null, null, null)
-            """.trimIndent(),
+            """.trimIndent()
         )
         val cursorTracks = db.query("SELECT title, format FROM playlist_tracks WHERE id = 100")
         assertTrue(cursorTracks.moveToFirst())
@@ -172,7 +172,7 @@ class DatabaseMigrationTest {
                                         `isDefault` INTEGER NOT NULL,
                                         `allowSelfSigned` INTEGER NOT NULL DEFAULT 0
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                                 db.execSQL(
                                     """
@@ -182,24 +182,24 @@ class DatabaseMigrationTest {
                                         `createdAtMs` INTEGER NOT NULL,
                                         `updatedAtMs` INTEGER NOT NULL
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                             }
 
                             override fun onUpgrade(
                                 db: SupportSQLiteDatabase,
                                 oldVersion: Int,
-                                newVersion: Int,
+                                newVersion: Int
                             ) {}
-                        },
-                    ).build(),
+                        }
+                    ).build()
             )
 
         val db = openHelper.writableDatabase
 
         // Insert test data into v5 tables
         db.execSQL(
-            "INSERT INTO servers (id, name, url, username, password, isDefault, allowSelfSigned) VALUES (1, 'My WebDAV', 'http://webdav', 'u', 'p', 1, 0)",
+            "INSERT INTO servers (id, name, url, username, password, isDefault, allowSelfSigned) VALUES (1, 'My WebDAV', 'http://webdav', 'u', 'p', 1, 0)"
         )
         db.execSQL("INSERT INTO playlists (id, name, createdAtMs, updatedAtMs) VALUES (5, '车载列表', 2000, 2000)")
 
@@ -222,11 +222,11 @@ class DatabaseMigrationTest {
             """
             INSERT INTO local_storage_folders (uriString, displayName, dateAdded)
             VALUES ('content://com.android.externalstorage.documents/tree/primary%3AMusic', 'Music', 1700000000000)
-            """.trimIndent(),
+            """.trimIndent()
         )
         val cursorFolders =
             db.query(
-                "SELECT uriString, displayName, dateAdded FROM local_storage_folders WHERE uriString = 'content://com.android.externalstorage.documents/tree/primary%3AMusic'",
+                "SELECT uriString, displayName, dateAdded FROM local_storage_folders WHERE uriString = 'content://com.android.externalstorage.documents/tree/primary%3AMusic'"
             )
         assertTrue(cursorFolders.moveToFirst())
         assertEquals("content://com.android.externalstorage.documents/tree/primary%3AMusic", cursorFolders.getString(0))
@@ -263,7 +263,7 @@ class DatabaseMigrationTest {
                                         `isDefault` INTEGER NOT NULL,
                                         `allowSelfSigned` INTEGER NOT NULL DEFAULT 0
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                                 db.execSQL(
                                     """
@@ -273,7 +273,7 @@ class DatabaseMigrationTest {
                                         `createdAtMs` INTEGER NOT NULL,
                                         `updatedAtMs` INTEGER NOT NULL
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                                 db.execSQL(
                                     """
@@ -283,28 +283,28 @@ class DatabaseMigrationTest {
                                         `dateAdded` INTEGER NOT NULL,
                                         PRIMARY KEY(`uriString`)
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                             }
 
                             override fun onUpgrade(
                                 db: SupportSQLiteDatabase,
                                 oldVersion: Int,
-                                newVersion: Int,
+                                newVersion: Int
                             ) {}
-                        },
-                    ).build(),
+                        }
+                    ).build()
             )
 
         val db = openHelper.writableDatabase
 
         // Insert test data into v6 tables
         db.execSQL(
-            "INSERT INTO servers (id, name, url, username, password, isDefault, allowSelfSigned) VALUES (2, 'Remote NAS', 'https://remote', 'admin', 'pass', 1, 1)",
+            "INSERT INTO servers (id, name, url, username, password, isDefault, allowSelfSigned) VALUES (2, 'Remote NAS', 'https://remote', 'admin', 'pass', 1, 1)"
         )
         db.execSQL("INSERT INTO playlists (id, name, createdAtMs, updatedAtMs) VALUES (8, '经典摇滚', 3000, 3000)")
         db.execSQL(
-            "INSERT INTO local_storage_folders (uriString, displayName, dateAdded) VALUES ('content://media/music', 'Music', 1800000000000)",
+            "INSERT INTO local_storage_folders (uriString, displayName, dateAdded) VALUES ('content://media/music', 'Music', 1800000000000)"
         )
 
         // Run MIGRATION_6_7
@@ -334,7 +334,7 @@ class DatabaseMigrationTest {
             ) VALUES (
                 0, 'content://media/music/01 - Artist - Song.flac', '01 - Artist - Song.flac', 25000000, 1600000000, 'FLAC', 0, '/local/primary%3AMusic/', 'Song', 'Artist'
             )
-            """.trimIndent(),
+            """.trimIndent()
         )
         val cursorMediaIndex = db.query("SELECT parsedTitle, parsedArtist, format FROM media_track_index WHERE serverId = 0")
         assertTrue(cursorMediaIndex.moveToFirst())
@@ -364,11 +364,11 @@ class DatabaseMigrationTest {
             ) VALUES (
                 0, '/local/primary%3AMusic/', 1600000000, 'etag123', 1700000000000
             )
-            """.trimIndent(),
+            """.trimIndent()
         )
         val cursorCheckpoint =
             db.query(
-                "SELECT etag, lastScannedMs FROM directory_sync_checkpoint WHERE serverId = 0 AND path = '/local/primary%3AMusic/'",
+                "SELECT etag, lastScannedMs FROM directory_sync_checkpoint WHERE serverId = 0 AND path = '/local/primary%3AMusic/'"
             )
         assertTrue(cursorCheckpoint.moveToFirst())
         assertEquals("etag123", cursorCheckpoint.getString(0))
@@ -411,7 +411,7 @@ class DatabaseMigrationTest {
                                         `createdAtMs` INTEGER NOT NULL,
                                         `updatedAtMs` INTEGER NOT NULL
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                                 db.execSQL(
                                     """
@@ -434,13 +434,13 @@ class DatabaseMigrationTest {
                                         `inactiveReason` TEXT,
                                         FOREIGN KEY(`playlistId`) REFERENCES `playlists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                                 db.execSQL(
-                                    "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId` ON `playlist_tracks` (`playlistId`)",
+                                    "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId` ON `playlist_tracks` (`playlistId`)"
                                 )
                                 db.execSQL(
-                                    "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId_sortOrder` ON `playlist_tracks` (`playlistId`, `sortOrder`)",
+                                    "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId_sortOrder` ON `playlist_tracks` (`playlistId`, `sortOrder`)"
                                 )
 
                                 db.execSQL(
@@ -458,32 +458,32 @@ class DatabaseMigrationTest {
                                         `parsedArtist` TEXT,
                                         PRIMARY KEY(`serverId`, `remotePath`)
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                                 db.execSQL(
-                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_fileName` ON `media_track_index` (`serverId`, `fileName`)",
+                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_fileName` ON `media_track_index` (`serverId`, `fileName`)"
                                 )
                                 db.execSQL(
-                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_fileName` ON `media_track_index` (`fileName`)",
+                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_fileName` ON `media_track_index` (`fileName`)"
                                 )
                                 db.execSQL(
-                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_remotePath` ON `media_track_index` (`serverId`, `remotePath`)",
+                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_serverId_remotePath` ON `media_track_index` (`serverId`, `remotePath`)"
                                 )
                                 db.execSQL(
-                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedTitle` ON `media_track_index` (`parsedTitle`)",
+                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedTitle` ON `media_track_index` (`parsedTitle`)"
                                 )
                                 db.execSQL(
-                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedArtist` ON `media_track_index` (`parsedArtist`)",
+                                    "CREATE INDEX IF NOT EXISTS `index_media_track_index_parsedArtist` ON `media_track_index` (`parsedArtist`)"
                                 )
                             }
 
                             override fun onUpgrade(
                                 db: SupportSQLiteDatabase,
                                 oldVersion: Int,
-                                newVersion: Int,
+                                newVersion: Int
                             ) {}
-                        },
-                    ).build(),
+                        }
+                    ).build()
             )
 
         val db = openHelper.writableDatabase
@@ -497,28 +497,28 @@ class DatabaseMigrationTest {
             """
             INSERT INTO playlist_tracks (id, playlistId, serverId, remotePath, sortOrder, title, artist, album, durationMs, size, format, coverThumbnailPath, cuePath, virtualTrackId, isInactive, inactiveReason)
             VALUES (1, 1, 10, '/music/song1.flac', 0, 'Song 1', 'Artist A', 'Album X', 180000, 25000000, 'FLAC', '/covers/1.jpg', null, null, 0, null)
-            """.trimIndent(),
+            """.trimIndent()
         )
         // 2. CUE virtual track with #cue_ (must be purged)
         db.execSQL(
             """
             INSERT INTO playlist_tracks (id, playlistId, serverId, remotePath, sortOrder, title, artist, album, durationMs, size, format, coverThumbnailPath, cuePath, virtualTrackId, isInactive, inactiveReason)
             VALUES (2, 1, 10, '/music/album.flac#cue_1', 1, 'Virtual Track 1', 'Artist A', 'Album X', 60000, 25000000, 'FLAC', null, '/music/album.cue', 'vt1', 0, null)
-            """.trimIndent(),
+            """.trimIndent()
         )
         // 3. Track with virtualTrackId set (must be purged)
         db.execSQL(
             """
             INSERT INTO playlist_tracks (id, playlistId, serverId, remotePath, sortOrder, title, artist, album, durationMs, size, format, coverThumbnailPath, cuePath, virtualTrackId, isInactive, inactiveReason)
             VALUES (3, 1, 10, '/music/other.flac', 2, 'Virtual Track 2', 'Artist B', 'Album Y', 75000, 30000000, 'FLAC', null, '/music/other.cue', 'vt2', 0, null)
-            """.trimIndent(),
+            """.trimIndent()
         )
         // 4. Another authentic track (must be preserved with exact metadata)
         db.execSQL(
             """
             INSERT INTO playlist_tracks (id, playlistId, serverId, remotePath, sortOrder, title, artist, album, durationMs, size, format, coverThumbnailPath, cuePath, virtualTrackId, isInactive, inactiveReason)
             VALUES (4, 1, 10, '/music/song2.mp3', 3, 'Song 2', 'Artist C', 'Album Z', 210000, 8000000, 'MP3', null, null, null, 1, 'FILE_NOT_FOUND')
-            """.trimIndent(),
+            """.trimIndent()
         )
 
         // Insert media_track_index:
@@ -527,35 +527,35 @@ class DatabaseMigrationTest {
             """
             INSERT INTO media_track_index (serverId, remotePath, fileName, fileSize, lastModified, format, isCue, parentPath, parsedTitle, parsedArtist)
             VALUES (10, '/music/song1.flac', 'song1.flac', 25000000, 1600000000, 'FLAC', 0, '/music/', 'Song 1', 'Artist A')
-            """.trimIndent(),
+            """.trimIndent()
         )
         // 2. CUE virtual track row with isCue = 1 and #cue_ (must be purged)
         db.execSQL(
             """
             INSERT INTO media_track_index (serverId, remotePath, fileName, fileSize, lastModified, format, isCue, parentPath, parsedTitle, parsedArtist)
             VALUES (10, '/music/album.flac#cue_1', 'album.flac', 50000000, 1600000000, 'FLAC', 1, '/music/', 'Virtual 1', 'Artist A')
-            """.trimIndent(),
+            """.trimIndent()
         )
         // 3. CUE sheet file index with isCue = 1 (must be purged)
         db.execSQL(
             """
             INSERT INTO media_track_index (serverId, remotePath, fileName, fileSize, lastModified, format, isCue, parentPath, parsedTitle, parsedArtist)
             VALUES (10, '/music/album.cue', 'album.cue', 1024, 1600000000, 'CUE', 1, '/music/', 'album', null)
-            """.trimIndent(),
+            """.trimIndent()
         )
         // 4. Row with #cue_ in remotePath even if isCue = 0 (must be purged)
         db.execSQL(
             """
             INSERT INTO media_track_index (serverId, remotePath, fileName, fileSize, lastModified, format, isCue, parentPath, parsedTitle, parsedArtist)
             VALUES (10, '/music/bad.flac#cue_2', 'bad.flac', 100, 1600000000, 'FLAC', 0, '/music/', 'Bad', null)
-            """.trimIndent(),
+            """.trimIndent()
         )
         // 5. Authentic track 2 (should be preserved)
         db.execSQL(
             """
             INSERT INTO media_track_index (serverId, remotePath, fileName, fileSize, lastModified, format, isCue, parentPath, parsedTitle, parsedArtist)
             VALUES (10, '/music/song2.mp3', 'song2.mp3', 8000000, 1600000500, 'MP3', 0, '/music/', 'Song 2', 'Artist C')
-            """.trimIndent(),
+            """.trimIndent()
         )
 
         // Run MIGRATION_7_8
@@ -564,7 +564,7 @@ class DatabaseMigrationTest {
         // --- Verify playlist_tracks migration ---
         val cursorTracks =
             db.query(
-                "SELECT id, playlistId, serverId, remotePath, sortOrder, title, artist, album, durationMs, size, format, coverThumbnailPath, isInactive, inactiveReason FROM playlist_tracks ORDER BY id ASC",
+                "SELECT id, playlistId, serverId, remotePath, sortOrder, title, artist, album, durationMs, size, format, coverThumbnailPath, isInactive, inactiveReason FROM playlist_tracks ORDER BY id ASC"
             )
         assertEquals(2, cursorTracks.count)
 
@@ -628,7 +628,7 @@ class DatabaseMigrationTest {
         // --- Verify media_track_index migration ---
         val cursorIndex =
             db.query(
-                "SELECT serverId, remotePath, fileName, fileSize, lastModified, format, parentPath, parsedTitle, parsedArtist FROM media_track_index ORDER BY remotePath ASC",
+                "SELECT serverId, remotePath, fileName, fileSize, lastModified, format, parentPath, parsedTitle, parsedArtist FROM media_track_index ORDER BY remotePath ASC"
             )
         assertEquals(2, cursorIndex.count)
 
@@ -685,7 +685,7 @@ class DatabaseMigrationTest {
             """
             INSERT INTO playlist_tracks (id, playlistId, serverId, remotePath, sortOrder, title, artist, album, durationMs, size, format, coverThumbnailPath, isInactive, inactiveReason)
             VALUES (10, 1, 10, '/music/song3.flac', 4, 'Song 3', 'Artist D', 'Album W', 300000, 35000000, 'FLAC', null, 0, null)
-            """.trimIndent(),
+            """.trimIndent()
         )
         val cursorWriteTest = db.query("SELECT title FROM playlist_tracks WHERE id = 10")
         assertTrue(cursorWriteTest.moveToFirst())
@@ -723,7 +723,7 @@ class DatabaseMigrationTest {
                                         `parsedArtist` TEXT,
                                         PRIMARY KEY(`serverId`, `remotePath`)
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                                 db.execSQL(
                                     """
@@ -735,23 +735,23 @@ class DatabaseMigrationTest {
                                         `lastScannedMs` INTEGER NOT NULL,
                                         PRIMARY KEY(`serverId`, `path`)
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                                 db.execSQL(
-                                    "CREATE INDEX IF NOT EXISTS `index_directory_sync_checkpoint_serverId` ON `directory_sync_checkpoint` (`serverId`)",
+                                    "CREATE INDEX IF NOT EXISTS `index_directory_sync_checkpoint_serverId` ON `directory_sync_checkpoint` (`serverId`)"
                                 )
                                 db.execSQL(
-                                    "CREATE INDEX IF NOT EXISTS `index_directory_sync_checkpoint_serverId_path` ON `directory_sync_checkpoint` (`serverId`, `path`)",
+                                    "CREATE INDEX IF NOT EXISTS `index_directory_sync_checkpoint_serverId_path` ON `directory_sync_checkpoint` (`serverId`, `path`)"
                                 )
                             }
 
                             override fun onUpgrade(
                                 db: SupportSQLiteDatabase,
                                 oldVersion: Int,
-                                newVersion: Int,
+                                newVersion: Int
                             ) {}
-                        },
-                    ).build(),
+                        }
+                    ).build()
             )
 
         val db = openHelper.writableDatabase
@@ -761,14 +761,14 @@ class DatabaseMigrationTest {
             """
             INSERT INTO media_track_index (serverId, remotePath, fileName, fileSize, lastModified, format, parentPath, parsedTitle, parsedArtist)
             VALUES (0, 'content://media/local/1', 'local.flac', 1000, 1000, 'FLAC', '/local/Music/', 'Local Song', 'Local Artist')
-            """.trimIndent(),
+            """.trimIndent()
         )
         // Pre-v9 poisoned checkpoint written for unvisited subdirectory
         db.execSQL(
             """
             INSERT INTO directory_sync_checkpoint (serverId, path, lastModified, etag, lastScannedMs)
             VALUES (1, '/百度/', 1794304800000, 'etag-baidu', 1794304800000)
-            """.trimIndent(),
+            """.trimIndent()
         )
 
         AppDatabase.MIGRATION_8_9.migrate(db)
@@ -798,7 +798,7 @@ class DatabaseMigrationTest {
             """
             INSERT INTO directory_sync_checkpoint (serverId, path, lastModified, etag, lastScannedMs, isScanned)
             VALUES (1, '/百度/', 0, null, 2000, 0)
-            """.trimIndent(),
+            """.trimIndent()
         )
         val cursorNew = db.query("SELECT isScanned FROM directory_sync_checkpoint WHERE serverId = 1 AND path = '/百度/'")
         assertTrue(cursorNew.moveToFirst())
@@ -836,17 +836,17 @@ class DatabaseMigrationTest {
                                         `lyrics` TEXT,
                                         PRIMARY KEY(`serverId`, `remotePath`)
                                     )
-                                    """.trimIndent(),
+                                    """.trimIndent()
                                 )
                             }
 
                             override fun onUpgrade(
                                 db: SupportSQLiteDatabase,
                                 oldVersion: Int,
-                                newVersion: Int,
+                                newVersion: Int
                             ) {}
-                        },
-                    ).build(),
+                        }
+                    ).build()
             )
 
         val db = openHelper.writableDatabase
@@ -855,7 +855,7 @@ class DatabaseMigrationTest {
             """
             INSERT INTO track_metadata (serverId, remotePath, title, artist, album, trackNumber, durationMs, coverThumbnailPath, lyrics)
             VALUES (1, '/music/song.mp3', 'Song Title', 'Artist', 'Album', 3, 210000, '/covers/thumb.jpg', '[00:01.00]Embedded lyrics')
-            """.trimIndent(),
+            """.trimIndent()
         )
 
         AppDatabase.MIGRATION_9_10.migrate(db)
@@ -885,6 +885,103 @@ class DatabaseMigrationTest {
         val cursorUpdated = db.query("SELECT companionLyricsPath FROM track_metadata WHERE serverId = 1")
         assertTrue(cursorUpdated.moveToFirst())
         assertEquals("/music/song.lrc", cursorUpdated.getString(0))
+        cursorUpdated.close()
+
+        db.close()
+    }
+
+    @Test
+    fun migration_10_to_11_addsPhysicalSpecsColumnsPreservingExistingData() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val dbFile = context.getDatabasePath("test_migration_10_11.db")
+        dbFile.delete()
+
+        val openHelper =
+            FrameworkSQLiteOpenHelperFactory().create(
+                androidx.sqlite.db.SupportSQLiteOpenHelper.Configuration
+                    .builder(context)
+                    .name("test_migration_10_11.db")
+                    .callback(
+                        object : androidx.sqlite.db.SupportSQLiteOpenHelper.Callback(10) {
+                            override fun onCreate(db: SupportSQLiteDatabase) {
+                                db.execSQL(
+                                    """
+                                    CREATE TABLE IF NOT EXISTS `track_metadata` (
+                                        `serverId` INTEGER NOT NULL,
+                                        `remotePath` TEXT NOT NULL,
+                                        `title` TEXT,
+                                        `artist` TEXT,
+                                        `album` TEXT,
+                                        `trackNumber` INTEGER,
+                                        `durationMs` INTEGER NOT NULL,
+                                        `coverThumbnailPath` TEXT,
+                                        `lyrics` TEXT,
+                                        `companionLyricsPath` TEXT,
+                                        PRIMARY KEY(`serverId`, `remotePath`)
+                                    )
+                                    """.trimIndent()
+                                )
+                            }
+
+                            override fun onUpgrade(
+                                db: SupportSQLiteDatabase,
+                                oldVersion: Int,
+                                newVersion: Int
+                            ) {}
+                        }
+                    ).build()
+            )
+
+        val db = openHelper.writableDatabase
+
+        db.execSQL(
+            """
+            INSERT INTO track_metadata (serverId, remotePath, title, artist, album, trackNumber, durationMs, coverThumbnailPath, lyrics, companionLyricsPath)
+            VALUES (1, '/music/song.flac', 'Song Title', 'Artist', 'Album', 1, 240000, '/covers/song.jpg', null, '/music/song.lrc')
+            """.trimIndent()
+        )
+
+        AppDatabase.MIGRATION_10_11.migrate(db)
+
+        // Verify all 4 physical specification columns exist
+        val cursorCols = db.query("PRAGMA table_info('track_metadata')")
+        val cols = mutableListOf<String>()
+        while (cursorCols.moveToNext()) {
+            cols.add(cursorCols.getString(1))
+        }
+        cursorCols.close()
+        assertTrue("sampleRate column must exist in v11", cols.contains("sampleRate"))
+        assertTrue("bitDepth column must exist in v11", cols.contains("bitDepth"))
+        assertTrue("bitrateKbps column must exist in v11", cols.contains("bitrateKbps"))
+        assertTrue("channels column must exist in v11", cols.contains("channels"))
+
+        // Verify existing record is preserved and physical spec columns default to null
+        val cursorData =
+            db.query(
+                "SELECT title, sampleRate, bitDepth, bitrateKbps, channels, companionLyricsPath FROM track_metadata WHERE serverId = 1"
+            )
+        assertTrue(cursorData.moveToFirst())
+        assertEquals("Song Title", cursorData.getString(0))
+        assertNull("sampleRate defaults to null for v10 records", cursorData.getString(1))
+        assertNull("bitDepth defaults to null for v10 records", cursorData.getString(2))
+        assertNull("bitrateKbps defaults to null for v10 records", cursorData.getString(3))
+        assertNull("channels defaults to null for v10 records", cursorData.getString(4))
+        assertEquals("/music/song.lrc", cursorData.getString(5))
+        cursorData.close()
+
+        // Verify columns are writable with real physical specs
+        db.execSQL(
+            "UPDATE track_metadata SET sampleRate = 96000, bitDepth = 24, bitrateKbps = 2450, channels = 2 WHERE serverId = 1"
+        )
+        val cursorUpdated =
+            db.query(
+                "SELECT sampleRate, bitDepth, bitrateKbps, channels FROM track_metadata WHERE serverId = 1"
+            )
+        assertTrue(cursorUpdated.moveToFirst())
+        assertEquals(96000, cursorUpdated.getInt(0))
+        assertEquals(24, cursorUpdated.getInt(1))
+        assertEquals(2450, cursorUpdated.getInt(2))
+        assertEquals(2, cursorUpdated.getInt(3))
         cursorUpdated.close()
 
         db.close()

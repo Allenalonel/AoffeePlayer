@@ -18,6 +18,7 @@ import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.TrackMetadataRepository
+import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -33,7 +34,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import java.io.File
 
 class TrackMetadataRepositoryImpl internal constructor(
     private val trackMetadataDao: TrackMetadataDao,
@@ -45,7 +45,7 @@ class TrackMetadataRepositoryImpl internal constructor(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val repositoryScope: CoroutineScope = CoroutineScope(SupervisorJob() + ioDispatcher),
     private val serverLookup: (suspend (Long) -> WebDavServer?)? = null,
-    private val context: Context? = null,
+    private val context: Context? = null
 ) : TrackMetadataRepository {
     constructor(
         trackMetadataDao: TrackMetadataDao,
@@ -56,7 +56,7 @@ class TrackMetadataRepositoryImpl internal constructor(
         ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
         repositoryScope: CoroutineScope = CoroutineScope(SupervisorJob() + ioDispatcher),
         serverLookup: (suspend (Long) -> WebDavServer?)? = null,
-        context: Context? = null,
+        context: Context? = null
     ) : this(
         trackMetadataDao = trackMetadataDao,
         trackMetadataResolver = DefaultTrackMetadataResolver(webDavClient, coverArtStorage, ioDispatcher, context),
@@ -67,7 +67,7 @@ class TrackMetadataRepositoryImpl internal constructor(
         ioDispatcher = ioDispatcher,
         repositoryScope = repositoryScope,
         serverLookup = serverLookup,
-        context = context,
+        context = context
     )
 
     private val semaphore = Semaphore(maxConcurrency)
@@ -104,7 +104,7 @@ class TrackMetadataRepositoryImpl internal constructor(
 
     private fun triggerSelfHealing(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ) {
         val key = "$serverId:$remotePath"
         val activeJob = inFlightSelfHealing[key]
@@ -117,7 +117,7 @@ class TrackMetadataRepositoryImpl internal constructor(
             repositoryScope.launch(start = CoroutineStart.LAZY) {
                 try {
                     val server = findServer(serverId) ?: return@launch
-                    val fileName = remotePath.substringAfterLast('/').ifBlank { "track" }
+                    val fileName = TrackIdentity.extractFileName(remotePath).ifBlank { "track" }
                     val file = RemoteFile(name = fileName, path = remotePath)
                     val resolved =
                         semaphore.withPermit {
@@ -164,7 +164,7 @@ class TrackMetadataRepositoryImpl internal constructor(
 
     override fun getMetadataForPathsFlow(
         serverId: Long,
-        remotePaths: List<String>,
+        remotePaths: List<String>
     ): Flow<List<TrackMetadata>> =
         trackMetadataDao.getMetadataForPathsFlow(serverId, remotePaths).map { list ->
             list.mapNotNull { mapAndSelfHeal(it) }
@@ -172,7 +172,7 @@ class TrackMetadataRepositoryImpl internal constructor(
 
     override fun getMetadataFlow(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ): Flow<TrackMetadata?> =
         trackMetadataDao.getMetadataFlow(serverId, remotePath).map {
             mapAndSelfHeal(it)
@@ -180,7 +180,7 @@ class TrackMetadataRepositoryImpl internal constructor(
 
     override suspend fun getCachedMetadata(
         serverId: Long,
-        remotePath: String,
+        remotePath: String
     ): TrackMetadata? =
         withContext(ioDispatcher) {
             mapAndSelfHeal(trackMetadataDao.getMetadata(serverId, remotePath))
@@ -189,7 +189,7 @@ class TrackMetadataRepositoryImpl internal constructor(
     override suspend fun resolveMetadata(
         server: WebDavServer,
         files: List<RemoteFile>,
-        forceRefresh: Boolean,
+        forceRefresh: Boolean
     ) {
         resolveMetadata(server, files, forceRefresh, null, null)
     }
@@ -198,7 +198,7 @@ class TrackMetadataRepositoryImpl internal constructor(
         server: WebDavServer,
         files: List<RemoteFile>,
         forceRefresh: Boolean,
-        directoryFiles: Collection<RemoteFile>?,
+        directoryFiles: Collection<RemoteFile>?
     ) {
         resolveMetadata(server, files, forceRefresh, directoryFiles, null)
     }
@@ -208,7 +208,7 @@ class TrackMetadataRepositoryImpl internal constructor(
         files: List<RemoteFile>,
         forceRefresh: Boolean,
         directoryFiles: Collection<RemoteFile>?,
-        logicalDirectoryPath: String?,
+        logicalDirectoryPath: String?
     ) = withContext(ioDispatcher) {
         knownServers[server.id] = server
         val audioFiles = files.filter { it.isAudio }
@@ -251,9 +251,13 @@ class TrackMetadataRepositoryImpl internal constructor(
 
                         val existing = cachedEntityMap[file.path]
                         val effectiveCompanionLyrics = metadata.companionLyricsPath ?: existing?.companionLyricsPath
+                        val effectiveCoverThumbnailPath = metadata.coverThumbnailPath ?: existing?.coverThumbnailPath
                         val entity =
                             TrackMetadataEntity.fromDomain(
-                                metadata.copy(companionLyricsPath = effectiveCompanionLyrics),
+                                metadata.copy(
+                                    companionLyricsPath = effectiveCompanionLyrics,
+                                    coverThumbnailPath = effectiveCoverThumbnailPath
+                                )
                             )
                         val batchToWrite: List<TrackMetadataEntity>? =
                             synchronized(buffer) {
@@ -293,7 +297,7 @@ class TrackMetadataRepositoryImpl internal constructor(
         server: WebDavServer,
         files: List<RemoteFile>,
         directoryFiles: Collection<RemoteFile>?,
-        logicalDirectoryPath: String?,
+        logicalDirectoryPath: String?
     ): Map<String, TrackMetadata> =
         withContext(ioDispatcher) {
             trackMetadataResolver.matchCompanionManifest(server, files, directoryFiles, logicalDirectoryPath)
@@ -301,18 +305,18 @@ class TrackMetadataRepositoryImpl internal constructor(
 
     override suspend fun resolveSingleTrackMetadata(
         server: WebDavServer,
-        file: RemoteFile,
+        file: RemoteFile
     ): TrackMetadata = resolveSingleTrackMetadata(server, file, null)
 
     override suspend fun resolveSingleTrackMetadata(
         server: WebDavServer,
         file: RemoteFile,
-        directoryFiles: Collection<RemoteFile>?,
+        directoryFiles: Collection<RemoteFile>?
     ): TrackMetadata =
         withContext(ioDispatcher) {
             knownServers[server.id] = server
             val entity = trackMetadataDao.getMetadata(server.id, file.path)
-            if (entity != null) {
+            if (entity != null && (entity.sampleRate != null || entity.bitDepth != null)) {
                 val thumbPath = entity.coverThumbnailPath
                 if (thumbPath == null || coverArtStorage.isValidThumbnailFile(thumbPath)) {
                     return@withContext entity.toDomain()
@@ -337,7 +341,7 @@ class TrackMetadataRepositoryImpl internal constructor(
                     trackNumber = null,
                     durationMs = 0L,
                     coverThumbnailPath = null,
-                    lyrics = null,
+                    lyrics = null
                 )
             }
         }
@@ -345,7 +349,7 @@ class TrackMetadataRepositoryImpl internal constructor(
     override suspend fun batchQueryAndHealMetadata(
         identities: List<TrackIdentity>,
         eligibleForHealing: Set<TrackIdentity>,
-        onCoverHealed: (suspend (TrackIdentity, String) -> Unit)?,
+        onCoverHealed: (suspend (TrackIdentity, String) -> Unit)?
     ): Map<TrackIdentity, TrackMetadata> =
         withContext(ioDispatcher) {
             if (identities.isEmpty()) return@withContext emptyMap()
@@ -386,7 +390,7 @@ class TrackMetadataRepositoryImpl internal constructor(
 
     private fun scheduleCoverHealing(
         identity: TrackIdentity,
-        onCoverHealed: (suspend (TrackIdentity, String) -> Unit)?,
+        onCoverHealed: (suspend (TrackIdentity, String) -> Unit)?
     ) {
         val key = identity.compositeKey
         val existing = inFlightSelfHealing[key]
@@ -405,7 +409,7 @@ class TrackMetadataRepositoryImpl internal constructor(
                                     ?: webDavServerDao?.getServerById(identity.serverId)?.toDomain()
                             } ?: return@withPermit
 
-                        val fileName = identity.remotePath.substringAfterLast('/').ifBlank { "track" }
+                        val fileName = TrackIdentity.extractFileName(identity.remotePath).ifBlank { "track" }
                         val file = RemoteFile(name = fileName, path = identity.remotePath)
                         val resolved = trackMetadataResolver.resolve(server, file)
                         val newCover = resolved?.coverThumbnailPath
@@ -451,7 +455,7 @@ class TrackMetadataRepositoryImpl internal constructor(
 
     override suspend fun resolveLyrics(
         server: WebDavServer,
-        track: AudioTrack,
+        track: AudioTrack
     ): Lyrics =
         withContext(ioDispatcher) {
             val cacheKey = "${server.id}:${track.remotePath}"
@@ -512,7 +516,7 @@ class TrackMetadataRepositoryImpl internal constructor(
                             resolvedLyricsCache[cacheKey] = parsed
                             if (cachedMetadata != null) {
                                 trackMetadataDao.insertOrUpdate(
-                                    TrackMetadataEntity.fromDomain(cachedMetadata.copy(companionLyricsPath = lrcPath)),
+                                    TrackMetadataEntity.fromDomain(cachedMetadata.copy(companionLyricsPath = lrcPath))
                                 )
                             }
                             return@withContext parsed
@@ -521,8 +525,8 @@ class TrackMetadataRepositoryImpl internal constructor(
                         if (cachedMetadata != null) {
                             trackMetadataDao.insertOrUpdate(
                                 TrackMetadataEntity.fromDomain(
-                                    cachedMetadata.copy(companionLyricsPath = DefaultTrackMetadataResolver.NO_COMPANION_LRC),
-                                ),
+                                    cachedMetadata.copy(companionLyricsPath = DefaultTrackMetadataResolver.NO_COMPANION_LRC)
+                                )
                             )
                         }
                     }
@@ -548,8 +552,10 @@ class TrackMetadataRepositoryImpl internal constructor(
             // 2b. If cachedMetadata was null (cold track never scanned), resolve on demand
             if (cachedMetadata == null) {
                 // If local filesystem track, check companion file on disk directly
-                if (isLocal && (track.remotePath.startsWith("file://") ||
-                        (!track.remotePath.startsWith("content://") && !track.remotePath.contains("://")))
+                if (isLocal && (
+                        track.remotePath.startsWith("file://") ||
+                            (!track.remotePath.startsWith("content://") && !track.remotePath.contains("://"))
+                        )
                 ) {
                     try {
                         val cleanPath = track.remotePath.removePrefix("file://")
@@ -572,7 +578,7 @@ class TrackMetadataRepositoryImpl internal constructor(
                 }
 
                 try {
-                    val file = RemoteFile(name = track.title, path = track.remotePath)
+                    val file = RemoteFile(name = TrackIdentity.extractFileName(track.remotePath).ifBlank { track.title }, path = track.remotePath)
                     val resolved = resolveSingleTrackMetadata(server, file)
                     val resolvedCompanion = resolved.companionLyricsPath
                     if (!resolvedCompanion.isNullOrBlank()) {

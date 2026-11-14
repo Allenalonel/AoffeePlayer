@@ -30,13 +30,11 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlaybackSessionResumptionTest {
@@ -57,7 +55,7 @@ class PlaybackSessionResumptionTest {
             pathPrefix = "/webdav",
             username = "admin",
             password = "password123",
-            isDefault = true,
+            isDefault = true
         )
 
     private val track1 =
@@ -71,7 +69,7 @@ class PlaybackSessionResumptionTest {
             durationMs = 210000L,
             size = 8000000L,
             format = AudioFormat.MP3,
-            coverThumbnailPath = "/covers/1.png",
+            coverThumbnailPath = "/covers/1.png"
         )
 
     private val track2 =
@@ -85,7 +83,7 @@ class PlaybackSessionResumptionTest {
             durationMs = 330000L,
             size = 25000000L,
             format = AudioFormat.FLAC,
-            coverThumbnailPath = "/covers/2.png",
+            coverThumbnailPath = "/covers/2.png"
         )
 
     @Before
@@ -109,14 +107,14 @@ class PlaybackSessionResumptionTest {
 
     private fun createSession(
         store: com.webdav.player.domain.repository.PlaybackSessionStore = fakeStore,
-        metadataRepo: TrackMetadataRepository? = null,
+        metadataRepo: TrackMetadataRepository? = null
     ): MusicPlayerAppSessionImpl =
         MusicPlayerAppSessionImpl(
             playerEngine = fakeEngine,
             serverRepository = fakeServerRepo,
             trackMetadataRepository = metadataRepo,
             sessionStore = store,
-            coroutineScope = sessionScope,
+            coroutineScope = sessionScope
         )
 
     private val darkSideTrack =
@@ -129,7 +127,7 @@ class PlaybackSessionResumptionTest {
             album = "The Dark Side of the Moon",
             durationMs = 2580000L,
             size = 350000000L,
-            format = AudioFormat.FLAC,
+            format = AudioFormat.FLAC
         )
 
     @Test
@@ -141,7 +139,7 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 1,
                     positionMs = 75000L,
-                    playbackMode = PlaybackMode.SINGLE_LOOP,
+                    playbackMode = PlaybackMode.SINGLE_LOOP
                 )
             fakeStore.savedSession = savedSession
 
@@ -174,7 +172,7 @@ class PlaybackSessionResumptionTest {
                     currentTrackIndex = 0,
                     positionMs = 30000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cleanExit = false,
+                    cleanExit = false
                 )
             fakeStore.savedSession = savedSession
 
@@ -199,7 +197,7 @@ class PlaybackSessionResumptionTest {
                     currentTrackIndex = 0,
                     positionMs = 30000L,
                     playbackMode = PlaybackMode.LIST_LOOP,
-                    cleanExit = false,
+                    cleanExit = false
                 )
             fakeStore.savedSession = savedSession
 
@@ -222,7 +220,7 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 1,
                     positionMs = 75000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = savedSession
 
@@ -246,7 +244,7 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 1,
                     positionMs = 75000L,
-                    playbackMode = PlaybackMode.SINGLE_LOOP,
+                    playbackMode = PlaybackMode.SINGLE_LOOP
                 )
             fakeStore.savedSession = savedSession
 
@@ -278,7 +276,7 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 0,
                     positionMs = 20000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = savedSession
 
@@ -314,10 +312,10 @@ class PlaybackSessionResumptionTest {
                     path = "/Music/Jazz/",
                     name = "Jazz",
                     files =
-                        listOf(
-                            RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L),
-                            RemoteFile(name = "track2.flac", path = "/Music/Jazz/track2.flac", size = 25000000L),
-                        ),
+                    listOf(
+                        RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L),
+                        RemoteFile(name = "track2.flac", path = "/Music/Jazz/track2.flac", size = 25000000L)
+                    )
                 )
             session.playDirectoryTrack(testServer, directory, directory.files[1])
             fakeEngine.seekTo(42000L)
@@ -347,7 +345,7 @@ class PlaybackSessionResumptionTest {
                     serverRepository = fakeServerRepo,
                     sessionStore = fakeStore,
                     coroutineScope = sessionScope,
-                    periodicDispatcher = testDispatcher,
+                    periodicDispatcher = testDispatcher
                 )
 
             val directory =
@@ -355,9 +353,9 @@ class PlaybackSessionResumptionTest {
                     path = "/Music/Jazz/",
                     name = "Jazz",
                     files =
-                        listOf(
-                            RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L),
-                        ),
+                    listOf(
+                        RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L)
+                    )
                 )
             session.playDirectoryTrack(testServer, directory, directory.files[0])
             runCurrent()
@@ -386,10 +384,10 @@ class PlaybackSessionResumptionTest {
                     path = "/Music/Jazz/",
                     name = "Jazz",
                     files =
-                        listOf(
-                            RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L),
-                            RemoteFile(name = "track2.flac", path = "/Music/Jazz/track2.flac", size = 25000000L),
-                        ),
+                    listOf(
+                        RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L),
+                        RemoteFile(name = "track2.flac", path = "/Music/Jazz/track2.flac", size = 25000000L)
+                    )
                 )
             // 1. User starts playing track 1
             session.playDirectoryTrack(testServer, directory, directory.files[0])
@@ -418,10 +416,10 @@ class PlaybackSessionResumptionTest {
                     path = "/Music/Jazz/",
                     name = "Jazz",
                     files =
-                        listOf(
-                            RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L),
-                            RemoteFile(name = "track2.flac", path = "/Music/Jazz/track2.flac", size = 25000000L),
-                        ),
+                    listOf(
+                        RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L),
+                        RemoteFile(name = "track2.flac", path = "/Music/Jazz/track2.flac", size = 25000000L)
+                    )
                 )
             // Start playing track 2 (index 1)
             session.playDirectoryTrack(testServer, directory, directory.files[1])
@@ -446,11 +444,11 @@ class PlaybackSessionResumptionTest {
                     path = "/Music/Jazz/",
                     name = "Jazz",
                     files =
-                        listOf(
-                            RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L),
-                            RemoteFile(name = "track2.flac", path = "/Music/Jazz/track2.flac", size = 25000000L),
-                            RemoteFile(name = "track3.mp3", path = "/Music/Jazz/track3.mp3", size = 12000000L),
-                        ),
+                    listOf(
+                        RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L),
+                        RemoteFile(name = "track2.flac", path = "/Music/Jazz/track2.flac", size = 25000000L),
+                        RemoteFile(name = "track3.mp3", path = "/Music/Jazz/track3.mp3", size = 12000000L)
+                    )
                 )
             session.playDirectoryTrack(testServer, directory, directory.files[0])
             runCurrent()
@@ -474,10 +472,10 @@ class PlaybackSessionResumptionTest {
                     path = "/Music/Jazz/",
                     name = "Jazz",
                     files =
-                        listOf(
-                            RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L),
-                            RemoteFile(name = "track2.flac", path = "/Music/Jazz/track2.flac", size = 25000000L),
-                        ),
+                    listOf(
+                        RemoteFile(name = "track1.mp3", path = "/Music/Jazz/track1.mp3", size = 8000000L),
+                        RemoteFile(name = "track2.flac", path = "/Music/Jazz/track2.flac", size = 25000000L)
+                    )
                 )
             session.playDirectoryTrack(testServer, directory, directory.files[0])
             runCurrent()
@@ -500,7 +498,7 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(track1),
                     currentTrackIndex = 0,
                     positionMs = 10000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = nonExistentSession
 
@@ -511,7 +509,7 @@ class PlaybackSessionResumptionTest {
                     playerEngine = fakeEngine,
                     serverRepository = emptyServerRepo,
                     sessionStore = fakeStore,
-                    coroutineScope = sessionScope,
+                    coroutineScope = sessionScope
                 )
             advanceUntilIdle()
 
@@ -546,7 +544,7 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(track1),
                     currentTrackIndex = 0,
                     positionMs = 10000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = savedSession
 
@@ -582,7 +580,7 @@ class PlaybackSessionResumptionTest {
                     serverId = 1L,
                     remotePath = track1.remotePath,
                     title = track1.title,
-                    coverThumbnailPath = null,
+                    coverThumbnailPath = null
                 )
 
             val savedSession =
@@ -591,14 +589,14 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(trackWithDeadArt),
                     currentTrackIndex = 0,
                     positionMs = 15000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = savedSession
 
             session =
                 createSession(
                     store = fakeStore,
-                    metadataRepo = fakeMetadataRepo,
+                    metadataRepo = fakeMetadataRepo
                 )
             advanceUntilIdle()
 
@@ -613,7 +611,7 @@ class PlaybackSessionResumptionTest {
             assertEquals(1, fakeEngine.loadTrackCount)
             assertNull(
                 "PlayerEngine must receive null artwork URI avoiding FileNotFoundException crashes",
-                fakeEngine.loadedTrack?.coverThumbnailPath,
+                fakeEngine.loadedTrack?.coverThumbnailPath
             )
         }
 
@@ -632,7 +630,7 @@ class PlaybackSessionResumptionTest {
                     remotePath = track1.remotePath,
                     title = "Autumn Leaves",
                     artist = "Bill Evans",
-                    coverThumbnailPath = null,
+                    coverThumbnailPath = null
                 )
 
             val savedSession =
@@ -641,14 +639,14 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(trackWithDeadArt),
                     currentTrackIndex = 0,
                     positionMs = 20000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = savedSession
 
             session =
                 createSession(
                     store = fakeStore,
-                    metadataRepo = fakeMetadataRepo,
+                    metadataRepo = fakeMetadataRepo
                 )
             advanceUntilIdle()
 
@@ -670,9 +668,9 @@ class PlaybackSessionResumptionTest {
                         remotePath = track1.remotePath,
                         title = "Autumn Leaves",
                         artist = "Bill Evans",
-                        coverThumbnailPath = healedCoverPath,
-                    ),
-                ),
+                        coverThumbnailPath = healedCoverPath
+                    )
+                )
             )
             advanceUntilIdle()
 
@@ -705,14 +703,14 @@ class PlaybackSessionResumptionTest {
                     serverId = 1L,
                     remotePath = t1.remotePath,
                     title = t1.title,
-                    coverThumbnailPath = null,
+                    coverThumbnailPath = null
                 )
             fakeMetadataRepo.cachedMetadataMap[t2.remotePath] =
                 TrackMetadata(
                     serverId = 1L,
                     remotePath = t2.remotePath,
                     title = t2.title,
-                    coverThumbnailPath = null,
+                    coverThumbnailPath = null
                 )
 
             // Track 2 is active track (index 1)
@@ -722,14 +720,14 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(t1, t2),
                     currentTrackIndex = 1,
                     positionMs = 30000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = savedSession
 
             session =
                 createSession(
                     store = fakeStore,
-                    metadataRepo = fakeMetadataRepo,
+                    metadataRepo = fakeMetadataRepo
                 )
 
             // Complete restoration
@@ -747,15 +745,15 @@ class PlaybackSessionResumptionTest {
                         serverId = 1L,
                         remotePath = t1.remotePath,
                         title = t1.title,
-                        coverThumbnailPath = healedCover1,
+                        coverThumbnailPath = healedCover1
                     ),
                     TrackMetadata(
                         serverId = 1L,
                         remotePath = t2.remotePath,
                         title = t2.title,
-                        coverThumbnailPath = healedCover2,
-                    ),
-                ),
+                        coverThumbnailPath = healedCover2
+                    )
+                )
             )
             advanceUntilIdle()
 
@@ -778,7 +776,7 @@ class PlaybackSessionResumptionTest {
                     serverId = 1L,
                     remotePath = track1.remotePath,
                     title = track1.title,
-                    coverThumbnailPath = validPath,
+                    coverThumbnailPath = validPath
                 )
 
             val savedSession =
@@ -787,14 +785,14 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(trackWithValidArt),
                     currentTrackIndex = 0,
                     positionMs = 10000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = savedSession
 
             session =
                 createSession(
                     store = fakeStore,
-                    metadataRepo = fakeMetadataRepo,
+                    metadataRepo = fakeMetadataRepo
                 )
             advanceUntilIdle()
 
@@ -816,41 +814,41 @@ class PlaybackSessionResumptionTest {
 
         override fun getMetadataForPathsFlow(
             serverId: Long,
-            remotePaths: List<String>,
+            remotePaths: List<String>
         ): Flow<List<TrackMetadata>> = metadataFlow.map { list -> list.filter { it.remotePath in remotePaths } }
 
         override fun getMetadataFlow(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): Flow<TrackMetadata?> = metadataFlow.map { list -> list.firstOrNull { it.remotePath == remotePath } }
 
         override suspend fun getCachedMetadata(
             serverId: Long,
-            remotePath: String,
+            remotePath: String
         ): TrackMetadata? = cachedMetadataMap[remotePath] ?: metadataFlow.value.firstOrNull { it.remotePath == remotePath }
 
         override suspend fun resolveMetadata(
             server: WebDavServer,
             files: List<RemoteFile>,
-            forceRefresh: Boolean,
+            forceRefresh: Boolean
         ) {}
 
         override suspend fun resolveSingleTrackMetadata(
             server: WebDavServer,
-            file: RemoteFile,
+            file: RemoteFile
         ): TrackMetadata {
             resolveSingleTrackCalls.add(file)
             return singleTrackResolver?.invoke(server, file)
                 ?: TrackMetadata(
                     serverId = server.id,
                     remotePath = file.path,
-                    title = file.name,
+                    title = file.name
                 )
         }
     }
 
     private class TestServerRepository(
-        servers: List<WebDavServer>,
+        servers: List<WebDavServer>
     ) : ServerRepository {
         private val serversFlow = MutableStateFlow(servers)
 
@@ -889,7 +887,7 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(darkSideTrack),
                     currentTrackIndex = 0,
                     positionMs = 98000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = savedSession
 
@@ -924,7 +922,7 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(darkSideTrack),
                     currentTrackIndex = 0,
                     positionMs = 98000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = savedSession
 
@@ -946,7 +944,7 @@ class PlaybackSessionResumptionTest {
             assertEquals(
                 darkSideTrack.title,
                 session.sessionState.value.currentTrack
-                    ?.title,
+                    ?.title
             )
 
             session.pause()
@@ -962,7 +960,7 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(darkSideTrack),
                     currentTrackIndex = 0,
                     positionMs = 98000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = savedSession
 
@@ -1020,7 +1018,7 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 1,
                     positionMs = 42_000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
             fakeStore.savedSession = savedSession
 
@@ -1050,7 +1048,7 @@ class PlaybackSessionResumptionTest {
 
                     override suspend fun savePosition(
                         positionMs: Long,
-                        isCleanExit: Boolean,
+                        isCleanExit: Boolean
                     ) {
                         fakeStore.savePosition(positionMs, isCleanExit)
                     }
@@ -1070,7 +1068,7 @@ class PlaybackSessionResumptionTest {
                     queueTracks = listOf(track1, track2),
                     currentTrackIndex = 0,
                     positionMs = 12_000L,
-                    playbackMode = PlaybackMode.LIST_LOOP,
+                    playbackMode = PlaybackMode.LIST_LOOP
                 )
 
             session = createSession(store = countingStore)

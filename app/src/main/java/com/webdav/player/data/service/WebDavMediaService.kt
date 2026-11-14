@@ -40,14 +40,14 @@ class WebDavMediaService : MediaSessionService() {
 
     fun startForegroundSafely(
         notification: Notification,
-        notificationId: Int = WebDavNotificationProvider.NOTIFICATION_ID,
+        notificationId: Int = WebDavNotificationProvider.NOTIFICATION_ID
     ): Boolean =
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(
                     notificationId,
                     notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
                 )
             } else {
                 startForeground(notificationId, notification)
@@ -68,7 +68,7 @@ class WebDavMediaService : MediaSessionService() {
     override fun onStartCommand(
         intent: Intent?,
         flags: Int,
-        startId: Int,
+        startId: Int
     ): Int {
         val host = sessionHost ?: PlaybackSessionHost.getInstance(applicationContext)
 
@@ -76,7 +76,7 @@ class WebDavMediaService : MediaSessionService() {
             WebDavNotificationProvider.ACTION_PLAY,
             WebDavNotificationProvider.ACTION_NEXT,
             WebDavNotificationProvider.ACTION_PREVIOUS,
-            Intent.ACTION_MEDIA_BUTTON,
+            Intent.ACTION_MEDIA_BUTTON
             -> {
                 val notification = host.buildCurrentNotification()
                 if (startForegroundSafely(notification, host.notificationProvider.notificationId)) {

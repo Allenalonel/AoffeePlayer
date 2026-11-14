@@ -1,9 +1,6 @@
 package com.webdav.player.ui.browser.components
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.webdav.player.domain.model.AudioQualityBadge
@@ -52,7 +48,7 @@ fun AudioTrackItemRow(
     isSelected: Boolean = false,
     onPlayNext: () -> Unit = {},
     onAddToPlaylist: () -> Unit = {},
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     var showDetailSheet by remember { mutableStateOf(false) }
     val badgeInfo = remember(file, metadata) { file.resolveBadge(metadata) }
@@ -65,7 +61,7 @@ fun AudioTrackItemRow(
             onPlay = {
                 showDetailSheet = false
                 onClick()
-            },
+            }
         )
     }
 
@@ -75,7 +71,7 @@ fun AudioTrackItemRow(
             remember(file, metadata) {
                 AudioTrackRowDefaults.formatTrackSubtitle(
                     artist = metadata?.displayArtist(),
-                    album = metadata?.album,
+                    album = metadata?.album
                 )
             }
         val durationStr =
@@ -101,17 +97,19 @@ fun AudioTrackItemRow(
             when {
                 isSelectionMode -> onLongClick
                 onLongClick != null -> onLongClick
-                file.isAudio -> { { showDetailSheet = true } }
+                file.isAudio -> {
+                    { showDetailSheet = true }
+                }
                 else -> null
             }
 
         Surface(
             modifier =
-                modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 3.dp),
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 3.dp),
             shape = RoundedCornerShape(16.dp),
-            color = surfaceColor,
+            color = surfaceColor
         ) {
             AudioTrackRow(
                 title = displayTitle,
@@ -135,7 +133,7 @@ fun AudioTrackItemRow(
                         onClick = {
                             dismiss()
                             onPlayNext()
-                        },
+                        }
                     )
                     DropdownMenuItem(
                         text = { Text("添加到歌单") },
@@ -145,7 +143,7 @@ fun AudioTrackItemRow(
                         onClick = {
                             dismiss()
                             onAddToPlaylist()
-                        },
+                        }
                     )
                     DropdownMenuItem(
                         text = { Text("查看详细信息") },
@@ -155,9 +153,9 @@ fun AudioTrackItemRow(
                         onClick = {
                             dismiss()
                             showDetailSheet = true
-                        },
+                        }
                     )
-                },
+                }
             )
         }
     } else {
@@ -169,7 +167,7 @@ fun AudioTrackItemRow(
 private fun NonAudioFileRow(
     file: RemoteFile,
     badgeInfo: AudioQualityBadge?,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     val (icon, label) =
         when {
@@ -184,11 +182,11 @@ private fun NonAudioFileRow(
         }
     Surface(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 3.dp),
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 3.dp),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         ListItem(
             modifier = Modifier.fillMaxWidth().alpha(if (file.isLyrics) 1f else 0.5f),
@@ -196,14 +194,14 @@ private fun NonAudioFileRow(
                 Surface(
                     shape = MaterialTheme.shapes.small,
                     color = containerColor,
-                    modifier = Modifier.size(AudioTrackRowDefaults.ThumbnailSize),
+                    modifier = Modifier.size(AudioTrackRowDefaults.ThumbnailSize)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             icon,
                             contentDescription = label,
                             tint = contentColor,
-                            modifier = Modifier.size(AudioTrackRowDefaults.LeadingIconSize),
+                            modifier = Modifier.size(AudioTrackRowDefaults.LeadingIconSize)
                         )
                     }
                 }
@@ -219,12 +217,12 @@ private fun NonAudioFileRow(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             },
             trailingContent = { badgeInfo?.let { AudioQualityBadgePill(it) } },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
         )
     }
 }

@@ -24,7 +24,7 @@ class WebDavDigestAuthenticatorTest {
                 qop = "auth",
                 method = "GET",
                 uri = "/dir/index.html",
-                algorithm = "MD5",
+                algorithm = "MD5"
             )
 
         assertEquals("6629fae49393a05397450978507c4ef1", response)
@@ -48,7 +48,7 @@ class WebDavDigestAuthenticatorTest {
                 qop = null,
                 method = "PROPFIND",
                 uri = "/dav/music/",
-                algorithm = "MD5",
+                algorithm = "MD5"
             )
 
         assertEquals(expected, response)
@@ -121,7 +121,7 @@ class WebDavDigestAuthenticatorTest {
                 nonce = "nc12345",
                 qop = "auth",
                 opaque = "opaqueVal",
-                algorithm = "MD5",
+                algorithm = "MD5"
             )
 
         val header = authenticator.buildDigestAuthorization(request, challenge, fixedCnonce = "clientnonce42")

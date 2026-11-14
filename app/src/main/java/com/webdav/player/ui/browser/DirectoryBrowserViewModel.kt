@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 class DirectoryBrowserViewModel(
     private val serverRepository: ServerRepository? = null,
     val mediaLibraryRepository: MediaLibraryRepository,
-    private val musicPlayerAppSession: MusicPlayerAppSession? = null,
+    private val musicPlayerAppSession: MusicPlayerAppSession? = null
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DirectoryBrowserUiState(sortOrder = mediaLibraryRepository.getDirectorySortOrder()))
     val uiState: StateFlow<DirectoryBrowserUiState> = _uiState.asStateFlow()
@@ -102,7 +102,7 @@ class DirectoryBrowserViewModel(
                             metadataMap = emptyMap(),
                             activeTrackPath = activeTrackPath,
                             activeTrackId = activeTrackId,
-                            isPlaying = isPlaying,
+                            isPlaying = isPlaying
                         )
                     }
 
@@ -135,7 +135,7 @@ class DirectoryBrowserViewModel(
             val sortedDirectory = current.currentDirectory?.withSortOrder(newOrder)
             current.copy(
                 sortOrder = newOrder,
-                currentDirectory = sortedDirectory,
+                currentDirectory = sortedDirectory
             )
         }
     }
@@ -236,7 +236,7 @@ class DirectoryBrowserViewModel(
             server = server,
             directory = dir,
             selectedFile = file,
-            initialMetadata = _uiState.value.metadataMap,
+            initialMetadata = _uiState.value.metadataMap
         )
     }
 
@@ -278,7 +278,7 @@ class DirectoryBrowserViewModel(
 
     private fun executeSearch(
         query: String,
-        isGlobal: Boolean,
+        isGlobal: Boolean
     ) {
         _uiState.update { it.copy(isSearching = true) }
         val targetServerId = if (isGlobal) null else _uiState.value.activeServer?.id
@@ -410,7 +410,7 @@ class DirectoryBrowserViewModel(
     fun loadDirectory(
         path: String,
         forceRefresh: Boolean = false,
-        fallbackToRoot: Boolean = false,
+        fallbackToRoot: Boolean = false
     ) {
         val server = _uiState.value.activeServer ?: return
         val normalizedPath = RemoteDirectory.normalizePath(path)
@@ -432,7 +432,7 @@ class DirectoryBrowserViewModel(
                 canNavigateUp = normalizedPath != "/",
                 isLoading = !forceRefresh,
                 isRefreshing = forceRefresh,
-                errorMessage = null,
+                errorMessage = null
             )
         }
 
@@ -455,7 +455,7 @@ class DirectoryBrowserViewModel(
                             if (hasEmittedContent || hasExistingDirectoryForPath) {
                                 current.copy(
                                     isLoading = false,
-                                    isRefreshing = false,
+                                    isRefreshing = false
                                 )
                             } else if (fallbackToRoot && normalizedPath != "/") {
                                 loadDirectory("/", forceRefresh = false)
@@ -464,7 +464,7 @@ class DirectoryBrowserViewModel(
                                 current.copy(
                                     isLoading = false,
                                     isRefreshing = false,
-                                    errorMessage = e.message ?: "Failed to load directory",
+                                    errorMessage = e.message ?: "Failed to load directory"
                                 )
                             }
                         }
@@ -478,7 +478,7 @@ class DirectoryBrowserViewModel(
                                     metadataMap = content.metadataMap,
                                     isLoading = false,
                                     isRefreshing = content.isEnriching,
-                                    errorMessage = null,
+                                    errorMessage = null
                                 )
                             } else {
                                 current
@@ -499,7 +499,7 @@ class DirectoryBrowserViewModel(
     private fun resolveActivePlayback(
         server: WebDavServer?,
         track: AudioTrack?,
-        isPlaying: Boolean,
+        isPlaying: Boolean
     ): Triple<String?, String?, Boolean> {
         val matches = track != null && server != null && track.serverId == server.id
         return if (matches) Triple(track?.remotePath, track?.id, isPlaying) else Triple(null, null, false)

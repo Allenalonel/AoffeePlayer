@@ -518,7 +518,7 @@ class WebDavMediaSourceBuilderTest {
     fun builder_exposesDedicatedStreamingConnectionPool() {
         assertNotNull(builder.streamingConnectionPool)
         assertSame(
-            builder.webDavClient.streamingConnectionPool,
+            (builder.webDavClient as com.webdav.player.data.remote.OkHttpWebDavClient).streamingConnectionPool,
             builder.streamingConnectionPool,
         )
         val streamingClient = builder.getStreamingClientForServer(testServer)
@@ -526,5 +526,14 @@ class WebDavMediaSourceBuilderTest {
             builder.streamingConnectionPool,
             streamingClient.connectionPool,
         )
+    }
+
+    @Test
+    fun builder_acceptsSharedFakeWebDavClient_andDelegatesStreamingClient() {
+        val fakeClient = com.webdav.player.test.SharedFakeWebDavClient()
+        val customBuilder = WebDavMediaSourceBuilder(context, webDavClient = fakeClient)
+        val streamingClient = customBuilder.getStreamingClientForServer(testServer)
+        assertSame(fakeClient.streamingConnectionPool, streamingClient.connectionPool)
+        assertEquals(1, fakeClient.streamingClientRequests.get())
     }
 }

@@ -7,7 +7,7 @@ import com.webdav.player.data.local.LocalStorageFolderEntity
 import com.webdav.player.data.local.TrackMetadataDao
 import com.webdav.player.data.local.WebDavServerDao
 import com.webdav.player.data.local.WebDavServerEntity
-import com.webdav.player.data.remote.OkHttpWebDavClient
+import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.LOCAL_STORAGE_ID
 import com.webdav.player.domain.model.LocalStorageFolder
 import com.webdav.player.domain.model.WebDavServer
@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.map
 class ServerRepositoryImpl(
     private val serverDao: WebDavServerDao,
     private val coverArtStorage: CoverArtStorage? = null,
-    private val webDavClient: OkHttpWebDavClient? = null,
+    private val webDavClient: WebDavClient? = null,
     private val trackMetadataDao: TrackMetadataDao? = null,
     private val localStorageFolderDao: LocalStorageFolderDao? = null,
     private val context: Context? = null,

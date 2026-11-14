@@ -8,6 +8,7 @@ import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.ServerRepository
+import com.webdav.player.test.SharedFakeWebDavClient
 import com.webdav.player.domain.model.TrackIdentity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -25,30 +26,6 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 
 class StorageReachabilityTrackerTest {
-    private class FakeProbeWebDavClient : WebDavClient {
-        val testConnectionResults = mutableMapOf<Long, ConnectionResult>()
-        val connectionProbeCount = AtomicInteger(0)
-        var onTestConnection: (suspend (WebDavServer) -> ConnectionResult)? = null
-
-        override suspend fun testConnection(server: WebDavServer): ConnectionResult {
-            connectionProbeCount.incrementAndGet()
-            onTestConnection?.let { return it(server) }
-            return testConnectionResults[server.id] ?: ConnectionResult.Success
-        }
-
-        override suspend fun listDirectory(
-            server: WebDavServer,
-            path: String,
-        ): ListDirectoryResult = ListDirectoryResult.Success(RemoteDirectory(path = path, name = "root", files = emptyList()))
-
-        override suspend fun fetchRange(
-            server: WebDavServer,
-            remotePath: String,
-            startByte: Long,
-            endByte: Long,
-        ): ByteArray? = null
-    }
-
     private class FakeServerRepository(
         initialServers: List<WebDavServer> = emptyList(),
     ) : ServerRepository {
@@ -167,7 +144,7 @@ class StorageReachabilityTrackerTest {
             val server2 = WebDavServer(id = 2L, name = "Offline NAS", url = "http://192.168.1.20")
             val serverRepo = FakeServerRepository(listOf(server1, server2))
 
-            val fakeClient = FakeProbeWebDavClient()
+            val fakeClient = SharedFakeWebDavClient()
             fakeClient.testConnectionResults[1L] = ConnectionResult.Success
             fakeClient.testConnectionResults[2L] = ConnectionResult.Failure("Host unreachable")
 
@@ -199,7 +176,7 @@ class StorageReachabilityTrackerTest {
             val server1 = WebDavServer(id = 1L, name = "Online NAS", url = "http://192.168.1.10")
             val serverRepo = FakeServerRepository(listOf(server1))
 
-            val fakeClient = FakeProbeWebDavClient()
+            val fakeClient = SharedFakeWebDavClient()
             fakeClient.testConnectionResults[1L] = ConnectionResult.Success
 
             val tracker =
@@ -223,7 +200,7 @@ class StorageReachabilityTrackerTest {
             val server1 = WebDavServer(id = 1L, name = "Crashing NAS", url = "http://192.168.1.10")
             val serverRepo = FakeServerRepository(listOf(server1))
 
-            val fakeClient = FakeProbeWebDavClient()
+            val fakeClient = SharedFakeWebDavClient()
             fakeClient.onTestConnection = { throw IOException("Connection reset by peer") }
 
             val tracker =
@@ -282,7 +259,7 @@ class StorageReachabilityTrackerTest {
             val probeStarted = CompletableDeferred<Unit>()
             val probeProceed = CompletableDeferred<Unit>()
 
-            val fakeClient = FakeProbeWebDavClient()
+            val fakeClient = SharedFakeWebDavClient()
             fakeClient.onTestConnection = {
                 probeStarted.complete(Unit)
                 probeProceed.await()
@@ -325,7 +302,7 @@ class StorageReachabilityTrackerTest {
     @Test
     fun triggerReachabilitySelfHealing_withNoUnreachableEntities_completesCleanlyWithoutProbing() =
         runBlocking {
-            val fakeClient = FakeProbeWebDavClient()
+            val fakeClient = SharedFakeWebDavClient()
             val serverRepo = FakeServerRepository()
 
             val tracker =
@@ -347,7 +324,7 @@ class StorageReachabilityTrackerTest {
         runBlocking {
             val serverWithBlankUrl = WebDavServer(id = 1L, name = "Blank URL", url = "")
             val serverRepo = FakeServerRepository(listOf(serverWithBlankUrl))
-            val fakeClient = FakeProbeWebDavClient()
+            val fakeClient = SharedFakeWebDavClient()
 
             val tracker =
                 StorageReachabilityTrackerImpl(
@@ -407,7 +384,7 @@ class StorageReachabilityTrackerTest {
     fun triggerReachabilitySelfHealing_rethrowsCancellationException(): Unit =
         runBlocking {
             val server = WebDavServer(id = 1L, name = "Cancel Server", url = "https://example.com/webdav")
-            val fakeClient = FakeProbeWebDavClient()
+            val fakeClient = SharedFakeWebDavClient()
             fakeClient.onTestConnection = {
                 throw CancellationException("Simulated coroutine cancellation")
             }

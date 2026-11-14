@@ -17,13 +17,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.ByteArrayOutputStream
+import com.webdav.player.test.SharedFakeWebDavClient
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicInteger
 
 class TrackMetadataResolverTest {
-    private lateinit var fakeClient: FakeWebDavRangeClient
+    private lateinit var fakeClient: SharedFakeWebDavClient
     private lateinit var fakeStorage: FakeCoverArtStorage
     private lateinit var resolver: DefaultTrackMetadataResolver
 
@@ -36,7 +37,7 @@ class TrackMetadataResolverTest {
 
     @Before
     fun setUp() {
-        fakeClient = FakeWebDavRangeClient()
+        fakeClient = SharedFakeWebDavClient()
         fakeStorage = FakeCoverArtStorage()
         resolver =
             DefaultTrackMetadataResolver(
@@ -616,49 +617,6 @@ class TrackMetadataResolverTest {
         }
 
         return stream.toByteArray()
-    }
-
-    private class FakeWebDavRangeClient : WebDavClient {
-        val files = mutableMapOf<String, ByteArray>()
-        val throwOnPaths = mutableSetOf<String>()
-        val ignoreRangeOnSecondaryFetchPaths = mutableSetOf<String>()
-        val fetchCount = AtomicInteger(0)
-        val requestedRanges = mutableListOf<Triple<String, Long, Long>>()
-
-        fun stubFileBytes(
-            path: String,
-            bytes: ByteArray,
-        ) {
-            files[path] = bytes
-        }
-
-        override suspend fun testConnection(server: WebDavServer): ConnectionResult = ConnectionResult.Success
-
-        override suspend fun listDirectory(
-            server: WebDavServer,
-            path: String,
-        ): ListDirectoryResult = ListDirectoryResult.Failure("Not implemented")
-
-        override suspend fun fetchRange(
-            server: WebDavServer,
-            remotePath: String,
-            startByte: Long,
-            endByte: Long,
-        ): ByteArray? {
-            fetchCount.incrementAndGet()
-            requestedRanges.add(Triple(remotePath, startByte, endByte))
-            if (throwOnPaths.contains(remotePath)) {
-                throw IOException("Simulated network timeout for $remotePath")
-            }
-            val full = files[remotePath] ?: return null
-            if (startByte > 0 && ignoreRangeOnSecondaryFetchPaths.contains(remotePath)) {
-                return full
-            }
-            if (startByte >= full.size) return byteArrayOf()
-            val from = startByte.toInt()
-            val to = minOf(full.size, (endByte + 1).toInt())
-            return full.copyOfRange(from, to)
-        }
     }
 
     private class FakeCoverArtStorage : CoverArtStorage {

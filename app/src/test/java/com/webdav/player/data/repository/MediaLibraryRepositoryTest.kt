@@ -30,6 +30,7 @@ import com.webdav.player.domain.model.SortField
 import com.webdav.player.domain.model.TrackMetadata
 import com.webdav.player.domain.model.WebDavServer
 import com.webdav.player.domain.repository.TrackMetadataRepository
+import com.webdav.player.test.SharedFakeWebDavClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
@@ -62,7 +63,7 @@ class MediaLibraryRepositoryTest {
     private lateinit var checkpointDao: DirectorySyncCheckpointDao
     private lateinit var localStorageFolderDao: LocalStorageFolderDao
 
-    private lateinit var fakeWebDavClient: FakeWebDavClient
+    private lateinit var fakeWebDavClient: SharedFakeWebDavClient
     private lateinit var fakeTrackMetadataRepository: FakeTrackMetadataRepository
     private lateinit var localResolver: LocalStorageDirectoryResolver
     private lateinit var repository: MediaLibraryRepositoryImpl
@@ -99,7 +100,7 @@ class MediaLibraryRepositoryTest {
         checkpointDao = database.directorySyncCheckpointDao()
         localStorageFolderDao = database.localStorageFolderDao()
 
-        fakeWebDavClient = FakeWebDavClient()
+        fakeWebDavClient = SharedFakeWebDavClient()
         fakeTrackMetadataRepository = FakeTrackMetadataRepository()
         runBlocking {
             localStorageFolderDao.insertFolder(
@@ -1196,36 +1197,6 @@ class MediaLibraryRepositoryTest {
     // =========================================================================
     // Test Doubles (Fakes)
     // =========================================================================
-
-    private class FakeWebDavClient : WebDavClient {
-        val results = mutableMapOf<String, ListDirectoryResult>()
-        val callCount = mutableMapOf<String, Int>()
-        var shouldThrowCancellation = false
-
-        override suspend fun testConnection(server: WebDavServer): ConnectionResult = ConnectionResult.Success
-
-        override suspend fun listDirectory(
-            server: WebDavServer,
-            path: String,
-        ): ListDirectoryResult {
-            if (shouldThrowCancellation) throw CancellationException("Cancelled")
-            callCount[path] = (callCount[path] ?: 0) + 1
-            return results[path]
-                ?: ListDirectoryResult.Success(RemoteDirectory(path = path, name = path.trim('/').substringAfterLast('/')))
-        }
-
-        override suspend fun fetchRange(
-            server: WebDavServer,
-            remotePath: String,
-            startByte: Long,
-            endByte: Long,
-        ): ByteArray? = null
-
-        override suspend fun fetchText(
-            server: WebDavServer,
-            remotePath: String,
-        ): String? = null
-    }
 
     private class FakeTrackMetadataRepository : TrackMetadataRepository {
         val cachedMetadata = mutableMapOf<String, TrackMetadata>()

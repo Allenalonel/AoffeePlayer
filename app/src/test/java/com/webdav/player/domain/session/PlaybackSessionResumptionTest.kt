@@ -1,6 +1,5 @@
 package com.webdav.player.domain.session
 
-import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.PlaybackMode
@@ -879,32 +878,6 @@ class PlaybackSessionResumptionTest {
                     it.copy(isDefault = it.id == id)
                 }
         }
-    }
-
-    private class TestWebDavClient(
-        val textResponses: MutableMap<String, String?> = mutableMapOf(),
-    ) : WebDavClient {
-        override suspend fun testConnection(server: WebDavServer): com.webdav.player.data.remote.ConnectionResult =
-            com.webdav.player.data.remote.ConnectionResult.Success
-
-        override suspend fun listDirectory(
-            server: WebDavServer,
-            path: String,
-        ) = com.webdav.player.domain.model.ListDirectoryResult.Success(
-            RemoteDirectory(path = path, name = path.substringAfterLast('/'), files = emptyList()),
-        )
-
-        override suspend fun fetchRange(
-            server: WebDavServer,
-            remotePath: String,
-            startByte: Long,
-            endByte: Long,
-        ): ByteArray? = null
-
-        override suspend fun fetchText(
-            server: WebDavServer,
-            remotePath: String,
-        ): String? = textResponses[remotePath]
     }
 
     @Test

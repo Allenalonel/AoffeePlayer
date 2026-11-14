@@ -11,6 +11,7 @@ import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.test.SharedFakeWebDavClient
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -43,7 +44,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class TrackMetadataRepositoryTest {
     private lateinit var database: AppDatabase
     private lateinit var dao: TrackMetadataDao
-    private lateinit var fakeClient: FakeWebDavRangeClient
+    private lateinit var fakeClient: SharedFakeWebDavClient
     private lateinit var fakeStorage: FakeCoverArtStorage
     private lateinit var repository: TrackMetadataRepositoryImpl
 
@@ -66,7 +67,7 @@ class TrackMetadataRepositoryTest {
         kotlinx.coroutines.runBlocking {
             database.webDavServerDao().insertServer(WebDavServerEntity.fromDomain(testServer))
         }
-        fakeClient = FakeWebDavRangeClient()
+        fakeClient = SharedFakeWebDavClient()
         fakeStorage = FakeCoverArtStorage()
         repository =
             TrackMetadataRepositoryImpl(
@@ -1444,57 +1445,6 @@ class TrackMetadataRepositoryTest {
         }
 
         return stream.toByteArray()
-    }
-
-    private class FakeWebDavRangeClient : WebDavClient {
-        val files = mutableMapOf<String, ByteArray>()
-        val throwOnPaths = mutableSetOf<String>()
-        val ignoreRangeOnSecondaryFetchPaths = mutableSetOf<String>()
-        val partialChunkPaths = mutableMapOf<String, Int>()
-        val fetchCount = AtomicInteger(0)
-        val requestedRanges = mutableListOf<Triple<String, Long, Long>>()
-        var onFetchRange: (suspend (String) -> Unit)? = null
-
-        fun stubFileBytes(
-            path: String,
-            bytes: ByteArray,
-        ) {
-            files[path] = bytes
-        }
-
-        override suspend fun testConnection(server: WebDavServer): ConnectionResult = ConnectionResult.Success
-
-        override suspend fun listDirectory(
-            server: WebDavServer,
-            path: String,
-        ): ListDirectoryResult = ListDirectoryResult.Failure("Not implemented")
-
-        override suspend fun fetchRange(
-            server: WebDavServer,
-            remotePath: String,
-            startByte: Long,
-            endByte: Long,
-        ): ByteArray? {
-            onFetchRange?.invoke(remotePath)
-            fetchCount.incrementAndGet()
-            requestedRanges.add(Triple(remotePath, startByte, endByte))
-            if (throwOnPaths.contains(remotePath)) {
-                throw java.io.IOException("Simulated network timeout for $remotePath")
-            }
-            val full = files[remotePath] ?: return null
-            if (startByte > 0 && ignoreRangeOnSecondaryFetchPaths.contains(remotePath)) {
-                return full
-            }
-            if (startByte >= full.size) return byteArrayOf()
-            val from = startByte.toInt()
-            val to = minOf(full.size, (endByte + 1).toInt())
-            if (partialChunkPaths.containsKey(remotePath) && startByte > 0) {
-                val partialSize = partialChunkPaths[remotePath]!!
-                val chunkEnd = minOf(to, from + partialSize)
-                return full.copyOfRange(from, chunkEnd)
-            }
-            return full.copyOfRange(from, to)
-        }
     }
 
     private class FakeCoverArtStorage : CoverArtStorage {

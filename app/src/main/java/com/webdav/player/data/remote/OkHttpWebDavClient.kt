@@ -299,7 +299,7 @@ class OkHttpWebDavClient(
         }
     }
 
-    fun getStreamingClientForServer(server: WebDavServer): OkHttpClient = buildStreamingClientForServer(server)
+    override fun getStreamingClientForServer(server: WebDavServer): OkHttpClient = buildStreamingClientForServer(server)
 
     fun buildStreamingClientForServer(server: WebDavServer): OkHttpClient {
         val cacheKey = "stream:" + buildCacheKey(server)
@@ -315,7 +315,7 @@ class OkHttpWebDavClient(
         }
     }
 
-    fun invalidateServer(serverId: Long) {
+    override fun invalidateServer(serverId: Long) {
         if (serverId <= 0L) return
         val prefix = "$serverId:"
         val streamPrefix = "stream:$serverId:"

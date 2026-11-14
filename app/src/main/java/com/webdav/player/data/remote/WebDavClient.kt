@@ -2,6 +2,7 @@ package com.webdav.player.data.remote
 
 import com.webdav.player.domain.model.ListDirectoryResult
 import com.webdav.player.domain.model.WebDavServer
+import okhttp3.OkHttpClient
 
 sealed interface ConnectionResult {
     data object Success : ConnectionResult
@@ -25,4 +26,7 @@ interface WebDavClient {
         server: WebDavServer,
         remotePath: String
     ): String? = null
+
+    fun invalidateServer(serverId: Long)
+    fun getStreamingClientForServer(server: WebDavServer): OkHttpClient
 }

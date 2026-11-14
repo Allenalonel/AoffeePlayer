@@ -19,6 +19,7 @@ import com.webdav.player.domain.model.WebDavServer
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
+import com.webdav.player.test.SharedFakeWebDavClient
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -35,7 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class LyricsRepositoryTest {
     private lateinit var database: AppDatabase
     private lateinit var dao: TrackMetadataDao
-    private lateinit var fakeClient: FakeLyricsWebDavClient
+    private lateinit var fakeClient: SharedFakeWebDavClient
     private lateinit var fakeStorage: FakeCoverArtStorage
     private lateinit var repository: TrackMetadataRepositoryImpl
 
@@ -69,7 +70,7 @@ class LyricsRepositoryTest {
         kotlinx.coroutines.runBlocking {
             database.webDavServerDao().insertServer(WebDavServerEntity.fromDomain(testServer))
         }
-        fakeClient = FakeLyricsWebDavClient()
+        fakeClient = SharedFakeWebDavClient()
         fakeStorage = FakeCoverArtStorage()
         repository =
             TrackMetadataRepositoryImpl(
@@ -346,33 +347,6 @@ class LyricsRepositoryTest {
             val lyrics = repository.resolveLyrics(localServer, localTrack)
             assertTrue(lyrics.isEmpty)
         }
-
-    private class FakeLyricsWebDavClient : WebDavClient {
-        val textFiles = mutableMapOf<String, String>()
-        val fetchTextCount = AtomicInteger(0)
-
-        override suspend fun testConnection(server: WebDavServer): ConnectionResult = ConnectionResult.Success
-
-        override suspend fun listDirectory(
-            server: WebDavServer,
-            path: String,
-        ): ListDirectoryResult = ListDirectoryResult.Failure("Not implemented")
-
-        override suspend fun fetchRange(
-            server: WebDavServer,
-            remotePath: String,
-            startByte: Long,
-            endByte: Long,
-        ): ByteArray? = null
-
-        override suspend fun fetchText(
-            server: WebDavServer,
-            remotePath: String,
-        ): String? {
-            fetchTextCount.incrementAndGet()
-            return textFiles[remotePath]
-        }
-    }
 
     private class FakeCoverArtStorage : CoverArtStorage {
         override suspend fun saveThumbnail(

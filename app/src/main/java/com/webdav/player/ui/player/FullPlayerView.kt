@@ -59,6 +59,7 @@ import com.webdav.player.ui.player.components.PlayerVinylArtwork
 import com.webdav.player.ui.player.components.isFullPlayerRetryBannerVisible
 import com.webdav.player.ui.player.components.rememberArtworkBackgroundBrush
 import com.webdav.player.ui.theme.AppIcons
+import com.webdav.player.ui.theme.WebDavPlayerTheme
 import kotlinx.coroutines.launch
 
 object FullPlayerDefaults {
@@ -137,13 +138,17 @@ fun FullPlayerView(
             playbackProgress.currentPositionMs
         }
 
-    Surface(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .then(backgroundModifier),
-        color = Color.Transparent,
+    WebDavPlayerTheme(
+        darkTheme = true,
+        artworkColors = artworkColors,
     ) {
+        Surface(
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .then(backgroundModifier),
+            color = Color.Transparent,
+        ) {
             Column(
                 modifier =
                     Modifier
@@ -414,6 +419,7 @@ fun FullPlayerView(
             )
         }
     }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

@@ -363,8 +363,12 @@ fun TrackDetailBottomSheet(
                     }
                     Button(
                         onClick = {
-                            animateDismiss()
-                            onPlay()
+                            coroutineScope.launch {
+                                sheetState.hide()
+                            }.invokeOnCompletion {
+                                onDismiss()
+                                onPlay()
+                            }
                         },
                         modifier = Modifier.weight(1f),
                     ) {
@@ -426,9 +430,15 @@ fun TrackDetailBottomSheet(
                 (file.fileType as? RemoteFileType.Audio)?.format
                     ?: AudioFormat.fromExtension(file.name.substringAfterLast('.', ""))
                     ?: AudioFormat.MP3
+            val effectiveServerId =
+                if (isLocal) {
+                    LOCAL_STORAGE_ID
+                } else {
+                    metadata?.serverId?.takeIf { it > 0L } ?: 1L
+                }
             AudioTrack(
                 id = file.path,
-                serverId = if (isLocal) LOCAL_STORAGE_ID else 0L,
+                serverId = effectiveServerId,
                 remotePath = file.path,
                 title = metadata?.displayTitle(file.name) ?: file.name,
                 artist = metadata?.displayArtist() ?: metadata?.artist,

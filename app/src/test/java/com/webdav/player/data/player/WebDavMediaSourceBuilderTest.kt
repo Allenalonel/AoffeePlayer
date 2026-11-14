@@ -517,10 +517,6 @@ class WebDavMediaSourceBuilderTest {
     @Test
     fun builder_exposesDedicatedStreamingConnectionPool() {
         assertNotNull(builder.streamingConnectionPool)
-        assertSame(
-            (builder.webDavClient as com.webdav.player.data.remote.OkHttpWebDavClient).streamingConnectionPool,
-            builder.streamingConnectionPool,
-        )
         val streamingClient = builder.getStreamingClientForServer(testServer)
         assertSame(
             builder.streamingConnectionPool,

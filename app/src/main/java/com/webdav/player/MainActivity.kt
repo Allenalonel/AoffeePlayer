@@ -166,7 +166,7 @@ class MainActivity : ComponentActivity() {
                 val navState by coordinator.uiState.collectAsStateWithLifecycle()
 
                 var tracksToAddToPlaylist by remember { mutableStateOf<List<AudioTrack>?>(null) }
-                var isPlayerExpanded by rememberSaveable { mutableStateOf(false) }
+                val isPlayerExpanded = navState.isFullPlayerExpanded
                 var isPlaybackQueueSheetVisible by rememberSaveable { mutableStateOf(false) }
                 var isBrowserSelectionActive by remember { mutableStateOf(false) }
                 var scaffoldBottomPadding by remember { mutableStateOf(0.dp) }
@@ -179,25 +179,6 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(playerSessionState) {
                     coordinator.onSessionStateChanged(playerSessionState)
-                    if (!playerSessionState.hasTrack) {
-                        isPlayerExpanded = false
-                    }
-                }
-
-                LaunchedEffect(navState.isFullPlayerExpanded) {
-                    if (navState.isFullPlayerExpanded != isPlayerExpanded) {
-                        isPlayerExpanded = navState.isFullPlayerExpanded
-                    }
-                }
-
-                LaunchedEffect(isPlayerExpanded) {
-                    if (isPlayerExpanded != navState.isFullPlayerExpanded) {
-                        if (isPlayerExpanded) {
-                            coordinator.expandFullPlayer()
-                        } else {
-                            coordinator.collapseFullPlayer()
-                        }
-                    }
                 }
 
                 val isReduceMotion = isReduceMotionEnabled()
@@ -409,7 +390,7 @@ class MainActivity : ComponentActivity() {
                                                     },
                                                     isCurrentTab = isCurrentTab,
                                                     onOpenFullPlayer = {
-                                                        isPlayerExpanded = true
+                                                        coordinator.expandFullPlayer()
                                                     },
                                                     onAddToPlaylist = { track ->
                                                         tracksToAddToPlaylist = listOf(track)
@@ -452,7 +433,7 @@ class MainActivity : ComponentActivity() {
                     BackHandler(enabled = isPlaybackQueueSheetVisible || isPlayerExpanded) {
                         when {
                             isPlaybackQueueSheetVisible -> isPlaybackQueueSheetVisible = false
-                            isPlayerExpanded -> isPlayerExpanded = false
+                            isPlayerExpanded -> coordinator.collapseFullPlayer()
                         }
                     }
 
@@ -476,8 +457,8 @@ class MainActivity : ComponentActivity() {
                             playbackActions = playbackActions,
                             progress = playerExpansionProgress,
                             isExpanded = isPlayerExpanded,
-                            onExpand = { isPlayerExpanded = true },
-                            onCollapse = { isPlayerExpanded = false },
+                            onExpand = { coordinator.expandFullPlayer() },
+                            onCollapse = { coordinator.collapseFullPlayer() },
                             collapsedBottomPadding = scaffoldBottomPadding + 8.dp,
                             onOpenQueue = { isPlaybackQueueSheetVisible = true },
                             onAddToPlaylist = { track: AudioTrack ->

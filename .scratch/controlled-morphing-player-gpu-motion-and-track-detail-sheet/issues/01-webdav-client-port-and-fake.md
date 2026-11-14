@@ -5,12 +5,12 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** completed
 
 ## Acceptance criteria
 
-- [ ] `WebDavClient` 接口补全声明 `invalidateServer(serverId: Long)` 与 `getStreamingClientForServer(server: WebDavServer): OkHttpClient`。
-- [ ] `OkHttpWebDavClient` 实现新增的端口方法；`WebDavMediaSourceBuilder` 与 `ServerRepositoryImpl` 构造参数类型从 `OkHttpWebDavClient` 纯化为 `WebDavClient`，彻底消除运行时向下类型强转。
-- [ ] 在 `app/src/test/java/com/webdav/player/test/SharedFakeWebDavClient.kt` 建立统一可配置的测试桩，完整实现 `WebDavClient` 端口所有方法，支持目录树模拟、文件/Range 下载模拟与网络异常注入。
-- [ ] 批量重构并清理 7 个测试文件中散落私有手写的 `FakeWebDavClient` 副本，统一切换为 `SharedFakeWebDavClient`。
-- [ ] 针对性单元测试通过：`./gradlew testDebugUnitTest --tests "*WebDavMediaSourceBuilderTest*" --tests "*SharedFakeWebDavClientTest*"`。
+- [x] `WebDavClient` 接口补全声明 `invalidateServer(serverId: Long)` 与 `getStreamingClientForServer(server: WebDavServer): OkHttpClient`。
+- [x] `OkHttpWebDavClient` 实现新增的端口方法；`WebDavMediaSourceBuilder` 与 `ServerRepositoryImpl` 构造参数类型从 `OkHttpWebDavClient` 纯化为 `WebDavClient`，彻底消除运行时向下类型强转。
+- [x] 在 `app/src/test/java/com/webdav/player/test/SharedFakeWebDavClient.kt` 建立统一可配置的测试桩，完整实现 `WebDavClient` 端口所有方法，支持目录树模拟、文件/Range 下载模拟与网络异常注入。
+- [x] 批量重构并清理 7 个测试文件中散落私有手写的 `FakeWebDavClient` 副本，统一切换为 `SharedFakeWebDavClient`。
+- [x] 针对性单元测试通过：`./gradlew testDebugUnitTest --tests "*WebDavMediaSourceBuilderTest*" --tests "*SharedFakeWebDavClientTest*"`。

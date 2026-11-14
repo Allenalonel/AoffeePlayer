@@ -5,12 +5,12 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** completed
 
 ## Acceptance criteria
 
-- [ ] `MainActivity` 独占维持 `isPlayerExpanded: Boolean` 与 `playerExpansionProgress: Float`，单向向底栏传递位移并在顶层单点渲染 `HoistedPlaybackQueueSheet`。
-- [ ] 顶层 `BackHandler` 严格按优先级协调：`isPlaybackQueueSheetVisible`（优先关闭抽屉）-> `isPlayerExpanded`（折叠至迷你胶囊）-> 顶层导航退出。
-- [ ] `MorphingPlayerContainer` 彻底剥离内部闲置的 `internalProgress: animateFloatAsState`，只接收外部传入的 `progress: Float`；内聚处理下拉折叠阻尼与滑落手势。
-- [ ] `FullPlayerView` 彻底移除内部的 `showQueueSheet` 状态与第二套 `HoistedPlaybackQueueSheet`；点击队列按钮仅向外派发 `onOpenQueue` 回调；彻底移除内部重复的 `downwardSwipeModifier` 与重复包裹的主题组件。
-- [ ] 针对性单元测试通过：`./gradlew testDebugUnitTest --tests "*PlayerSheetExpansionTest*" --tests "*FullPlayerPresentationTest*" --tests "*MiniPlayerPresentationTest*"`。
+- [x] `MainActivity` 独占维持 `isPlayerExpanded: Boolean` 与 `playerExpansionProgress: Float`，单向向底栏传递位移并在顶层单点渲染 `HoistedPlaybackQueueSheet`。
+- [x] 顶层 `BackHandler` 严格按优先级协调：`isPlaybackQueueSheetVisible`（优先关闭抽屉）-> `isPlayerExpanded`（折叠至迷你胶囊）-> 顶层导航退出。
+- [x] `MorphingPlayerContainer` 彻底剥离内部闲置的 `internalProgress: animateFloatAsState`，只接收外部传入的 `progress: Float`；内聚处理下拉折叠阻尼与滑落手势。
+- [x] `FullPlayerView` 彻底移除内部的 `showQueueSheet` 状态与第二套 `HoistedPlaybackQueueSheet`；点击队列按钮仅向外派发 `onOpenQueue` 回调；彻底移除内部重复的 `downwardSwipeModifier` 与重复包裹的主题组件。
+- [x] 针对性单元测试通过：`./gradlew testDebugUnitTest --tests "*PlayerSheetExpansionTest*" --tests "*FullPlayerPresentationTest*" --tests "*MiniPlayerPresentationTest*"`。

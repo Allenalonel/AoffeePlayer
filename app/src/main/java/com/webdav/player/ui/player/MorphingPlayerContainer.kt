@@ -165,13 +165,13 @@ fun MorphingPlayerContainer(
 
     var containerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
-    var miniCoverRect by remember { mutableStateOf<Rect?>(null) }
-    var miniPlayRect by remember { mutableStateOf<Rect?>(null) }
-    var miniQueueRect by remember { mutableStateOf<Rect?>(null) }
+    var stableMiniCoverRect by remember { mutableStateOf<Rect?>(null) }
+    var stableMiniPlayRect by remember { mutableStateOf<Rect?>(null) }
+    var stableMiniQueueRect by remember { mutableStateOf<Rect?>(null) }
 
-    var fullCoverRect by remember { mutableStateOf<Rect?>(null) }
-    var fullPlayRect by remember { mutableStateOf<Rect?>(null) }
-    var fullQueueRect by remember { mutableStateOf<Rect?>(null) }
+    var stableFullCoverRect by remember { mutableStateOf<Rect?>(null) }
+    var stableFullPlayRect by remember { mutableStateOf<Rect?>(null) }
+    var stableFullQueueRect by remember { mutableStateOf<Rect?>(null) }
 
     // Downward swipe gesture to collapse player sheet smoothly
     val downwardSwipeModifier =
@@ -357,15 +357,21 @@ fun MorphingPlayerContainer(
                         artworkColors = artworkColors,
                         isArtworkVisible = false,
                         onArtworkPositioned = { coords ->
-                            coords.boundsIn(containerCoordinates)?.let { fullCoverRect = it }
+                            coords.boundsIn(containerCoordinates)?.let { raw ->
+                                stableFullCoverRect = Rect(Offset(raw.left, raw.top - fullTranslationY), raw.size)
+                            }
                         },
                         isPlayButtonVisible = false,
                         onPlayButtonPositioned = { coords ->
-                            coords.boundsIn(containerCoordinates)?.let { fullPlayRect = it }
+                            coords.boundsIn(containerCoordinates)?.let { raw ->
+                                stableFullPlayRect = Rect(Offset(raw.left, raw.top - fullTranslationY), raw.size)
+                            }
                         },
                         isQueueButtonVisible = false,
                         onQueueButtonPositioned = { coords ->
-                            coords.boundsIn(containerCoordinates)?.let { fullQueueRect = it }
+                            coords.boundsIn(containerCoordinates)?.let { raw ->
+                                stableFullQueueRect = Rect(Offset(raw.left, raw.top - fullTranslationY), raw.size)
+                            }
                         },
                         renderBackground = false,
                         onOpenQueue = onOpenQueue,
@@ -403,15 +409,15 @@ fun MorphingPlayerContainer(
                         onOpenQueue = onOpenQueue,
                         isCoverVisible = false,
                         onCoverPositioned = { coords ->
-                            coords.boundsIn(containerCoordinates)?.let { miniCoverRect = it }
+                            coords.boundsIn(containerCoordinates)?.let { stableMiniCoverRect = it }
                         },
                         isPlayButtonVisible = false,
                         onPlayButtonPositioned = { coords ->
-                            coords.boundsIn(containerCoordinates)?.let { miniPlayRect = it }
+                            coords.boundsIn(containerCoordinates)?.let { stableMiniPlayRect = it }
                         },
                         isQueueButtonVisible = false,
                         onQueueButtonPositioned = { coords ->
-                            coords.boundsIn(containerCoordinates)?.let { miniQueueRect = it }
+                            coords.boundsIn(containerCoordinates)?.let { stableMiniQueueRect = it }
                         },
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -422,12 +428,7 @@ fun MorphingPlayerContainer(
             val p = expansionProgress.coerceIn(0f, 1f)
             val cWidth = rootConstraints.maxWidth.toFloat()
             val cHeight = rootConstraints.maxHeight.toFloat()
-            val bMarginPx = with(density) { MorphingPlayerMath.containerBottomMargin(collapsedBottomPadding, p).toPx() }
             val hMarginPx = with(density) { MorphingPlayerMath.containerHorizontalMargin(p).toPx() }
-            val containerHeightPx = with(density) { MorphingPlayerMath.containerHeight(cHeight.toDp(), p).toPx() }
-
-            val capsuleBottom = cHeight - bMarginPx
-            val capsuleTop = (capsuleBottom - containerHeightPx).coerceAtLeast(0f)
 
             val miniCapsuleTopPx =
                 cHeight - with(density) { collapsedBottomPadding.toPx() } - with(density) { MiniPlayerDefaults.CapsuleHeight.toPx() }
@@ -457,13 +458,13 @@ fun MorphingPlayerContainer(
             val fullArtSizePx = minOf(with(density) { MorphingPlayerDefaults.FullPlayerArtworkSize.toPx() }, cWidth * 0.85f)
             val fallbackFullCover =
                 Rect(
-                    Offset((cWidth - fullArtSizePx) / 2f, cHeight * 0.22f),
+                    Offset((cWidth - fullArtSizePx) / 2f, cHeight * 0.25f),
                     Size(fullArtSizePx, fullArtSizePx),
                 )
             val fullPlaySizePx = with(density) { MorphingPlayerDefaults.FullPlayerPlayButtonSize.toPx() }
             val fallbackFullPlay =
                 Rect(
-                    Offset((cWidth - fullPlaySizePx) / 2f, cHeight - with(density) { 96.dp.toPx() }),
+                    Offset((cWidth - fullPlaySizePx) / 2f, cHeight - with(density) { (collapsedBottomPadding + 80.dp).toPx() }),
                     Size(fullPlaySizePx, fullPlaySizePx),
                 )
             val fullQueueSizePx = with(density) { MorphingPlayerDefaults.FullPlayerQueueButtonSize.toPx() }
@@ -471,19 +472,19 @@ fun MorphingPlayerContainer(
                 Rect(
                     Offset(
                         cWidth - fullQueueSizePx - with(density) { 20.dp.toPx() },
-                        cHeight - with(density) { 86.dp.toPx() },
+                        cHeight - with(density) { (collapsedBottomPadding + 70.dp).toPx() },
                     ),
                     Size(fullQueueSizePx, fullQueueSizePx),
                 )
 
-            val startCover = miniCoverRect ?: fallbackMiniCover
-            val endCover = fullCoverRect ?: fallbackFullCover
+            val startCover = stableMiniCoverRect ?: fallbackMiniCover
+            val endCover = stableFullCoverRect ?: fallbackFullCover
 
-            val startPlay = miniPlayRect ?: fallbackMiniPlay
-            val endPlay = fullPlayRect ?: fallbackFullPlay
+            val startPlay = stableMiniPlayRect ?: fallbackMiniPlay
+            val endPlay = stableFullPlayRect ?: fallbackFullPlay
 
-            val startQueue = miniQueueRect ?: fallbackMiniQueue
-            val endQueue = fullQueueRect ?: fallbackFullQueue
+            val startQueue = stableMiniQueueRect ?: fallbackMiniQueue
+            val endQueue = stableFullQueueRect ?: fallbackFullQueue
 
             // Base Geometry Dimensions (Static expanded base dimensions, zero per-frame remeasure)
             val baseArtWidthPx = with(density) { MorphingPlayerDefaults.FullPlayerArtworkSize.toPx() }
@@ -507,10 +508,9 @@ fun MorphingPlayerContainer(
             // 3.1 Album Artwork: DisplayList Matrix Transform (scale, translation, shape, elevation in GPU draw phase)
             val coverScale = lerp(startCover.width / baseArtWidthPx, endCover.width / baseArtWidthPx, p)
             val curCoverCenterX = lerp(startCover.center.x, endCover.center.x, p)
-            val rawCoverCenterY = lerp(startCover.center.y, endCover.center.y, p)
-            val curCoverHeight = baseArtWidthPx * coverScale
-            val safeCoverCenterY = maxOf(rawCoverCenterY, capsuleTop + curCoverHeight / 2f + with(density) { 6.dp.toPx() })
-            val curCoverRadiusPx = lerp(baseArtWidthPx / 2f, with(density) { FullPlayerDefaults.ArtworkSquircleRadius.toPx() }, p)
+            val curCoverCenterY = lerp(startCover.center.y, endCover.center.y, p)
+            val curPhysicalRadius = lerp(startCover.width / 2f, with(density) { FullPlayerDefaults.ArtworkSquircleRadius.toPx() }, p)
+            val curLocalRadius = if (coverScale > 0.001f) curPhysicalRadius / coverScale else curPhysicalRadius
             val curCoverElevationPx = lerp(0f, with(density) { 24.dp.toPx() }, p)
 
             val coverClickModifier =
@@ -533,8 +533,8 @@ fun MorphingPlayerContainer(
                             scaleX = coverScale
                             scaleY = coverScale
                             translationX = curCoverCenterX - baseArtWidthPx / 2f
-                            translationY = safeCoverCenterY - baseArtWidthPx / 2f
-                            shape = RoundedCornerShape(curCoverRadiusPx)
+                            translationY = curCoverCenterY - baseArtWidthPx / 2f
+                            shape = RoundedCornerShape(curLocalRadius)
                             clip = true
                             shadowElevation = curCoverElevationPx
                             spotShadowColor = currentScheme.primary.copy(alpha = 0.35f)
@@ -561,7 +561,8 @@ fun MorphingPlayerContainer(
             val playScale = lerp(startPlay.width / basePlayWidthPx, endPlay.width / basePlayWidthPx, p)
             val curPlayCenterX = lerp(startPlay.center.x, endPlay.center.x, p)
             val curPlayCenterY = lerp(startPlay.center.y, endPlay.center.y, p)
-            val curPlayRadiusPx = lerp(basePlayWidthPx / 2f, with(density) { FullPlayerDefaults.PlayButtonSquircleRadius.toPx() }, p)
+            val curPlayPhysicalRadius = lerp(startPlay.width / 2f, with(density) { FullPlayerDefaults.PlayButtonSquircleRadius.toPx() }, p)
+            val curPlayLocalRadius = if (playScale > 0.001f) curPlayPhysicalRadius / playScale else curPlayPhysicalRadius
             val curPlayElevationPx = lerp(0f, with(density) { 8.dp.toPx() }, p)
 
             Box(
@@ -574,7 +575,7 @@ fun MorphingPlayerContainer(
                             scaleY = playScale
                             translationX = curPlayCenterX - basePlayWidthPx / 2f
                             translationY = curPlayCenterY - basePlayWidthPx / 2f
-                            shape = RoundedCornerShape(curPlayRadiusPx)
+                            shape = RoundedCornerShape(curPlayLocalRadius)
                             clip = true
                             shadowElevation = curPlayElevationPx
                             spotShadowColor = currentScheme.primary.copy(alpha = 0.35f)
@@ -641,7 +642,8 @@ fun MorphingPlayerContainer(
             val queueScale = lerp(startQueue.width / baseQueueWidthPx, endQueue.width / baseQueueWidthPx, p)
             val curQueueCenterX = lerp(startQueue.center.x, endQueue.center.x, p)
             val curQueueCenterY = lerp(startQueue.center.y, endQueue.center.y, p)
-            val curQueueRadiusPx = lerp(baseQueueWidthPx / 2f, with(density) { 16.dp.toPx() }, p)
+            val curQueuePhysicalRadius = lerp(startQueue.width / 2f, with(density) { 16.dp.toPx() }, p)
+            val curQueueLocalRadius = if (queueScale > 0.001f) curQueuePhysicalRadius / queueScale else curQueuePhysicalRadius
             val curQueueIconColor =
                 lerpColor(
                     if (p > 0.35f) currentScheme.onSurfaceVariant else currentScheme.onSurface,
@@ -659,7 +661,7 @@ fun MorphingPlayerContainer(
                             scaleY = queueScale
                             translationX = curQueueCenterX - baseQueueWidthPx / 2f
                             translationY = curQueueCenterY - baseQueueWidthPx / 2f
-                            shape = RoundedCornerShape(curQueueRadiusPx)
+                            shape = RoundedCornerShape(curQueueLocalRadius)
                             clip = true
                         }.background(
                             MaterialTheme.colorScheme.surfaceContainer.copy(

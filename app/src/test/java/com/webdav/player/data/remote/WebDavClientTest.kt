@@ -911,7 +911,7 @@ class WebDavClientTest {
                     password = "streamPassword",
                 )
 
-            val streamClient = (client as OkHttpWebDavClient).getStreamingClientForServer(webDavServer)
+            val streamClient = client.getStreamingClientForServer(webDavServer)
             val request = okhttp3.Request.Builder()
                 .url(webDavServer.resolveFileUrl("/song.flac"))
                 .get()

@@ -17,6 +17,7 @@ import com.webdav.player.domain.model.RemoteDirectory
 import com.webdav.player.domain.model.RemoteFile
 import com.webdav.player.domain.model.RemoteFileType
 import com.webdav.player.domain.model.WebDavServer
+import com.webdav.player.test.SharedFakeWebDavClient
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -36,59 +37,10 @@ import java.util.concurrent.atomic.AtomicInteger
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
 class WebDavSyncScannerTest {
-    private class FakeWebDavClient : WebDavClient {
-        val directoryTree = mutableMapOf<String, RemoteDirectory>()
-        val visitedPaths = Collections.synchronizedList(mutableListOf<String>())
-        val activeCalls = AtomicInteger(0)
-        val maxConcurrentCalls = AtomicInteger(0)
-        var delayMs: Long = 0L
-        val failureMap = mutableMapOf<String, String>()
-
-        override suspend fun listDirectory(
-            server: WebDavServer,
-            path: String,
-        ): ListDirectoryResult {
-            val normalizedPath = RemoteDirectory.normalizePath(path)
-            visitedPaths.add(normalizedPath)
-            val current = activeCalls.incrementAndGet()
-            maxConcurrentCalls.updateAndGet { maxOf(it, current) }
-
-            try {
-                if (delayMs > 0L) {
-                    delay(delayMs)
-                }
-                val failure = failureMap[normalizedPath]
-                if (failure != null) {
-                    return ListDirectoryResult.Failure(failure)
-                }
-                val dir =
-                    directoryTree[normalizedPath]
-                        ?: return ListDirectoryResult.Failure("Directory not found: $normalizedPath", statusCode = 404)
-                return ListDirectoryResult.Success(dir)
-            } finally {
-                activeCalls.decrementAndGet()
-            }
-        }
-
-        override suspend fun testConnection(server: WebDavServer): ConnectionResult = ConnectionResult.Success
-
-        override suspend fun fetchRange(
-            server: WebDavServer,
-            remotePath: String,
-            startByte: Long,
-            endByte: Long,
-        ): ByteArray? = null
-
-        override suspend fun fetchText(
-            server: WebDavServer,
-            remotePath: String,
-        ): String? = null
-    }
-
     private lateinit var database: AppDatabase
     private lateinit var mediaTrackIndexDao: MediaTrackIndexDao
     private lateinit var checkpointDao: DirectorySyncCheckpointDao
-    private lateinit var fakeClient: FakeWebDavClient
+    private lateinit var fakeClient: SharedFakeWebDavClient
     private lateinit var scanner: WebDavSyncScanner
 
     private val testServer =
@@ -111,7 +63,7 @@ class WebDavSyncScannerTest {
 
         mediaTrackIndexDao = database.mediaTrackIndexDao()
         checkpointDao = database.directorySyncCheckpointDao()
-        fakeClient = FakeWebDavClient()
+        fakeClient = SharedFakeWebDavClient()
 
         scanner =
             WebDavSyncScanner(

@@ -1,10 +1,6 @@
 package com.webdav.player.ui.player
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -17,7 +13,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,9 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -50,7 +43,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
@@ -60,11 +52,9 @@ import com.webdav.player.domain.model.PlaybackProgress
 import com.webdav.player.domain.model.PlaybackState
 import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.ui.common.CoverThumbnailImage
-import com.webdav.player.ui.motion.isReduceMotionEnabled
 import com.webdav.player.ui.player.components.rememberArtworkBackgroundBrush
 import com.webdav.player.ui.theme.AppIcons
 import com.webdav.player.ui.theme.ExpressiveDarkColorScheme
-import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.lerp as lerpColor
 
 /**
@@ -74,9 +64,12 @@ object MorphingPlayerDefaults {
     val WindowCornerRadius: Dp = 36.dp
     val FullPlayerArtworkSize: Dp = 280.dp
     val FullPlayerArtworkRadius: Dp = 28.dp
+    val FullPlayerArtworkIconSize: Dp = 100.dp
     val FullPlayerPlayButtonSize: Dp = 68.dp
     val FullPlayerPlayButtonRadius: Dp = 26.dp
+    val FullPlayerPlayIconSize: Dp = 32.dp
     val FullPlayerQueueButtonSize: Dp = 48.dp
+    val FullPlayerQueueIconSize: Dp = 28.dp
     val CapsuleHorizontalMargin: Dp = 14.dp
 
     internal const val FullPlayerFadeStartProgress: Float = 0.15f
@@ -154,50 +147,31 @@ fun MorphingPlayerContainer(
     sessionState: PlayerSessionState,
     playbackProgress: PlaybackProgress,
     playbackActions: PlaybackActions,
-    isExpanded: Boolean,
+    progress: Float,
     onExpand: () -> Unit,
     onCollapse: () -> Unit,
     collapsedBottomPadding: Dp,
     modifier: Modifier = Modifier,
+    isExpanded: Boolean = progress > 0.5f,
     onOpenQueue: () -> Unit = {},
     onAddToPlaylist: (AudioTrack) -> Unit = {},
     onDismissBatteryBanner: () -> Unit = {},
     onConfirmUnsupportedRangeReplay: () -> Unit = {},
     onDismissUnsupportedRange: () -> Unit = {},
     artworkColors: ArtworkColors? = null,
-    progressOverride: Float? = null,
 ) {
     val currentTrack = sessionState.currentTrack ?: return
-    val isReduceMotion = isReduceMotionEnabled()
-
-    val morphingSpec =
-        remember(isReduceMotion) {
-            if (isReduceMotion) {
-                snap()
-            } else {
-                tween<Float>(
-                    durationMillis = 480,
-                    easing = CubicBezierEasing(0.20f, 0.0f, 0.0f, 1.0f),
-                )
-            }
-        }
-
-    val internalProgress by animateFloatAsState(
-        targetValue = if (isExpanded) 1f else 0f,
-        animationSpec = morphingSpec,
-        label = "PlayerMorphingProgress",
-    )
-    val expansionProgress = progressOverride ?: internalProgress
+    val expansionProgress = progress.coerceIn(0f, 1f)
 
     var containerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
-    var miniCoverRect by remember { mutableStateOf<Rect?>(null) }
-    var miniPlayRect by remember { mutableStateOf<Rect?>(null) }
-    var miniQueueRect by remember { mutableStateOf<Rect?>(null) }
+    var stableMiniCoverRect by remember { mutableStateOf<Rect?>(null) }
+    var stableMiniPlayRect by remember { mutableStateOf<Rect?>(null) }
+    var stableMiniQueueRect by remember { mutableStateOf<Rect?>(null) }
 
-    var fullCoverRect by remember { mutableStateOf<Rect?>(null) }
-    var fullPlayRect by remember { mutableStateOf<Rect?>(null) }
-    var fullQueueRect by remember { mutableStateOf<Rect?>(null) }
+    var stableFullCoverRect by remember { mutableStateOf<Rect?>(null) }
+    var stableFullPlayRect by remember { mutableStateOf<Rect?>(null) }
+    var stableFullQueueRect by remember { mutableStateOf<Rect?>(null) }
 
     // Downward swipe gesture to collapse player sheet smoothly
     val downwardSwipeModifier =
@@ -383,17 +357,22 @@ fun MorphingPlayerContainer(
                         artworkColors = artworkColors,
                         isArtworkVisible = false,
                         onArtworkPositioned = { coords ->
-                            coords.boundsIn(containerCoordinates)?.let { fullCoverRect = it }
+                            coords.boundsIn(containerCoordinates)?.let { raw ->
+                                stableFullCoverRect = Rect(Offset(raw.left, raw.top - fullTranslationY), raw.size)
+                            }
                         },
                         isPlayButtonVisible = false,
                         onPlayButtonPositioned = { coords ->
-                            coords.boundsIn(containerCoordinates)?.let { fullPlayRect = it }
+                            coords.boundsIn(containerCoordinates)?.let { raw ->
+                                stableFullPlayRect = Rect(Offset(raw.left, raw.top - fullTranslationY), raw.size)
+                            }
                         },
                         isQueueButtonVisible = false,
                         onQueueButtonPositioned = { coords ->
-                            coords.boundsIn(containerCoordinates)?.let { fullQueueRect = it }
+                            coords.boundsIn(containerCoordinates)?.let { raw ->
+                                stableFullQueueRect = Rect(Offset(raw.left, raw.top - fullTranslationY), raw.size)
+                            }
                         },
-                        enableBackHandler = isExpanded,
                         renderBackground = false,
                         onOpenQueue = onOpenQueue,
                     )
@@ -430,86 +409,85 @@ fun MorphingPlayerContainer(
                         onOpenQueue = onOpenQueue,
                         isCoverVisible = false,
                         onCoverPositioned = { coords ->
-                            coords.boundsIn(containerCoordinates)?.let { miniCoverRect = it }
+                            coords.boundsIn(containerCoordinates)?.let { stableMiniCoverRect = it }
                         },
                         isPlayButtonVisible = false,
                         onPlayButtonPositioned = { coords ->
-                            coords.boundsIn(containerCoordinates)?.let { miniPlayRect = it }
+                            coords.boundsIn(containerCoordinates)?.let { stableMiniPlayRect = it }
                         },
                         isQueueButtonVisible = false,
                         onQueueButtonPositioned = { coords ->
-                            coords.boundsIn(containerCoordinates)?.let { miniQueueRect = it }
+                            coords.boundsIn(containerCoordinates)?.let { stableMiniQueueRect = it }
                         },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
 
-            // 3. Single Living Real Entities Host (Artwork & Dual Control Buttons: Always Active, Zero Swap, Zero Flash)
+            // 3. Single Living Real Entities Host (Artwork & Dual Control Buttons: Fixed Base Geometry, GPU Draw Phase Motion)
             val p = expansionProgress.coerceIn(0f, 1f)
             val cWidth = rootConstraints.maxWidth.toFloat()
             val cHeight = rootConstraints.maxHeight.toFloat()
-            val bMarginPx = with(density) { MorphingPlayerMath.containerBottomMargin(collapsedBottomPadding, p).toPx() }
             val hMarginPx = with(density) { MorphingPlayerMath.containerHorizontalMargin(p).toPx() }
-            val containerHeightPx = with(density) { MorphingPlayerMath.containerHeight(cHeight.toDp(), p).toPx() }
 
-            val capsuleBottom = cHeight - bMarginPx
-            val capsuleTop = (capsuleBottom - containerHeightPx).coerceAtLeast(0f)
-
-            val miniCapsuleTopPx =
-                cHeight - with(density) { collapsedBottomPadding.toPx() } - with(density) { MiniPlayerDefaults.CapsuleHeight.toPx() }
+            val miniCapsuleCenterY =
+                cHeight - with(density) { collapsedBottomPadding.toPx() } - with(density) { (MiniPlayerDefaults.CapsuleHeight / 2f).toPx() }
 
             val fallbackMiniCover =
                 Rect(
-                    Offset(hMarginPx + with(density) { 10.dp.toPx() }, miniCapsuleTopPx + with(density) { 9.dp.toPx() }),
-                    Size(with(density) { 42.dp.toPx() }, with(density) { 42.dp.toPx() }),
+                    center = Offset(hMarginPx + with(density) { (10.dp + 21.dp).toPx() }, miniCapsuleCenterY),
+                    radius = with(density) { 21.dp.toPx() },
                 )
             val fallbackMiniQueue =
                 Rect(
-                    Offset(
-                        cWidth - hMarginPx - with(density) { 12.dp.toPx() } - with(density) { 38.dp.toPx() },
-                        miniCapsuleTopPx + with(density) { 11.dp.toPx() },
-                    ),
-                    Size(with(density) { 38.dp.toPx() }, with(density) { 38.dp.toPx() }),
+                    center = Offset(cWidth - hMarginPx - with(density) { (12.dp + 19.dp).toPx() }, miniCapsuleCenterY),
+                    radius = with(density) { 19.dp.toPx() },
                 )
             val fallbackMiniPlay =
                 Rect(
-                    Offset(
-                        fallbackMiniQueue.left - with(density) { 8.dp.toPx() } - with(density) { 40.dp.toPx() },
-                        miniCapsuleTopPx + with(density) { 10.dp.toPx() },
-                    ),
-                    Size(with(density) { 40.dp.toPx() }, with(density) { 40.dp.toPx() }),
+                    center = Offset(fallbackMiniQueue.center.x - with(density) { (19.dp + 8.dp + 20.dp).toPx() }, miniCapsuleCenterY),
+                    radius = with(density) { 20.dp.toPx() },
                 )
 
-            val fullArtSizePx = minOf(with(density) { 280.dp.toPx() }, cWidth * 0.85f)
+            val fullArtSizePx = minOf(with(density) { MorphingPlayerDefaults.FullPlayerArtworkSize.toPx() }, cWidth * 0.85f)
             val fallbackFullCover =
                 Rect(
-                    Offset((cWidth - fullArtSizePx) / 2f, cHeight * 0.22f),
+                    Offset((cWidth - fullArtSizePx) / 2f, cHeight * 0.25f),
                     Size(fullArtSizePx, fullArtSizePx),
                 )
-            val fullPlaySizePx = with(density) { FullPlayerDefaults.PlayButtonSize.toPx() }
+            val fullPlaySizePx = with(density) { MorphingPlayerDefaults.FullPlayerPlayButtonSize.toPx() }
             val fallbackFullPlay =
                 Rect(
-                    Offset((cWidth - fullPlaySizePx) / 2f, cHeight - with(density) { 96.dp.toPx() }),
+                    Offset((cWidth - fullPlaySizePx) / 2f, cHeight - with(density) { (collapsedBottomPadding + 80.dp).toPx() }),
                     Size(fullPlaySizePx, fullPlaySizePx),
                 )
+            val fullQueueSizePx = with(density) { MorphingPlayerDefaults.FullPlayerQueueButtonSize.toPx() }
             val fallbackFullQueue =
                 Rect(
                     Offset(
-                        cWidth - with(density) { 48.dp.toPx() } - with(density) { 20.dp.toPx() },
-                        cHeight - with(density) { 86.dp.toPx() },
+                        cWidth - fullQueueSizePx - with(density) { 20.dp.toPx() },
+                        cHeight - with(density) { (collapsedBottomPadding + 70.dp).toPx() },
                     ),
-                    Size(with(density) { 48.dp.toPx() }, with(density) { 48.dp.toPx() }),
+                    Size(fullQueueSizePx, fullQueueSizePx),
                 )
 
-            val startCover = miniCoverRect ?: fallbackMiniCover
-            val endCover = fullCoverRect ?: fallbackFullCover
+            // Ensure mini starting anchors strictly align to the capsule vertical center
+            val rawCover = stableMiniCoverRect ?: fallbackMiniCover
+            val startCover = Rect(center = Offset(rawCover.center.x, miniCapsuleCenterY), radius = rawCover.width / 2f)
+            val endCover = stableFullCoverRect ?: fallbackFullCover
 
-            val startPlay = miniPlayRect ?: fallbackMiniPlay
-            val endPlay = fullPlayRect ?: fallbackFullPlay
+            val rawPlay = stableMiniPlayRect ?: fallbackMiniPlay
+            val startPlay = Rect(center = Offset(rawPlay.center.x, miniCapsuleCenterY), radius = rawPlay.width / 2f)
+            val endPlay = stableFullPlayRect ?: fallbackFullPlay
 
-            val startQueue = miniQueueRect ?: fallbackMiniQueue
-            val endQueue = fullQueueRect ?: fallbackFullQueue
+            val rawQueue = stableMiniQueueRect ?: fallbackMiniQueue
+            val startQueue = Rect(center = Offset(rawQueue.center.x, miniCapsuleCenterY), radius = rawQueue.width / 2f)
+            val endQueue = stableFullQueueRect ?: fallbackFullQueue
+
+            // Base Geometry Dimensions (Static expanded base dimensions, zero per-frame remeasure)
+            val baseArtWidthPx = with(density) { MorphingPlayerDefaults.FullPlayerArtworkSize.toPx() }
+            val basePlayWidthPx = with(density) { MorphingPlayerDefaults.FullPlayerPlayButtonSize.toPx() }
+            val baseQueueWidthPx = with(density) { MorphingPlayerDefaults.FullPlayerQueueButtonSize.toPx() }
 
             // Color Morphing: Fluid interpolation between ambient app theme and all-weather dark stage
             val currentScheme = MaterialTheme.colorScheme
@@ -525,14 +503,13 @@ fun MorphingPlayerContainer(
             val curPlayContainerColor = lerpColor(currentScheme.primary, stageScheme.primary, p)
             val curPlayContentColor = lerpColor(currentScheme.onPrimary, stageScheme.onPrimary, p)
 
-            // Interpolated Cover Geometry (Guaranteed inside expanding capsule)
+            // 3.1 Album Artwork: DisplayList Matrix Transform (scale, translation, shape, elevation in GPU draw phase)
+            val coverScale = lerp(startCover.width / baseArtWidthPx, endCover.width / baseArtWidthPx, p)
             val curCoverCenterX = lerp(startCover.center.x, endCover.center.x, p)
-            val rawCoverCenterY = lerp(startCover.center.y, endCover.center.y, p)
-            val curCoverWidth = lerp(startCover.width, endCover.width, p)
-            val curCoverHeight = curCoverWidth
-            val safeCoverCenterY = maxOf(rawCoverCenterY, capsuleTop + curCoverHeight / 2f + with(density) { 6.dp.toPx() })
-            val curCoverRadiusPx = lerp(curCoverWidth / 2f, with(density) { FullPlayerDefaults.ArtworkSquircleRadius.toPx() }, p)
-            val curCoverElevation = with(density) { lerp(0.dp, 24.dp, p).toPx() }
+            val curCoverCenterY = lerp(startCover.center.y, endCover.center.y, p)
+            val curPhysicalRadius = lerp(startCover.width / 2f, with(density) { FullPlayerDefaults.ArtworkSquircleRadius.toPx() }, p)
+            val curLocalRadius = if (coverScale > 0.001f) curPhysicalRadius / coverScale else curPhysicalRadius
+            val curCoverElevationPx = lerp(0f, with(density) { 24.dp.toPx() }, p)
 
             val coverClickModifier =
                 if (p < 0.85f) {
@@ -545,23 +522,22 @@ fun MorphingPlayerContainer(
                     Modifier
                 }
 
-            // Continuous Morphing Album Artwork (Single Living Instance)
             Box(
                 modifier =
                     Modifier
-                        .offset {
-                            IntOffset(
-                                (curCoverCenterX - curCoverWidth / 2f).roundToInt(),
-                                (safeCoverCenterY - curCoverHeight / 2f).roundToInt(),
-                            )
-                        }.size(with(density) { curCoverWidth.toDp() })
-                        .shadow(
-                            elevation = with(density) { curCoverElevation.toDp() },
-                            shape = RoundedCornerShape(curCoverRadiusPx),
-                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                        ).clip(RoundedCornerShape(curCoverRadiusPx))
-                        .background(curCoverBgColor)
+                        .align(Alignment.TopStart)
+                        .size(MorphingPlayerDefaults.FullPlayerArtworkSize)
+                        .graphicsLayer {
+                            scaleX = coverScale
+                            scaleY = coverScale
+                            translationX = curCoverCenterX - baseArtWidthPx / 2f
+                            translationY = curCoverCenterY - baseArtWidthPx / 2f
+                            shape = RoundedCornerShape(curLocalRadius)
+                            clip = true
+                            shadowElevation = curCoverElevationPx
+                            spotShadowColor = currentScheme.primary.copy(alpha = 0.35f)
+                            ambientShadowColor = currentScheme.primary.copy(alpha = 0.25f)
+                        }.background(curCoverBgColor)
                         .then(coverClickModifier),
                 contentAlignment = Alignment.Center,
             ) {
@@ -573,36 +549,36 @@ fun MorphingPlayerContainer(
                     Icon(
                         imageVector = AppIcons.Audiotrack,
                         contentDescription = "专辑封面",
-                        modifier = Modifier.size(with(density) { lerp(22.dp, 100.dp, p) }),
+                        modifier = Modifier.size(MorphingPlayerDefaults.FullPlayerArtworkIconSize),
                         tint = curCoverIconColor,
                     )
                 }
             }
 
-            // Interpolated Play Button Geometry
+            // 3.2 Play / Pause Button: DisplayList Matrix Transform
+            val playScale = lerp(startPlay.width / basePlayWidthPx, endPlay.width / basePlayWidthPx, p)
             val curPlayCenterX = lerp(startPlay.center.x, endPlay.center.x, p)
             val curPlayCenterY = lerp(startPlay.center.y, endPlay.center.y, p)
-            val curPlayWidth = lerp(startPlay.width, endPlay.width, p)
-            val curPlayRadiusPx = lerp(curPlayWidth / 2f, with(density) { FullPlayerDefaults.PlayButtonSquircleRadius.toPx() }, p)
-            val curPlayElevation = with(density) { lerp(0.dp, 8.dp, p).toPx() }
+            val curPlayPhysicalRadius = lerp(startPlay.width / 2f, with(density) { FullPlayerDefaults.PlayButtonSquircleRadius.toPx() }, p)
+            val curPlayLocalRadius = if (playScale > 0.001f) curPlayPhysicalRadius / playScale else curPlayPhysicalRadius
+            val curPlayElevationPx = lerp(0f, with(density) { 8.dp.toPx() }, p)
 
-            // Continuous Morphing Play / Pause Button (Single Living Instance)
             Box(
                 modifier =
                     Modifier
-                        .offset {
-                            IntOffset(
-                                (curPlayCenterX - curPlayWidth / 2f).roundToInt(),
-                                (curPlayCenterY - curPlayWidth / 2f).roundToInt(),
-                            )
-                        }.size(with(density) { curPlayWidth.toDp() })
-                        .shadow(
-                            elevation = with(density) { curPlayElevation.toDp() },
-                            shape = RoundedCornerShape(curPlayRadiusPx),
-                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
-                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                        ).clip(RoundedCornerShape(curPlayRadiusPx))
-                        .background(curPlayContainerColor)
+                        .align(Alignment.TopStart)
+                        .size(MorphingPlayerDefaults.FullPlayerPlayButtonSize)
+                        .graphicsLayer {
+                            scaleX = playScale
+                            scaleY = playScale
+                            translationX = curPlayCenterX - basePlayWidthPx / 2f
+                            translationY = curPlayCenterY - basePlayWidthPx / 2f
+                            shape = RoundedCornerShape(curPlayLocalRadius)
+                            clip = true
+                            shadowElevation = curPlayElevationPx
+                            spotShadowColor = currentScheme.primary.copy(alpha = 0.35f)
+                            ambientShadowColor = currentScheme.primary.copy(alpha = 0.25f)
+                        }.background(curPlayContainerColor)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -616,7 +592,6 @@ fun MorphingPlayerContainer(
                         ),
                 contentAlignment = Alignment.Center,
             ) {
-                val iconSize = with(density) { lerp(22.dp, 32.dp, p) }
                 AnimatedContent(
                     targetState = sessionState.playbackState,
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -629,12 +604,12 @@ fun MorphingPlayerContainer(
                                     imageVector = AppIcons.Refresh,
                                     contentDescription = "重试",
                                     tint = curPlayContentColor,
-                                    modifier = Modifier.size(iconSize),
+                                    modifier = Modifier.size(MorphingPlayerDefaults.FullPlayerPlayIconSize),
                                 )
                             } else {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(iconSize),
-                                    strokeWidth = with(density) { lerp(2.dp, 3.dp, p) },
+                                    modifier = Modifier.size(MorphingPlayerDefaults.FullPlayerPlayIconSize),
+                                    strokeWidth = 3.dp,
                                     color = curPlayContentColor,
                                 )
                             }
@@ -645,7 +620,7 @@ fun MorphingPlayerContainer(
                                 imageVector = AppIcons.Pause,
                                 contentDescription = "暂停",
                                 tint = curPlayContentColor,
-                                modifier = Modifier.size(iconSize),
+                                modifier = Modifier.size(MorphingPlayerDefaults.FullPlayerPlayIconSize),
                             )
                         }
 
@@ -654,18 +629,19 @@ fun MorphingPlayerContainer(
                                 imageVector = AppIcons.PlayArrow,
                                 contentDescription = "播放",
                                 tint = curPlayContentColor,
-                                modifier = Modifier.size(iconSize),
+                                modifier = Modifier.size(MorphingPlayerDefaults.FullPlayerPlayIconSize),
                             )
                         }
                     }
                 }
             }
 
-            // Interpolated Queue Button Geometry
+            // 3.3 Queue Button: DisplayList Matrix Transform
+            val queueScale = lerp(startQueue.width / baseQueueWidthPx, endQueue.width / baseQueueWidthPx, p)
             val curQueueCenterX = lerp(startQueue.center.x, endQueue.center.x, p)
             val curQueueCenterY = lerp(startQueue.center.y, endQueue.center.y, p)
-            val curQueueWidth = lerp(startQueue.width, endQueue.width, p)
-            val curQueueRadiusPx = lerp(curQueueWidth / 2f, with(density) { 16.dp.toPx() }, p)
+            val curQueuePhysicalRadius = lerp(startQueue.width / 2f, with(density) { 16.dp.toPx() }, p)
+            val curQueueLocalRadius = if (queueScale > 0.001f) curQueuePhysicalRadius / queueScale else curQueuePhysicalRadius
             val curQueueIconColor =
                 lerpColor(
                     if (p > 0.35f) currentScheme.onSurfaceVariant else currentScheme.onSurface,
@@ -673,18 +649,19 @@ fun MorphingPlayerContainer(
                     p,
                 )
 
-            // Continuous Morphing Queue Button (Single Living Instance)
             Box(
                 modifier =
                     Modifier
-                        .offset {
-                            IntOffset(
-                                (curQueueCenterX - curQueueWidth / 2f).roundToInt(),
-                                (curQueueCenterY - curQueueWidth / 2f).roundToInt(),
-                            )
-                        }.size(with(density) { curQueueWidth.toDp() })
-                        .clip(RoundedCornerShape(curQueueRadiusPx))
-                        .background(
+                        .align(Alignment.TopStart)
+                        .size(MorphingPlayerDefaults.FullPlayerQueueButtonSize)
+                        .graphicsLayer {
+                            scaleX = queueScale
+                            scaleY = queueScale
+                            translationX = curQueueCenterX - baseQueueWidthPx / 2f
+                            translationY = curQueueCenterY - baseQueueWidthPx / 2f
+                            shape = RoundedCornerShape(curQueueLocalRadius)
+                            clip = true
+                        }.background(
                             MaterialTheme.colorScheme.surfaceContainer.copy(
                                 alpha = (1f - p * 2.5f).coerceIn(0f, 1f),
                             ),
@@ -695,12 +672,11 @@ fun MorphingPlayerContainer(
                         ),
                 contentAlignment = Alignment.Center,
             ) {
-                val iconSize = with(density) { lerp(20.dp, 28.dp, p) }
                 Icon(
                     imageVector = AppIcons.QueueMusic,
                     contentDescription = "播放队列",
                     tint = curQueueIconColor,
-                    modifier = Modifier.size(iconSize),
+                    modifier = Modifier.size(MorphingPlayerDefaults.FullPlayerQueueIconSize),
                 )
             }
         }

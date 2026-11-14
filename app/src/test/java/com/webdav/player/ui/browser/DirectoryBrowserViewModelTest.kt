@@ -2,6 +2,7 @@ package com.webdav.player.ui.browser
 
 import com.webdav.player.data.remote.ConnectionResult
 import com.webdav.player.data.remote.WebDavClient
+import com.webdav.player.test.SharedFakeWebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.Breadcrumb
@@ -53,7 +54,7 @@ class DirectoryBrowserViewModelTest {
     private lateinit var fakeMediaLibraryRepository: FakeMediaLibraryRepository
     private lateinit var fakeMusicPlayerAppSession: FakeMusicPlayerAppSession
     private lateinit var fakeTrackMetadataRepository: FakeTrackMetadataRepository
-    private lateinit var fakeWebDavClient: FakeWebDavClient
+    private lateinit var fakeWebDavClient: SharedFakeWebDavClient
     private lateinit var viewModel: DirectoryBrowserViewModel
 
     private val sampleServer =
@@ -110,7 +111,7 @@ class DirectoryBrowserViewModelTest {
         fakeServerRepository = FakeServerRepository()
         fakeMusicPlayerAppSession = FakeMusicPlayerAppSession()
         fakeTrackMetadataRepository = FakeTrackMetadataRepository()
-        fakeWebDavClient = FakeWebDavClient()
+        fakeWebDavClient = SharedFakeWebDavClient()
         fakeServerRepository.setActiveServerSync(sampleServer)
         fakeMediaLibraryRepository = FakeMediaLibraryRepository(fakeTrackMetadataRepository)
 
@@ -1243,29 +1244,6 @@ class DirectoryBrowserViewModelTest {
             server: WebDavServer,
             file: RemoteFile,
         ): TrackMetadata = TrackMetadata(serverId = server.id, remotePath = file.path, title = file.name)
-    }
-
-    private class FakeWebDavClient : WebDavClient {
-        val textResponses = mutableMapOf<String, String>()
-
-        override suspend fun testConnection(server: WebDavServer): ConnectionResult = ConnectionResult.Success
-
-        override suspend fun listDirectory(
-            server: WebDavServer,
-            path: String,
-        ): ListDirectoryResult = ListDirectoryResult.Failure("Not implemented")
-
-        override suspend fun fetchRange(
-            server: WebDavServer,
-            remotePath: String,
-            startByte: Long,
-            endByte: Long,
-        ): ByteArray? = null
-
-        override suspend fun fetchText(
-            server: WebDavServer,
-            remotePath: String,
-        ): String? = textResponses[remotePath]
     }
 
     @Test

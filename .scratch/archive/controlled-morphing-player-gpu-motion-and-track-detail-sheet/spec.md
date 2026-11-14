@@ -1,6 +1,6 @@
 # Spec: 受控流体播放器、GPU 绘制阶段变换与统一曲目详情抽屉 (Controlled Morphing Player, GPU Draw Phase Motion, and Unified Track Detail Bottom Sheet)
 
-Status: `ready-for-agent`  
+Status: `completed`  
 ADR: [`docs/adr/0043-controlled-morphing-player-gpu-motion-and-track-detail-sheet.md`](../../docs/adr/0043-controlled-morphing-player-gpu-motion-and-track-detail-sheet.md)
 
 ## Problem Statement

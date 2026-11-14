@@ -159,6 +159,7 @@ internal fun PlaylistTrackRow(
                 isPlaying = isPlaying,
                 containerColor = Color.Transparent,
                 onClick = onClick,
+                onLongClick = if (showDragHandle) null else { { onShowDetails(track) } },
                 leadingContent = {
                     PlaylistTrackLeadingContent(
                         index = index,

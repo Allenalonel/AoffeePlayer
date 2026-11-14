@@ -75,13 +75,13 @@ import com.webdav.player.domain.model.PlayerSessionState
 import com.webdav.player.ui.browser.DirectoryBrowserScreen
 import com.webdav.player.ui.browser.DirectoryBrowserViewModel
 import com.webdav.player.ui.common.RequestNotificationPermissionEffect
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.webdav.player.ui.common.ThumbnailMemoryCache
 import com.webdav.player.ui.motion.MotionTransitions
 import com.webdav.player.ui.motion.fluidIndicator
 import com.webdav.player.ui.motion.isReduceMotionEnabled
 import com.webdav.player.ui.navigation.AppDestination
 import com.webdav.player.ui.navigation.MainNavigationCoordinator
-import com.webdav.player.ui.navigation.tabAccessibilityGuard
 import com.webdav.player.ui.player.FullPlayerView
 import com.webdav.player.ui.player.HoistedPlaybackQueueSheet
 import com.webdav.player.ui.player.MiniPlayer
@@ -166,7 +166,8 @@ class MainActivity : ComponentActivity() {
                 val navState by coordinator.uiState.collectAsStateWithLifecycle()
 
                 var tracksToAddToPlaylist by remember { mutableStateOf<List<AudioTrack>?>(null) }
-                var showQueueSheet by remember { mutableStateOf(false) }
+                val isPlayerExpanded = navState.isFullPlayerExpanded
+                var isPlaybackQueueSheetVisible by rememberSaveable { mutableStateOf(false) }
                 var isBrowserSelectionActive by remember { mutableStateOf(false) }
                 var scaffoldBottomPadding by remember { mutableStateOf(0.dp) }
 
@@ -193,7 +194,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 val playerExpansionProgress by animateFloatAsState(
-                    targetValue = if (navState.isFullPlayerExpanded) 1f else 0f,
+                    targetValue = if (isPlayerExpanded) 1f else 0f,
                     animationSpec = playerMorphingSpec,
                     label = "GlobalPlayerMorphingProgress",
                 )
@@ -332,7 +333,9 @@ class MainActivity : ComponentActivity() {
                                         modifier =
                                             Modifier
                                                 .fillMaxSize()
-                                                .tabAccessibilityGuard(isCurrentTab),
+                                                .then(
+                                                    if (isCurrentTab) Modifier else Modifier.clearAndSetSemantics { }
+                                                ),
                                     ) {
                                         when (targetDestination) {
                                             AppDestination.PLAYLISTS -> {
@@ -426,14 +429,17 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Maintain BackHandler to collapse player when expanded (yields to bottom sheet when open)
-                    BackHandler(enabled = navState.isFullPlayerExpanded && !showQueueSheet) {
-                        coordinator.collapseFullPlayer()
+                    // Top-level single BackHandler coordinating priorities: QueueSheet -> FullPlayer -> App Navigation
+                    BackHandler(enabled = isPlaybackQueueSheetVisible || isPlayerExpanded) {
+                        when {
+                            isPlaybackQueueSheetVisible -> isPlaybackQueueSheetVisible = false
+                            isPlayerExpanded -> coordinator.collapseFullPlayer()
+                        }
                     }
 
                     // Unified Continuous Morphing Player Container
                     AnimatedVisibility(
-                        visible = (navState.isMiniPlayerVisible && !isBrowserSelectionActive) || navState.isFullPlayerExpanded,
+                        visible = (navState.isMiniPlayerVisible && !isBrowserSelectionActive) || isPlayerExpanded,
                         enter =
                             slideInVertically(
                                 initialOffsetY = { it },
@@ -449,11 +455,12 @@ class MainActivity : ComponentActivity() {
                             sessionState = playerSessionState,
                             playbackProgress = playbackProgress,
                             playbackActions = playbackActions,
-                            isExpanded = navState.isFullPlayerExpanded,
+                            progress = playerExpansionProgress,
+                            isExpanded = isPlayerExpanded,
                             onExpand = { coordinator.expandFullPlayer() },
                             onCollapse = { coordinator.collapseFullPlayer() },
                             collapsedBottomPadding = scaffoldBottomPadding + 8.dp,
-                            onOpenQueue = { showQueueSheet = true },
+                            onOpenQueue = { isPlaybackQueueSheetVisible = true },
                             onAddToPlaylist = { track: AudioTrack ->
                                 tracksToAddToPlaylist = listOf(track)
                             },
@@ -461,16 +468,15 @@ class MainActivity : ComponentActivity() {
                             onConfirmUnsupportedRangeReplay = { musicSession.confirmUnsupportedRangeReplay() },
                             onDismissUnsupportedRange = { musicSession.dismissUnsupportedRange() },
                             artworkColors = artworkColors,
-                            progressOverride = playerExpansionProgress,
                         )
                     }
 
-                    if (showQueueSheet) {
+                    if (isPlaybackQueueSheetVisible) {
                         HoistedPlaybackQueueSheet(
                             sessionState = playerSessionState,
                             playbackProgress = playbackProgress,
                             playbackActions = playbackActions,
-                            onDismissRequest = { showQueueSheet = false },
+                            onDismissRequest = { isPlaybackQueueSheetVisible = false },
                             onAddToPlaylist = { track ->
                                 tracksToAddToPlaylist = listOf(track)
                             },

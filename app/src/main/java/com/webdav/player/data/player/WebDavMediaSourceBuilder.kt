@@ -17,6 +17,7 @@ import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.ExtractorsFactory
 import com.webdav.player.data.remote.OkHttpWebDavClient
+import com.webdav.player.data.remote.WebDavClient
 import com.webdav.player.domain.model.AudioFormat
 import com.webdav.player.domain.model.AudioTrack
 import com.webdav.player.domain.model.WebDavServer
@@ -29,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap
 @OptIn(UnstableApi::class)
 internal class WebDavMediaSourceBuilder(
     val context: Context? = null,
-    val webDavClient: OkHttpWebDavClient = OkHttpWebDavClient(),
+    val webDavClient: WebDavClient = OkHttpWebDavClient(),
     val loadErrorHandlingPolicy: LoadErrorHandlingPolicy = WebDavLoadErrorHandlingPolicy(),
     val resilientSleeper: ((Long) -> Unit)? = null,
 ) {
@@ -45,7 +46,7 @@ internal class WebDavMediaSourceBuilder(
     private var defaultDataSourceFactory: DataSource.Factory? = null
 
     val streamingConnectionPool: ConnectionPool
-        get() = webDavClient.streamingConnectionPool
+        get() = webDavClient.getStreamingClientForServer(WebDavServer.createLocalStorage()).connectionPool
 
     @VisibleForTesting
     fun getStreamingClientForServer(server: WebDavServer): OkHttpClient = webDavClient.getStreamingClientForServer(server)

@@ -10,6 +10,7 @@ import com.webdav.player.domain.model.isLocal
 import com.webdav.player.domain.repository.FakeMediaLibraryRepository
 import com.webdav.player.domain.repository.ServerRepository
 import com.webdav.player.domain.storage.FakeStorageReachabilityTracker
+import com.webdav.player.test.SharedFakeWebDavClient
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -37,7 +38,7 @@ import org.junit.Test
 class ServerManagementViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeRepository: FakeServerRepository
-    private lateinit var fakeClient: FakeWebDavClient
+    private lateinit var fakeClient: SharedFakeWebDavClient
     private lateinit var fakeMediaLibraryRepository: FakeMediaLibraryRepository
     private lateinit var viewModel: ServerManagementViewModel
 
@@ -45,7 +46,7 @@ class ServerManagementViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         fakeRepository = FakeServerRepository()
-        fakeClient = FakeWebDavClient()
+        fakeClient = SharedFakeWebDavClient()
         fakeMediaLibraryRepository = FakeMediaLibraryRepository()
         viewModel =
             ServerManagementViewModel(
@@ -498,26 +499,4 @@ private class FakeServerRepository : ServerRepository {
     override suspend fun removeMountedLocalFolder(uriString: String) {
         foldersFlow.value = foldersFlow.value.filterNot { it.uriString == uriString }
     }
-}
-
-private class FakeWebDavClient : WebDavClient {
-    var resultToReturn: ConnectionResult = ConnectionResult.Success
-
-    override suspend fun testConnection(server: WebDavServer): ConnectionResult = resultToReturn
-
-    override suspend fun listDirectory(
-        server: WebDavServer,
-        path: String,
-    ): com.webdav.player.domain.model.ListDirectoryResult =
-        com.webdav.player.domain.model.ListDirectoryResult.Success(
-            com.webdav.player.domain.model
-                .RemoteDirectory(path = path, name = "root"),
-        )
-
-    override suspend fun fetchRange(
-        server: WebDavServer,
-        remotePath: String,
-        startByte: Long,
-        endByte: Long,
-    ): ByteArray? = null
 }

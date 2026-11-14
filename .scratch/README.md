@@ -14,9 +14,7 @@
 
 ## 活跃任务 (Active)
 
-| 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 路径 |
-| :--- | :--- | :---: | :---: | :--- |
-| `controlled-morphing-player-gpu-motion-and-track-detail-sheet` | 受控流体播放器、GPU 绘制阶段变换与统一曲目详情抽屉 (ADR-0043) | 4 | `ready-for-agent` | [`controlled-morphing-player-gpu-motion-and-track-detail-sheet/`](controlled-morphing-player-gpu-motion-and-track-detail-sheet/) |
+当前无活跃任务（所有特性均已结项并通过验收）。
 
 ---
 
@@ -26,6 +24,7 @@
 
 | 特性 / 优化项 Slug | 描述 / 规范主题 | 工单数 | 状态 | 归档路径 |
 | :--- | :--- | :---: | :---: | :--- |
+| `controlled-morphing-player-gpu-motion-and-track-detail-sheet` | 受控流体播放器、GPU 绘制阶段变换与统一曲目详情抽屉 (ADR-0043) | 4 | Completed | [`archive/controlled-morphing-player-gpu-motion-and-track-detail-sheet/`](archive/controlled-morphing-player-gpu-motion-and-track-detail-sheet/) |
 | `track-identity-and-metadata-healing-consolidation` | TrackIdentity 规范化、伴生清单两阶段收拢与跨源封面批量自愈 (ADR-0042) | 6 | Completed | [`archive/track-identity-and-metadata-healing-consolidation/`](archive/track-identity-and-metadata-healing-consolidation/) |
 | `purify-playback-session-seams` | 播控会话接缝纯化、双轨彻底切割与起播前音频焦点门控 (ADR-0041) | 6 | Completed | [`archive/purify-playback-session-seams/`](archive/purify-playback-session-seams/) |
 | `directory-file-sorting` | 媒体库目录排序策略与播控队列对齐体系 (ADR-0040) | 3 | Completed | [`archive/directory-file-sorting/`](archive/directory-file-sorting/) |

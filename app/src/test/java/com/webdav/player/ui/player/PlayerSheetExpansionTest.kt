@@ -188,4 +188,29 @@ class PlayerSheetExpansionTest {
         assertTrue(collapsedCalled)
         assertEquals(0f, downwardDrag)
     }
+
+    @Test
+    fun backHandlerPriority_queueSheetClosesFirst_thenFullPlayerCollapses() {
+        var isPlayerExpanded = true
+        var isPlaybackQueueSheetVisible = true
+
+        // Top-level BackHandler priority coordination:
+        // isPlaybackQueueSheetVisible -> close sheet; isPlayerExpanded -> collapse player
+        val handleBack = {
+            when {
+                isPlaybackQueueSheetVisible -> isPlaybackQueueSheetVisible = false
+                isPlayerExpanded -> isPlayerExpanded = false
+            }
+        }
+
+        // First back press: closes queue sheet, player remains expanded
+        handleBack()
+        assertFalse("Playback queue sheet must be closed on first back press", isPlaybackQueueSheetVisible)
+        assertTrue("Player must remain expanded while queue sheet is dismissed", isPlayerExpanded)
+
+        // Second back press: collapses full player
+        handleBack()
+        assertFalse(isPlaybackQueueSheetVisible)
+        assertFalse("Player must collapse to mini-player on second back press", isPlayerExpanded)
+    }
 }

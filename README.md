@@ -5,10 +5,11 @@
 </p>
 
 <p align="center">
-  <strong>专为远程私有云（NAS / 网盘）打造的现代化 Android WebDAV 高保真流式音频播放器</strong>
+  <strong>专为远程私有云（NAS / 网盘）与本地设备存储（SAF）双源打造的现代化 Android 高保真流式音频播放器</strong>
 </p>
 
 <p align="center">
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/Version-v3.5-brightgreen?style=flat-square" alt="Version" /></a>
   <a href="https://developer.android.com/about/versions/10"><img src="https://img.shields.io/badge/Platform-Android_10+_(API_29+)-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Platform" /></a>
   <a href="https://kotlinlang.org/"><img src="https://img.shields.io/badge/Kotlin-1.9+-7F52FF?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin" /></a>
   <a href="https://isocpp.org/"><img src="https://img.shields.io/badge/C++-17_(Native_NDK)-00599C?style=flat-square&logo=c%2B%2B&logoColor=white" alt="C++17" /></a>
@@ -21,9 +22,9 @@
 
 ## 📖 项目简介
 
-**Aoffee Player** 是一款遵循 **Google Material 3 Expressive (M3E)** 设计语言的 Android 原生流式音频播放器。
+**Aoffee Player** 是一款遵循 **Google Material 3 Expressive (M3E)** 设计语言的 Android 原生双源流式音频播放器。
 
-通过标准 WebDAV (HTTP/HTTPS) 协议，用户可直接挂载家庭 NAS（群晖、威联通、TrueNAS）、路由器私有云盘或各类远程服务器中的音乐资产。应用基于 **AndroidX Media3 (ExoPlayer)** 并深度集成 **FFmpeg 原生 C++ JNI 解码扩展**，提供毫秒级在线即点即播体验，无需下载曲目到手机本地，畅享轻量纯粹的云端音乐。
+应用支持 **远程 WebDAV 与本地设备存储（SAF）双源拓扑**：用户不仅可以通过标准 WebDAV (HTTP/HTTPS) 挂载家庭 NAS（群晖、威联通、TrueNAS）、路由器私有云盘或各类网盘服务，亦可直接授权挂载本地音乐文件夹。底层基于 **AndroidX Media3 (ExoPlayer)** 并深度集成 **FFmpeg 原生 C++ JNI 解码扩展**，提供毫秒级在线即点即播体验；远程曲目纯内存流式回放，零本地永久存储开销，畅享轻量纯粹的云端与本地高保真视听。
 
 ---
 
@@ -54,17 +55,21 @@
 ### 🚀 纯流式回放，零本地磁盘占用
 - **按需分块流式加载**：基于 HTTP Range 按需拉取音频数据，毫秒级起播与平滑拖拽寻道。
 - **纯流式无落盘开销**：数据仅在内存及有限缓冲区流动，绝不占用宝贵的手机永久存储空间。
-- **完善的音频焦点管理**：自动响应通话打断、系统通知压音（Ducking）与蓝牙断开自动暂停。
+- **前置音频焦点门控与硬件锁 (ADR-0041)**：严格的前置音频焦点校验与 Wi-Fi/CPU 硬件唤醒锁，自动响应通话打断、系统通知压音（Ducking）与蓝牙断开自动暂停，杜绝幽灵起播。
 
-### 🎼 全格式支持与硬核音频解码
+### 💾 本地设备存储（SAF）双源架构与离线播放 (ADR-0032b)
+- **本地 SAF 目录持久化授权**：支持通过 Storage Access Framework (SAF) 挂载本地存储目录，确立 `LOCAL_STORAGE_ID = 0L` 双源拓扑，实现本地曲库毫秒级层级遍历与 SWR 缓存。
+- **跨源混合歌单与离线自愈**：支持在同一歌单内混合收藏 WebDAV 远程与本地音频并无缝过渡切歌；本地存储断连/移除时自动置灰降级，重新授权后秒级自愈点亮。
+
+### 🎼 全格式支持与权威发烧友音频物理规格 (ADR-0044)
 - **原生双引擎驱动**：主流格式由 AndroidX Media3 高效解码，集成自定义 **FFmpeg Native (C++17)** 软解扩展。
 - **全格式无缝播放**：全面兼容 MP3、AAC、OGG、OPUS、WAV、FLAC（高达 24-bit/192kHz Hi-Res）以及原生系统不支持的 **APE** 与 **WMA / ASF**。
-- **音质与格式胶囊徽标**：曲目列表与播放器实时呈现专属格式与音频规格徽标（如 Hi-Res、FLAC、WMA、APE 等）。
+- **权威发烧友物理规格提取**：基于音频解码容器通过 `AudioQuality.resolveAudiophileSpecs()` 动态解析真实物理规格（采样率 44.1kHz~384kHz、位深 16-bit~32-bit、比特率及 Hi-Res 状态），杜绝静态伪造；曲目列表与播放器动态呈现四级音质胶囊药丸（`LOSSLESS`、`HIGH_QUALITY`、`STANDARD`、`COMPRESSED`），色彩跟随动态主题。
 
-### ⚡ 智能增量元数据与双源封面
+### ⚡ 智能增量元数据与两阶段伴生清单自愈 (ADR-0042)
 - **按需轻量探测**：仅拉取文件头尾关键字节块，瞬间解析 ID3、VorbisComment、ASF/WMA 等音频标签。
-- **双源封面回退机制**：优先读取音频内嵌高清封面；内嵌无图时，智能检索同目录下同名封面或 `cover.jpg`、`folder.jpg`。
-- **自愈式元数据缓存**：即便本地图片缓存被外部清理，仓储层也能自动并发自愈修复。
+- **两阶段伴生文件探测与封面/歌词自愈**：引入 `companionLyricsPath` 与内存目录清单预筛，毫秒级快速匹配同目录下同名封面或 `cover.jpg`、`folder.jpg` 以及外置歌词；建立跨源封面与歌词异步自愈修补网络。
+- **规范化 TrackIdentity 复合键**：全域确立 `TrackIdentity` 规范化值模型，彻底消除各源临时标识分歧，确保跨源缓存亲和性与精准比对。
 
 ### 📜 工业级歌词与双语平滑滚动
 - **双源歌词发现**：自动关联同目录同名 `.lrc` 文件，无外置文件时自动降级读取音频内嵌歌词。
@@ -75,17 +80,21 @@
 - **零偏色中性灰防线（Zero-Tint Monochrome Safeguard）**：当封面为黑白照片、金属灰质感（Chroma < 8）或缺失封面时，强制冻结色彩注入，自动落入纯正中性灰阶（Pure Neutral Slate），物理杜绝黑白封面被误染成红酒色。
 - **全天候沉浸流光舞台（All-Weather Immersive Stage）**：主界面保持深浅双模自适应，而全屏播放器升格为独立音乐舞台——无论系统处于白天浅色还是夜间深色，全屏背景均呈现温润深邃的动态多重环境流光，文字与按键锁定高对比度纯白（对比度 12.8:1），彻底终结浅底白字反差失效。
 - **通用感知色调归一化（Perceptual Tonal Normalization）**：发散高光（Tone 60~72）与深邃暗彩基底（Tone 8~9）自适应计算，全格式规格徽章（FLAC/WMA/MP3）动态和谐变色，单行轻量顶栏去重，告别泥浆暗斑与局部拟合缺陷。
-- **工业级单一实体连续形态蜕变（Single Component Ownership Capsule Morphing）**：对标 Apple Music 与 Spotify，Mini 胶囊至全屏播放器由根容器单一真实实体常驻驱动；子视图退化为纯几何插槽，核心封面（42dp 正圆 -> 280dp Squircle 方圆大卡片）与主控大按钮无缝飞行动画，伴随底栏下沉 80dp 退出与主视窗 0.94f 景深微缩，彻底杜绝任何假替身偷换（Zero End-State Swaps）与 1 帧空白闪烁。
+- **受控流体容器形变与 GPU Draw 阶段动效 (ADR-0043)**：统一宿主协调与受控形态变换架构（`ControlledMorphingPlayerContainer`），MiniPlayer 与全屏播放器之间尺寸、圆角与位移全部下沉至 GPU Draw Phase（`graphicsLayer` / `drawBehind`），杜绝每帧 CPU 重排与抖动；统一 `TrackDetailBottomSheet` 沉浸式曲目详情抽屉。
 - **流体交互与手势避让**：连续流体折叠顶栏、自适应 FAB 悬浮按钮避让、独立药丸搜索舱与悬浮多选操作栏。
+
+### 📁 响应式目录排序与待播队列对齐 (ADR-0040)
+- **多维响应式排序引擎**：支持按文件名、修改时间、文件大小升序/降序排列，偏好设置持久化记忆。
+- **硬件级平滑滑行动效**：结合 `Modifier.animateItemPlacement()` 实现列表项排序时的流畅交错滑行，播放队列与视图模型严格保持拓扑对齐。
 
 ### 🔄 目录闭环回流与队列管控
 - **目录闭环回流**：列表循环时严格约束在当前活跃目录曲目集合内自然回流，避免误跨无关父级或兄弟目录。
 - **显式洗牌与原序镜像**：随机播放模式保持确定性队列，支持无损还原原始播放次序。
 
-### 🌐 跨服务器歌单与即时曲库搜索
-- **多源混合收藏**：支持将来自不同 WebDAV 服务器的音轨收藏到同一个歌单中，自动装配对应服务器鉴权凭据。
+### 🌐 跨源歌单与快速全文索引检索 (ADR-0033)
+- **多源混合收藏**：支持将来自不同 WebDAV 服务器与本地 SAF 目录的音轨收藏到同一个歌单中，自动装配对应鉴权凭据与物理路径。
 - **SWR 目录缓存与离线可用**：基于 Room 数据库缓存远程目录树，二次进入秒开，断网亦可浏览。
-- **毫秒级全文检索**：支持多维即时匹配目录与音频标签，内置搜索历史管理。
+- **毫秒级全文检索与分段搜索舱**：建立本地统一索引表，即打即搜双源音频，配备硬件绘制的 `SegmentedSliderPill` 快速切换搜索范围。
 
 ### 🛡️ 私有云连接与后台长效播放
 - **自签名 SSL 证书信任**：支持局域网私有 IP HTTPS 及自签名证书一键信任，适配各类家庭私有云与自建服务。
@@ -133,8 +142,9 @@ Aoffee Player 严格遵循 **RFC 4918** 标准 WebDAV 规范。以下为经过�
 | **界面与设计** | Jetpack Compose (BOM 2024.02.01) · Material Design 3 Expressive (M3E) |
 | **音频引擎** | AndroidX Media3 (ExoPlayer 1.2.1) + 自定义 FFmpeg Native C++ JNI 扩展 |
 | **网络与协议** | OkHttp 4.12.0 · 标准 WebDAV (HTTP/HTTPS) + PROPFIND XML 流式解析 |
-| **本地持久化** | Room 2.6.1 目录与元数据快照 · Jetpack DataStore 状态配置 |
+| **本地持久化** | Room 2.6.1（数据库架构平滑迁移至 v11）· Jetpack DataStore 状态配置 · SAF 存储框架授权 |
 | **异步流式架构** | Kotlin Coroutines & Flow · Clean Architecture + UDF 单向数据流 |
+| **发布包体积门禁** | Release APK $\le 7.5\text{ MB}$（实测 6.89 MB）· classes.dex $\le 4.25\text{ MB}$ · 纯 64 位 `arm64-v8a` |
 
 ---
 
@@ -158,6 +168,9 @@ Aoffee Player 严格遵循 **RFC 4918** 标准 WebDAV 规范。以下为经过�
 # 运行单元测试
 ./gradlew testDebugUnitTest
 
+# 验证 Release 打包与包体积预算门禁 (<= 7.5 MB APK, <= 4.25 MB classes.dex)
+./gradlew verifyReleasePackaging
+
 # 构建 Release 生产包
 ./gradlew assembleRelease
 ```
@@ -169,7 +182,7 @@ Aoffee Player 严格遵循 **RFC 4918** 标准 WebDAV 规范。以下为经过�
 本项目关键的技术选型与深层架构演进均通过 ADR（Architecture Decision Records）进行规范化追踪。详情请参阅 **[docs/adr/](docs/adr/)** 目录。
 
 <details>
-<summary>展开查看全部 36 项架构设计决策记录</summary>
+<summary>展开查看全部 45 项架构设计决策记录</summary>
 
 - [ADR 0001: 采用 AndroidX Media3 与 FFmpeg JNI 原生解码扩展](docs/adr/0001-use-androidx-media3-with-ffmpeg-extension.md)
 - [ADR 0002: 纯流式播放机制与无永久磁盘缓存设计](docs/adr/0002-pure-online-streaming-without-persistent-disk-cache.md)
@@ -207,6 +220,15 @@ Aoffee Player 严格遵循 **RFC 4918** 标准 WebDAV 规范。以下为经过�
 - [ADR 0033: 统一跨源曲库快速索引与全局搜索架构](docs/adr/0033-cross-source-library-indexing-and-search.md)
 - [ADR 0034: 彻底废弃与物理清除 CUE 虚拟分轨支持](docs/adr/0034-deprecate-and-purge-cue-sheet-support.md)
 - [ADR 0035: 跨源会话双轨解耦与对称存储生命周期闭环](docs/adr/0035-cross-source-session-decoupling-and-symmetric-storage-lifecycle.md)
+- [ADR 0036: 折叠媒体库浏览与索引检索为单一深模块](docs/adr/0036-consolidate-media-library-repository.md)
+- [ADR 0037: 存储生命周期级联失效与单向仓储接缝](docs/adr/0037-storage-lifecycle-cascade-and-unidirectional-repository-seams.md)
+- [ADR 0038: 从歌单仓储解耦存储源连通性追踪器与内存响应式自愈](docs/adr/0038-decouple-storage-reachability-from-playlist-repository.md)
+- [ADR 0039: 从播控会话剥离浏览游标并收敛至媒体库深模块](docs/adr/0039-purge-browsing-cursor-from-playback-session.md)
+- [ADR 0040: 媒体库目录排序策略与播控队列对齐架构](docs/adr/0040-directory-sort-order-and-queue-alignment.md)
+- [ADR 0041: 播控会话接缝纯化、双轨彻底切割与起播前音频焦点门控](docs/adr/0041-purify-playback-session-seams-and-audio-focus-gating.md)
+- [ADR 0042: TrackIdentity 规范化、伴生清单两阶段收拢与跨源封面批量自愈](docs/adr/0042-track-identity-companion-manifest-and-metadata-healing-consolidation.md)
+- [ADR 0043: 受控流体播放器、GPU 绘制阶段变换与统一曲目详情抽屉](docs/adr/0043-controlled-morphing-player-gpu-motion-and-track-detail-sheet.md)
+- [ADR 0044: 权威音频流规格提取、Room 迁移与严格规格门控](docs/adr/0044-authoritative-audiophile-specs-extraction-and-strict-gating.md)
 
 </details>
 

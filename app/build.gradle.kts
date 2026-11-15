@@ -17,8 +17,8 @@ android {
         applicationId = "com.webdav.player"
         minSdk = 29
         targetSdk = 34
-        versionCode = 13
-        versionName = "3.4"
+        versionCode = 14
+        versionName = "3.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

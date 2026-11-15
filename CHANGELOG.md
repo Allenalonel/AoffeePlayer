@@ -4,6 +4,27 @@
 
 ---
 
+## [3.5] - 2026-11-15
+
+### 🎧 权威发烧友音频物理规格提取与音质角标动态呈现 (Authoritative Audiophile Specs)
+- **真机运行时物理规格解析**：基于音频解码容器通过 `AudioQuality.resolveAudiophileSpecs()` 动态解析物理规格（采样率 44.1kHz~384kHz、位深 16-bit~32-bit、比特率及 Hi-Res 状态），杜绝静态伪造；列表行以药丸徽章（`AudioQualityBadgePill`）形式动态呈现四级音质（`LOSSLESS`、`HIGH_QUALITY`、`STANDARD`、`COMPRESSED`）。
+- **Room v11 数据库迁移与安全持久化**：无损升级数据库架构至 v11，支持权威发烧友音质元数据持久化。
+- **全屏播放器手势导航修复**：修复全屏播放器与系统返回手势的导航交互冲突，确保滑动返回与手势拦截行为平滑自然。
+
+### 🎬 受控形态变换播放器与统一音频详情抽屉 (Controlled Morphing Player & Unified Sheet, ADR-0043)
+- **ControlledMorphingPlayerContainer 容器蜕变**：统一宿主协调与受控形态变换架构，MiniPlayer 与 FullPlayerView 之间实现 GPU Draw 阶段流体位移与尺寸形变（`graphicsLayer` / `drawBehind`），根除白屏、残影与跳跃。
+- **统一 TrackDetailBottomSheet 抽屉**：收拢并统一曲目详情弹窗体系，消除散落对话框，提供高内聚、对齐 M3E 风格的沉浸式音频详情展示。
+
+### 🏷️ 统一 TrackIdentity 规范化与两阶段伴随元数据自愈 (TrackIdentity & Metadata Healing, ADR-0042)
+- **跨源统一 TrackIdentity 标识**：全面废弃分散的临时标识符，建立统一规范的 `TrackIdentity` 复合值模型，跨 WebDAV 与本地 SAF 源具备统一的等价性判定与内存缓存亲和性。
+- **两阶段伴随文件探测与封面/歌词自愈**：引入 `companionLyricsPath` 与内存目录清单预筛，实现外置伴随封面与歌词的毫秒级两阶段探测与自动持久化自愈。
+
+### 🧱 播放会话接缝净化与目录排序引擎 (Session Seams & Reactive Sorting, ADR-0040 & ADR-0041)
+- **前置音频焦点门禁与单提交主干**：构建专职前置音频焦点门禁，会话宿主收拢硬件锁与生命周期，消除幽灵起播；净化播放队列与故障恢复协调器。
+- **响应式目录排序引擎与 M3E 控制菜单**：新增灵活的目录排序引擎与 TopAppBar 排序菜单，支持名称、修改时间、文件大小等多维排序，结合 `Modifier.animateItemPlacement()` 实现硬件级平滑滑行动效。
+
+---
+
 ## [3.4] - 2026-11-10
 
 ### 💾 本地设备存储（SAF）双源架构与离线播放 (ADR-0032b)
